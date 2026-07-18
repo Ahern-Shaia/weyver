@@ -19,7 +19,7 @@
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver T 策略)|
 | **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver J-Q 策略)|
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Weyver A-I 借鑑分類)|
-| **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-16 v5**(**OSS-only stack**|Glide Data Grid + GlitchTip + Infisical + Coolify;商業授權全砍)|
+| **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-18 v9**(OSS-only stack + Modular Monolith;**§ 7.10 AI 輔助設計工具鏈(Skills + MCP)**;§ 16.5-16.11 Prod 雲端部署架構 AWS/GCP + 全服務成本|主推 GCP 台灣區 + Cloud Run;Tier E ~NT$14-22K/月)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
 | **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-16 v1**(**buildable sprint 順序**|Foundation + Phase 0 + Phase 1;dependency + solo M18 + risk gates)|
 | **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-17 v1**(開發前定案|tech stack + design token + 設計規則 + Do&Don't;企業級基準)|
