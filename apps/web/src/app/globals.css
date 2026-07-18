@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "@weyver/ui/styles.css";
+
+/* Tailwind 4 需明確掃描 workspace UI 套件的 class 使用 */
+@source "../../../../packages/ui/src";
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+  }
+
+  /* 數字 / 金額 / 批號 tabular 對齊 */
+  .tabular {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* 企業級 focus:深海青 3px tint ring */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-brand-tint);
+    border-color: var(--color-brand);
+  }
+}

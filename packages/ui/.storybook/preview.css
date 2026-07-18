@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@import "../src/styles/tokens.css";
+@source "../src";
+
+/* Storybook 無 next/font → 由 preview-head.html 的 CDN 提供字型,
+   這裡把 next/font 注入的變數指到實際家族名,讓 tokens.css 的 var() 生效。 */
+:root {
+  --font-plex-sans: "IBM Plex Sans";
+  --font-plex-mono: "IBM Plex Mono";
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}

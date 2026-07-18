@@ -8,3 +8,31 @@ docs/pdf/*.pdf
 .vscode/
 .idea/
 *.swp
+
+# Node / monorepo 建置產物
+node_modules/
+.pnpm-store/
+.turbo/
+dist/
+*.tsbuildinfo
+
+# Next.js
+.next/
+next-env.d.ts
+apps/*/.next/
+
+# Storybook
+storybook-static/
+
+# 測試 / 覆蓋率
+coverage/
+playwright-report/
+test-results/
+
+# 環境變數(只留 .env.example)
+.env
+.env.local
+.env.*.local
+
+# Playwright MCP 探索產物(不入版控)
+.playwright-mcp/

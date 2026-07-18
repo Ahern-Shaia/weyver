@@ -1,0 +1,91 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Weyver 織雲 — Design Tokens(single source of truth)
+   權威值同步自 docs/mockups/design-system.html + docs/14 前端設計規則。
+   3-layer:primitive(teal scale + gray)→ semantic(brand / ink / surface / state)→
+   由 Tailwind @theme 生成 utility(bg-brand / text-ink-2 / border-border …)。
+   ⚠️ 禁在元件硬編 hex,一律走這裡的語意 token。
+═══════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── primitive · 深海青階 ───────────────────────────────── */
+  --color-teal-50: #eaf3f5;
+  --color-teal-100: #dbebef;
+  --color-teal-200: #bedde4;
+  --color-teal-400: #3aa9be;
+  --color-teal-600: #12879f;
+  --color-teal-700: #0e7490;
+  --color-teal-800: #0c5f73;
+  --color-teal-900: #073b47;
+
+  /* ── semantic · 品牌 ────────────────────────────────────── */
+  --color-brand: #0c5f73;
+  --color-brand-hover: #0e7490;
+  --color-brand-tint: #eaf3f5;
+  --color-brand-tint-2: #dbebef;
+
+  /* ── semantic · 中性 ink ────────────────────────────────── */
+  --color-ink: #181e26;
+  --color-ink-2: #586069;
+  --color-ink-3: #868e98;
+  --color-ink-4: #aeb6bf;
+
+  /* ── semantic · surface ─────────────────────────────────── */
+  --color-surface: #f4f6f8;
+  --color-card: #ffffff;
+  --color-head: #fcfcfd;
+
+  /* ── semantic · border(hairline)───────────────────────── */
+  --color-border: #e2e7eb;
+  --color-border-2: #edf0f3;
+  --color-border-3: #f1f4f6;
+
+  /* ── semantic · 狀態(base / tint / dark)──────────────── */
+  --color-success: #0e9e5b;
+  --color-success-tint: #e6f6ee;
+  --color-success-dark: #0a7d48;
+  --color-warning: #c8760c;
+  --color-warning-tint: #fbf2e3;
+  --color-warning-dark: #9a5a05;
+  --color-danger: #d23b32;
+  --color-danger-tint: #fceeed;
+  --color-danger-dark: #b02b22;
+  --color-info: #2e6fe0;
+  --color-info-tint: #ebf1fd;
+  --color-info-dark: #2159c0;
+  --color-accent: #6d45c9;
+  --color-accent-tint: #f0ebfa;
+  --color-accent-dark: #5836a8;
+
+  /* ── 圓角(企業級偏緊 6–10px)──────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+
+  /* ── 陰影(深度靠細邊框 + 極輕陰影)────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(20, 26, 36, 0.05);
+  --shadow-md: 0 2px 8px -2px rgba(20, 26, 36, 0.1), 0 1px 2px rgba(20, 26, 36, 0.05);
+
+  /* ── 字型(IBM Plex 超家族)──────────────────────────────
+     Latin/UI + Mono 由 next/font 自帶(self-host);繁中(TC)
+     next/font 未收錄 → 走 Google Fonts <link> 的 "IBM Plex Sans TC"
+     (OFL,授權合規);CJK 字元由此 fallback 承接。 */
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans TC", "Noto Sans TC", "PingFang TC", system-ui,
+    sans-serif;
+  --font-mono: var(--font-plex-mono), "JetBrains Mono", ui-monospace, monospace;
+
+  /* ── 動效(150–200ms;ease-out 進 / ease-in 出)────────── */
+  --ease-brand: cubic-bezier(0.2, 0, 0.15, 1);
+  --duration-brand: 130ms;
+}
+
+/* 尊重使用者減少動效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
