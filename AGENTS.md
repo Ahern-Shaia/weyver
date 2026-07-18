@@ -135,6 +135,25 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 - **[P1] metadata 快取**|form_def/field_def / 權限 / 租戶 config → Redis,schema 變更失效。
 - **[P1]** cursor 分頁 + **回應 DTO 只回需要欄**(兼防 over-fetch 洩漏);報表走 read replica;重計算走背景 worker(DBOS/BullMQ)不擋請求。
 
+## 前端測試分層鐵則(form-engine ERP)
+
+一個工具不夠 —— 表單引擎 + ERP 前端須分層測(完整策略 docs/11 §12,全 OSS)。各層職責:
+
+| 層 | 工具 | 覆蓋 |
+|---|---|---|
+| **快層(佔多數)** | Vitest + Testing Library / Storybook play function | 單元件互動:欄位 / 驗證 / grid cell / 公式 |
+| **關鍵流程** | Playwright E2E + Testcontainers 真 Postgres | 登入 / 租戶隔離 / 建單→過帳 GL / 對帳 |
+| **AI 探索** | Playwright MCP 驅動真實瀏覽器 | 開發期驗證 + 組合爆炸邊角 |
+| **視覺回歸** | Playwright screenshot | 版面 / 樣式 regression |
+| **可重現底盤** | 確定性 seed / factory + MSW(mock API) | 讓上述全部可重跑 |
+
+- **[P0] 前端改動驗證迴圈**|啟 dev server → 以 **Playwright MCP 驅動真實瀏覽器**走使用者流程(讀 a11y tree 非像素,較 vision 穩)→ 觀察 → 改 code → 再走;在瀏覽器實際用過才算完成。
+- **[P0] 走通即固化**|MCP 手動走通的流程存成 **Playwright spec** 進 CI 當回歸;AI 驅動瀏覽器慢且非確定性 → 只做探索 + 產測試,**不放 CI**。
+- **[P0] 關鍵流程 E2E 對真實 Postgres via Testcontainers**|跑真 RLS / migration / 動態建表;優先 auth / **租戶隔離** / 建單→過帳 / 對帳(與 NestJS〈測試〉鐵則同源)。
+- **[P1] 金字塔底最大**|元件互動(欄位 / grid / 公式)以快層(Vitest + Testing Library / Storybook play)為主。
+- **[P1] 動態表單 metadata-driven 生成式測試**|表單由 `form_def/field_def` 生成 → 測試亦由同份 metadata 生成(fast-check),客戶無限表單組合不可能手寫 E2E。
+- **[P1] 全層可重現**|確定性 seed / factory + MSW + 凍結時鐘,確保上述皆可重跑。
+
 ## Development Workflow(開工後)
 
 **改完 code 一律跑(對應 [[rule_full_green_check]] 全綠才算完成):**
