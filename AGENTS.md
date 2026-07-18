@@ -1,0 +1,169 @@
+This file provides guidance to AI coding assistants when working with Weyver code. It is auto-loaded every session — **these rules are non-negotiable defaults.** 綜整自 Google TS Style Guide、typescript-eslint strict-type-checked、NestJS 官方 + Trilon 企業指南,加 Weyver 專屬鐵則。
+
+> **狀態**|規劃階段,尚未動工程。以下規範在**開工即生效**。優先級:**[P0]** 阻擋 build / 正確性 · **[P1]** 高價值 · **[P2]** 一致性。
+
+---
+
+## Project Architecture(Weyver)
+
+- **定位**|以 Ragic 表單引擎為 substrate,取代 ERP,融合 MES + ISO 的一站式平台(docs/04 定位 + CLAUDE.md 一句話)。
+- **架構**|**Modular Monolith**(非微服務,docs/11 §1.3)+ **兩層資料模型**(docs/15):Tier-1 系統實體固定真實表 / Tier-2 使用者表單動態真實表,統一於表單引擎。
+- **技術棧**|TS 7 Native · NestJS 10 + Fastify adapter · PostgreSQL 16 · **Drizzle(固定 schema/metadata/Tier-1)+ Knex(動態 Tier-2 DDL/DML)雙軌**(docs/16 Teable pattern)· Next.js 15 + React 19 + Tailwind 4 + shadcn · 全 OSS(docs/11 §16)。
+- **關鍵設計文件**|docs/15(表單引擎)· docs/16(OSS 實證)· docs/18(ERP 計算層演算法)· docs/19(兩層解耦出貨)· docs/13(開發順序)· docs/14(前端設計規則)。**動工前讀對應 docs。**
+
+---
+
+## ⚠️ Weyver 專屬鐵則(最優先,違反 = 事故)
+
+1. **[P0] 動態 DDL 防 SQL 注入**|Tier-2 動態建 / 改表(Knex)——**值一律參數綁定;identifier(表名 / 欄名)無法參數化 → 必須對 metadata catalog 白名單驗證**,絕不拼接使用者輸入的 identifier。這是最大注入破口(docs/16)。
+2. **[P0] 金額 = `numeric`(DECIMAL),禁 `float`/`number` 存錢**|每幣別小數位 + 明確捨入(docs/18 §0)。
+3. **[P0] 每一筆查詢綁租戶**(完整架構見 docs/21)|shared schema + `tenant_id` + **PostgreSQL RLS 且 `FORCE ROW LEVEL SECURITY`**;**app DB 角色不得有 `BYPASSRLS`、不得擁有表**(`BYPASSRLS` 只給 migration)。租戶 context 用 **`SET LOCAL app.tenant_id`(交易範圍,非 `SET`)**——相容 PgBouncer transaction mode,不洩漏 GUC。context 傳遞用 **nestjs-cls + @nestjs-cls/transactional**。**背景工作(BullMQ/DBOS)ALS 不跨 queue → `tenant_id` 塞 job payload,worker 重建 CLS + 重下 `SET LOCAL`**。租戶識別**以驗證過的 JWT `tenant_id` 為真實來源**,剝除 client `X-Tenant-ID`,驗證「路由候選 == token tenant」不符即拒。測試須斷言「A 租戶讀不到 B」。
+4. **[P0] 傳票 / 帳務不可變**|過帳後不刪不改,錯了開反向沖轉(reversal);全留 audit(docs/18 §0)。
+5. **[P0] Clean-room**|不 clone Ragic / Odoo / NocoDB / Teable-AGPL source;僅獨立重寫。可 fork 者限 **MIT**(Baserow core / Teable `packages/*`),逐檔驗授權標頭 + 保留 attribution(docs/16 §7、CLAUDE 法律紅線)。
+6. **[P1] 過帳 / 沖帳 / 結轉 = 單一 DB transaction**,失敗全 rollback;已鎖期間不得過帳。
+
+---
+
+## TypeScript 規則
+
+### tsconfig(repo root,強制)
+- **[P0]** `strict: true` · `noUncheckedIndexedAccess: true`(DB 查詢會 miss,`arr[i]` → `T | undefined`)· `noFallthroughCasesInSwitch: true`
+- **[P1]** `noImplicitOverride` · `noImplicitReturns` · `isolatedModules` + `verbatimModuleSyntax` · `forceConsistentCasingInFileNames` · `exactOptionalPropertyTypes`(最後開)
+- **[P2]** `noUnusedLocals` / `noUnusedParameters`(未用參數前綴 `_`)· `moduleDetection: "force"`
+
+### 型別紀律
+- **[P0] 禁 `any`** → `unknown` + narrowing;開 `no-unsafe-*` 系列。
+- **[P0] 禁 non-null `!`** → 明確檢查。
+- **[P1] 避免 `as` cast** → 用 type guard / declaration;不得已時加 `// x is Foo because…`,雙轉只走 `as unknown as T`。
+- **[P1]** exported / public function + NestJS service/controller method **標回傳型別**。
+- **[P1]** 不重賦值的欄位 / 參數標 `readonly`;型別符號用 `import type`。
+
+### 型別建模
+- **[P0]** 狀態用 **discriminated union**(status/job/invoice/對帳)+ `never` 預設做 **exhaustiveness check**(新增 case 未處理即編譯錯)。
+- **[P0]** 所有外部邊界(HTTP body / DB row / env / adapter payload)用 **Zod 驗證 + `z.infer` 推型別**。
+- **[P1]** domain ID 用 **branded type**(`type TenantId = string & {__brand}`)防跨模組 ID 混用。
+- **[P1]** union-of-literals / `as const` 優於 `enum`;**禁 `const enum`**(破 isolatedModules)。
+- **[P1]** `interface` 給物件形狀,`type` 給 union/tuple/primitive。
+
+### 其他
+- **[P1] 具名 export,禁 default export**(typo 即報錯 + 好重構)。
+- **[P1] app code 禁 barrel file**(`index.ts` re-export hub → 循環依賴 + 破 tree-shaking)。
+- **[P0]** 只 throw `Error` 子類(定義 `DomainError` 階層);`catch` 為 `unknown` 先 narrow;**禁靜默吞錯**(空 catch 需理由註解)。
+- **[P1]** 預期 / domain 失敗用 `Result<T,E>`,例外留給真異常。
+- **[P0]** **禁 floating promise**(`no-floating-promises`)+ 禁 misused promise。
+
+---
+
+## NestJS 規則
+
+### 模組架構(modular monolith)
+- **[P0]** 依 **feature / bounded context** 分模組(controller/service/dto/repo/test 同資料夾)—— 這是日後可抽服務的縫。
+- **[P0]** 只透過 `exports` 曝露窄 public API;**禁跨模組 import 他模組內部 provider / entity**(否則變 distributed monolith)。
+- **[P0]** **CI 用 `dependency-cruiser`/`madge` 擋跨模組 import + 循環依賴**(不靠自律);`AppModule` 禁平鋪 40 個模組。
+- **[P1]** 共用 infra(logger/config/DB client)註冊一次為 `@Global()`;可配置 infra 用 `forRoot`/`forFeature`。
+
+### DI
+- **[P0]** 只用 constructor injection。
+- **[P1]** 依賴**抽象 + injection token**(abstract class / Symbol),不依賴具體類(可 mock/swap);外部 I/O 尤其。
+- **[P1]** provider 預設 singleton;`REQUEST`/`TRANSIENT` scope 只給真正 per-request state(會拖垮效能)。
+- **[P1] 避免 `forwardRef`**(緊耦合訊號)→ 重構 / 事件解耦;**禁 service-locator**(`ModuleRef.get()` 於業務碼)。
+
+### 分層
+- **[P0] 薄 controller(只 HTTP)→ service(全部業務邏輯 / 交易 / 編排)→ repository(只查詢)**;controller 不碰 DB、不寫業務;禁 controller 直呼 repository。
+- **[P1]** Drizzle/Knex 藏在 **repository provider(介面 token)之後**,隔離雙軌 ORM。
+- **[P1] 禁 god service**(跨多 aggregate 就拆)。
+
+### DTO / 驗證
+- **[P0]** 全域 `ValidationPipe { whitelist: true, forbidNonWhitelisted: true, transform: true }`(擋 mass-assignment + 拒未知欄 + 轉型)。
+- **[P1]** `transformOptions.enableImplicitConversion: false`;`validationError { target: false, value: false }`(錯誤別回傳 DTO 內容)。
+- **[P0]** **req / res DTO 分離;禁回傳 DB entity**(用 response DTO + `@Exclude()` 序列化,防洩密碼 hash / 內部欄 / 他租戶欄)。
+- **[P1]** 驗證用 `class-validator` decorator 於 DTO,不寫 controller 內。
+
+### 橫切
+- **[P0]** Guard 管 authz(認證 + RBAC)· Interceptor 管 logging/timeout/序列化/cache · Pipe 管驗證 · Filter 管錯誤;**各司其職**。
+- **[P0]** 一個全域 Exception Filter → 統一錯誤信封(code/message/correlationId/timestamp)。
+- **[P1]** authz 決策在 Guard,**但 Guard 不放業務邏輯**。
+- **[P1]** pipeline 順序:security header/CORS → body limit → validation → auth guard → rate limit → controller。
+
+### Config / Secrets
+- **[P0]** `@nestjs/config` + 開機 schema 驗證(Zod/Joi),缺 / 錯 env fail-fast;**禁散落 `process.env`**,只經 typed `ConfigService`。
+- **[P0]** 禁 commit secret(`.env` gitignore,附 `.env.example` 只留形狀)。
+
+### 錯誤 / 日誌
+- **[P0]** throw typed `HttpException` 子類(或 domain exception 由 filter 映射);禁裸字串 / ad-hoc error 物件。
+- **[P1]** 結構化 JSON 日誌用 **nestjs-pino**(註冊一次 `@Global()`)+ **correlation ID** 貫穿 guard→interceptor→service→repo;`LoggerErrorInterceptor` 讓例外進 pino。
+
+### 安全
+- **[P0]** Helmet + CORS **明確 allowlist**(prod 禁 `origin: *`);`@nestjs/throttler` 全域 `APP_GUARD`(敏感 route 更嚴)。
+- **[P0]** **參數化查詢 everywhere**;動態表 identifier 白名單驗證(見 Weyver 鐵則 1)。
+
+### 測試
+- **[P0]** service 單元測試 + 依賴 mock(`Test.createTestingModule` + `overrideProvider`)—— 正確性在此。
+- **[P0]** e2e / 整合測試對**真實 Postgres via Testcontainers**(跑真 RLS / migration / 動態建表);優先測 auth、**租戶隔離**、計費、動態表 CRUD。
+
+---
+
+## 🔒 資安鐵則(P0,完整見 docs/22 + [[coding-standards]])
+
+**Weyver 威脅模型前 3 名 = 動態 identifier 注入 / 跨租戶 bleed / AI-LLM。** 以下 P0 開工即生效:
+
+1. **動態 identifier 安全鏈**|使用者欄名 → metadata catalog **白名單解析**成物理 identifier(查無即拒)→ `quote_ident`/`%I` 加引號 → 跑在**只限該租戶 schema 的最小權限角色** → `statement_timeout` + row limit。建表時 identifier 鎖 regex `^[a-z_][a-z0-9_]{0,62}$`。**值一律參數綁定。**
+2. **存取控制 deny-by-default + object-level authz**|每查詢綁 `tenant_id` **且**驗此人能存取「這個 ID」(BOLA/IDOR);RLS + Guard + ownership 三層;UUID 非授權控制。
+3. **AI/LLM 載重不變量**|**模型輸出結構化 intent(非 raw SQL)→ 你的確定性程式碼 allowlist 編譯 + 參數化執行 → 有權限的人核准每個狀態變更 → audit**。NL→SQL 走唯讀 tenant-scoped 角色 + timeout。copilot 跑操作者權限、每動作 audit。防間接 prompt injection(客戶資料=不可信,不得升權/觸發 tool call)。secret/PII 不進 prompt。授權絕不由模型決定。LLM 輸出禁未編碼渲染。
+4. **JWT**|`verify()` 傳 `algorithms` 白名單、拒 `alg:none`、非對稱 RS256/ES256、驗 exp/iss/aud;token 禁 localStorage;密碼 Argon2id。
+5. **SSRF**|使用者 URL(adapter/webhook/欄位)擋私網段 + 雲 metadata `169.254.169.254` + 禁 redirect + egress firewall。
+6. **secret**|零進碼/git;Infisical 注入;**從 log/錯誤/LLM prompt redact**;app DB 角色最小權限、無 SUPERUSER、migration 角色分離。
+7. **供應鏈**|lockfile `--frozen-lockfile` + **`ignore-scripts=true`** + OSV/Snyk 掃描 fail CI + **fork MIT 逐檔 review**。
+8. **禁**|回傳 stack trace/DB 錯誤給 client · `Math.random()` 產 token · 自製 crypto · Postgres 對公網開 · 容器 root · LLM 輸出當 code 執行 · 跨租戶查詢無 tenant scope。
+9. **CI gates**|OSV/Trivy/gitleaks/dependency-cruiser/**跨租戶隔離測試**(A 建→B 讀不到)全過才 merge。
+
+## ⚙️ 可靠 / 穩定 / 高效能鐵則(四軸反思整合,詳 docs/22 §6)
+
+**可靠**|
+- **[P0] 冪等性**|所有 mutation / webhook / **AI 動作** / **電子發票政府 API 提交** 帶 idempotency key —— 重試不重複過帳 / 不重複建單 / 不重複開票。
+- **[P1] Outbox pattern**|跨模組副作用(採購→財會拋轉)走 outbox,crash 不丟事件、保證最終送達。
+- **[P1] 不變量對帳 job**|定期斷言試算表恆平衡 / 庫存數量=異動帳 / AR-AP=GL 明細,不符告警。
+- **[P1]** 背景工作 retry + backoff + dead-letter。
+
+**穩定**|
+- **[P0] 優雅降級**|AI/LLM / 搜尋 為**非關鍵路徑** —— 掛掉時核心 ERP 照常(搜尋 fallback SQL)。
+- **[P0] circuit breaker + timeout + bulkhead**|所有外部呼叫(ERP adapter / LLM / 政府電子發票 / SCADA)。
+- **[P1]** per-tenant 資源配額(連線 / query cost / LLM token / 儲存)防 noisy neighbor;**feature flag / kill switch**(風險功能不 deploy 即關);health check(@nestjs/terminus);零停機滾動部署。
+
+**高效能**|
+- **[P0] N+1 防護**|dataloader / 正確 join —— 尤其 **Link&Load + Lookup/Rollup**(docs/16 已知瓶頸)。
+- **[P1] metadata 快取**|form_def/field_def / 權限 / 租戶 config → Redis,schema 變更失效。
+- **[P1]** cursor 分頁 + **回應 DTO 只回需要欄**(兼防 over-fetch 洩漏);報表走 read replica;重計算走背景 worker(DBOS/BullMQ)不擋請求。
+
+## Development Workflow(開工後)
+
+**改完 code 一律跑(對應 [[rule_full_green_check]] 全綠才算完成):**
+
+```bash
+pnpm format          # Biome / Prettier
+pnpm lint            # typescript-eslint strictTypeChecked + stylisticTypeChecked;repeat 到 0
+pnpm type-check      # tsc --noEmit,0 error
+pnpm test            # Vitest 單元 + Playwright/Testcontainers e2e
+pnpm build           # 確認 production build 過
+pnpm dep-check       # dependency-cruiser:無跨模組 / 循環依賴
+```
+
+- **Lint 工具**|typescript-eslint(型別感知規則:`no-floating-promises` / `no-unsafe-*` / `switch-exhaustiveness-check` / `no-unnecessary-condition`)—— Biome 覆蓋不到型別感知規則,**格式可 Biome、型別 lint 留 typescript-eslint**(hybrid)。
+- **前端**|任何前端產出動手前先過 `docs/frontend-design-principles.md` + **`docs/14 前端設計規則`**(深海青 / IBM Plex / 企業級 chrome / Do&Don't);走語意 design token 禁硬編 hex;spacing 用 `gap-*`。
+
+---
+
+## Code Style
+
+- Google style guide 為底;American English;程式碼精簡(fewer lines better);**註解只寫「為什麼」**(非顯而易見的約束 / 陷阱),不寫「做什麼」。
+- 命名|`PascalCase` 型別 / 類別 / decorator · `camelCase` 值 / 函數 · `UPPER_SNAKE` module const;**禁 `I`/`_` 前綴 · 禁 `#private`(用 TS `private`)· 禁複數如 `xxxList`**。
+- Import 依路徑排序;path alias `@weyver/*` 優於深 `../../..`。
+
+## Commit / PR
+
+- Commit format `<type>(<scope>): <description>`;**Co-Authored-By Claude 行預設不加**([[rule_commit_format]])。
+- solo dev 直接 commit,不假走 PR ceremony([[feedback_no_pr_workflow]]);**每次 `git push` 單獨徵得同意**([[feedback_only_push_needs_consent]])。
+
+## CI-fail 禁令清單(TS + NestJS)
+
+`any` · non-null `!` · 無說明 `as` · default export · `const enum` · `namespace`/`require()` · `var` · `==`(除 `== null`)· `#private` · app barrel file · floating promise · 循環依賴(`madge --circular`)· 散落 `process.env` · 巨型 `AppModule` · fat controller · god service · controller 直呼 repo · 回傳 DB entity · Guard 放業務邏輯 · 隨意 request-scoped provider · 空 catch · **未白名單的動態 identifier** · **float 存金額** · **無租戶綁定的查詢**。

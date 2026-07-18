@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver · 織雲</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   WEYVER v5 — 精緻 SaaS 產品感(非後台)
+   Signature: 織雲隱喻視覺化 · 深度柔和 · 大方留白 · 品牌靈魂
+═══════════════════════════════════════════════════════════ */
+:root{
+  --brand:#0C5F73; --brand-2:#0E7490; --brand-3:#12879F; --brand-4:#3AA9BE;
+  --tint:#EAF4F6; --tint-2:#D6EAEE; --tint-3:#BEDDE4;
+
+  --nav:#0F1D22; --nav-2:#16262C; --nav-line:rgba(255,255,255,.07);
+  --nav-txt:rgba(255,255,255,.55); --nav-txt-h:rgba(255,255,255,.85); --nav-txt-a:#fff;
+  --nav-icn:rgba(255,255,255,.4); --nav-hover:rgba(255,255,255,.06); --nav-active:rgba(58,169,190,.16);
+  --nav-label:rgba(255,255,255,.3);
+
+  --bg:#F5F7F8; --card:#FFFFFF;
+  --ink:#152025; --ink-2:#4C5A61; --ink-3:#7E8B92; --ink-4:#AAB4BA;
+  --line:#E9EDEF; --line-2:#F0F3F4;
+
+  --red:#E0483D; --red-t:#FDEEEC; --red-d:#C13328;
+  --amber:#E38A16; --amber-t:#FDF3E4; --amber-d:#9C5C05;
+  --green:#17A566; --green-t:#E7F6EE; --green-d:#0E7A4A;
+  --blue:#3B7DE8; --blue-t:#ECF2FD; --blue-d:#255FC0;
+  --violet:#8258E0; --violet-t:#F1ECFD; --violet-d:#6338C4;
+
+  /* soft, teal-tinted, layered — premium depth (not hairline backend) */
+  --soft-sm:0 1px 2px rgba(15,42,50,.05),0 1px 3px rgba(15,42,50,.04);
+  --soft-md:0 2px 6px -1px rgba(15,42,50,.06),0 8px 22px -6px rgba(15,42,50,.10);
+  --soft-lg:0 4px 12px -2px rgba(15,42,50,.08),0 18px 44px -10px rgba(15,42,50,.16);
+
+  --r-md:8px; --r-lg:11px; --r-card:15px; --r-xl:20px; --pill:9999px;
+  --t1:130ms cubic-bezier(.2,0,.15,1); --t2:260ms cubic-bezier(.22,1,.36,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:"Inter","Noto Sans TC","PingFang TC",-apple-system,system-ui,sans-serif;
+  font-size:13px;line-height:1.5;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;}
+.mono{font-family:"JetBrains Mono",monospace;font-feature-settings:"tnum" 1;}
+svg{display:block;flex-shrink:0;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:rgba(15,42,50,.13);border-radius:9px;border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:rgba(15,42,50,.22);background-clip:padding-box;}
+
+.app{display:grid;height:100vh;grid-template-columns:212px 1fr;}
+
+/* ═══ NAV ═══ */
+.nav{background:var(--nav);display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.nav::before{content:'';position:absolute;top:0;left:0;right:0;height:180px;
+  background:radial-gradient(120% 80% at 30% 0%,rgba(58,169,190,.14),transparent 70%);pointer-events:none;}
+.nav-top{display:flex;align-items:center;gap:10px;padding:16px 14px 14px;position:relative;}
+.nav-mark{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:linear-gradient(145deg,#3AA9BE,#0C5F73);color:#fff;font-size:15px;font-weight:700;letter-spacing:-.5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 10px rgba(12,95,115,.5);}
+.nav-nm{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.2px;}
+.nav-nm small{display:block;font-size:10px;color:var(--nav-txt);font-weight:400;letter-spacing:.06em;margin-top:1px;}
+
+.nav-search{margin:4px 11px 10px;display:flex;align-items:center;gap:8px;padding:7px 10px;position:relative;
+  background:rgba(255,255,255,.05);border-radius:9px;color:var(--nav-txt);font-size:12px;transition:background var(--t1);}
+.nav-search:hover{background:rgba(255,255,255,.08);color:var(--nav-txt-h);}
+.nav-search .k{margin-left:auto;font-size:10px;font-family:"JetBrains Mono";color:var(--nav-label);}
+
+.nav-scroll{flex:1;overflow-y:auto;padding:2px 0 10px;position:relative;}
+.nav-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);}
+.nav-grp{margin-bottom:6px;}
+.nav-grp-l{padding:10px 16px 5px;font-size:10px;font-weight:600;color:var(--nav-label);text-transform:uppercase;letter-spacing:.08em;}
+.nav-i{display:flex;align-items:center;gap:10px;margin:1px 8px;padding:7px 9px;border-radius:8px;
+  font-size:12.5px;color:var(--nav-txt);position:relative;transition:background var(--t1),color var(--t1);}
+.nav-i:hover{background:var(--nav-hover);color:var(--nav-txt-h);}
+.nav-i.on{background:var(--nav-active);color:var(--nav-txt-a);font-weight:500;}
+.nav-i svg{color:var(--nav-icn);}
+.nav-i.on svg{color:var(--brand-4);}
+.nav-i .n{margin-left:auto;font-size:10px;font-family:"JetBrains Mono";font-weight:600;color:#fff;
+  background:var(--red);padding:0 6px;border-radius:9px;line-height:16px;min-width:18px;text-align:center;}
+.nav-i .lv{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+
+.nav-conn{margin:8px 12px 4px;padding:11px 12px;background:rgba(255,255,255,.035);border-radius:11px;}
+.nav-conn-h{font-size:10px;color:var(--nav-label);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px;display:flex;align-items:center;gap:6px;}
+.nav-conn-h .lv{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);}
+.nav-conn-i{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--nav-txt);padding:3px 0;}
+.nav-conn-i .st{margin-left:auto;font-size:9px;font-family:"JetBrains Mono";color:rgba(23,165,102,.95);}
+
+.nav-bot{border-top:1px solid var(--nav-line);padding:9px;}
+.nav-usr{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:9px;transition:background var(--t1);}
+.nav-usr:hover{background:var(--nav-hover);}
+.nav-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(145deg,#3AA9BE,#0C5F73);color:#fff;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(12,95,115,.4);}
+.nav-usr .nm{font-size:12px;color:var(--nav-txt-h);line-height:1.3;font-weight:500;}
+.nav-usr .rl{font-size:10px;color:var(--nav-label);}
+.nav-usr .cg{margin-left:auto;color:var(--nav-icn);}
+
+/* ═══ MAIN ═══ */
+.main{overflow-y:auto;}
+.wrap{max-width:1120px;margin:0 auto;padding:22px 30px 56px;}
+
+/* ── HERO (signature: 織雲 motif + brand gradient) ── */
+.hero{position:relative;border-radius:var(--r-xl);overflow:hidden;margin-bottom:30px;
+  background:linear-gradient(112deg,#0C5F73 0%,#0E7490 52%,#12879F 100%);
+  box-shadow:0 12px 40px -12px rgba(12,95,115,.55);padding:32px 34px;}
+.hero-woven{position:absolute;inset:0;pointer-events:none;opacity:.9;}
+.hero-glow{position:absolute;right:-60px;top:-80px;width:340px;height:340px;border-radius:50%;
+  background:radial-gradient(circle,rgba(120,220,235,.35),transparent 65%);pointer-events:none;}
+.hero-in{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:30px;}
+.hero-l .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.82);
+  background:rgba(255,255,255,.14);padding:4px 11px;border-radius:var(--pill);margin-bottom:16px;backdrop-filter:blur(4px);}
+.hero-l .eyebrow .lv{width:6px;height:6px;border-radius:50%;background:#7DE8C0;box-shadow:0 0 8px #7DE8C0;}
+.hero-l h1{font-size:29px;font-weight:700;color:#fff;letter-spacing:-.7px;line-height:1.12;}
+.hero-l .sub{font-size:14px;color:rgba(255,255,255,.8);margin-top:9px;max-width:420px;line-height:1.5;}
+/* today figures — editorial, not tabular */
+.hero-r{display:flex;gap:26px;flex-shrink:0;padding-bottom:2px;}
+.hfig{text-align:right;}
+.hfig .v{font-family:"JetBrains Mono";font-size:26px;font-weight:600;color:#fff;letter-spacing:-.8px;line-height:1;}
+.hfig .v small{font-size:13px;opacity:.7;font-weight:500;}
+.hfig .l{font-size:11px;color:rgba(255,255,255,.68);margin-top:7px;letter-spacing:.02em;}
+.hfig .d{font-size:11px;color:#9FF0CE;margin-top:3px;font-weight:500;}
+.hfig .d.warn{color:#FFD79B;}
+.hfig+.hfig{padding-left:26px;border-left:1px solid rgba(255,255,255,.16);}
+
+/* ── section label ── */
+.slbl{display:flex;align-items:center;gap:11px;margin:0 2px 15px;}
+.slbl .t{font-size:12px;font-weight:650;color:var(--ink-2);letter-spacing:-.1px;}
+.slbl .hint{font-size:12px;color:var(--ink-4);}
+.slbl .sp{flex:1;}
+.slbl .lk{font-size:12px;color:var(--brand-2);font-weight:500;display:inline-flex;align-items:center;gap:4px;}
+
+/* ── MODULE HUB — soft premium bento ── */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:132px;gap:15px;margin-bottom:36px;
+  grid-template-areas:
+    "form form fin  inv"
+    "form form prod qc"
+    "mes  mes  iso  hr";}
+.mod{background:var(--card);border-radius:var(--r-card);box-shadow:var(--soft-sm);padding:18px 19px;
+  cursor:pointer;position:relative;overflow:hidden;display:flex;flex-direction:column;
+  transition:box-shadow var(--t2),transform var(--t2);}
+.mod:hover{box-shadow:var(--soft-lg);transform:translateY(-3px);}
+.mod:hover .m-go{opacity:1;transform:translateX(0);}
+.m-head{display:flex;align-items:center;gap:11px;}
+.m-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.m-nm{font-size:13.5px;font-weight:650;color:var(--ink);letter-spacing:-.2px;}
+.m-tag{font-size:11px;color:var(--ink-3);margin-top:1px;}
+.m-go{margin-left:auto;width:26px;height:26px;border-radius:8px;background:var(--tint);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;opacity:0;transform:translateX(-6px);transition:all var(--t2);}
+.m-body{margin-top:auto;}
+.m-num{font-family:"JetBrains Mono";font-feature-settings:"tnum" 1;font-size:27px;font-weight:600;letter-spacing:-1.2px;line-height:1;color:var(--ink);}
+.m-num small{font-size:12px;color:var(--ink-3);font-weight:500;letter-spacing:0;margin-left:5px;}
+.m-meta{font-size:11.5px;color:var(--ink-3);margin-top:8px;display:flex;align-items:center;gap:7px;}
+.m-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:var(--pill);}
+.m-pill .p{width:5px;height:5px;border-radius:50%;}
+.m-pill.g{background:var(--green-t);color:var(--green-d);} .m-pill.g .p{background:var(--green);}
+.m-pill.a{background:var(--amber-t);color:var(--amber-d);} .m-pill.a .p{background:var(--amber);}
+.m-pill.r{background:var(--red-t);color:var(--red-d);} .m-pill.r .p{background:var(--red);}
+
+/* featured 表單 */
+.mod.feat{grid-area:form;background:linear-gradient(160deg,#fff 60%,var(--tint));}
+.feat .m-num{font-size:38px;}
+.feat-list{margin-top:15px;display:flex;flex-direction:column;gap:2px;}
+.feat-row{display:flex;align-items:center;gap:9px;padding:7px 9px;margin:0 -9px;border-radius:9px;transition:background var(--t1);}
+.feat-row:hover{background:rgba(12,95,115,.05);}
+.feat-dot{width:7px;height:7px;border-radius:2.5px;flex-shrink:0;}
+.feat-nm{font-size:12.5px;color:var(--ink-2);font-weight:450;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.feat-ct{font-family:"JetBrains Mono";font-size:11.5px;color:var(--ink-4);}
+.feat-new{margin-left:auto;font-size:10px;font-weight:600;color:var(--brand);background:#fff;padding:1px 7px;border-radius:var(--pill);box-shadow:var(--soft-sm);}
+
+/* MES wide live */
+.mod.mes{grid-area:mes;flex-direction:row;gap:22px;align-items:stretch;background:linear-gradient(120deg,#fff 55%,var(--green-t));}
+.mes-l{display:flex;flex-direction:column;min-width:128px;}
+.mes-lines{flex:1;display:flex;flex-direction:column;justify-content:center;gap:11px;padding-left:22px;border-left:1px solid var(--line);}
+.mesl{display:flex;align-items:center;gap:11px;}
+.mesl .lv{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.mesl .lv.on{background:var(--green);box-shadow:0 0 0 3px var(--green-t);animation:pl 2.2s infinite;}
+.mesl .lv.wn{background:var(--amber);box-shadow:0 0 0 3px var(--amber-t);}
+.mesl .lv.of{background:var(--ink-4);}
+@keyframes pl{0%,100%{box-shadow:0 0 0 3px var(--green-t);}50%{box-shadow:0 0 0 6px rgba(23,165,102,.1);}}
+.mesl .ln{font-size:12px;font-weight:550;width:52px;flex-shrink:0;}
+.mesl .bar{flex:1;height:6px;background:var(--line);border-radius:var(--pill);overflow:hidden;}
+.mesl .bar i{display:block;height:100%;border-radius:var(--pill);}
+.mesl .pc{font-family:"JetBrains Mono";font-size:12.5px;font-weight:600;width:42px;text-align:right;}
+.mesl .pc.g{color:var(--green-d);} .mesl .pc.a{color:var(--amber-d);} .mesl .pc.o{color:var(--ink-4);}
+
+.m-fin{grid-area:fin;} .m-inv{grid-area:inv;} .m-prod{grid-area:prod;}
+.m-qc{grid-area:qc;} .m-iso{grid-area:iso;} .m-hr{grid-area:hr;}
+
+/* ── OVERVIEW — spacious rich list, not gray table ── */
+.grid2{display:grid;grid-template-columns:1.42fr 1fr;gap:18px;}
+.panel{background:var(--card);border-radius:var(--r-card);box-shadow:var(--soft-sm);overflow:hidden;}
+.p-head{display:flex;align-items:center;gap:10px;padding:16px 20px 14px;}
+.p-head .t{font-size:13.5px;font-weight:650;letter-spacing:-.2px;display:flex;align-items:center;gap:9px;}
+.p-head .ct{font-family:"JetBrains Mono";font-size:11px;font-weight:600;padding:1px 8px;border-radius:var(--pill);background:var(--red-t);color:var(--red-d);}
+.p-head .sp{flex:1;}
+.p-head .lk{font-size:12px;color:var(--brand-2);font-weight:500;}
+
+/* task item — generous, soft, product-like */
+.task{display:flex;align-items:center;gap:14px;padding:12px 20px;cursor:pointer;transition:background var(--t1);position:relative;}
+.task+.task{border-top:1px solid var(--line-2);}
+.task:hover{background:rgba(12,95,115,.028);}
+.task:hover .task-go{opacity:1;transform:translateX(0);}
+.task-ic{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.task-bd{flex:1;min-width:0;}
+.task-tl{font-size:13px;font-weight:550;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.task-mt{font-size:11.5px;color:var(--ink-3);margin-top:2px;display:flex;align-items:center;gap:8px;}
+.task-mod{font-weight:500;color:var(--ink-2);}
+.task-due{font-family:"JetBrains Mono";font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:7px;flex-shrink:0;}
+.task-due.u{background:var(--red-t);color:var(--red-d);} .task-due.s{background:var(--amber-t);color:var(--amber-d);} .task-due.o{background:var(--line-2);color:var(--ink-3);}
+.task-go{opacity:0;transform:translateX(-6px);color:var(--ink-4);transition:all var(--t1);flex-shrink:0;}
+
+/* activity feed */
+.feed{display:flex;gap:12px;padding:13px 20px;}
+.feed+.feed{border-top:1px solid var(--line-2);}
+.feed-av{width:28px;height:28px;border-radius:9px;flex-shrink:0;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;color:#fff;}
+.feed-bd{flex:1;min-width:0;}
+.feed-tx{font-size:12px;color:var(--ink-2);line-height:1.5;}
+.feed-tx b{color:var(--ink);font-weight:600;}
+.feed-tx a{color:var(--brand-2);font-weight:500;}
+.feed-tm{font-size:10.5px;color:var(--ink-4);font-family:"JetBrains Mono";margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ NAV ═══ -->
+<nav class="nav">
+  <div class="nav-top">
+    <div class="nav-mark">W</div>
+    <div class="nav-nm">鮮勇工作區<small>WEYVER 織雲</small></div>
+  </div>
+
+  <div class="nav-search">
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    搜尋整個平台<span class="k">⌘K</span>
+  </div>
+
+  <div class="nav-scroll">
+    <div class="nav-grp">
+      <div class="nav-i on"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 8.5C4.5 6 6.5 5.5 9 6.5s4.5 1 5-1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 11.5C4.5 9 6.5 8.5 9 9.5s4.5 1 5-1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".55"/></svg>平台總覽</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2l6 9.5H2L8 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.5v2.5M8 11v.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>待我處理<span class="n">8</span></div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="11" rx="1.8" stroke="currentColor" stroke-width="1.4"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>全部單據</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2.5 13V8M8 13V4M13.5 13V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>報表中心</div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-l">你的系統</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="11" rx="1.8" stroke="currentColor" stroke-width="1.4"/><path d="M5 6h6M5 9h6M5 11.5h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>表單引擎</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3.5 5h9M3.5 8h9M3.5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>財會</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2l6 3.4v5.2L8 14l-6-3.4V5.4L8 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>進銷存</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="6.5" width="11" height="8" rx="1.4" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 6.5V4.5a2.5 2.5 0 015 0v2" stroke="currentColor" stroke-width="1.4"/></svg>生產</div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2l5.5 2.5v4C13.5 12 11 14.5 8 14.5S2.5 12 2.5 8.5v-4L8 2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>品保<span class="n">1</span></div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="8.5" width="12" height="5.5" rx="1.3" stroke="currentColor" stroke-width="1.4"/><rect x="4.5" y="5" width="7" height="3.5" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M8 2v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>MES<span class="lv"></span></div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3.5" y="2" width="9" height="12" rx="1.4" stroke="currentColor" stroke-width="1.4"/><path d="M6 5.5h4M6 8h4M6 10.5h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>ISO<span class="n">2</span></div>
+      <div class="nav-i"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.8" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>HR</div>
+    </div>
+
+    <div class="nav-conn">
+      <div class="nav-conn-h"><span class="lv"></span>已整合系統</div>
+      <div class="nav-conn-i">鼎新 TIPTOP<span class="st">同步</span></div>
+      <div class="nav-conn-i">正航 ERP<span class="st">同步</span></div>
+      <div class="nav-conn-i">SCADA 機台<span class="st">連線</span></div>
+    </div>
+  </div>
+
+  <div class="nav-bot">
+    <div class="nav-usr">
+      <div class="nav-av">陳</div>
+      <div><div class="nm">陳大明</div><div class="rl">生產主管</div></div>
+      <svg class="cg" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="1.6" stroke="currentColor" stroke-width="1.2"/><path d="M7 2v1.6M7 10.4V12M2 7h1.6M10.4 7H12M3.5 3.5l1.1 1.1M9.4 9.4l1.1 1.1M10.5 3.5L9.4 4.6M4.6 9.4L3.5 10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <div class="wrap">
+
+    <!-- HERO — 織雲 signature -->
+    <div class="hero">
+      <svg class="hero-woven" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid slice" fill="none">
+        <defs>
+          <linearGradient id="th" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <g stroke="url(#th)" stroke-width="1.2" opacity=".55">
+          <path d="M-20 60 C 200 20, 340 100, 520 70 S 820 40, 960 90"/>
+          <path d="M-20 95 C 220 60, 360 130, 540 100 S 830 80, 960 120"/>
+          <path d="M-20 130 C 200 100, 380 160, 560 135 S 840 120, 960 155"/>
+          <path d="M-20 165 C 240 140, 360 195, 550 170 S 820 165, 960 190"/>
+          <path d="M-20 200 C 210 180, 390 220, 560 205 S 840 205, 960 220"/>
+        </g>
+        <g fill="#BFF0FF" opacity=".8">
+          <circle cx="520" cy="70" r="2.2"/><circle cx="540" cy="100" r="2"/><circle cx="560" cy="135" r="2.2"/><circle cx="550" cy="170" r="1.8"/>
+        </g>
+      </svg>
+      <div class="hero-glow"></div>
+      <div class="hero-in">
+        <div class="hero-l">
+          <span class="eyebrow"><span class="lv"></span>7 月 17 日 週四 · 3 套系統已織入</span>
+          <h1>早安，陳大明</h1>
+          <div class="sub">鮮勇的表單、ERP、生產與品保，今天全部織在一起 —— 一個平台，看得見全貌。</div>
+        </div>
+        <div class="hero-r">
+          <div class="hfig"><div class="v">8</div><div class="l">待我處理</div><div class="d warn">2 件今日到期</div></div>
+          <div class="hfig"><div class="v">4.82<small>M</small></div><div class="l">本月銷售</div><div class="d">↑ 12.3%</div></div>
+          <div class="hfig"><div class="v">87<small>%</small></div><div class="l">整體 OEE</div><div class="d">3 線運行</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE HUB -->
+    <div class="slbl"><span class="t">你的系統</span><span class="hint">過去 5 套，現在織成一個</span><span class="sp"></span><span class="lk">管理模組</span></div>
+    <div class="bento">
+
+      <!-- 表單引擎 featured -->
+      <div class="mod feat">
+        <div class="m-head">
+          <div class="m-ic" style="background:var(--tint);color:var(--brand)"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3" width="15" height="14" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M6 7.5h8M6 10.5h8M6 13.5h4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div><div class="m-nm">表單引擎</div><div class="m-tag">Ragic-like · 拖拉自建</div></div>
+          <div class="m-go"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="m-body"><div class="m-num">247<small>張表單 · 1.2 萬筆</small></div></div>
+        <div class="feat-list">
+          <div class="feat-row"><span class="feat-dot" style="background:var(--blue)"></span><span class="feat-nm">採購單</span><span class="feat-ct">247</span></div>
+          <div class="feat-row"><span class="feat-dot" style="background:var(--green)"></span><span class="feat-nm">品質檢驗記錄</span><span class="feat-ct">183</span><span class="feat-new">+8 本週</span></div>
+          <div class="feat-row"><span class="feat-dot" style="background:var(--amber)"></span><span class="feat-nm">庫存盤點表</span><span class="feat-ct">64</span></div>
+          <div class="feat-row"><span class="feat-dot" style="background:var(--violet)"></span><span class="feat-nm">供應商評鑑</span><span class="feat-ct">32</span></div>
+        </div>
+      </div>
+
+      <!-- 財會 -->
+      <div class="mod m-fin">
+        <div class="m-head"><div class="m-ic" style="background:var(--blue-t);color:var(--blue)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3.5" width="13" height="11" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7.5h7M5.5 10.5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="m-nm">財會</div></div><div class="m-go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div class="m-body"><div class="m-num">4.82<small>M 本月</small></div><div class="m-meta">應收 <b class="mono" style="color:var(--ink-2)">312K</b><span class="m-pill a"><span class="p"></span>12 待開發票</span></div></div>
+      </div>
+
+      <!-- 進銷存 -->
+      <div class="mod m-inv">
+        <div class="m-head"><div class="m-ic" style="background:var(--green-t);color:var(--green)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2.5l6 3.5v6l-6 3.5-6-3.5v-6L9 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 9v6M3 6l6 3 6-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div><div class="m-nm">進銷存</div></div><div class="m-go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div class="m-body"><div class="m-num">1,247<small>品項</small></div><div class="m-meta"><span class="m-pill r"><span class="p"></span>5 項低於安全庫存</span></div></div>
+      </div>
+
+      <!-- 生產 -->
+      <div class="mod m-prod">
+        <div class="m-head"><div class="m-ic" style="background:var(--tint);color:var(--brand)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="7" width="13" height="8.5" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M6 7V4.5a3 3 0 016 0V7" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="m-nm">生產</div></div><div class="m-go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div class="m-body"><div class="m-num">6<small>進行中工單</small></div><div class="m-meta">BOM 128 · 今日排 <b class="mono" style="color:var(--ink-2)">3</b> 張</div></div>
+      </div>
+
+      <!-- 品保 -->
+      <div class="mod m-qc">
+        <div class="m-head"><div class="m-ic" style="background:var(--red-t);color:var(--red)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2.5l6 2.8v4.4C15 13.5 12.3 16 9 16S3 13.5 3 9.7V5.3L9 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 9l1.8 1.8L12 6.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="m-nm">品保</div></div><div class="m-go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div class="m-body"><div class="m-num" style="color:var(--red-d)">1<small style="color:var(--red-d);opacity:.7">待處理 NCR</small></div><div class="m-meta">批號 BN-0715-A 待 CAPA</div></div>
+      </div>
+
+      <!-- MES wide -->
+      <div class="mod mes">
+        <div class="mes-l">
+          <div class="m-head"><div class="m-ic" style="background:var(--green-t);color:var(--green)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="9.5" width="13" height="6" rx="1.4" stroke="currentColor" stroke-width="1.5"/><rect x="5" y="5.5" width="8" height="4" rx="1.2" stroke="currentColor" stroke-width="1.5"/><path d="M9 2.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="m-nm">MES 現場</div><div class="m-tag">Cloud + Edge</div></div></div>
+          <div class="m-body"><div class="m-num" style="color:var(--green-d)">87<small style="color:var(--green-d);opacity:.7">% OEE</small></div><div class="m-meta">3 線 · <b class="mono" style="color:var(--ink-2)">0</b> 異常</div></div>
+        </div>
+        <div class="mes-lines">
+          <div class="mesl"><span class="lv on"></span><span class="ln">產線 A</span><span class="bar"><i style="width:94%;background:var(--green)"></i></span><span class="pc g">94%</span></div>
+          <div class="mesl"><span class="lv wn"></span><span class="ln">產線 B</span><span class="bar"><i style="width:68%;background:var(--amber)"></i></span><span class="pc a">68%</span></div>
+          <div class="mesl"><span class="lv of"></span><span class="ln">產線 C</span><span class="bar"><i style="width:0%"></i></span><span class="pc o">待機</span></div>
+        </div>
+      </div>
+
+      <!-- ISO -->
+      <div class="mod m-iso">
+        <div class="m-head"><div class="m-ic" style="background:var(--violet-t);color:var(--violet)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="4" y="2.5" width="10" height="13" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 6h5M6.5 9h5M6.5 12h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="m-nm">ISO 文管</div></div><div class="m-go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div class="m-body"><div class="m-num">2<small>待簽章</small></div><div class="m-meta">文件 86 · 稽核 Q3</div></div>
+      </div>
+
+      <!-- HR -->
+      <div class="mod m-hr">
+        <div class="m-head"><div class="m-ic" style="background:var(--amber-t);color:var(--amber)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 15.5c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><div class="m-nm">HR</div></div><div class="m-go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+        <div class="m-body"><div class="m-num">18<small>員工</small></div><div class="m-meta">7 月薪資 <span class="m-pill a"><span class="p"></span>待確認</span></div></div>
+      </div>
+
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="slbl"><span class="t">跨系統概覽</span><span class="hint">資料自動在模組間流動</span></div>
+    <div class="grid2">
+
+      <div class="panel">
+        <div class="p-head"><div class="t">待我處理 <span class="ct">8</span></div><div class="sp"></div><a class="lk">查看全部</a></div>
+        <div class="task">
+          <div class="task-ic" style="background:var(--red-t);color:var(--red)"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="4" width="13" height="10" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M6 4V3a1.2 1.2 0 011.2-1.2h3.6A1.2 1.2 0 0112 3v1" stroke="currentColor" stroke-width="1.5"/></svg></div>
+          <div class="task-bd"><div class="task-tl">採購單審核 — 3 筆待確認</div><div class="task-mt"><span class="task-mod">採購</span>· PO-0716-001</div></div>
+          <span class="task-due u">今日 17:00</span>
+          <svg class="task-go" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="task">
+          <div class="task-ic" style="background:var(--red-t);color:var(--red)"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 2.5l6 2.8v4.4C15 13.5 12.3 16 9 16S3 13.5 3 9.7V5.3L9 2.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
+          <div class="task-bd"><div class="task-tl">品質異常 NCR — 批號 BN-0715-A</div><div class="task-mt"><span class="task-mod">品保</span>· 凍結該批號庫存</div></div>
+          <span class="task-due u">待 CAPA</span>
+          <svg class="task-go" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="task">
+          <div class="task-ic" style="background:var(--tint);color:var(--brand)"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="9.5" width="13" height="6" rx="1.4" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="5.5" width="8" height="4" rx="1.2" stroke="currentColor" stroke-width="1.4"/></svg></div>
+          <div class="task-bd"><div class="task-tl">工單確認 — WO-0717-B2 醃製雞柳</div><div class="task-mt"><span class="task-mod">MES</span>· 產線 B · 1,000 kg</div></div>
+          <span class="task-due s">今日 14:00</span>
+          <svg class="task-go" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="task">
+          <div class="task-ic" style="background:var(--blue-t);color:var(--blue)"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><rect x="2.5" y="3.5" width="13" height="10" rx="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 7h7M5.5 10h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <div class="task-bd"><div class="task-tl">電子發票開立 — 7 月 12 張</div><div class="task-mt"><span class="task-mod">財會</span>· 客戶 6 家</div></div>
+          <span class="task-due s">月底前</span>
+          <svg class="task-go" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="task">
+          <div class="task-ic" style="background:var(--violet-t);color:var(--violet)"><svg width="16" height="16" viewBox="0 0 18 18" fill="none"><rect x="4" y="2.5" width="10" height="13" rx="1.4" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 6h5M6.5 9h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+          <div class="task-bd"><div class="task-tl">ISO 文件電子簽章 — SOP v3.1</div><div class="task-mt"><span class="task-mod">ISO</span>· 2 份</div></div>
+          <span class="task-due o">本週內</span>
+          <svg class="task-go" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5.5 3l5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="p-head"><div class="t">跨系統動態</div><div class="sp"></div><a class="lk">全部</a></div>
+        <div class="feed">
+          <div class="feed-av" style="background:linear-gradient(145deg,#3AA9BE,#0E7490)">王</div>
+          <div class="feed-bd"><div class="feed-tx"><b>王小華</b> 在<b>採購</b>提交 <a>PO-003</a>，已自動拋轉<b>財會</b>應付</div><div class="feed-tm">10 分鐘前</div></div>
+        </div>
+        <div class="feed">
+          <div class="feed-av" style="background:linear-gradient(145deg,#EE6A5F,#C13328)">林</div>
+          <div class="feed-bd"><div class="feed-tx"><b>林品管</b> 在<b>品保</b>建立 <a>NCR-001</a>，已凍結該批號庫存</div><div class="feed-tm">1 小時前</div></div>
+        </div>
+        <div class="feed">
+          <div class="feed-av" style="background:linear-gradient(145deg,#34C57F,#0E7A4A)">機</div>
+          <div class="feed-bd"><div class="feed-tx"><b>MES 產線 A</b> 回報工單 <a>WO-A1</a> 完成 1,883 片，同步更新<b>庫存</b></div><div class="feed-tm">2 小時前</div></div>
+        </div>
+        <div class="feed">
+          <div class="feed-av" style="background:linear-gradient(145deg,#5B93EE,#255FC0)">鼎</div>
+          <div class="feed-bd"><div class="feed-tx"><b>鼎新 TIPTOP</b> 同步 42 筆歷史傳票至<b>總帳</b></div><div class="feed-tm">3 小時前</div></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver · 字型評估對照</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#0C5F73; --brand-2:#0E7490; --brand-tint:#EAF3F5; --brand-tint-2:#DBEBEF;
+  --bg:#F4F6F8; --card:#FFFFFF; --head:#FCFCFD;
+  --border:#E2E7EB; --border-2:#EDF0F3; --border-3:#F1F4F6;
+  --ink:#181E26; --ink-2:#586069; --ink-3:#868E98; --ink-4:#AEB6BF;
+  --green:#0E9E5B; --green-t:#E6F6EE; --green-d:#0A7D48;
+  --amber:#C8760C; --amber-t:#FBF2E3; --amber-d:#9A5A05;
+  --sh:0 1px 2px rgba(20,26,36,.05);
+  --r:8px; --r-sm:6px; --pill:9999px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+  font-family:'Inter','Noto Sans TC',system-ui,sans-serif;}
+
+.page{max-width:1240px;margin:0 auto;padding:32px 28px 60px;}
+.page-h{margin-bottom:28px;}
+.page-h h1{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+.page-h p{font-size:13.5px;color:var(--ink-2);margin-top:6px;max-width:720px;line-height:1.6;}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+
+/* system font stacks */
+.sysA{--f:'Inter','Noto Sans TC',sans-serif;--m:'JetBrains Mono',monospace;}
+.sysB{--f:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',sans-serif;--m:'IBM Plex Mono',monospace;}
+.sysC{--f:'Geist','Noto Sans TC',sans-serif;--m:'Geist Mono',monospace;}
+
+.col{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;font-family:var(--f);}
+.col.rec{border-color:var(--brand-tint-2);box-shadow:0 0 0 1px var(--brand-tint-2),var(--sh);}
+.col-h{padding:14px 18px;border-bottom:1px solid var(--border-2);background:var(--head);}
+.col.rec .col-h{background:var(--brand-tint);}
+.col-nm{font-size:14px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:8px;}
+.col.rec .col-nm{color:var(--brand);}
+.tag{font-size:9.5px;font-weight:600;padding:1px 6px;border-radius:var(--pill);text-transform:uppercase;letter-spacing:.04em;}
+.tag.oss{background:var(--green-t);color:var(--green-d);}
+.tag.rec{background:var(--brand);color:#fff;}
+.tag.ai{background:var(--amber-t);color:var(--amber-d);}
+.col-fam{font-size:11px;color:var(--ink-3);margin-top:5px;font-family:var(--m);}
+
+.col-body{padding:18px;}
+.block{padding:14px 0;border-bottom:1px solid var(--border-3);}
+.block:last-child{border-bottom:none;}
+.blbl{font-size:9.5px;color:var(--ink-4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;font-family:'Inter',sans-serif;}
+
+.s-h1{font-size:20px;font-weight:650;letter-spacing:-.4px;}
+.s-h1 span{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:6px;}
+
+.s-kpis{display:flex;gap:16px;}
+.s-kpi .v{font-family:var(--m);font-size:26px;font-weight:600;letter-spacing:-.8px;line-height:1;font-feature-settings:"tnum" 1;}
+.s-kpi .v small{font-size:12px;color:var(--ink-3);}
+.s-kpi .l{font-size:11px;color:var(--ink-3);margin-top:6px;}
+
+table{width:100%;border-collapse:collapse;}
+td{padding:7px 0;font-size:12.5px;border-bottom:1px solid var(--border-3);}
+tr:last-child td{border-bottom:none;}
+.code{font-family:var(--m);font-size:11.5px;color:var(--brand-2);}
+.num{font-family:var(--m);text-align:right;font-feature-settings:"tnum" 1;font-size:12px;}
+.bg{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:var(--pill);font-size:11px;font-weight:500;background:var(--amber-t);color:var(--amber-d);}
+.bg .p{width:5px;height:5px;border-radius:50%;background:var(--amber);}
+
+.s-body{font-size:13px;color:var(--ink-2);line-height:1.65;}
+
+.s-mono{font-family:var(--m);font-size:12.5px;color:var(--ink);display:flex;flex-direction:column;gap:5px;}
+.s-mono span{color:var(--ink-3);}
+
+.s-weights{display:flex;flex-direction:column;gap:3px;}
+.s-weights div{font-size:16px;}
+.w4{font-weight:400;} .w5{font-weight:500;} .w6{font-weight:600;} .w7{font-weight:700;}
+.wl{font-size:10px;color:var(--ink-4);font-family:'Inter',sans-serif;margin-left:8px;font-weight:400;}
+
+.notes{margin-top:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;}
+.notes h3{font-size:13px;font-weight:650;margin-bottom:12px;}
+.notes table{width:100%;}
+.notes td,.notes th{padding:8px 12px;font-size:12.5px;text-align:left;border-bottom:1px solid var(--border-3);vertical-align:top;}
+.notes th{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.notes .yes{color:var(--green-d);font-weight:600;} .notes .no{color:#B02B22;font-weight:600;} .notes .mid{color:var(--amber-d);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-h">
+    <h1>Weyver 字型評估對照</h1>
+    <p>同一組真實 UI 內容(標題 / KPI 數字 / 資料表 / 繁中內文 / 批號代碼 / 字重),用三套字型系統並排渲染。用眼睛比,不看名稱。全部 OSS(SIL OFL),符合 OSS-only 原則。</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- SYSTEM A: current / AI default -->
+    <div class="col sysA">
+      <div class="col-h">
+        <div class="col-nm">系統 A · Inter <span class="tag ai">AI 預設</span></div>
+        <div class="col-fam">Inter + Noto Sans TC + JetBrains Mono</div>
+      </div>
+      <div class="col-body">
+        <div class="block"><div class="blbl">標題</div><div class="s-h1">平台總覽<span>Platform</span></div></div>
+        <div class="block"><div class="blbl">KPI 數字</div><div class="s-kpis"><div class="s-kpi"><div class="v">4.82<small>M</small></div><div class="l">本月銷售</div></div><div class="s-kpi"><div class="v">87<small>%</small></div><div class="l">整體 OEE</div></div></div></div>
+        <div class="block"><div class="blbl">資料表</div><table><tr><td class="code">PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td></tr><tr><td class="code">SO-0717-021</td><td>統鮮實業</td><td class="num">84,200</td></tr></table></div>
+        <div class="block"><div class="blbl">繁中內文</div><div class="s-body">鮮勇的表單、ERP、生產與品保,全部整合在一個平台,看得見全貌。</div></div>
+        <div class="block"><div class="blbl">批號 · 代碼(Mono)</div><div class="s-mono"><span>批號 BN-0715-A · 序號 SN-88214</span><span>GL 1141 · NT$ 128,400.00</span></div></div>
+        <div class="block"><div class="blbl">字重</div><div class="s-weights"><div class="w4">Weyver 織雲平台<span class="wl">400</span></div><div class="w5">Weyver 織雲平台<span class="wl">500</span></div><div class="w6">Weyver 織雲平台<span class="wl">600</span></div><div class="w7">Weyver 織雲平台<span class="wl">700</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- SYSTEM B: IBM Plex — recommended -->
+    <div class="col sysB rec">
+      <div class="col-h">
+        <div class="col-nm">系統 B · IBM Plex <span class="tag rec">★ 推薦</span></div>
+        <div class="col-fam">IBM Plex Sans + Plex Sans TC + Plex Mono</div>
+      </div>
+      <div class="col-body">
+        <div class="block"><div class="blbl">標題</div><div class="s-h1">平台總覽<span>Platform</span></div></div>
+        <div class="block"><div class="blbl">KPI 數字</div><div class="s-kpis"><div class="s-kpi"><div class="v">4.82<small>M</small></div><div class="l">本月銷售</div></div><div class="s-kpi"><div class="v">87<small>%</small></div><div class="l">整體 OEE</div></div></div></div>
+        <div class="block"><div class="blbl">資料表</div><table><tr><td class="code">PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td></tr><tr><td class="code">SO-0717-021</td><td>統鮮實業</td><td class="num">84,200</td></tr></table></div>
+        <div class="block"><div class="blbl">繁中內文</div><div class="s-body">鮮勇的表單、ERP、生產與品保,全部整合在一個平台,看得見全貌。</div></div>
+        <div class="block"><div class="blbl">批號 · 代碼(Mono)</div><div class="s-mono"><span>批號 BN-0715-A · 序號 SN-88214</span><span>GL 1141 · NT$ 128,400.00</span></div></div>
+        <div class="block"><div class="blbl">字重</div><div class="s-weights"><div class="w4">Weyver 織雲平台<span class="wl">400</span></div><div class="w5">Weyver 織雲平台<span class="wl">500</span></div><div class="w6">Weyver 織雲平台<span class="wl">600</span></div><div class="w7">Weyver 織雲平台<span class="wl">700</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- SYSTEM C: Geist -->
+    <div class="col sysC">
+      <div class="col-h">
+        <div class="col-nm">系統 C · Geist <span class="tag oss">OSS</span></div>
+        <div class="col-fam">Geist + Noto Sans TC + Geist Mono</div>
+      </div>
+      <div class="col-body">
+        <div class="block"><div class="blbl">標題</div><div class="s-h1">平台總覽<span>Platform</span></div></div>
+        <div class="block"><div class="blbl">KPI 數字</div><div class="s-kpis"><div class="s-kpi"><div class="v">4.82<small>M</small></div><div class="l">本月銷售</div></div><div class="s-kpi"><div class="v">87<small>%</small></div><div class="l">整體 OEE</div></div></div></div>
+        <div class="block"><div class="blbl">資料表</div><table><tr><td class="code">PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td></tr><tr><td class="code">SO-0717-021</td><td>統鮮實業</td><td class="num">84,200</td></tr></table></div>
+        <div class="block"><div class="blbl">繁中內文</div><div class="s-body">鮮勇的表單、ERP、生產與品保,全部整合在一個平台,看得見全貌。</div></div>
+        <div class="block"><div class="blbl">批號 · 代碼(Mono)</div><div class="s-mono"><span>批號 BN-0715-A · 序號 SN-88214</span><span>GL 1141 · NT$ 128,400.00</span></div></div>
+        <div class="block"><div class="blbl">字重</div><div class="s-weights"><div class="w4">Weyver 織雲平台<span class="wl">400</span></div><div class="w5">Weyver 織雲平台<span class="wl">500</span></div><div class="w6">Weyver 織雲平台<span class="wl">600</span></div><div class="w7">Weyver 織雲平台<span class="wl">700</span></div></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- evaluation notes -->
+  <div class="notes">
+    <h3>評估比較</h3>
+    <table>
+      <thead><tr><th style="width:130px">系統</th><th>企業級 DNA</th><th>差異化(非 AI 感)</th><th>繁中同源</th><th>Mono 技術感</th><th>結論</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>A · Inter</b></td>
+          <td class="mid">中(泛用)</td>
+          <td class="no">低 · AI 萬用預設</td>
+          <td class="no">否(Noto 另一家)</td>
+          <td class="mid">中</td>
+          <td>一看就生成感,淘汰</td>
+        </tr>
+        <tr>
+          <td><b>B · IBM Plex ★</b></td>
+          <td class="yes">高 · IBM 企業委製字體</td>
+          <td class="yes">高 · 工程 / 精密性格</td>
+          <td class="yes">是 · Plex Sans TC 同源超家族</td>
+          <td class="yes">高 · slab 襯線,批號 / 代碼超辨識</td>
+          <td><b>推薦</b> · Latin+繁中+Mono 一套設計語言,企業級最正</td>
+        </tr>
+        <tr>
+          <td><b>C · Geist</b></td>
+          <td class="mid">中 · 開發者 / 新創премium</td>
+          <td class="yes">高 · 現代技術感</td>
+          <td class="no">否(需配 Noto)</td>
+          <td class="yes">高</td>
+          <td>偏「科技新創」而非「企業 ERP」,備選</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

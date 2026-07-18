@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver · 表單引擎</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   WEYVER · 表單引擎 (Ragic-like) — Grid + 記錄明細(子表 + Link&Load)
+   Brand 深海青 #0C5F73 · Data-Dense · Excel-like grid
+═══════════════════════════════════════════════════════════ */
+:root{
+  --brand:#0C5F73; --brand-2:#0E7490; --brand-3:#10829B;
+  --tint:#E9F3F6; --tint-2:#D4E9EE; --tint-3:#BFDFE7;
+  --formula:#F4F9FA;
+
+  --nav:#14171B; --nav-line:rgba(255,255,255,.07);
+  --nav-txt:rgba(255,255,255,.52); --nav-txt-h:rgba(255,255,255,.82); --nav-txt-a:rgba(255,255,255,.95);
+  --nav-icn:rgba(255,255,255,.38); --nav-hover:rgba(255,255,255,.055); --nav-active:rgba(255,255,255,.09);
+  --nav-label:rgba(255,255,255,.28);
+
+  --bg:#F4F6F8; --card:#FFFFFF;
+  --ink:#171B21; --ink-2:#525A66; --ink-3:#828A97; --ink-4:#AAB2BE;
+  --line:#E6EAEF; --line-2:#EEF1F4; --grid-line:#EAEDF1;
+
+  --red:#DC2626; --red-t:#FDF0F0; --red-d:#B91C1C;
+  --amber:#E08600; --amber-t:#FDF6E8; --amber-d:#9A5B00;
+  --green:#12A150; --green-t:#E9F8F0; --green-d:#0C7A3D;
+  --blue:#2563EB; --blue-t:#EDF3FE; --blue-d:#1D4ED8;
+  --grey:#6B7280; --grey-t:#F1F3F5; --grey-d:#4B5563;
+
+  --e1:0 0 0 1px rgba(20,23,27,.06),0 1px 2px rgba(20,23,27,.04);
+  --e2:0 0 0 1px rgba(20,23,27,.06),0 4px 12px rgba(20,23,27,.07);
+  --e3:0 0 0 1px rgba(20,23,27,.08),0 12px 32px rgba(20,23,27,.12);
+  --r3:5px; --r4:6px; --r6:8px; --r8:10px; --pill:9999px;
+  --t1:120ms cubic-bezier(.2,0,.15,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+  font-size:13px;line-height:1.45;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;}
+.mono{font-family:"IBM Plex Mono",monospace;font-feature-settings:"tnum" 1;}
+svg{display:block;flex-shrink:0;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:rgba(20,23,27,.16);border-radius:8px;border:2px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:rgba(20,23,27,.28);background-clip:padding-box;}
+
+.app{display:grid;height:100vh;grid-template-columns:210px 1fr 384px;}
+
+/* ═══ NAV — form tree (contextual) ═══ */
+.nav{background:var(--nav);display:flex;flex-direction:column;overflow:hidden;}
+.nav-back{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--nav-line);}
+.nav-back .bk{width:24px;height:24px;border-radius:var(--r4);display:flex;align-items:center;justify-content:center;color:var(--nav-icn);transition:background var(--t1);}
+.nav-back .bk:hover{background:var(--nav-hover);color:var(--nav-txt-h);}
+.nav-back .ic{width:24px;height:24px;background:var(--tint);border-radius:var(--r4);display:flex;align-items:center;justify-content:center;color:var(--brand);}
+.nav-back .tt{font-size:13px;font-weight:600;color:rgba(255,255,255,.9);}
+
+.nav-search{margin:10px 10px 6px;display:flex;align-items:center;gap:7px;padding:6px 9px;background:rgba(255,255,255,.045);border-radius:var(--r4);color:var(--nav-txt);font-size:12px;transition:background var(--t1);}
+.nav-search:hover{background:rgba(255,255,255,.075);}
+
+.nav-scroll{flex:1;overflow-y:auto;padding:2px 0 10px;}
+.nav-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);}
+.nav-grp{margin-bottom:2px;}
+.nav-grp-l{display:flex;align-items:center;gap:5px;padding:9px 14px 4px;font-size:10px;font-weight:500;color:var(--nav-label);text-transform:uppercase;letter-spacing:.06em;}
+.nav-grp-l svg{color:var(--nav-label);}
+.nav-i{display:flex;align-items:center;gap:8px;margin:0 7px;padding:5px 8px 5px 14px;border-radius:var(--r3);font-size:12.5px;color:var(--nav-txt);position:relative;transition:background var(--t1),color var(--t1);}
+.nav-i:hover{background:var(--nav-hover);color:var(--nav-txt-h);}
+.nav-i.on{background:var(--nav-active);color:var(--nav-txt-a);font-weight:500;}
+.nav-i.on::before{content:'';position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:2px;height:14px;background:var(--brand-3);border-radius:0 2px 2px 0;}
+.nav-i svg{color:var(--nav-icn);}
+.nav-i.on svg{color:rgba(255,255,255,.6);}
+.nav-i .ct{margin-left:auto;font-size:10.5px;font-family:"IBM Plex Mono";color:var(--nav-label);}
+.nav-add{display:flex;align-items:center;gap:7px;margin:8px 7px 0;padding:6px 8px 6px 14px;border-radius:var(--r3);font-size:12px;color:var(--nav-txt);border:1px dashed rgba(255,255,255,.14);}
+.nav-add:hover{color:var(--nav-txt-h);border-color:rgba(255,255,255,.24);}
+
+.nav-bot{border-top:1px solid var(--nav-line);padding:7px;}
+.nav-usr{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:var(--r3);transition:background var(--t1);}
+.nav-usr:hover{background:var(--nav-hover);}
+.nav-av{width:24px;height:24px;border-radius:50%;background:linear-gradient(150deg,#12829B,#0C5F73);color:#fff;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+.nav-usr .nm{font-size:12px;color:var(--nav-txt-h);line-height:1.25;}
+.nav-usr .rl{font-size:10px;color:var(--nav-label);}
+
+/* ═══ MAIN — grid ═══ */
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--card);border-right:1px solid var(--line);}
+
+.sheet-top{display:flex;align-items:center;gap:10px;padding:0 18px;height:46px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.sheet-title{display:flex;align-items:center;gap:8px;}
+.sheet-title .nm{font-size:15px;font-weight:650;letter-spacing:-.3px;}
+.sheet-title .cnt{font-size:11.5px;color:var(--ink-3);font-family:"IBM Plex Mono";}
+.sheet-title .chev{color:var(--ink-4);}
+.sheet-top-r{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.sq{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--r4);color:var(--ink-3);transition:background var(--t1),color var(--t1);}
+.sq:hover{background:var(--bg);color:var(--ink);}
+.btn-design{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:var(--r4);font-size:12.5px;font-weight:500;color:var(--brand);background:var(--tint);transition:background var(--t1);}
+.btn-design:hover{background:var(--tint-2);}
+
+/* view tabs */
+.vtabs{display:flex;align-items:center;gap:1px;padding:0 18px;height:38px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.vtab{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r4);font-size:12.5px;color:var(--ink-3);font-weight:450;transition:all var(--t1);}
+.vtab:hover{background:var(--bg);color:var(--ink-2);}
+.vtab.on{color:var(--brand);font-weight:550;background:var(--tint);}
+.vtab svg{color:currentColor;}
+.vtabs .sp{flex:1;}
+.vtab-add{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r4);color:var(--ink-4);}
+.vtab-add:hover{background:var(--bg);color:var(--ink-2);}
+
+/* toolbar */
+.tbar{display:flex;align-items:center;gap:4px;padding:7px 18px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.tb{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:var(--r4);font-size:12px;color:var(--ink-2);font-weight:450;transition:background var(--t1);}
+.tb:hover{background:var(--bg);}
+.tb svg{color:var(--ink-3);}
+.tb .bd{font-family:"IBM Plex Mono";font-size:10px;color:#fff;background:var(--brand);padding:0 4px;border-radius:8px;line-height:14px;}
+.tb.pri{background:var(--brand);color:#fff;font-weight:500;box-shadow:inset 0 1px 0 rgba(255,255,255,.14);}
+.tb.pri svg{color:#fff;}
+.tb.pri:hover{background:var(--brand-2);}
+.tbar .sp{flex:1;}
+.tb-search{display:flex;align-items:center;gap:6px;padding:5px 9px;background:var(--bg);border-radius:var(--r4);color:var(--ink-3);font-size:12px;width:150px;}
+
+/* GRID */
+.grid-wrap{flex:1;overflow:auto;position:relative;}
+table.grid{border-collapse:separate;border-spacing:0;font-size:12.5px;white-space:nowrap;}
+.grid thead th{position:sticky;top:0;z-index:3;background:#FBFCFD;height:34px;padding:0 12px;
+  font-size:11px;font-weight:550;color:var(--ink-2);text-align:left;border-bottom:1px solid var(--line);
+  border-right:1px solid var(--grid-line);user-select:none;}
+.grid thead th .th{display:flex;align-items:center;gap:5px;}
+.grid thead th .ty{font-family:"IBM Plex Mono";font-size:9px;font-weight:600;color:var(--ink-4);
+  background:var(--bg);padding:0 3px;border-radius:3px;line-height:14px;letter-spacing:0;}
+.grid thead th .ty.fx{color:var(--brand);background:var(--tint);}
+.grid thead th svg{color:var(--ink-4);}
+.grid thead th.r .th{justify-content:flex-end;}
+.grid thead th.formula{background:var(--formula);}
+
+.grid tbody td{height:34px;padding:0 12px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);
+  color:var(--ink);vertical-align:middle;background:var(--card);}
+.grid tbody tr:hover td{background:#F8FAFB;}
+.grid tbody tr.sel td{background:var(--tint);}
+.grid tbody tr.sel td.formula{background:#DCEEF2;}
+td.num{text-align:right;font-family:"IBM Plex Mono";font-feature-settings:"tnum" 1;font-size:12px;}
+td.formula{background:var(--formula);font-family:"IBM Plex Mono";font-feature-settings:"tnum" 1;text-align:right;font-size:12px;color:var(--brand-2);font-weight:500;}
+tr:hover td.formula{background:#EDF6F8;}
+
+/* sticky left cols */
+.c-chk{position:sticky;left:0;z-index:2;width:34px;min-width:34px;text-align:center;padding:0!important;}
+thead .c-chk{z-index:4;}
+.c-no{position:sticky;left:34px;z-index:2;width:132px;min-width:132px;box-shadow:1px 0 0 var(--grid-line);}
+thead .c-no{z-index:4;box-shadow:1px 0 0 var(--line);}
+.c-no .code{font-family:"IBM Plex Mono";font-size:11.5px;color:var(--brand-2);font-weight:500;}
+
+/* checkbox */
+.ck{width:15px;height:15px;border-radius:4px;box-shadow:inset 0 0 0 1.5px var(--line);background:var(--card);display:inline-flex;align-items:center;justify-content:center;transition:all var(--t1);vertical-align:middle;}
+tr:hover .ck{box-shadow:inset 0 0 0 1.5px var(--ink-4);}
+.ck.on{background:var(--brand);box-shadow:none;}.ck.on svg{color:#fff;}
+
+/* link&load cell */
+.lk{display:inline-flex;align-items:center;gap:5px;color:var(--ink);}
+.lk svg{color:var(--brand-3);}
+.lk .u{text-decoration:none;border-bottom:1px dashed var(--tint-3);}
+
+/* subtable indicator */
+.subt{display:inline-flex;align-items:center;gap:5px;}
+.subt .chip{font-size:10.5px;font-family:"IBM Plex Mono";color:var(--ink-3);background:var(--bg);padding:0 5px;border-radius:var(--pill);line-height:15px;}
+
+/* select badge */
+.bg{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:var(--pill);font-size:11px;font-weight:500;}
+.bg .p{width:5px;height:5px;border-radius:50%;}
+.bg.a{background:var(--amber-t);color:var(--amber-d);}.bg.a .p{background:var(--amber);}
+.bg.g{background:var(--green-t);color:var(--green-d);}.bg.g .p{background:var(--green);}
+.bg.b{background:var(--blue-t);color:var(--blue-d);}.bg.b .p{background:var(--blue);}
+.bg.n{background:var(--grey-t);color:var(--grey-d);}.bg.n .p{background:var(--grey);}
+
+/* member cell */
+.mem{display:inline-flex;align-items:center;gap:6px;}
+.mem .av{width:19px;height:19px;border-radius:50%;font-size:9px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:center;}
+
+/* editing cell */
+td.editing{padding:0;}
+.cell-edit{height:32px;margin:0;padding:0 11px;border:2px solid var(--brand);border-radius:3px;background:#fff;
+  display:flex;align-items:center;font-family:"IBM Plex Mono";font-size:12px;color:var(--ink);box-shadow:0 2px 8px rgba(12,95,115,.18);}
+.cell-edit .cur{width:1px;height:15px;background:var(--brand);margin-left:1px;animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+
+/* grid footer (aggregates) */
+.grid-foot{display:flex;align-items:center;height:32px;padding:0 18px;border-top:1px solid var(--line);background:#FBFCFD;flex-shrink:0;font-size:11.5px;color:var(--ink-3);gap:16px;}
+.grid-foot .agg{display:flex;align-items:center;gap:6px;}
+.grid-foot .agg .v{font-family:"IBM Plex Mono";font-weight:600;color:var(--ink-2);}
+.grid-foot .sp{flex:1;}
+
+/* ═══ DETAIL PANEL ═══ */
+.detail{background:var(--card);display:flex;flex-direction:column;overflow:hidden;}
+.dt-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);flex-shrink:0;}
+.dt-h .code{font-family:"IBM Plex Mono";font-size:14px;font-weight:600;color:var(--brand-2);}
+.dt-h .x{margin-left:auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r4);color:var(--ink-3);}
+.dt-h .x:hover{background:var(--bg);color:var(--ink);}
+.dt-scroll{flex:1;overflow-y:auto;padding:16px 18px 20px;}
+
+.dt-status{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
+
+.fld{margin-bottom:14px;}
+.fld-l{font-size:11px;color:var(--ink-3);margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+.fld-l .ty{font-family:"IBM Plex Mono";font-size:9px;font-weight:600;color:var(--ink-4);background:var(--bg);padding:0 3px;border-radius:3px;}
+.fld-v{font-size:13px;color:var(--ink);}
+.fld-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* linked card (Link & Load) */
+.linked{background:var(--tint);border-radius:var(--r6);padding:10px 12px;position:relative;}
+.linked::before{content:'關聯載入';position:absolute;top:8px;right:10px;font-size:9px;color:var(--brand);font-weight:600;letter-spacing:.03em;}
+.linked .nm{font-size:13px;font-weight:600;color:var(--brand);display:flex;align-items:center;gap:5px;}
+.linked .rows{margin-top:7px;display:flex;flex-direction:column;gap:3px;}
+.linked .row{display:flex;font-size:11.5px;}
+.linked .row .k{color:var(--brand-2);opacity:.7;width:58px;}
+.linked .row .val{color:var(--ink-2);}
+
+/* subtable */
+.subtable{margin-top:6px;border-radius:var(--r6);overflow:hidden;box-shadow:var(--e1);}
+.subtable-h{display:flex;align-items:center;padding:8px 12px;background:#FBFCFD;border-bottom:1px solid var(--line-2);font-size:10.5px;color:var(--ink-3);font-weight:550;text-transform:uppercase;letter-spacing:.04em;}
+.subtable-h .add{margin-left:auto;color:var(--brand-2);font-size:11px;font-weight:500;text-transform:none;letter-spacing:0;}
+.st-row{display:grid;grid-template-columns:1fr 46px 62px 72px;gap:8px;padding:8px 12px;font-size:12px;align-items:center;}
+.st-row+.st-row{border-top:1px solid var(--line-2);}
+.st-row:hover{background:#F8FAFB;}
+.st-row .it{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st-row .q,.st-row .p,.st-row .s{font-family:"IBM Plex Mono";font-feature-settings:"tnum" 1;text-align:right;font-size:11.5px;}
+.st-row .s{font-weight:600;color:var(--ink);}
+.st-th{color:var(--ink-4)!important;font-size:10px!important;font-weight:600;}
+.st-total{display:grid;grid-template-columns:1fr auto;padding:9px 12px;background:var(--formula);border-top:1px solid var(--line-2);align-items:center;}
+.st-total .k{font-size:11.5px;color:var(--ink-2);font-weight:500;}
+.st-total .v{font-family:"IBM Plex Mono";font-size:14px;font-weight:600;color:var(--brand);}
+
+/* detail footer */
+.dt-foot{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--line);flex-shrink:0;}
+.dt-foot .b{flex:1;padding:8px;border-radius:var(--r4);font-size:12.5px;font-weight:500;text-align:center;transition:all var(--t1);}
+.dt-foot .b.pri{background:var(--brand);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 1px 2px rgba(12,95,115,.28);}
+.dt-foot .b.pri:hover{background:var(--brand-2);}
+.dt-foot .b.sec{color:var(--ink-2);box-shadow:var(--e1);}
+.dt-foot .b.sec:hover{background:var(--bg);}
+.dt-foot .b.ic{flex:0 0 auto;padding:8px 11px;color:var(--ink-3);box-shadow:var(--e1);}
+.dt-foot .b.ic:hover{background:var(--bg);color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ NAV: form tree ═══ -->
+<nav class="nav">
+  <div class="nav-back">
+    <button class="bk"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2.5" width="12" height="11" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M5 6h6M5 9h6M5 11.5h3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+    <div class="tt">表單引擎</div>
+  </div>
+
+  <div class="nav-search">
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    搜尋表單
+  </div>
+
+  <div class="nav-scroll">
+    <div class="nav-grp">
+      <div class="nav-grp-l">常用</div>
+      <div class="nav-i on"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>採購單 <span class="ct">247</span></div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L12.3 4v3.8C12.3 10.8 10 13 7 13S1.7 10.8 1.7 7.8V4L7 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>品質檢驗記錄 <span class="ct">183</span></div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-l"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>採購 · 銷售</div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>採購單 <span class="ct">247</span></div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>銷貨單 <span class="ct">183</span></div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>詢價單 <span class="ct">56</span></div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-l"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>庫存</div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>庫存盤點表 <span class="ct">64</span></div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>進貨單 <span class="ct">312</span></div>
+    </div>
+
+    <div class="nav-grp">
+      <div class="nav-grp-l"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>品質</div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>品質檢驗記錄 <span class="ct">183</span></div>
+      <div class="nav-i"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4.3 5.4h5.4M4.3 8h3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>供應商評鑑 <span class="ct">32</span></div>
+    </div>
+
+    <button class="nav-add"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2.5v9M2.5 7h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>新增表單</button>
+  </div>
+
+  <div class="nav-bot">
+    <div class="nav-usr">
+      <div class="nav-av">陳</div>
+      <div><div class="nm">陳大明</div><div class="rl">鮮勇 · 生產主管</div></div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ MAIN: grid ═══ -->
+<div class="main">
+  <div class="sheet-top">
+    <div class="sheet-title">
+      <span class="nm">採購單</span>
+      <svg class="chev" width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M4 5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="cnt">247 筆</span>
+    </div>
+    <div class="sheet-top-r">
+      <button class="btn-design"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2L5 11l-2.5.5L3 9l6.5-6.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>設計表單</button>
+      <button class="sq"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0"/><circle cx="8" cy="4" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="12" r="1.3" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+
+  <!-- view tabs (7-view Ragic parity) -->
+  <div class="vtabs">
+    <button class="vtab on"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="11" height="10" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.2h11M5 5.2v6.8M8.5 5.2v6.8" stroke="currentColor" stroke-width="1.1"/></svg>表格</button>
+    <button class="vtab"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="3" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="5.5" y="2" width="3" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9.5" y="2" width="3" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>看板</button>
+    <button class="vtab"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2.5" width="11" height="10" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M1.5 5.2h11M4.5 1.5v2M9.5 1.5v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>日曆</button>
+    <button class="vtab"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 12V7M6 12V3M10 12V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>圖表</button>
+    <button class="vtab"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="2.5" y="1.5" width="9" height="11" rx="1.2" stroke="currentColor" stroke-width="1.2"/><path d="M5 4.5h4M5 7h4M5 9.5h2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>表單</button>
+    <div class="sp"></div>
+    <button class="vtab-add"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2.5v9M2.5 7h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+  </div>
+
+  <!-- toolbar -->
+  <div class="tbar">
+    <button class="tb pri"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2.5v9M2.5 7h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>新增記錄</button>
+    <button class="tb"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1.5 3h11M3.5 7h7M5.5 11h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>篩選 <span class="bd">2</span></button>
+    <button class="tb"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M4 2.5v9M4 11.5l-2-2M4 11.5l2-2M10 11.5v-9M10 2.5l-2 2M10 2.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>排序</button>
+    <button class="tb"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="2" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="8.5" y="2" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1.5" y="8.5" width="4" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>分組</button>
+    <button class="tb"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 7s2-3.5 5-3.5S12 7 12 7s-2 3.5-5 3.5S2 7 2 7z" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="7" r="1.3" stroke="currentColor" stroke-width="1.2"/></svg>隱藏欄位</button>
+    <button class="tb"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M2 7h10M2 10h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>列高</button>
+    <div class="sp"></div>
+    <div class="tb-search"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>搜尋記錄</div>
+    <button class="tb"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M7 9L4.5 6.5M7 9l2.5-2.5M2.5 11.5h9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>匯出</button>
+  </div>
+
+  <!-- GRID -->
+  <div class="grid-wrap">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th class="c-chk"><span class="ck" onclick="toggleAll(this)"></span></th>
+          <th class="c-no"><div class="th"><span class="ty">#</span>單號</div></th>
+          <th><div class="th"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>供應商</div></th>
+          <th style="min-width:180px"><div class="th">品項明細</div></th>
+          <th class="r" style="width:78px"><div class="th"><span class="ty">123</span>數量</div></th>
+          <th class="r" style="width:92px"><div class="th"><span class="ty">$</span>單價</div></th>
+          <th class="r formula" style="width:104px"><div class="th"><span class="ty fx">fx</span>金額</div></th>
+          <th class="r formula" style="width:88px"><div class="th"><span class="ty fx">fx</span>稅額</div></th>
+          <th style="width:96px"><div class="th"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>狀態</div></th>
+          <th style="width:104px"><div class="th"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1.5" y="2.5" width="9" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/><path d="M1.5 4.8h9M4 1.5v2M8 1.5v2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>預計到貨</div></th>
+          <th style="width:96px"><div class="th"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="4" r="2" stroke="currentColor" stroke-width="1.1"/><path d="M2.5 10c0-2 1.5-3.5 3.5-3.5S9.5 8 9.5 10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>負責人</div></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="sel" onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260716-001</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">鑫豐農產品有限公司</span></span></td>
+          <td><span class="subt">有機高麗菜 <span class="chip">+2 項</span></span></td>
+          <td class="num">400</td>
+          <td class="num">—</td>
+          <td class="formula">128,400</td>
+          <td class="formula">6,420</td>
+          <td><span class="bg a"><span class="p"></span>待審核</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/22</td>
+          <td><span class="mem"><span class="av" style="background:#0E7490">王</span>王小華</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260715-047</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">統鮮實業股份有限公司</span></span></td>
+          <td><span class="subt">冷凍雞胸肉 <span class="chip">1 項</span></span></td>
+          <td class="num">150</td>
+          <td class="num">561</td>
+          <td class="formula">84,200</td>
+          <td class="formula">4,210</td>
+          <td><span class="bg g"><span class="p"></span>已核准</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/20</td>
+          <td><span class="mem"><span class="av" style="background:#7C3AED">李</span>李采購</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260715-046</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">正大食材企業社</span></span></td>
+          <td><span class="subt">沙拉油 18L <span class="chip">+4 項</span></span></td>
+          <td class="num">80</td>
+          <td class="num">—</td>
+          <td class="formula">312,000</td>
+          <td class="formula">15,600</td>
+          <td><span class="bg b"><span class="p"></span>已收貨</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/18</td>
+          <td><span class="mem"><span class="av" style="background:#0E7490">王</span>王小華</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260714-089</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">嘉義蔬果行</span></span></td>
+          <td class="editing"><div class="cell-edit">29,600<span class="cur"></span></div></td>
+          <td class="num">92</td>
+          <td class="num">322</td>
+          <td class="formula">29,600</td>
+          <td class="formula">1,480</td>
+          <td><span class="bg n"><span class="p"></span>草稿</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-4)">—</td>
+          <td><span class="mem"><span class="av" style="background:#7C3AED">李</span>李采購</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260714-088</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">大成長城企業</span></span></td>
+          <td><span class="subt">雞腿肉 <span class="chip">+1 項</span></span></td>
+          <td class="num">220</td>
+          <td class="num">445</td>
+          <td class="formula">97,900</td>
+          <td class="formula">4,895</td>
+          <td><span class="bg g"><span class="p"></span>已核准</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/19</td>
+          <td><span class="mem"><span class="av" style="background:#0E7490">王</span>王小華</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260713-072</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">台糖生技</span></span></td>
+          <td><span class="subt">砂糖 <span class="chip">+2 項</span></span></td>
+          <td class="num">300</td>
+          <td class="num">88</td>
+          <td class="formula">26,400</td>
+          <td class="formula">1,320</td>
+          <td><span class="bg b"><span class="p"></span>已收貨</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/16</td>
+          <td><span class="mem"><span class="av" style="background:#7C3AED">李</span>李采購</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260713-071</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">聯華食品</span></span></td>
+          <td><span class="subt">麵粉 <span class="chip">+3 項</span></span></td>
+          <td class="num">180</td>
+          <td class="num">—</td>
+          <td class="formula">64,800</td>
+          <td class="formula">3,240</td>
+          <td><span class="bg a"><span class="p"></span>待審核</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/21</td>
+          <td><span class="mem"><span class="av" style="background:#0E7490">王</span>王小華</span></td>
+        </tr>
+        <tr onclick="selRow(this)">
+          <td class="c-chk"><span class="ck" onclick="tk(this,event)"></span></td>
+          <td class="c-no"><span class="code">PO-20260712-058</span></td>
+          <td><span class="lk"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span class="u">卜蜂企業</span></span></td>
+          <td><span class="subt">雞胸肉 <span class="chip">1 項</span></span></td>
+          <td class="num">260</td>
+          <td class="num">398</td>
+          <td class="formula">103,480</td>
+          <td class="formula">5,174</td>
+          <td><span class="bg b"><span class="p"></span>已收貨</span></td>
+          <td class="mono" style="font-size:11.5px;color:var(--ink-2)">07/15</td>
+          <td><span class="mem"><span class="av" style="background:#7C3AED">李</span>李采購</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- footer aggregates -->
+  <div class="grid-foot">
+    <div class="agg">已選 <span class="v">1</span> 筆</div>
+    <div class="agg">金額合計 <span class="v">NT$ 846,780</span></div>
+    <div class="agg">平均 <span class="v">105,847</span></div>
+    <div class="sp"></div>
+    <div class="agg mono" style="color:var(--ink-4)">247 筆 · 已篩選 2 條件</div>
+  </div>
+</div>
+
+<!-- ═══ DETAIL PANEL (click row → detail; subtable + Link&Load) ═══ -->
+<aside class="detail">
+  <div class="dt-h">
+    <span class="code">PO-20260716-001</span>
+    <button class="x"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="dt-scroll">
+    <div class="dt-status">
+      <span class="bg a"><span class="p"></span>待審核</span>
+      <span style="font-size:11.5px;color:var(--ink-3)" class="mono">建立於 07/16 09:12 · 王小華</span>
+    </div>
+
+    <!-- Link & Load 關聯載入 -->
+    <div class="fld">
+      <div class="fld-l"><span class="ty">關聯</span>供應商</div>
+      <div class="linked">
+        <div class="nm"><svg width="13" height="13" viewBox="0 0 12 12" fill="none"><path d="M4.5 6a2 2 0 010-2l1-1a2 2 0 013 3l-.5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7.5 6a2 2 0 010 2l-1 1a2 2 0 01-3-3l.5-.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>鑫豐農產品有限公司</div>
+        <div class="rows">
+          <div class="row"><span class="k">統一編號</span><span class="val mono">24681357</span></div>
+          <div class="row"><span class="k">聯絡人</span><span class="val">張經理 · 0912-345-678</span></div>
+          <div class="row"><span class="k">付款條件</span><span class="val">月結 30 天</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fld-2">
+      <div class="fld">
+        <div class="fld-l"><span class="ty">日期</span>訂購日期</div>
+        <div class="fld-v mono">2026/07/16</div>
+      </div>
+      <div class="fld">
+        <div class="fld-l"><span class="ty">日期</span>預計到貨</div>
+        <div class="fld-v mono">2026/07/22</div>
+      </div>
+    </div>
+
+    <!-- Subtable 子表 / line items -->
+    <div class="fld">
+      <div class="fld-l"><span class="ty">子表</span>品項明細</div>
+      <div class="subtable">
+        <div class="subtable-h"><span>品項 / 數量 / 單價 / 小計</span><button class="add">+ 新增品項</button></div>
+        <div class="st-row" style="padding-bottom:4px;padding-top:6px">
+          <span class="it st-th">品項</span><span class="q st-th">數量</span><span class="p st-th">單價</span><span class="s st-th" style="color:var(--ink-4)">小計</span>
+        </div>
+        <div class="st-row">
+          <span class="it">有機高麗菜 10kg/箱</span><span class="q">200</span><span class="p">320</span><span class="s">64,000</span>
+        </div>
+        <div class="st-row">
+          <span class="it">青蔥 5kg/箱</span><span class="q">100</span><span class="p">284</span><span class="s">28,400</span>
+        </div>
+        <div class="st-row">
+          <span class="it">紅蘿蔔 20kg/箱</span><span class="q">100</span><span class="p">360</span><span class="s">36,000</span>
+        </div>
+        <div class="st-total">
+          <span class="k">合計 <span style="color:var(--ink-4);font-size:10px">fx = SUM(小計)</span></span>
+          <span class="v">128,400</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fld-2">
+      <div class="fld">
+        <div class="fld-l"><span class="ty">fx</span>稅額 5%</div>
+        <div class="fld-v mono" style="color:var(--brand-2)">6,420</div>
+      </div>
+      <div class="fld">
+        <div class="fld-l"><span class="ty">fx</span>總計</div>
+        <div class="fld-v mono" style="color:var(--brand);font-weight:600;font-size:15px">134,820</div>
+      </div>
+    </div>
+
+    <div class="fld" style="margin-bottom:0">
+      <div class="fld-l"><span class="ty">成員</span>負責採購</div>
+      <div class="fld-v"><span class="mem"><span class="av" style="background:#0E7490;width:22px;height:22px">王</span>王小華 · 採購部</span></div>
+    </div>
+  </div>
+
+  <div class="dt-foot">
+    <button class="b pri">核准</button>
+    <button class="b sec">退回</button>
+    <button class="b ic"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M4 6V3.5A.5.5 0 014.5 3h7a.5.5 0 01.5.5V6M4 11h8v2.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V11z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><rect x="2.5" y="6" width="11" height="5" rx="1" stroke="currentColor" stroke-width="1.3"/></svg></button>
+  </div>
+</aside>
+
+</div>
+
+<script>
+function tk(el,e){e.stopPropagation();el.classList.toggle('on');
+  el.innerHTML=el.classList.contains('on')?'<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';}
+function toggleAll(el){el.classList.toggle('on');const on=el.classList.contains('on');
+  el.innerHTML=on?'<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>':'';
+  document.querySelectorAll('tbody .ck').forEach(c=>{c.classList.toggle('on',on);
+    c.innerHTML=on?'<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';});}
+function selRow(tr){document.querySelectorAll('tbody tr').forEach(r=>r.classList.remove('sel'));tr.classList.add('sel');}
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# 生成物|PDF 由 docs/pdf/build.sh 從 .md 重生(對外分享才手動 run),不入版控
+docs/pdf/*.pdf
+
+# 編輯器 / 工具
+.vscode/
+.idea/
+*.swp
