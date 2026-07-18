@@ -247,6 +247,10 @@
     "OrbStack",
     "pushback",
     "Canva",
-    "DBOS"
+    "DBOS",
+    "Rolldown",
+    "Turbopack",
+    "Vitest",
+    "Storybook"
   ]
 }

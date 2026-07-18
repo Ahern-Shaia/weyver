@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import { Boxes, FileText } from "lucide-react"
 import { ModuleCard } from "./module-card"
 

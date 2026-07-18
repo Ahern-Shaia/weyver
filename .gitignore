@@ -36,3 +36,6 @@ test-results/
 
 # Playwright MCP 探索產物(不入版控)
 .playwright-mcp/
+
+# shadcn MCP 設定(本機用,不入版控)
+.mcp.json

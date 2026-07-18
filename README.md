@@ -22,7 +22,7 @@
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-18 v9**(OSS-only stack + Modular Monolith;**§ 7.10 AI 輔助設計工具鏈(Skills + MCP)**;§ 16.5-16.11 Prod 雲端部署架構 AWS/GCP + 全服務成本|主推 GCP 台灣區 + Cloud Run;Tier E ~NT$14-22K/月)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
 | **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-16 v1**(**buildable sprint 順序**|Foundation + Phase 0 + Phase 1;dependency + solo M18 + risk gates)|
-| **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-17 v1**(開發前定案|tech stack + design token + 設計規則 + Do&Don't;企業級基準)|
+| **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-18 v1.1**(開發前定案|tech stack + design token + 設計規則 + Do&Don't;企業級基準;**v1.1 § 1.5 記錄 Vite 8 / Storybook 10 / Vitest 4**)|
 | — | [設計系統 / 首頁 v6 / 表單引擎](docs/mockups/) | ✅ 2026-07-17 mockups(企業級,深海青)|
 | **⭐ 15** | **[表單引擎技術設計](docs/15-表單引擎技術設計.md)** | ✅ **2026-07-18 v2**(命門地基|兩層資料模型 + 真實表 + ORM 雙軌 + 公式 + 權限 + 計算層 + P0-1 spike)|
 | **⭐ 16** | **[OSS 表單引擎技術拆解](docs/16-OSS表單引擎技術拆解.md)** | ✅ **2026-07-18 v1**(Baserow/NocoDB/Teable|真實表驗證 + Prisma+Knex 雙軌 + MIT 可復用地圖)|
