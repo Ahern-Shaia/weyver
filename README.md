@@ -14,7 +14,7 @@
 | 01 | [Ragic 側核心功能工程量估算](docs/01-核心功能工程量估算.md) | ✅ 完成(保留作 Ragic 側詳表) |
 | 02 | [產品命名候選](docs/02-產品命名候選.md) | ✅ 主選 **Weyver(織雲)** — 2026-07-16 換案 |
 | **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-16 v2.1 定稿**(**一體 offering 缺一不可**;**429 MVP OSS-only**;Weyver 自建全套 ERP CORE;省 NT$70-100K/年授權)|
-| — | [策略簡報](docs/strategy-slides.html) | ✅ 2026-07-16 |
+| — | [策略簡報](docs/strategy-slides.html) | ✅ 2026-07-18 重刷(對齊 v2.3 / solo 時程 / 全自研 TS / OSS / 13 張)|
 | **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-18 v2.8**(新增 § 1.4 Vernova AI 實測產能校準|僅計 ahern 本人 commit;solo 完整 MVP 加速 ~2 年 / 務實 ~3-4 年)|
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver T 策略)|
 | **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver J-Q 策略)|
@@ -32,7 +32,7 @@
 | **⭐ 20** | **[領域引擎 build-on 分析](docs/20-領域引擎build-on分析.md)** | ✅ **2026-07-18 v1**(巨人肩膀|規則→GoRules ZEN / workflow→DBOS+BullMQ / 帳務→自研 ERPNext-OFBiz 藍圖+TigerBeetle escape hatch)|
 | **⭐ 21** | **[多租戶架構](docs/21-多租戶架構.md)** | ✅ **2026-07-18 v1**(五層巨人|RLS+SET LOCAL / nestjs-cls / Caddy 自訂網域 / JWT 為真實來源 / Better Auth orgs + authz in-app→Cerbos)|
 | **⭐ 22** | **[資安規範與威脅模型](docs/22-資安規範與威脅模型.md)** | ✅ **2026-07-18 v2**(OWASP Top10/API/LLM + 威脅模型 + AI 安全載重不變量 + 供應鏈/secrets/容器 + 四軸反思→AGENTS.md ⚙️)|
-| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-18 v2**(對客戶功能時程|R1(~2 年)→R2(~4 年)→R3(~5.5 年完整 MVP)→R4(持續);模組×階段矩陣;**開發時程**保守基準(R1 ~2 年 / MVP ~5.5 年)+ **加速情境**(R1 ~1-1.5 年 / MVP ~3-4 年,努力目標非承諾)+ pilot subset 先行;每階段可用不半殘)|
+| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-18 v5**(對客戶功能時程|R1→R2→R3(完整 MVP)→R4(持續);模組×階段矩陣;**時程基準改 solo(單一開發者 AI 輔助)非 8 人團隊**,務實(承諾底線)R1 ~2-2.5 年 / R2 ~3.5 年 / R3 ~4-4.5 年,加速(努力目標)R1 ~1.5 年 / R2 ~2 年 / R3 ~3 年,據 docs/07 §1.4;若擴編則後段加速;pilot subset 先行;每階段可用不半殘)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照 + Weyver 選型 update)|
 | PDF | [`docs/pdf/`](docs/pdf/) 04 + 07 兩份 PDF | ✅ 2026-07-16,`bash docs/pdf/build.sh` 重生 |
 | 03 | 鮮勇當前表單分析(Ragic 已滿足 vs 需 ERP 補強) | ⏳ 待做 |
