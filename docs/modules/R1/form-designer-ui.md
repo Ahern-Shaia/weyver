@@ -125,7 +125,7 @@
 | **M1** A1 | API client + hooks + 代理 + dev tenant + Vitest | ~3 天 | ✅ 2026-07-19(7 tests + 代理 live smoke)|
 | **M2** A2+A3 | 表單清單 + 設計器雙模式(+ 後端 position API 若採 B)| ~1.5 週 | ✅ 2026-07-19(cbfe93f;含後端 position API;MCP 走通建表→加欄→發布,真實 PG 驗證)|
 | **M3** A4 | 填單動態渲染 + 記錄檢視 | ~1 週 | ✅ 2026-07-19(1ed47ac;MCP 走通填單→autoNumber→檢視;修 pg DATE parser bug)|
-| **M4** A5 | 子表建立 + lines 填單 | ~4 天 | ⏳ |
+| **M4** A5 | 子表建立 + lines 填單 | ~4 天 | ✅ 2026-07-19(c727b16;MCP 走通 header+2 lines→saveWithLines,DB parent_id/line_no 驗證)|
 | **M5** A6 + 收尾 | Playwright spec 固化 + FMEA + SHIPPED(**= Gate P0-1 全數達成**)| ~3 天 | ⏳ |
 
 ---
