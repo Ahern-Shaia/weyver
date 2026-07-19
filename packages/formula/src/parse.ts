@@ -2,13 +2,13 @@ import { CharStreams, CommonTokenStream } from "antlr4ts"
 import type { ANTLRErrorListener, Recognizer, Token } from "antlr4ts"
 import type { ATNSimulator } from "antlr4ts/atn/ATNSimulator"
 import { Formula } from "./vendor/teable/parser/Formula"
-import type { ExprContext } from "./vendor/teable/parser/Formula"
+import type { RootContext } from "./vendor/teable/parser/Formula"
 import { FormulaLexer } from "./vendor/teable/parser/FormulaLexer"
 
 /* Weyver 公式解析入口(包 vendored Teable ANTLR parser;見 CLEANROOM.md)。
    解析成 AST 樹,不 eval;語法錯拋 typed FormulaSyntaxError。求值 / 型別推斷 / 依賴圖為後續 M。 */
 
-export type FormulaAst = ExprContext
+export type FormulaAst = RootContext
 
 export class FormulaSyntaxError extends Error {
   constructor(
