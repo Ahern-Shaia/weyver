@@ -1,6 +1,6 @@
 # form-designer-ui.md — [P0-1·UI] 表單設計器 + 填單 接引擎 API 設計文件
 
-> 🚧 **狀態:DRAFT — 待裁定 OQ-FDU-1..6(2026-07-19)**
+> ✅ **狀態:APPROVED — OQ-FDU-1..6 全採建議(2026-07-19 裁定),進 M1**
 >
 > 收掉 **Gate P0-1 的 UI 路徑**:「使用者可在 UI 上建一張採購單表單(含 header + line items + 欄位型別),自動生成 DB schema,可存資料」。後端路徑已由 `form-engine-core` v1.0 達成(live smoke:API 建表→DDL→存記錄);本模組把 S3 設計器與 S4 填單從 mockup 接上真 API —— **「自己建自己填」在瀏覽器裡真正跑起來**(docs/24 心智模型)。
 >
@@ -130,16 +130,16 @@
 
 ---
 
-## 10. 開放問題(OQ-FDU-N)— 待裁定
+## 10. 開放問題(OQ-FDU-N)— ✅ 已裁定(2026-07-19,全採建議)
 
-| # | 訴求 | 議題 | 選項 | 建議 |
-|---|:-:|---|---|---|
-| **OQ-FDU-1** | ① | API 傳輸層? | A. **REST fetch + TanStack Query**(M6 API 直用) <br> B. 現在架 tRPC(已裝)| **A** — 後端已是 REST + Zod 信封;tRPC 需後端同步鋪 router,P0-5 API sprint 統一評估,現在雙軌是浪費 |
-| **OQ-FDU-2** | ①③ | 編輯模式範圍? | A. **新建 + 既有表單增欄/改型別/刪欄** <br> B. MVP 只做新建(改表 CLI/API)| **A** — 遷移場景必然反覆改表;後端 API 已齊,前端只是接線;B 省 ~2 天但 Ragic 用戶第一天就會撞牆 |
-| **OQ-FDU-3** | ② | 欄位改序? | A. 只有新建模式可排序(發布後不可改序,待後續) <br> B. **補後端 `PATCH position`(metadata-only 無 DDL,~半天)+ 編輯模式上下移** | **B** — 改序是 Ragic 高頻操作;後端半天成本換完整體驗;metadata-only 零 DDL 風險 |
-| **OQ-FDU-4** | ② | 排序互動? | A. **上移 / 下移按鈕**(dnd-kit 拖拉延 P1-I) <br> B. 現在就 dnd-kit 拖拉 | **A** — 拖拉是打磨非功能;先求正確,P1-I 表單設計器進階一併上 dnd-kit(已裝)|
-| **OQ-FDU-5** | ② | 前端驗證深度? | A. **基本層**(required + 型別粗驗 + money 禁 float)+ 後端 422 權威映射 <br> B. 完整鏡射後端 registry 全部規則 | **A** — 雙份完整規則必然漂移;前端擋 90% 低級錯,後端信封補精確訊息;完整共用驗證待 P0-5 schema 共享包 |
-| **OQ-FDU-6** | ① | mockup 四視圖處置? | A. **保留 list/grid 靜態 mockup 並標「示意」**,只接 form/design 兩視圖 <br> B. 拆掉未接線視圖 | **A** — mockup 是 P0-2 的視覺基準,拆了 P0-2 又要重建;標示清楚避免誤認已完成 |
+| # | 議題 | 裁定 | 落地影響 |
+|---|---|---|---|
+| **OQ-FDU-1** | API 傳輸層 | **A REST + TanStack Query** | engine client 直用 M6 REST;tRPC 已裝不接,P0-5 統一評估 |
+| **OQ-FDU-2** | 編輯模式範圍 | **A 新建 + 改既有表** | A3 雙模式全做(addField / 白名單改型別 / dropField)|
+| **OQ-FDU-3** | 欄位改序 | **B 補後端 position API** | M2 內補 `PATCH /api/forms/:formId/fields/:fieldId/position`(metadata-only)+ 編輯模式上下移 |
+| **OQ-FDU-4** | 排序互動 | **A 上移 / 下移按鈕** | dnd-kit 拖拉列 P1-I 打磨 backlog |
+| **OQ-FDU-5** | 前端驗證深度 | **A 基本層 + 422 權威映射** | field-input 帶 required / 型別粗驗 / money 禁 float;信封訊息映射回欄位 |
+| **OQ-FDU-6** | mockup 視圖 | **A 保留標「示意」** | list/grid 視圖加「示意資料(P0-2 接線)」標記 |
 
 ---
 
@@ -154,3 +154,4 @@
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A6 切分 + OQ-FDU-1..6;上游 = form-engine-core v1.0 API + `/app` mockup + docs/14 v2.1 / docs/24 | Claude Code |
+| 2026-07-19 | v0.2 | OQ-FDU-1..6 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 | Claude Code |
