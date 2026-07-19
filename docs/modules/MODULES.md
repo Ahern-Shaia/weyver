@@ -35,6 +35,7 @@
 
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
+| **⭐ 語意計算綁定層(自由表單 ↔ 算,自助化)** | P0-6(命門地基）| 📝 **M0 DRAFT — 待裁定 OQ-CBL-1..8**(design-ahead;R2 計算層與 J/K/L/N 共用「接法」)| [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
 | 財會 GL / AP / AR core | P0-6 | ⬜ | 待建 |
 | 進銷 K + 生產 L basics | P0-7 | ⬜ | 待建 |
 | 台灣電子發票 + 批號追蹤 | P0-8 | ⬜ | 待建 |
