@@ -51,7 +51,10 @@ export class DdlService {
           .toSQL()
         executedSql = await this.runStatements(trx, statements)
         if (spec.type === "autoNumber") {
-          executedSql += await this.runRaw(trx, [this.sequenceDdl(table, row.id)])
+          executedSql += await this.runRaw(trx, [
+            this.sequenceDdl(table, row.id),
+            this.sequenceGrantDdl(row.id),
+          ])
         }
       })
       await this.metadata.bumpVersion(tenantId, formId)
@@ -140,9 +143,13 @@ export class DdlService {
           .toSQL()
         executedSql = await this.runStatements(trx, create)
         executedSql += await this.runRaw(trx, this.rlsStatements(table))
+        executedSql += await this.runRaw(trx, [this.appGrantDdl(table)])
         for (const field of fields) {
           if (field.cellValueType === "autoNumber") {
-            executedSql += await this.runRaw(trx, [this.sequenceDdl(table, field.id)])
+            executedSql += await this.runRaw(trx, [
+              this.sequenceDdl(table, field.id),
+              this.sequenceGrantDdl(field.id),
+            ])
           }
         }
         if (parentTable !== null) {
@@ -178,6 +185,15 @@ export class DdlService {
       `CREATE SEQUENCE "${DATA_SCHEMA}"."${seq}" ` +
       `OWNED BY "${DATA_SCHEMA}"."${table}"."${column}"`
     )
+  }
+
+  /* app 車道(weyver_app)對每張動態表 / 取號 sequence 的最小授權;RLS 負責列級隔離 */
+  private appGrantDdl(table: string): string {
+    return `GRANT SELECT, INSERT, UPDATE, DELETE ON "${DATA_SCHEMA}"."${table}" TO weyver_app`
+  }
+
+  private sequenceGrantDdl(fieldId: number): string {
+    return `GRANT USAGE ON SEQUENCE "${DATA_SCHEMA}"."${sequenceName(fieldId)}" TO weyver_app`
   }
 
   private rlsStatements(table: string): string[] {

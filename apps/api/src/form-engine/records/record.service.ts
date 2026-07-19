@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
 import { z } from "zod"
-import { DDL_KNEX } from "../../db/db.module.js"
+import { APP_KNEX } from "../../db/db.module.js"
 import {
   FieldValueError,
   FormNotReadyError,
@@ -38,14 +38,27 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`)
 }
 
-/* A4|記錄 DML(Knex 車道):identifier 一律出自 catalog(查無即拒),值一律參數綁定(鐵則 1);
-   每查詢綁 tenant_id(鐵則 3,RLS 角色分離於 M5 疊加);soft delete 預設過濾(OQ-FEC-5)。 */
+/* A4|記錄 DML(app 車道 APP_KNEX;prod = weyver_app 無 DDL / 無 BYPASSRLS):
+   identifier 一律出自 catalog(查無即拒),值一律參數綁定(鐵則 1);
+   每個操作跑在 inTenantTx(set_config app.tenant_id, tx 範圍)→ RLS 執法 +
+   app 層 WHERE tenant_id 雙防線(鐵則 3);soft delete 預設過濾(OQ-FEC-5)。 */
 @Injectable()
 export class RecordService {
   constructor(
-    @Inject(DDL_KNEX) private readonly knex: Knex,
+    @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(MetadataService) private readonly metadata: MetadataService,
   ) {}
+
+  /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(M1 spike S3) */
+  private async inTenantTx<T>(
+    tenantId: number,
+    fn: (trx: Knex.Transaction) => Promise<T>,
+  ): Promise<T> {
+    return this.knex.transaction(async (trx) => {
+      await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
+      return fn(trx)
+    })
+  }
 
   async createRecord(
     tenantId: number,
@@ -54,18 +67,20 @@ export class RecordService {
     actorId: number,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    return this.knex.transaction(async (trx) =>
+    return this.inTenantTx(tenantId, (trx) =>
       this.insertOne(trx, tenantId, resolved, values, actorId, null, null),
     )
   }
 
   async getRecord(tenantId: number, formId: number, recordId: number): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    const row = await this.baseQuery(this.knex, tenantId, resolved)
-      .where(`${resolved.table}.id`, recordId)
-      .first()
-    if (row === undefined) throw new RecordNotFoundError(recordId)
-    return this.toRecord(resolved, row as Record<string, unknown>)
+    return this.inTenantTx(tenantId, async (trx) => {
+      const row = await this.baseQuery(trx, tenantId, resolved)
+        .where(`${resolved.table}.id`, recordId)
+        .first()
+      if (row === undefined) throw new RecordNotFoundError(recordId)
+      return this.toRecord(resolved, row as Record<string, unknown>)
+    })
   }
 
   async listRecords(
@@ -74,28 +89,30 @@ export class RecordService {
     query: ListQuery,
   ): Promise<{ records: RecordRow[]; nextCursor: number | null }> {
     const resolved = await this.resolveForm(tenantId, formId)
-    let builder = this.baseQuery(this.knex, tenantId, resolved)
+    return this.inTenantTx(tenantId, async (trx) => {
+      let builder = this.baseQuery(trx, tenantId, resolved)
 
-    for (const filter of query.filters) {
-      builder = this.applyFilter(builder, resolved, filter)
-    }
-    for (const sort of query.sort) {
-      const field = resolved.byName.get(sort.field)
-      if (field === undefined) throw new UnknownFieldError(sort.field)
-      // 空值一律沉底(PG DESC 預設 NULLS FIRST,對使用者不直覺)
-      builder = builder.orderBy(field.column, sort.dir, "last")
-    }
-    builder = builder.orderBy(`${resolved.table}.id`, "asc")
-    if (query.cursor !== undefined) {
-      builder = builder.where(`${resolved.table}.id`, ">", query.cursor)
-    }
-    const rows = (await builder.limit(query.limit + 1)) as Record<string, unknown>[]
+      for (const filter of query.filters) {
+        builder = this.applyFilter(builder, resolved, filter)
+      }
+      for (const sort of query.sort) {
+        const field = resolved.byName.get(sort.field)
+        if (field === undefined) throw new UnknownFieldError(sort.field)
+        // 空值一律沉底(PG DESC 預設 NULLS FIRST,對使用者不直覺)
+        builder = builder.orderBy(field.column, sort.dir, "last")
+      }
+      builder = builder.orderBy(`${resolved.table}.id`, "asc")
+      if (query.cursor !== undefined) {
+        builder = builder.where(`${resolved.table}.id`, ">", query.cursor)
+      }
+      const rows = (await builder.limit(query.limit + 1)) as Record<string, unknown>[]
 
-    const hasMore = rows.length > query.limit
-    const page = hasMore ? rows.slice(0, query.limit) : rows
-    const records = page.map((row) => this.toRecord(resolved, row))
-    const last = records[records.length - 1]
-    return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
+      const hasMore = rows.length > query.limit
+      const page = hasMore ? rows.slice(0, query.limit) : rows
+      const records = page.map((row) => this.toRecord(resolved, row))
+      const last = records[records.length - 1]
+      return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
+    })
   }
 
   async updateRecord(
@@ -107,7 +124,7 @@ export class RecordService {
     actorId: number,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    await this.knex.transaction(async (trx) => {
+    await this.inTenantTx(tenantId, async (trx) => {
       await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
     })
     return this.getRecord(tenantId, formId, recordId)
@@ -120,13 +137,15 @@ export class RecordService {
     actorId: number,
   ): Promise<void> {
     const resolved = await this.resolveForm(tenantId, formId)
-    const count = await this.knex
-      .withSchema(DATA_SCHEMA)
-      .table(resolved.table)
-      .where({ tenant_id: tenantId, id: recordId })
-      .whereNull("deleted_at")
-      .update({ deleted_at: this.knex.fn.now(), updated_by: actorId })
-    if (count === 0) throw new RecordNotFoundError(recordId)
+    await this.inTenantTx(tenantId, async (trx) => {
+      const count = await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId, id: recordId })
+        .whereNull("deleted_at")
+        .update({ deleted_at: trx.fn.now(), updated_by: actorId })
+      if (count === 0) throw new RecordNotFoundError(recordId)
+    })
   }
 
   /* A5|header + lines 單一 transaction(ERP 單據骨架):
@@ -142,7 +161,7 @@ export class RecordService {
     const parent = await this.resolveForm(tenantId, parentFormId)
     const child = await this.resolveForm(tenantId, childFormId)
 
-    const headerId = await this.knex.transaction(async (trx) => {
+    const headerId = await this.inTenantTx(tenantId, async (trx) => {
       let id: number
       if (header.id === undefined) {
         const created = await this.insertOne(
