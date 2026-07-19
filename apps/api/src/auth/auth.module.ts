@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config"
 import type pg from "pg"
 import { PG_POOL } from "../db/db.module.js"
 import { type Auth, createAuth } from "./auth.js"
+import { IdentityService } from "./identity.service.js"
 
 export const AUTH = Symbol("AUTH")
 
@@ -14,6 +15,7 @@ export const AUTH = Symbol("AUTH")
 @Global()
 @Module({
   providers: [
+    IdentityService,
     {
       provide: AUTH,
       useFactory: (pool: pg.Pool, config: ConfigService): Auth =>
@@ -21,6 +23,6 @@ export const AUTH = Symbol("AUTH")
       inject: [PG_POOL, ConfigService],
     },
   ],
-  exports: [AUTH],
+  exports: [AUTH, IdentityService],
 })
 export class AuthModule {}

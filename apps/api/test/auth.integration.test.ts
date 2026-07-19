@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AUTH, AuthModule } from "../src/auth/auth.module.js"
 import { type Auth, createAuth } from "../src/auth/auth.js"
 import { validateEnv } from "../src/config/env.js"
-import { PG_POOL } from "../src/db/db.module.js"
+import { DRIZZLE, PG_POOL, createDrizzle } from "../src/db/db.module.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -70,7 +70,13 @@ describe("Better Auth 接入(F-2 M1)", () => {
 
   it("NestJS DI:AUTH token 由 AuthModule 解析出可用引擎(接 config secret + 真實 pool)", async () => {
     @Global()
-    @Module({ providers: [{ provide: PG_POOL, useValue: pool }], exports: [PG_POOL] })
+    @Module({
+      providers: [
+        { provide: PG_POOL, useValue: pool },
+        { provide: DRIZZLE, useFactory: () => createDrizzle(pool) },
+      ],
+      exports: [PG_POOL, DRIZZLE],
+    })
     class FakePgModule {}
 
     const moduleRef = await Test.createTestingModule({

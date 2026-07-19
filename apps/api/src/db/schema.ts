@@ -17,7 +17,25 @@ import {
 export const tenants = pgTable("tenants", {
   id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
   name: text("name").notNull(),
+  // F-2 M2:Better Auth organization.id ↔ tenant(nullable = dev/種子租戶未綁 org;unique 一 org 一 tenant)
+  authOrgId: text("auth_org_id").unique(),
+  // 便宜預留巢狀租戶 / 代管母子(AUTH-8 場景 B);MVP 不實作跨租戶讀取,只留欄位
+  parentTenantId: bigint("parent_tenant_id", { mode: "number" }).references(
+    (): AnyPgColumn => tenants.id,
+  ),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+/* F-2 M2:Weyver 使用者身分(Tier-1 系統表,跨租戶、非 RLS 範疇)。
+   auth_user_id ↔ Better Auth user.id;actorId(= users.id bigint)為 created_by/updated_by 之來源(OQ-AUTH-4)。
+   首次登入 / 加入 org → upsert(idempotent);軟刪(deleted_at)不影響歷史 created_by。 */
+export const users = pgTable("users", {
+  id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+  authUserId: text("auth_user_id").notNull().unique(),
+  email: text("email").notNull(),
+  name: text("name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 })
 
 export const formDefs = pgTable(
