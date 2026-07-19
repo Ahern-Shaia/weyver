@@ -1,53 +1,61 @@
 /* ═══════════════════════════════════════════════════════════════════
-   Weyver 織雲 — Design Tokens v2.1(single source of truth)
-   權威同步 docs/14 v2.1 §2 + docs/mockups/workspace-form-first-v2.html。
-   嚴謹企業級:方角 2-3px、禁陰影(深度=框線)、全框線欄位表、12.5px 密度。
-   三配色主題(--color-primary 家族)以 [data-theme] 切換;結構/狀態/功能色跨主題共用。
-   ⚠️ 禁在元件硬編 hex,一律走語意 token。
+   Weyver 織雲 — Design Tokens v3.0(single source of truth)
+   方向:精緻資料工具(Airtable / Attio / Retool tier)—— 資料密集但有工藝。
+   相對 v2.1 austere:中性色更淺更柔、border 降為 hairline、加極淡層次(shadow)、
+   柔和圓角(3–10px,仍非 pill)、hover 150ms 平滑。三配色主題 + IBM Plex 保留。
+   ⚠️ 禁在元件硬編 hex,一律走語意 token。深度靠 border + 極淡 shadow(非重陰影)。
 ═══════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── 結構中性色 ─────────────────────────────────────────── */
-  --color-surface: #e8eaed; /* 應用底 */
+  /* ── 結構中性色(淺冷灰;層次靠明度微差,非重灰)─────────── */
+  --color-surface: #f6f7f9; /* 應用底(淺,不再是 v2.1 重灰 #e8eaed)*/
   --color-card: #ffffff; /* 面板 / 表單 */
-  --color-head: #f2f4f6; /* 表頭 / 次底 */
-  --color-label: #eef1f4; /* 欄位 label 格底 */
-  --color-ink: #14181d;
-  --color-ink-2: #3e4854;
-  --color-ink-3: #6b7684;
-  --color-ink-4: #98a2ae;
-  --color-line: #c9cfd6; /* 面板框 */
-  --color-line-2: #dde1e6; /* 次分隔 */
-  --color-cell: #d5dae0; /* 欄位格線(全框線表)*/
+  --color-head: #f1f3f5; /* 表頭 / 次底 */
+  --color-label: #f4f6f8; /* 欄位 label 格底 */
+  --color-ink: #16191f; /* 主文 */
+  --color-ink-2: #3d4753; /* 次文 */
+  --color-ink-3: #697585; /* 輔助 / 說明 */
+  --color-ink-4: #9aa4b1; /* 佔位 / 微弱 */
+  --color-line: #e3e6ea; /* 面板框(hairline,由 v2.1 #c9cfd6 軟化)*/
+  --color-line-2: #eef0f3; /* 次分隔 */
+  --color-cell: #e7eaee; /* 欄位格線(全框線表)*/
 
-  /* ── 主題主色(預設深藍;[data-theme] 覆寫於 @theme 之外)── */
-  --color-primary: #1e4e79;
-  --color-primary-d: #173d5f;
-  --color-primary-t: #e7eef5;
+  /* ── 主題主色(預設深藍;克制使用:選取 / 主按鈕 / 焦點)── */
+  --color-primary: #22568a;
+  --color-primary-d: #1a476f;
+  --color-primary-t: #eaf1f8; /* 選取列 / 主色極淡底 */
 
   /* ── 功能色(跨主題共用)───────────────────────────────── */
-  --color-link: #0b5cab; /* 功能連結:藍 + underline */
+  --color-link: #1160b4;
   --color-fx: #0b6b5d; /* 公式 / 計算 */
-  --color-fx-bg: #e9f3f0;
+  --color-fx-bg: #e8f4f1;
   --color-rel: #5b3fa8; /* 關聯 Link&Load */
 
   /* ── 狀態色(帶框章三值:字 / 框 / 底)─────────────────── */
   --color-ok: #1a7a43;
-  --color-ok-line: #bfdcc9;
-  --color-ok-t: #e8f2eb;
-  --color-wn: #9a5b00;
-  --color-wn-line: #e4cfa6;
-  --color-wn-t: #f7efdf;
+  --color-ok-line: #c4e0ce;
+  --color-ok-t: #eaf4ee;
+  --color-wn: #96590a;
+  --color-wn-line: #e7d3ad;
+  --color-wn-t: #f8f1e2;
   --color-er: #b3261e;
-  --color-er-line: #e7c4c1;
-  --color-er-t: #f7e9e8;
+  --color-er-line: #e9c9c6;
+  --color-er-t: #f9ecea;
   --color-nt: #4a5560;
-  --color-nt-line: #cfd5da;
-  --color-nt-t: #eceef0;
+  --color-nt-line: #d6dbe0;
+  --color-nt-t: #eef0f2;
 
-  /* ── 形狀(方角;禁 pill / 禁 >4px)───────────────────── */
-  --radius-xs: 2px;
-  --radius-sm: 3px;
+  /* ── 形狀(柔和圓角;仍非 pill)────────────────────────── */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* ── 層次(極淡;resting 幾乎無感,overlay 才明顯)──────── */
+  --shadow-xs: 0 1px 1px rgba(20, 24, 29, 0.04);
+  --shadow-sm: 0 1px 2px rgba(20, 24, 29, 0.06), 0 1px 3px rgba(20, 24, 29, 0.04);
+  --shadow-md: 0 2px 6px rgba(20, 24, 29, 0.07), 0 4px 14px rgba(20, 24, 29, 0.06);
+  --shadow-lg: 0 8px 30px rgba(20, 24, 29, 0.14);
 
   /* ── 字型(IBM Plex 鎖定;變數由 next/font 注入)────────── */
   --font-sans: var(--font-plex-sans), "IBM Plex Sans TC", "Noto Sans TC", "PingFang TC", system-ui,
@@ -55,19 +63,19 @@
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
-/* ── 三配色主題(docs/14 v2.1 §2.2)──────────────────────── */
+/* ── 三配色主題(主色家族;結構/狀態/功能色跨主題共用)──── */
 [data-theme="teal"] {
   --color-primary: #0c5f73;
   --color-primary-d: #094a5a;
-  --color-primary-t: #e6f0f3;
+  --color-primary-t: #e5f0f3;
 }
 [data-theme="graphite"] {
-  --color-primary: #313131;
-  --color-primary-d: #1f1f1f;
-  --color-primary-t: #ececea;
+  --color-primary: #333739;
+  --color-primary-d: #22262a;
+  --color-primary-t: #edeef0;
 }
 
-/* ── 動效近乎無(docs/14 §3.15):僅 hover/active ≤120ms ── */
+/* ── 動效:互動平滑(150ms);尊重 reduced-motion ────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

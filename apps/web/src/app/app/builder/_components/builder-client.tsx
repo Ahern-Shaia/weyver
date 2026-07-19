@@ -1,6 +1,5 @@
 "use client"
 
-import { ThemeSwitcher } from "@weyver/ui/theme-switcher"
 import dynamic from "next/dynamic"
 import { parseAsInteger, useQueryState } from "nuqs"
 import { useState } from "react"
@@ -47,21 +46,6 @@ export function BuilderClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="flex h-[42px] shrink-0 items-center gap-3 border-b-2 border-primary bg-card px-4">
-        <span className="font-semibold text-[13.5px]">
-          Weyver <span className="text-ink-3 text-[11px] font-normal">表單建構器</span>
-        </span>
-        <span className="rounded-xs border border-line px-1.5 py-0.5 font-mono text-[9.5px] text-ink-4">
-          R1 · P0-1
-        </span>
-        <div className="ml-auto flex items-center gap-3">
-          <ThemeSwitcher />
-          <span className="text-[11.5px] text-ink-2">
-            租戶 <b className="font-mono font-medium">1</b> · dev
-          </span>
-        </div>
-      </header>
-
       <div className="flex min-h-0 flex-1">
         <FormListRail
           activeFormId={formId}

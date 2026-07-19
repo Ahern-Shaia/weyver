@@ -5,6 +5,8 @@ const ENGINE_API_ORIGIN = process.env.ENGINE_API_ORIGIN ?? "http://localhost:300
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@weyver/ui"],
+  // dev 指示器移到右下,避免蓋住左下角導覽軌的登出鈕(dev-only overlay)
+  devIndicators: { position: "bottom-right" },
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

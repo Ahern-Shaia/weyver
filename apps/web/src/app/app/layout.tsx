@@ -1,8 +1,9 @@
 "use client"
 
-import { Button } from "@weyver/ui/button"
+import { ThemeSwitcher } from "@weyver/ui/theme-switcher"
+import { LayoutGrid, LogOut, ShieldCheck, Table2 } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { type ReactNode, useEffect } from "react"
 import {
   authClient,
@@ -12,15 +13,47 @@ import {
   useSession,
 } from "@/lib/auth/client"
 
-/* /app/* 受保護區。強制登入只在 production 生效 —— 對齊後端 TenantGuard 的 dev/prod 分派:
-   dev/test 後端走 DevTenantGuard(x-dev-tenant),前端不擋(引擎 e2e 與本機工作流不需登入);
-   prod 後端走 AuthGuard(session→tenant),前端未登入 → /login。
-   已登入時:無 active org 但有 org → 自動設第一個(確保 AuthGuard 能解析 tenant);
-   頂部細帶顯示公司 + 帳號 + 登出。 */
+/* /app/* 受保護區 + 統一 app shell(精緻資料工具:窄圖示導覽軌 + 單一頂欄 context)。
+   強制登入僅 production(對齊後端 TenantGuard dev/prod);登入後自動設 active org。 */
 const ENFORCED = process.env.NODE_ENV === "production"
+
+const NAV = [
+  { href: "/app/builder", label: "我的表單", icon: Table2 },
+  { href: "/app", label: "記錄檢視", icon: LayoutGrid },
+  { href: "/app/settings/security", label: "帳號安全", icon: ShieldCheck },
+] as const
+
+function RailLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+}: {
+  readonly href: string
+  readonly label: string
+  readonly icon: typeof Table2
+  readonly active: boolean
+}): ReactNode {
+  return (
+    <Link
+      href={href}
+      title={label}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={
+        active
+          ? "flex size-9 items-center justify-center rounded-md bg-primary-t text-primary"
+          : "flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors duration-150 hover:bg-head hover:text-ink"
+      }
+    >
+      <Icon size={17} strokeWidth={1.9} />
+    </Link>
+  )
+}
 
 export default function AppLayout({ children }: { children: ReactNode }): ReactNode {
   const router = useRouter()
+  const pathname = usePathname()
   const { data: session, isPending } = useSession()
   const { data: activeOrg } = useActiveOrganization()
   const { data: orgs } = authClient.useListOrganizations()
@@ -45,28 +78,62 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
     router.replace("/login")
   }
 
+  const isActive = (href: string): boolean =>
+    href === "/app" ? pathname === "/app" : pathname.startsWith(href)
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      {session ? (
-        <header className="flex h-9 shrink-0 items-center justify-between border-b border-line bg-head px-3">
-          <div className="flex items-center gap-2 text-[12px]">
-            <span className="flex size-5 items-center justify-center rounded-sm bg-primary text-[10px] font-bold text-white">
-              W
+    <div className="flex h-screen overflow-hidden bg-surface">
+      {/* 窄圖示導覽軌 */}
+      <aside className="flex w-14 shrink-0 flex-col items-center border-r border-line bg-card py-2.5">
+        <Link
+          href="/app/builder"
+          className="flex size-8 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-white shadow-xs"
+          title="Weyver 織雲"
+        >
+          W
+        </Link>
+        <nav className="mt-4 flex flex-col gap-1.5">
+          {NAV.map((item) => (
+            <RailLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              active={isActive(item.href)}
+            />
+          ))}
+        </nav>
+        {session ? (
+          <button
+            type="button"
+            onClick={() => void onLogout()}
+            title="登出"
+            aria-label="登出"
+            className="mt-auto flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors duration-150 hover:bg-er-t hover:text-er"
+          >
+            <LogOut size={17} strokeWidth={1.9} />
+          </button>
+        ) : null}
+      </aside>
+
+      {/* 主區:單一頂欄 context + 內容 */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line bg-card px-4">
+          <span className="text-[13px] font-semibold text-ink">
+            {activeOrg?.name ?? "織雲工作區"}
+          </span>
+          {process.env.NODE_ENV !== "production" ? (
+            <span className="rounded-xs border border-line px-1.5 py-px font-mono text-[9.5px] text-ink-4">
+              dev
             </span>
-            <span className="font-medium text-ink-2">{activeOrg?.name ?? "織雲工作區"}</span>
-          </div>
-          <div className="flex items-center gap-2.5 text-[12px] text-ink-3">
-            <span className="hidden sm:inline">{session.user.email}</span>
-            <Link href="/app/settings/security" className="text-ink-2 hover:text-primary">
-              安全
-            </Link>
-            <Button variant="default" onClick={() => void onLogout()}>
-              登出
-            </Button>
+          ) : null}
+          <div className="ml-auto flex items-center gap-3">
+            <ThemeSwitcher />
+            {session ? <span className="text-[12px] text-ink-3">{session.user.email}</span> : null}
           </div>
         </header>
-      ) : null}
-      <div className="min-h-0 flex-1">{children}</div>
+        <main className="min-h-0 flex-1">{children}</main>
+      </div>
     </div>
   )
 }
