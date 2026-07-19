@@ -6,7 +6,7 @@
 > Weyver 的 substrate 命門:Tier-2 動態真實表引擎(metadata catalog + runtime DDL 安全鏈 + 欄位型別系統 + 記錄 DML + 租戶隔離)。docs/13 標明的**最大 risk gate(Gate P0-1)**,blocks 90% 下游模組;設計依據 docs/15 v2(兩層資料模型)+ docs/16(三家 OSS 實證)+ docs/21(多租戶)+ docs/22(威脅模型 #1 = 動態 identifier 注入)。
 >
 > 作者:Claude Code(草擬)
-> 版本:v0.1(2026-07-19)
+> 版本:v1.1(2026-07-19)
 
 ---
 
@@ -54,6 +54,24 @@
 | Auth / 租戶 context | ❌ 未做(F-2)| Better Auth + nestjs-cls + `SET LOCAL app.tenant_id` 納入 M5(最小版:單租戶 header 假造 → 測試期先行,Better Auth 完整版留 F-2)|
 | Postgres / dev infra | ❌ 未做 | Docker Compose PG 16 + Testcontainers 納入 M1 |
 | 型別 / 公式 OSS 參考 | ✅ docs/16 拆解完(Teable 雙軸 + visitor;MIT 可 fork 地圖)| 借鏡 pattern 自研(見 OQ-FEC-7)|
+
+---
+
+## 2-bis. 巨人的肩膀:企業級 metadata 平台做法對照(2026-07-19 web 研究,retrospective 補)
+
+> docs/16 是 **OSS 同類**(Baserow/NocoDB/Teable)的實證;此節補上**企業級 metadata 平台**的對照,並把 Weyver 選「每表單真實表」這個**刻意架構分叉**與其 scaling 天花板明文化。
+
+| 系統 | 動態 schema 手法 | 對 Weyver 的意義 |
+|---|---|---|
+| **Salesforce Force.com**(企業 metadata 平台典範)| **flex-column / EAV**:`MT_Objects` / `MT_Fields` metadata 表 + **單一共享 `MT_Data` 寬表**,自訂欄位映射到預留的泛型 flex 欄(非真實欄 / 真實表);型別、picklist、formula、master-detail 全存 metadata | **Weyver 選了相反路**:每表單一張**真實 PG 表**(Teable/Baserow pattern)。取捨↓ |
+| **Microsoft Dataverse**（低碼資料平台）| 混合:標準實體真實表 + 自訂欄部分虛擬化 | 佐證「真實表可行」但大規模自訂走抽象層 |
+| **PostgreSQL 多租戶文獻**(PlanetScale / Citus)| schema-per-tenant / table-per-tenant **過 ~1,000–2,000 個** → `pg_class` catalog bloat、planner 變慢、migration 拖慢;shared-schema + RLS 才可到十萬租戶 | **Weyver 的 table-count 天花板來源**;已在 M1 spike 實測 |
+
+**核心架構決策(明文化)**|Weyver Tier-2 = **每表單一張真實表(共享 schema + `tenant_id` + RLS)**,而非 Salesforce 式 flex-column。
+
+- **為何選真實表(勝 flex-column)**|真 SQL 型別 / 真索引 / 真約束 / 每表查詢效能佳;**「算」計算層(docs/18)需要真實欄位**才能過帳 / 估值;且 Weyver 租戶規模是**數百**(食品 / 團膳 SMB),非 Salesforce 的數百萬 → 不需 flex-column 的極端抽象。
+- **代價(Salesforce 用 flex-column 正是為了避開它)**|**`pg_class` table-count 天花板**——表數 = 全租戶 × 各自表單數。**M1 spike 實測:10,000 張表 catalog 近線性 ×1.22**(可接受);pilot 17 家 × ~50 表 < 1,000 張,無虞。
+- **⚠️ 明確 revisit trigger**|當**全域真實表數逼近 ~10–20K**(大量租戶 × 大量表單)時,需啟動緩解:低用量表走**共享寬表 + flex-column overflow**(退化為 Salesforce 式)、表合併 / 分區,或 **Citus 分片**。**pilot / early 階段不需**,但列為已知 scaling 路線,不是「撞到才想」。
 
 ---
 
@@ -227,7 +245,7 @@ CREATE TABLE data.t{formId} (
 
 ### 容量 / 失效 / 觀測(節錄)
 
-- **表數估算**:pilot 17 家 × ~50 表單 < 1,000 張真實表 —— PG catalog 無虞;spike(M1)壓測至 10,000 張確認上限與 relcache 行為(docs/16 已知風險)。
+- **表數估算**:pilot 17 家 × ~50 表單 < 1,000 張真實表 —— PG catalog 無虞;spike(M1)壓測至 10,000 張確認上限與 relcache 行為(docs/16 已知風險)。**scaling 天花板與 revisit trigger(~10–20K 表)+ 與 Salesforce flex-column 之取捨見 § 2-bis**。
 - **失效模式**:DDL 中途失敗 → 清理 + failed 態;advisory lock timeout → 回 409 請重試;catalog cache 不一致 → version 檢查失效重讀。
 - **觀測**:`ddl_operations_total{op,result}` / `ddl_duration_seconds` / `record_crud_duration_seconds` / `tenant_table_count` gauge;DDL 全量 audit log。
 - **Rollout**:金額型別自始 `numeric`;migration up/down 齊;動態表不進 Drizzle migration(雙軌邊界)。
@@ -447,4 +465,5 @@ WHERE n.nspname = 'data' AND c.relkind = 'r' AND NOT c.relforcerowsecurity;
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A7 切分 + OQ-FEC-1..7;綜合 docs/15 v2 / docs/16 / docs/21 / docs/22 成 buildable spec | Claude Code |
 | 2026-07-19 | v0.2 | OQ-FEC-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 spike(OrbStack 本機容器環境就緒)| Claude Code |
 | 2026-07-19 | v0.3 | **M1 spike 完成,Gate P0-1 通過**(§ 9-ter:S1 10K 表近線性 ×1.22 / S2 advisory lock 開銷可忽略·禁 rewrite 型 DDL / S3 RLS 8 斷言全過 + set_config 參數化 + NULLIF policy 兩發現);api 骨架移 M2 | Claude Code |
+| 2026-07-19 | v1.1 | **retrospective 補企業級 giants 對照(§ 2-bis)**:Salesforce flex-column/MT_Data · Dataverse · PG 多租戶 catalog bloat 文獻;明文化「每表單真實表 vs flex-column」架構分叉之取捨(選真實表:真型別/索引/約束 + 計算層需真欄;代價 pg_class table-count 天花板,M1 已實測 10K×1.22)+ **revisit trigger ~10–20K 表→ flex overflow / 分片**;§ 7-bis 容量交叉引用。**不改實作**(SHIPPED 不變),純設計文件強化 | Claude Code |
 | 2026-07-19 | v1.0 | **M2–M7 全 SHIPPED**(M2 catalog+型別 ca1d107 / M3 DDL 鏈 b14c211 / M4 DML+子表 f1c41e8 / M5 隔離 b01ba2b / M6 API e48cdac);59 tests + dev live smoke;§11 SOP + **§12 FMEA(P0 12 項全 ✅;殘留 C5/R7/R8/T4/A3/A4 歸屬 §12.7)**;M6 deviation:Swagger→zod-openapi(P0-5);狀態 APPROVED → **SHIPPED v1.0**(≠ 可對外上 prod,前提 F-2 + 可靠性 checklist)| Claude Code |
