@@ -98,9 +98,11 @@ export class RecordService {
     actorId: number,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    return this.inTenantTx(tenantId, (trx) =>
+    const record = await this.inTenantTx(tenantId, (trx) =>
       this.insertOne(trx, tenantId, resolved, values, actorId, null, null),
     )
+    const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
+    return injected ?? record
   }
 
   /* A1(P0-2)|bulk 建立:單一 tx 逐列 insert;任一列失敗 → 整批 rollback + 回失敗列 index。
