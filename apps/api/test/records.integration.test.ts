@@ -93,6 +93,8 @@ describe("A4 record DML on real PG", () => {
     expect(record.values.供應商).toBe("鑫豐農產品")
     expect(record.values.金額).toBe("128400.0000")
     expect(record.values.標籤).toEqual(["急件", "冷鏈"])
+    // date 欄回傳純 "YYYY-MM-DD" 字串(pg DATE type parser 覆寫;非 Date 物件位移時區)
+    expect(record.values.交期).toBe("2026-07-22")
     expect(record.version).toBe(1)
     expect(record.createdBy).toBe(ACTOR)
 

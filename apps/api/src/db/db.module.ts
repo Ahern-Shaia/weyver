@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config"
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import knex, { type Knex } from "knex"
 import pg from "pg"
+import "./pg-types.js" // 全域 pg 型別解析覆寫(DATE → 字串);import 副作用,須在建任何 pool 前
 import * as schema from "./schema.js"
 
 export const PG_POOL = Symbol("PG_POOL")

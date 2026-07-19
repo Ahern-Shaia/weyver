@@ -3,8 +3,8 @@
 import { ThemeSwitcher } from "@weyver/ui/theme-switcher"
 import { parseAsInteger, useQueryState } from "nuqs"
 import { useState } from "react"
-import { EditFormPanel } from "./edit-form-panel"
 import { FormListRail } from "./form-list-rail"
+import { FormWorkspace } from "./form-workspace"
 import { NewFormPanel } from "./new-form-panel"
 
 export function BuilderClient() {
@@ -44,7 +44,7 @@ export function BuilderClient() {
           {creating ? (
             <NewFormPanel onCreated={select} onCancel={() => setCreating(false)} />
           ) : formId !== null ? (
-            <EditFormPanel key={formId} formId={formId} />
+            <FormWorkspace key={formId} formId={formId} />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface">
               <div className="max-w-[320px] text-center">
