@@ -13,7 +13,7 @@
 **Weyver(織雲)** —— **以 Ragic 表單引擎為基底,取代 ERP,融合 MES + ISO 的一站式企業平台**(Cloud SaaS + On-premise Edge Gateway hybrid,**統一 TypeScript 全棧**,全 OSS,不 fork Odoo)。**廠商放棄原有 ERP(鼎新 / 千奧 / 正航),全面改用 Ragic 範式取代 ERP**,並在同一基底開展 MES + ISO。**架構主張(2026-07-17)**|表單引擎是 substrate(平台底層),不是模組之一 —— 採購單 / 銷貨單 / 工單 / BOM / 品檢 / ISO 文件皆為引擎上的表單 app;深層計算(GL 過帳期結 / MRP / 成本 / 估值)由引擎之上的計算層補齊(「算」不是「填」)。Q 多 ERP 對帳角色收斂(客戶放棄原 ERP,至多 onboarding 一次匯入)。
 
 - 首波 pilot|鮮勇 為首波客戶(食品加工,既有 Ragic 用戶,內部有 3 家 ERP);pipeline 17 家集中食品/團膳,但平台不限產業
-- 現況|**2026-07-19 起進入 Phase 1 工程**(規劃已完成)。首個模組 **P0-1 表單引擎動態 schema 核心已 SHIPPED v1.0**(`docs/modules/form-engine-core.md`|M0 設計→OQ 裁定→spike Gate→實作→FMEA 全流程;`apps/api` NestJS+Fastify、59 tests、RLS 隔離實證)。工程紀律|新 non-trivial 模組必先 M0 design doc + OQ 裁定(`docs/modules/_template.md`),模組索引 `docs/modules/MODULES.md`
+- 現況|**2026-07-19 起進入 Phase 1 工程**(規劃已完成)。首個模組 **P0-1 表單引擎動態 schema 核心已 SHIPPED v1.0**(`docs/modules/R1/form-engine-core.md`|M0 設計→OQ 裁定→spike Gate→實作→FMEA 全流程;`apps/api` NestJS+Fastify、59 tests、RLS 隔離實證)。工程紀律|新 non-trivial 模組必先 M0 design doc + OQ 裁定(`docs/modules/_template.md`),模組索引 `docs/modules/MODULES.md`
 - 對外上 prod 前提|F-2 auth(Better Auth + JWT)+ form-engine-core §12.7 可靠性 checklist(idempotency key / quota / throttler / helmet)
 
 ## 品牌故事(業務簡報第一頁用)
