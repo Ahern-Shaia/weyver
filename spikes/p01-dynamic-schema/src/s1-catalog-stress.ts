@@ -39,12 +39,16 @@ async function main(): Promise<void> {
     const { ms } = await timed(() => db.raw(`BEGIN; ${stmts} COMMIT;`))
     batchTimes.push(ms)
     if ((b + 1) % 10 === 0)
-      console.log(`  batch ${b + 1}/${TOTAL / BATCH}: ${fmt(ms)} (${(ms / BATCH).toFixed(1)}ms/table)`)
+      console.log(
+        `  batch ${b + 1}/${TOTAL / BATCH}: ${fmt(ms)} (${(ms / BATCH).toFixed(1)}ms/table)`,
+      )
   }
   const totalMs = Number(process.hrtime.bigint() - overall) / 1e6
   const first10 = batchTimes.slice(0, 10).reduce((a, x) => a + x, 0) / 10 / BATCH
   const last10 = batchTimes.slice(-10).reduce((a, x) => a + x, 0) / 10 / BATCH
-  console.log(`total create: ${fmt(totalMs)} | per-table first10batch ${first10.toFixed(1)}ms vs last10batch ${last10.toFixed(1)}ms (degradation x${(last10 / first10).toFixed(2)})`)
+  console.log(
+    `total create: ${fmt(totalMs)} | per-table first10batch ${first10.toFixed(1)}ms vs last10batch ${last10.toFixed(1)}ms (degradation x${(last10 / first10).toFixed(2)})`,
+  )
 
   const cat = await db.raw(`
     SELECT
@@ -59,7 +63,9 @@ async function main(): Promise<void> {
 
   for (const i of [1, 5000, 9999]) {
     const t = `${SCHEMA}.t${i}`
-    await db.raw(`INSERT INTO ${t} (tenant_id, f1, f3) SELECT 1, 'x' || g, g FROM generate_series(1,100) g`)
+    await db.raw(
+      `INSERT INTO ${t} (tenant_id, f1, f3) SELECT 1, 'x' || g, g FROM generate_series(1,100) g`,
+    )
     const cold = await timed(() => db.raw(`SELECT count(*), sum(f3) FROM ${t} WHERE tenant_id = 1`))
     const warm = await timed(() => db.raw(`SELECT count(*), sum(f3) FROM ${t} WHERE tenant_id = 1`))
     console.log(`query t${i}: cold(plan+relcache) ${fmt(cold.ms)} | warm ${fmt(warm.ms)}`)

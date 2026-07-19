@@ -17,7 +17,9 @@ async function setup(db: Knex): Promise<void> {
       );`,
   ).join("\n")
   await db.raw(stmts)
-  await db.raw(`INSERT INTO ${SCHEMA}.t1 (tenant_id, f1) SELECT 1, 'x' FROM generate_series(1, 10000)`)
+  await db.raw(
+    `INSERT INTO ${SCHEMA}.t1 (tenant_id, f1) SELECT 1, 'x' FROM generate_series(1, 10000)`,
+  )
 }
 
 async function main(): Promise<void> {
@@ -59,7 +61,9 @@ async function main(): Promise<void> {
   console.log(`C 同表並發 ${WORKERS} × ADD COLUMN(advisory lock): ${fmt(c.ms)}`)
 
   // D|DDL 風暴期間讀者延遲(worst case:volatile DEFAULT 強制全表 rewrite,鎖持有時間拉長)
-  await db.raw(`INSERT INTO ${SCHEMA}.t1 (tenant_id, f1) SELECT 1, 'y' FROM generate_series(1, 190000)`)
+  await db.raw(
+    `INSERT INTO ${SCHEMA}.t1 (tenant_id, f1) SELECT 1, 'y' FROM generate_series(1, 190000)`,
+  )
   const readLatencies: number[] = []
   let stop = false
   const reader = (async () => {
@@ -75,7 +79,9 @@ async function main(): Promise<void> {
         await trx.raw(`SELECT pg_advisory_xact_lock(1)`)
         await trx.raw(`SET LOCAL statement_timeout = '10s'`)
         // volatile default → 全表 rewrite(ACCESS EXCLUSIVE 持鎖到 rewrite 完)= 最壞情境
-        await trx.raw(`ALTER TABLE ${SCHEMA}.t1 ADD COLUMN d_col${i} double precision DEFAULT random()`)
+        await trx.raw(
+          `ALTER TABLE ${SCHEMA}.t1 ADD COLUMN d_col${i} double precision DEFAULT random()`,
+        )
       }),
     ),
   )
@@ -84,7 +90,9 @@ async function main(): Promise<void> {
   const sorted = [...readLatencies].sort((x, y) => x - y)
   const p50 = sorted[Math.floor(sorted.length / 2)] ?? 0
   const worst = sorted[sorted.length - 1] ?? 0
-  console.log(`D 讀者延遲 during rewrite-DDL(200K 列表): p50 ${fmt(p50)} | worst ${fmt(worst)} | samples ${readLatencies.length}`)
+  console.log(
+    `D 讀者延遲 during rewrite-DDL(200K 列表): p50 ${fmt(p50)} | worst ${fmt(worst)} | samples ${readLatencies.length}`,
+  )
   console.log(`  (對照:nullable ADD COLUMN 無 rewrite,B/C 已證毫秒級)`)
 
   await db.destroy()
