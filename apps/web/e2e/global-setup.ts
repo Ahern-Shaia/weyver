@@ -11,6 +11,11 @@ export default async function globalSetup(): Promise<void> {
     stdio: "inherit",
     env: { ...process.env, DATABASE_URL },
   })
+  // Better Auth 自管 schema(auth.spec 需 user/session/organization 表)
+  execSync("pnpm --filter @weyver/api db:migrate:auth", {
+    stdio: "inherit",
+    env: { ...process.env, DATABASE_URL },
+  })
 
   const pool = new pg.Pool({ connectionString: DATABASE_URL })
   try {

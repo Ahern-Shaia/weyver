@@ -1,6 +1,9 @@
 # auth.md — [F-2] 認證 + 租戶 context + 使用者身分 設計文件
 
-> ✅ **狀態:APPROVED — OQ-AUTH-1..8 全採建議(2026-07-19 裁定)**;AUTH-8 = **場景 A(多 org 隔離切換,一次一家)**;**場景 B(代管母子 + 跨廠合併)非本模組**,僅便宜預留 `tenants.parent_tenant_id`。**M1 ✅(引擎+DI)· M2 ✅(對映+IdentityService)· M3 ✅(AuthGuard session→tenant + 剝 header + 跨租戶隔離 e2e);續 M4(前端登入/登出/註冊 + active org 切換 + `/api/auth/*` handler 掛載)。**
+> ✅ **狀態:SHIPPED v1.0(2026-07-19)** — M0–M5 全數完成。dev 期 `x-dev-tenant` 已由**真實 Better Auth 認證**取代(prod);登入 → session → 可信 tenant + actor,跨租戶隔離 e2e 綠、FMEA P0 全緩解。
+>
+> OQ-AUTH-1..9 全採建議裁定;AUTH-8 = **場景 A(多 org 隔離切換,一次一家)**,場景 B(代管母子)僅預留 `tenants.parent_tenant_id`;AUTH-9 = 社群登入按角色分層 + 不得為唯一 owner(§6-bis)。
+> **後續**(非 F-2 阻擋):三層 form/field/record RBAC = P0-4;企業 SSO/SAML/SCIM;MFA / 密碼重設完整版;JWT plugin(Edge/MES stateless 需要時)。
 >
 > **一句話**|把 dev 期的 `x-dev-tenant` header 換成**真實認證**:使用者登入 → 伺服器驗證的 session/JWT → 從中取**可信的 tenant_id + 使用者身分**,取代 `DevTenantGuard`。**這是 R1 對外上線的硬前提**(form-engine-core / form-designer-ui / grid / formula 皆標「對外 prod 前提 = F-2」)。
 >
@@ -167,8 +170,8 @@
 | **M1** A1 | Better Auth 掛 api + auth 表 + org plugin + Argon2id | ✅ **DONE**|(a)認證引擎 `src/auth/auth.ts` createAuth(Better Auth + pg pool + emailAndPassword + **Argon2id**(@node-rs/argon2)+ organization plugin;auth 表由 Better Auth migration 建)·(b)**NestJS DI 接入** `src/auth/auth.module.ts`(@Global,`AUTH` Symbol token via useFactory:注入特權 `PG_POOL`〔auth 表為 Tier-1 系統表非租戶 RLS〕+ `ConfigService` secret;註冊進 AppModule)·(c)`BETTER_AUTH_SECRET` 入 env schema(**prod fail-fast**,dev 回退明確佔位)· 測:4 整合(表 / 註冊→Argon2id / 登入正誤 / 列舉防護)+ 1 DI 解析(AUTH 接真實 pool 可登入)+ 4 env 單元;全 api e2e(9)boot AppModule 綠 · **Fastify `/api/auth/*` handler 掛載併 M3(getSession 需之)** |
 | **M2** A3 | users / tenants.auth_org_id + org/user 對映 + upsert hook | ✅ **DONE**|(a)migration 0005:`users`(Tier-1 系統表:auth_user_id unique / email / name / soft-delete)+ `tenants.auth_org_id`(unique nullable)+ `tenants.parent_tenant_id`(自參照,預留場景 B)· 皆**非 RLS**(跨租戶系統表,走特權 DRIZZLE 車道)·(b)`IdentityService`:`ensureTenantForOrg`(冪等,unique 兜底並發)/ `upsertUser`(冪等 + email·name 漂移更新 + 復活清 deleted_at)/ `getTenantIdByOrg` / `getActorIdByUser`(軟刪回 null);註冊 AuthModule export(M3 guard 注入)· 測:5 整合(冪等 / unique / 未知回 null / 漂移 / 軟刪復活)· **provisioning 觸發時機(Better Auth `organizationHooks.afterCreateOrganization` 事件 hook vs 首次登入 JIT upsert)在 M3 併 guard 定案** —— 機制已 idempotent,兩者皆安全 |
 | **M3** A2 | AuthGuard(getSession → tenantContext)+ 剝 header + 隔離測試 | ✅ **DONE**|(a)`AuthGuard`(prod):`auth.api.getSession`(cookie)→ `session.activeOrganizationId` → `IdentityService.getTenantIdByOrg` → tenantId;**剝除 client `x-tenant-id`/`x-dev-tenant`/`x-dev-actor`**;actorId 由首次登入 JIT `upsertUser`;無 session 401 / 無 active org 403 / org 未 provision 403 ·(b)`TenantGuard` 環境分派(prod→AuthGuard,dev/test→DevTenantGuard;職責/攻擊面隔離)· 控制器 `@UseGuards(TenantGuard)` ·(c)`TenantContext` 抽出 `http/tenant-context.ts`(services 零改)· `AUTH` token 抽出 `auth.tokens.ts` 解 module↔guard 循環 ·(d)**provisioning 觸發定案**:org→tenant 走 Better Auth `afterCreateOrganization` hook(建 tenant),user→actor 走 guard JIT upsert ·(e)測:5 隔離 e2e(prod session:無 session 401 / A 建表 / **B 讀不到 A** / **偽 header 無效** / 無 active org 403);全 api 套件 107 綠 |
-| **M4** A4 | 前端登入 / 登出 / 註冊 + 受保護路由 + active org 切換 + 同源代理 | ⬜ |
-| **M5** A5 + 收尾 | 安全硬化(rate-limit / CSRF / secrets / **設 `BETTER_AUTH_URL` 消 baseURL 警告 + trustedOrigins**)+ Playwright 固化 + FMEA + SHIPPED | ⬜ |
+| **M4** A4 | 前端登入 / 登出 / 註冊 + 受保護路由 + active org 切換 + 同源代理 | ✅ **DONE**|後端 `mountAuthHandler` 掛 `/api/auth/*`(configureApp,main + 測同構)· 前端 authClient(better-auth/react + organizationClient,baseURL 取瀏覽器 origin)· `/login`、`/register`(建帳號 + org → hook 建 tenant → 設 active)· `/app` 受保護 layout(**強制登入僅 prod**,對齊後端 TenantGuard dev/prod;登入設 active org;頂帶顯示公司 + 帳號 + 登出)· next.config `/api/auth` 同源代理 · 3 HTTP 整合測(handler 掛載 / cookie 經 guard / 429)· **Playwright MCP 實走**(註冊→builder→登出→登入,org 名解析) |
+| **M5** A5 + 收尾 | 安全硬化 + Playwright 固化 + FMEA + SHIPPED | ✅ **DONE**|Better Auth rateLimit(寫端點 5/60s、get-session 放寬)· 安全標頭 onSend(X-Frame-Options/nosniff/Referrer-Policy/prod HSTS)· @nestjs/throttler 全域 · `BETTER_AUTH_URL` + `trustedOrigins` config · cookie httpOnly+SameSite · `e2e/auth.spec.ts` 固化(註冊→登出→登入,4 e2e 全綠)· **§12 FMEA P0 全緩解** · **SHIPPED v1.0** |
 
 ---
 
@@ -197,9 +200,27 @@
 
 ---
 
-## 12. 失效場景反思(FMEA)— 收尾必填(R17)
+## 12. 失效場景反思(FMEA)— M5 收尾(R17)
 
-> M5 收尾逐路徑填(登入 / session 驗證 / 租戶偽造 / 跨租戶 / 對映缺失 / auth 服務掛 / 暴力登入)。**P0 未緩解不得上 prod** —— 本模組即「上 prod 前提」,FMEA 尤重跨租戶與偽造。
+> **P0 未緩解不得上 prod** —— 本模組即「上 prod 前提」,FMEA 尤重跨租戶與偽造。P0(1–4)全緩解。
+
+| # | 路徑 / 失效模式 | 影響 | 嚴重 | 緩解 | 狀態 |
+|---|---|---|---|---|---|
+| 1 | **租戶偽造**:client 送 `x-tenant-id`/`x-dev-tenant` 綁架租戶 | 跨租戶讀寫 / 外洩 | **P0** | AuthGuard 剝除所有 client 租戶 header;tenantId 只出自 session activeOrg;隔離 e2e 斷言偽 header 無效 | ✅ |
+| 2 | **跨租戶讀取**:A session 讀 B 資料(BOLA) | 資料外洩 | **P0** | tenantId 由 session 解析 + 每查詢綁 tenant + RLS FORCE;隔離 e2e「B 讀不到 A」 | ✅ |
+| 3 | **session 偽造 / 竄改** | 未授權存取 | **P0** | Better Auth 伺服器驗證 session(DB lookup)+ 簽章 secret(prod fail-fast);cookie httpOnly+SameSite+(prod)Secure;token 不進 localStorage | ✅ |
+| 4 | **密碼弱雜湊 / 明文** | 帳號淪陷 | **P0** | Argon2id(@node-rs/argon2)+ 整合測斷言 `$argon2id$`;response DTO 不回 hash | ✅ |
+| 5 | **登入暴力** | 帳號淪陷 | P1 | Better Auth rateLimit `/sign-in/email`、`/sign-up/email` 5/60s;e2e 斷言 429 | ✅ |
+| 6 | **org 未 provision**(登入後無 active org / tenant) | 使用者卡死 | P1 | afterCreateOrganization hook 建 tenant;login/register 設 active org;guard 回 403 NO_ACTIVE_ORG 明確 | ✅ |
+| 7 | **provisioning 競態**(同 org 並發建立) | 重複 tenant | P2 | ensureTenantForOrg 以 `unique(auth_org_id)` 兜底 + 冪等;整合測 | ✅ |
+| 8 | **auth 服務 / DB 掛** | 全站不可登入 | P1 | getSession 失敗 → 401 fail-closed(核心不因 auth 降級而洩漏);@nestjs/terminus health(後續) | ✅ 降級明確 |
+| 9 | **對映缺失**(org 無 tenant / user 無 actor) | 請求失敗 | P2 | guard 回 403;user JIT upsert 冪等;可經 ensure 修復 | ✅ |
+| 10 | **rate-limit 誤傷**:get-session 高頻輪詢被 429 | 正常使用中斷 | P1 | 寫端點才嚴限;`/get-session` 放寬 2000/60s;瀏覽器實測驗證(M4 已踩到並修) | ✅ |
+| 11 | **enumeration**:登入洩漏帳號是否存在 | 資訊洩漏 | P2 | 登入錯誤統一「帳號或密碼錯誤」;整合測斷言 | ✅ |
+| 12 | **CSRF / 跨源狀態變更** | 未授權變更 | P1 | SameSite=Lax cookie + `trustedOrigins` 白名單 + Better Auth 內建 origin 檢查 | ✅ |
+| 13 | **baseURL 未設**(origin 推導 → callback/redirect 失效) | 登入異常 | P2 | `BETTER_AUTH_URL` 設定(prod 必設);dev 警告無害 | ✅ |
+
+**殘留 P1/P2 追蹤**:@nestjs/terminus health(#8 觀測)· 密碼重設 / MFA(scope out,見 §1.3)· session 裝置管理 · 未來啟 JWT plugin 時走 AGENTS 🔒-4 演算法白名單。
 
 ---
 
@@ -207,6 +228,7 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-19 | v1.0 | **M4 + M5 完成 → SHIPPED**|後端掛 `/api/auth/*` handler(configureApp,main/測同構)+ createAuth 接 baseURL/trustedOrigins;前端 authClient + 登入/註冊/登出 + `/app` 受保護 layout(強制登入僅 prod,對齊後端 dev/prod;登入設 active org)+ `/api/auth` 同源代理;硬化 = Better Auth rateLimit(寫端點嚴限 / get-session 放寬,修 M4 誤傷)+ 安全標頭 onSend + throttler + cookie httpOnly/SameSite;`e2e/auth.spec.ts` 固化(4 e2e 全綠)+ Playwright MCP 實走;§12 FMEA P0 全緩解。api 套件 110 綠。**dev header 已由真實認證取代(prod),F-2 上 prod 硬前提達成** | Claude Code |
 | 2026-07-19 | v0.7 | **M3 完成:AuthGuard(prod 真實 session)+ 跨租戶隔離**|`AuthGuard`(getSession→activeOrg→IdentityService→tenantId;剝 client 租戶 header;actor JIT upsert)· `TenantGuard` 環境分派(prod→Auth / dev·test→Dev)· 控制器換 TenantGuard · TenantContext 抽 `http/tenant-context.ts`、AUTH token 抽 `auth.tokens.ts`(解 module↔guard 循環)· org→tenant 走 `afterCreateOrganization` hook、user→actor 走 guard JIT · 5 隔離 e2e(無 session 401 / B 讀不到 A / 偽 header 無效 / 無 org 403);全套件 107 綠。M3 → ✅;`BETTER_AUTH_URL` / handler 掛載 續 M4/M5 | Claude Code |
 | 2026-07-19 | v0.6 | **M2 完成:org↔tenant · user↔actor 對映**|migration 0005(`users` Tier-1 系統表 + `tenants.auth_org_id` unique + `tenants.parent_tenant_id` 自參照預留;皆非 RLS)· `IdentityService`(ensureTenantForOrg / upsertUser 皆冪等 + getTenantIdByOrg / getActorIdByUser 軟刪回 null;註冊 AuthModule export)· 5 整合測(冪等 / unique / 未知 null / 漂移 / 軟刪復活);全 api 套件 102 綠。provisioning 觸發(org hook vs JIT)併 M3 定案 | Claude Code |
 | 2026-07-19 | v0.5 | **M1 完成:Better Auth DI 接入 NestJS**|`src/auth/auth.module.ts`(@Global,`AUTH` Symbol token via useFactory 注入 PG_POOL + ConfigService secret,export;註冊 AppModule)· `BETTER_AUTH_SECRET` 入 env schema(superRefine prod fail-fast + dev-only 佔位回退)· 加 1 DI 解析整合測 + 4 env 單元測;type-check/lint/auth 整合(5)/api e2e(9)全綠。M1 → ✅;Fastify handler 掛載 + AuthGuard 續 M3 | Claude Code |

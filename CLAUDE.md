@@ -14,7 +14,7 @@
 
 - 首波 pilot|鮮勇 為首波客戶(食品加工,既有 Ragic 用戶,內部有 3 家 ERP);pipeline 17 家集中食品/團膳,但平台不限產業
 - 現況|**2026-07-19 起進入 Phase 1 工程**(規劃已完成)。**✅ Gate P0-1(docs/13 最大 risk gate)全數達成**:後端 **form-engine-core v1.0 SHIPPED**(`apps/api` NestJS+Fastify;動態 schema/型別/DDL 安全鏈/記錄 DML/子表/RLS 隔離/REST API)+ UI **form-designer-ui v1.0 SHIPPED**(`apps/web/app/builder`;設計器雙模式 + 15 型別填單 + 子表 saveWithLines + 記錄檢視;Playwright golden path 固化)。瀏覽器可建表→加欄→填單→子表→檢視,引擎生成真實 PG 表。兩模組 doc 見 `docs/modules/R1/`。工程紀律|新 non-trivial 模組必先 M0 design doc + OQ 裁定(`docs/modules/_template.md`),模組索引 `docs/modules/MODULES.md`
-- 對外上 prod 前提|F-2 auth(Better Auth + JWT)+ form-engine-core §12.7 可靠性 checklist(idempotency key / quota / throttler / helmet)
+- 對外上 prod 前提|**✅ F-2 auth SHIPPED v1.0(2026-07-19)**(Better Auth + Argon2id + org↔tenant 對映 + AuthGuard session→tenant + 跨租戶隔離 e2e + 前端登入/註冊 + rateLimit/安全標頭/throttler 硬化;dev `x-dev-tenant`→真實認證,prod 生效)+ form-engine-core §12.7 可靠性 checklist(idempotency key / quota / throttler / helmet)
 
 ## 品牌故事(業務簡報第一頁用)
 
@@ -125,6 +125,8 @@
 ---
 
 ## 時間戳
+
+- 2026-07-19|**F-2 Auth SHIPPED v1.0(M0→M5,dev header→真實認證)**|承 R1 命門後補「對外上 prod 硬前提」。M1 Better Auth 引擎 DI 接入(Argon2id / secret prod fail-fast)→ M2 org↔tenant · user↔actor 對映(IdentityService 冪等 upsert;`users` + `tenants.auth_org_id`/`parent_tenant_id`,Tier-1 系統表非 RLS)→ M3 **AuthGuard**(getSession→activeOrg→tenantId;**剝除 client 租戶 header**;TenantGuard 環境分派 prod→Auth / dev→DevTenant;**跨租戶隔離 e2e:B 讀不到 A / 偽 header 無效**;org→tenant 走 `afterCreateOrganization` hook)→ M4 掛 `/api/auth/*` handler + 前端 authClient / 登入·註冊·登出 / `/app` 受保護 layout(**強制登入僅 prod**,對齊後端 dev/prod;登入設 active org)→ M5 硬化(Better Auth rateLimit 寫端點嚴限 + get-session 放寬〔M4 誤傷已修〕/ 安全標頭 onSend / throttler / cookie httpOnly·SameSite)+ `auth.spec` 固化 + **§12 FMEA P0 全緩解**。踩點:auth.module↔auth-guard 循環 import(AUTH token 抽 auth.tokens.ts)· fastify 4.28/4.29 型別重複(釘 4.28.1)· get-session 被自設 rateLimit 429。Playwright MCP 實走(註冊「鮮勇食品」→builder→登出→登入 org 名解析)。api 110 + web 4 e2e 綠。治理決策見 auth.md §6-bis(登入按角色分層 + owner 須公司可控可回收 + 社群不得為 sole owner + offboarding SOP)。
 
 - 2026-07-19|**docs/04 v2.7 ERP-parity 缺口審計(484 → 503)**|反思「取代 ERP」定位後對照鼎新/正航/Odoo 標配掃缺口(排除已規劃之銀行對帳/合併報表/預算控管):採積極型補 6 項全 R2 —— L 委外加工 5(食品加工硬需求)· J 票據管理 3 · K 信用額度 2 · O 營業稅申報 401/403 2(開票≠報稅)· E 職責分離 SoD/內控 3 · G 預建連接器庫 4(銀行/物流/電商/政府)。SoD/連接器 homed 於 A-I 但 release 歸 R2。**MVP 484→503(R2 +204→+223,R1 ~240 不變);對標 ~944;累計 440→503 +14% 由維運拖累吸收,band 不變**。對標暫緩|量測校驗 / 協同 portal。cascade|04 v2.7 · 25 v1.4 · 23 v6.5 · 13 v1.8 · 07 v2.14 · CLAUDE/README。相關|命門原則見 [[feedback-calc-binding-self-service]](算的綁定須自助化)。
 - 2026-07-19|**docs/04 v2.6 S22 設定頁深掘(480 → 484)**|用戶追問「通知設定 / 自建員工帳號 / AI API key 這類設定頁功能是否完整」→ 對照國際級設定頁分類(Salesforce Setup / M365 admin / Slack admin / Odoo Settings)逐類掃描:員工帳號 v2.5 已補;通知路由與個人偏好已有、**缺租戶通道連接憑證 UI**;**AI 設定頁全缺**(docs/17 只有 provider 抽象層工程面 —— OSS-only 下客戶 BYO API key 為唯一路徑,R1 AI 功能無此頁不可用)。全採補 3:A AI 設定頁 +2(BYO key 加密 / 模型 / 用量 / 資料外送同意 / 表單級 AI 開關)、H 通知通道連接 UI +1(LINE token / webhook / SMTP 網域驗證 + 測試發送)、G API 金鑰管理 UI +1(簽發/輪替/撤銷/scope);SSO 自助設定 UI 明文化入 A 認證。**MVP 484(R1 ~240);對標 ~911;band 不變(+0.8%)**。cascade|04 v2.6 · 25 v1.3 · 24 v1.4(S22 擴充)· 23 v6.4 · 13 v1.7(P1-I ~91)· 07 v2.13 · CLAUDE/README。

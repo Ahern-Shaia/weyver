@@ -12,7 +12,7 @@
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
 | Monorepo + NestJS + PG 骨架 | F-1 | ✅ 隨 form-engine-core M2 落地(`apps/api`)| —(見 R1/form-engine-core §9-bis)|
-| **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | 🚧 **M1 ✅**(引擎+DI,secret prod fail-fast)· **M2 ✅**(對映表 + IdentityService 冪等)· **M3 ✅**(AuthGuard session→tenant + 剝 client header + TenantGuard 環境分派 + 跨租戶隔離 e2e;org→tenant 走 afterCreateOrganization hook)· §6-bis 登入分層 + 帳號治理 · **續 M4 前端登入 + `/api/auth/*` handler 掛載**(TenantContext 介面不變 → services 零改;AUTH-8=場景 A 隔離,場景 B 僅預留 parent_tenant_id;三層 RBAC 屬 P0-4)| [foundation/auth.md](foundation/auth.md) |
+| **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | ✅ **SHIPPED v1.0**(M0–M5:引擎+DI · 對映表+IdentityService · AuthGuard session→tenant + 剝 client header + TenantGuard 環境分派 + 跨租戶隔離 e2e · `/api/auth/*` handler + 前端登入/註冊/登出 + 受保護 layout〔強制登入僅 prod〕· rateLimit/安全標頭/throttler 硬化 · auth.spec 固化 · FMEA P0 全緩解;§6-bis 登入分層+治理;org→tenant 走 afterCreateOrganization hook;**dev header→真實認證,R1 上 prod 硬前提達成**。三層 RBAC=P0-4;SSO/MFA=後續)| [foundation/auth.md](foundation/auth.md) |
 | UI shell + design tokens + deploy | F-3 | ✅ 前端 v2.1(`packages/ui` + `/app`)| —(見 docs/14)|
 
 ---
