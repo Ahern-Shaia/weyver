@@ -5,6 +5,7 @@
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
 | 表單引擎動態 schema 核心 | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清;對外上 prod 前提 = F-2 + §12.7 可靠性 checklist)| [form-engine-core.md](form-engine-core.md) |
+| 表單設計器 + 填單 接引擎 API | P0-1·UI | 🚧 **M0 DRAFT — 待裁定 OQ-FDU-1..6**(收 Gate P0-1 UI 路徑)| [form-designer-ui.md](form-designer-ui.md) |
 
 ## 下一個模組候選(依 docs/13 dependency)
 
