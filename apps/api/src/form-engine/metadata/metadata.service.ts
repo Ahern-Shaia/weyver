@@ -1,9 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { and, asc, eq, isNull } from "drizzle-orm"
+import { and, asc, eq, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { fieldDefs, formDefs } from "../../db/schema.js"
+import { FieldNotFoundError, FormNotFoundError } from "../errors.js"
 import { FIELD_TYPE_REGISTRY } from "../field-types/field-type-registry.js"
-import { normalizedOptions, type CreateFormSpec } from "../specs/form-specs.js"
+import { normalizedOptions, type AddFieldSpec, type CreateFormSpec } from "../specs/form-specs.js"
 
 export type FormDefRow = typeof formDefs.$inferSelect
 export type FieldDefRow = typeof fieldDefs.$inferSelect
@@ -11,12 +12,6 @@ export type FieldDefRow = typeof fieldDefs.$inferSelect
 export interface FormWithFields {
   readonly form: FormDefRow
   readonly fields: readonly FieldDefRow[]
-}
-
-export class FormNotFoundError extends Error {
-  constructor(formId: number) {
-    super(`form ${formId} not found`)
-  }
 }
 
 /* A1|metadata catalog CRUD(Drizzle 車道)。每查詢綁 tenantId(鐵則 3);
@@ -92,6 +87,105 @@ export class MetadataService {
     const updated = await this.db
       .update(formDefs)
       .set({ provisionState: state, updatedAt: new Date() })
+      .where(and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId)))
+      .returning({ id: formDefs.id })
+    if (updated.length === 0) throw new FormNotFoundError(formId)
+  }
+
+  async insertField(
+    tenantId: number,
+    formId: number,
+    spec: AddFieldSpec,
+    position: number,
+  ): Promise<FieldDefRow> {
+    const rows = await this.db
+      .insert(fieldDefs)
+      .values({
+        formId,
+        tenantId,
+        name: spec.name,
+        cellValueType: spec.type,
+        dbFieldType: FIELD_TYPE_REGISTRY[spec.type].dbFieldType,
+        options: normalizedOptions(spec.type, spec.options),
+        required: spec.required,
+        isUnique: spec.unique,
+        position,
+      })
+      .returning()
+    const row = rows[0]
+    if (row === undefined) throw new Error("insert field_def returned no row")
+    return row
+  }
+
+  async hardDeleteField(tenantId: number, fieldId: number): Promise<void> {
+    await this.db
+      .delete(fieldDefs)
+      .where(and(eq(fieldDefs.tenantId, tenantId), eq(fieldDefs.id, fieldId)))
+  }
+
+  async softDeleteField(tenantId: number, fieldId: number): Promise<void> {
+    const updated = await this.db
+      .update(fieldDefs)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(fieldDefs.tenantId, tenantId),
+          eq(fieldDefs.id, fieldId),
+          isNull(fieldDefs.deletedAt),
+        ),
+      )
+      .returning({ id: fieldDefs.id })
+    if (updated.length === 0) throw new FieldNotFoundError(fieldId)
+  }
+
+  async updateFieldType(
+    tenantId: number,
+    fieldId: number,
+    cellValueType: string,
+    dbFieldType: string,
+    options: Record<string, unknown>,
+  ): Promise<void> {
+    const updated = await this.db
+      .update(fieldDefs)
+      .set({ cellValueType, dbFieldType, options })
+      .where(
+        and(
+          eq(fieldDefs.tenantId, tenantId),
+          eq(fieldDefs.id, fieldId),
+          isNull(fieldDefs.deletedAt),
+        ),
+      )
+      .returning({ id: fieldDefs.id })
+    if (updated.length === 0) throw new FieldNotFoundError(fieldId)
+  }
+
+  async softDeleteForm(tenantId: number, formId: number): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const updated = await tx
+        .update(formDefs)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+        )
+        .returning({ id: formDefs.id })
+      if (updated.length === 0) throw new FormNotFoundError(formId)
+      await tx
+        .update(fieldDefs)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            eq(fieldDefs.tenantId, tenantId),
+            eq(fieldDefs.formId, formId),
+            isNull(fieldDefs.deletedAt),
+          ),
+        )
+    })
+  }
+
+  async bumpVersion(tenantId: number, formId: number): Promise<void> {
+    const updated = await this.db
+      .update(formDefs)
+      .set({ version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
       .where(and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId)))
       .returning({ id: formDefs.id })
     if (updated.length === 0) throw new FormNotFoundError(formId)

@@ -72,6 +72,23 @@ export const fieldDefs = pgTable(
   ],
 )
 
+/* DDL 全程 audit(who / spec / sql / result;docs/22) */
+export const ddlAudits = pgTable(
+  "ddl_audit",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }),
+    action: text("action").notNull(),
+    spec: jsonb("spec").notNull().default({}),
+    executedSql: text("executed_sql"),
+    result: text("result").notNull(),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ddl_audit_tenant_idx").on(t.tenantId, t.createdAt)],
+)
+
 /* P0-3 Link&Load 用;本模組只建結構(stub) */
 export const relationDefs = pgTable(
   "relation_def",
