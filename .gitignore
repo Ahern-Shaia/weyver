@@ -39,3 +39,8 @@ test-results/
 
 # shadcn MCP 設定(本機用,不入版控)
 .mcp.json
+
+# 開發過程暫存物(截圖 / log;正式資產都在 docs/ 底下不受影響)
+/*.png
+/*.jpg
+*.log
