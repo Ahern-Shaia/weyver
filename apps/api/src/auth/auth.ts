@@ -1,6 +1,6 @@
 import { hash, verify } from "@node-rs/argon2"
 import { betterAuth } from "better-auth"
-import { organization } from "better-auth/plugins"
+import { organization, twoFactor } from "better-auth/plugins"
 import type { Pool } from "pg"
 
 /* org 建立時的 provisioning 回呼(M2 IdentityService 綁入,見 auth.module.ts):
@@ -58,9 +58,14 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
         "/sign-in/email": { window: 60, max: 5 },
         "/sign-up/email": { window: 60, max: 5 },
         "/get-session": { window: 60, max: 2000 },
+        // 二步驟驗證碼暴力防護(F-4 MFA)
+        "/two-factor/verify-totp": { window: 60, max: 5 },
+        "/two-factor/verify-backup-code": { window: 60, max: 5 },
       },
     },
-    plugins: [orgPlugin],
+    // F-4 MFA:TOTP 二步驟驗證(skipVerificationOnEnable 預設 false → enable 後須 verifyTotp 才啟用;
+    // secret 由 app secret 加密、backup codes 雜湊,皆 Better Auth 內建)
+    plugins: [twoFactor({ issuer: "Weyver" }), orgPlugin],
   })
 }
 

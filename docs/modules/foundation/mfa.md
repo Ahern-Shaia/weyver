@@ -1,6 +1,6 @@
 # mfa.md — [F-4] 二步驟驗證(MFA / TOTP) 設計文件
 
-> ✅ **狀態:APPROVED — OQ-MFA-1..6 全採建議(2026-07-20 裁定)**。進 M1。
+> 🚧 **APPROVED · M1 ✅**(後端 twoFactor plugin + spike 確認 flow + 4 整合測);續 M2(設定啟用/停用 UI)。OQ-MFA-1..6 全採建議(2026-07-20 裁定)。
 >
 > **一句話**|在已 SHIPPED 的 F-2 認證上,加**自助 TOTP 二步驟驗證**:使用者用 authenticator app(Google Authenticator / 1Password / Authy)綁定,登入時密碼通過後再驗一次性碼才發 session。純自助、不需 email/簡訊基礎設施。
 >
@@ -103,7 +103,7 @@
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(OQ-MFA-1..6 全採建議,2026-07-20)| ✅ |
-| **M1** A1 | twoFactor plugin + migration + spike 驗證 API 形狀 + 後端整合測(enable/challenge/verify/停用/暴力)| ⬜ |
+| **M1** A1 | twoFactor plugin + migration + spike 驗證 API 形狀 + 後端整合測 | ✅ **DONE**|createAuth 掛 `twoFactor({ issuer: "Weyver" })`(secret 加密/backup 雜湊內建);`twoFactor` 表由 getMigrations 生成;rateLimit 加 `/two-factor/verify-totp`、`/verify-backup-code` 5/60s。**spike 確認 API 形狀**:`enableTwoFactor({password})`→`{totpURI,backupCodes}`(未啟用)→ `verifyTOTP` 才啟用;啟用後 `signInEmail` 回 **`twoFactorRedirect:true`(不發完整 session)** → 帶 challenge cookie `verifyTOTP`/`verifyBackupCode` 才發 session。4 整合測(表建立+enable / 登入二步 / 錯碼拒 / **backup 一次性**;otplib 確定性產碼)。全 api 套件 114 綠 |
 | **M2** A2 | 帳號設定「二步驟驗證」UI(啟用 QR + backup codes + 停用)| ⬜ |
 | **M3** A3 | 登入 challenge 第二步 UI(`/login/2fa`,TOTP + backup)| ⬜ |
 | **M4** 收尾 | 安全硬化(驗證端點 rate-limit)+ Playwright 固化 + FMEA + SHIPPED | ⬜ |
@@ -133,5 +133,6 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-20 | v0.3 | **M1 後端完成**|createAuth 掛 twoFactor plugin(issuer Weyver;secret/backup 內建保護)+ verify 端點 rateLimit;spike 確認 Better Auth flow(enable→verifyTotp 啟用 / signIn→twoFactorRedirect / challenge cookie→verify 發 session);4 整合測(otplib 確定性產碼)綠;api 套件 114 | Claude Code |
 | 2026-07-20 | v0.2 | OQ-MFA-1..6 全採建議裁定(TOTP+backup only · opt-in+預留 org policy · 不做 trustDevice · 前端生 QR · Better Auth 內建保護 · 獨立 F-4);狀態 → APPROVED,進 M1 | Claude Code |
 | 2026-07-20 | v0.1 | 初版 DRAFT — F-4 MFA(TOTP + backup codes);承 2026-07-20 對話裁定「MFA 可提前、密碼重設等 email、SSO 等客戶」;上游 F-2 auth SHIPPED + Better Auth two-factor 核心 plugin;A1–A4 切分 + OQ-MFA-1..6;scope out email/SMS OTP · passkey · org 強制 · trustDevice | Claude Code |
