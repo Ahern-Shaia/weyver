@@ -24,7 +24,7 @@
 | **表單引擎動態 schema 核心** | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清)| [R1/form-engine-core.md](R1/form-engine-core.md) |
 | **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | Grid 主檢視 + Excel 建表 onboarding | P0-2 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M4;Glide 網格改格 + xlsx 推斷建表 bulk 灌資料;e2e 固化 + FMEA P0 全清)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
-| 公式引擎 + Link&Load | P0-3 | ✅ **M0 APPROVED — OQ-FML-1..8 全採建議**(OQ-FEC-7 拍板 fork Teable `packages/formula` MIT;N+1 頭號風險;進 M1)| [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
+| 公式引擎 + Link&Load | P0-3 | ✅ **M0 APPROVED**(OQ-FML-1..8 全採建議;OQ-FEC-7 fork Teable MIT;v0.3 補企業級參考 HyperFormula/Airtable/Salesforce DLRS/Notion;OQ-9/10 待裁定不阻擋 M1)| [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | 三層權限 + 通知(通訊平台）+ Ops | P0-4 | ⬜ | 待建 |
 | 每表單自動 API + Public Form + webhook | P0-5 | ⬜(zod-openapi;M6 deviation 於此落地)| 待建 |
 | Ragic A–I 補齊(BI/報表/樞紐/mobile PWA/電子簽章基本/i18n/系統管理）| P1-I | ⬜ | 待建 |

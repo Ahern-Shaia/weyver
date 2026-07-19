@@ -1,6 +1,6 @@
 # formula-and-linkload.md — [P0-3] 公式引擎 + 關聯 Link&Load 設計文件
 
-> ✅ **狀態:APPROVED — OQ-FML-1..8 全採建議(2026-07-19 裁定)**;含 OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,clean-room),進 M1
+> ✅ **狀態:APPROVED — OQ-FML-1..8 全採建議(2026-07-19 裁定)**;含 OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,clean-room),進 M1。**OQ-FML-9/10(2026-07-19 企業級研究後新增)待裁定**——不阻擋 M1/M2,於 M4(Rollup)前定即可
 >
 > **一句話**|Ragic 兩大招牌的技術核心:**欄位公式即時重算**(C 模組)+ **關聯 Link&Load / Lookup / Rollup**(D 模組)。兩者共用「依賴圖 + 重算引擎」故合為一個 P0-3 模組。**這是 R1 實作模組**(非 design-ahead)。
 >
@@ -51,6 +51,22 @@
 
 ---
 
+## 2-bis. 巨人的肩膀:企業級公式 / Rollup 引擎做法參考(2026-07-19 web 研究)
+
+> 除 docs/16 的 OSS 同類(Teable/Baserow/NocoDB)外,對照企業級 / 業界標竿的實證架構,把「計算引擎內構」與「Rollup at scale」做對。
+
+| 系統 | 類型 / 授權 | 借鏡到本模組(不採其實作,採其架構經驗)|
+|---|---|---|
+| **HyperFormula**(Handsontable)| Excel 級計算引擎 · GPL/商用(**不採碼,只借架構**)| **A1/A2 計算引擎黃金內構**:`Parser(→AST) → DependencyGraph(有向圖,vertex=cell/range)→ Interpreter`;**增量重算(只算受影響 cell)**;**循環偵測 = 強連通分量 SCC 分解(Tarjan)**,非樸素 DFS;**lazy computation**;range 為一等 vertex |
+| **Airtable** | 專有(借 UX 語意)| **A3/A4 語意分類**:`rollup = lookup + formula`;**條件式 rollup**(篩選哪些子記錄計入,如「只加已核准明細」)→ OQ-FML-10;即時重算 |
+| **Salesforce Roll-Up Summary + DLRS** | 標準功能 + DLRS 開源 | **A2/A5 三種重算模式**:**Realtime(同步)/ Scheduled(背景)/ Bulk-API(初始 backfill·全重算)**;**⚠️ 反面教材(本模組必修正)**:①標準 rollup 刪子記錄**不自動重算**→ 本模組刪/改子必精準重算(7-bis.3 硬需求);②不支援 grandchild **多層** rollup → OQ-FML-9;③25 rollup/物件**武斷上限** → 本模組不設武斷上限,以物化 + 依賴圖擴展 |
+| **Notion** | 專有(借模型)| rollup 擴充 relation;背景自動重算;函數集 SUM/AVG/COUNT/MIN/MAX/MEDIAN/RANGE/percent-empty(對映 A1 聚合函數)|
+| **Teable / Baserow / NocoDB** | Teable `packages/*` MIT(**可 fork**)| docs/16:parser fork Teable ANTLR `Formula.g4`;求值**混合式**(讀時算 + 物化 PG generated column);canvas grid |
+
+**綜合設計結論**|本模組的 A2 重算引擎採 **HyperFormula 式架構**(增量 + SCC 循環偵測 + lazy),parser 採 **Teable ANTLR fork**(MIT,OQ-FML-1),Rollup 採 **Airtable 語意 + DLRS 三模式**,並**刻意修正 Salesforce 三個已知痛點**(刪除重算 / 多層 / 武斷上限)—— 這三點正好是差異化空間。
+
+---
+
 ## 3. 剩餘 scope 切分
 
 | 子題 | 內容 | 難度 |
@@ -95,7 +111,9 @@ formula_def
 ## 5. A2|依賴圖 + 重算引擎(命門)
 
 - **依賴圖(DAG)**|每個公式 / Lookup / Rollup 欄記錄其 `depends_on`;全表 / 跨表構成有向圖。
-- **循環偵測**|建立 / 修改公式時偵測環,**設計期 reject**(OQ-FML-3);不允許 runtime 才發現。
+- **循環偵測(SCC)**|採 **HyperFormula 式強連通分量分解(Tarjan)** 而非樸素 DFS —— 建 / 改公式時偵測環,**設計期 reject**(OQ-FML-3);runtime 兜底防無限重算。SCC 亦讓「一組互相依賴」的錯誤一次點出。
+- **增量重算(HyperFormula 式)**|record 寫入 → 依依賴圖找**只受影響的下游** → 拓樸序重算(非全表);lazy:未讀取的物化欄可延後算。
+- **三種重算模式(Salesforce DLRS 式)**|**Realtime**(同步,關鍵值如過帳基礎)/ **Scheduled**(背景 BullMQ,重 Rollup)/ **Bulk backfill**(新增公式 / 關聯時對既有列一次性回填,分批不鎖表)。
 - **重算策略(混合,Teable pattern,OQ-FML-2)**|
   - **讀時算**|簡單、同列、輕量公式(單價 × 數量)→ 讀時求值 / PG generated column,不落額外儲存。
   - **物化**|重 Rollup / 跨表聚合 / 高頻讀 → 物化欄(觸發器 / 背景重算維護),避免每次讀掃全子表。
@@ -115,7 +133,10 @@ formula_def
 ## 7. A4|Lookup + Rollup(N+1 命門)
 
 - **Lookup**|即時從關聯記錄拉一欄(唯讀;來源變動即反映)。與 Load 差異:Lookup 不快照、恆為來源現值。
-- **Rollup**|對子表明細 / 一對多關聯做聚合(訂單合計 = SUM 明細金額;COUNT / AVG / MIN / MAX)。
+- **Rollup**|對子表明細 / 一對多關聯做聚合(訂單合計 = SUM 明細金額;COUNT / AVG / MIN / MAX / MEDIAN / RANGE;函數集對映 Notion)。
+- **條件式 Rollup(Airtable 式,OQ-FML-10)**|可篩選哪些子記錄計入(如「只加狀態=已核准的明細」)。
+- **多層鏈式 Rollup(OQ-FML-9;修 Salesforce 不支援 grandchild)**|Rollup 欄本身可被上層 Rollup 依賴(訂單→明細→批次遞迴)—— 依賴圖天生支援鏈式,設**深度上限**防爆炸。此為差異化(Salesforce 至今不支援)。
+- **刪 / 改子記錄必精準重算(修 Salesforce 標準 rollup 之已知痛點)**|子記錄刪除 / 修改 → 依賴圖精準失效 → 只重算受影響父列 Rollup。**非選項,是正確性底線**(7-bis.3)。
 - **N+1 防護(AGENTS 明列瓶頸)**|
   - 列表 / grid 載入 N 列且各含 Lookup/Rollup → **dataloader 批次**(一次 IN 查詢)或**正確 join**,禁逐列查。
   - 重 Rollup 物化(A2),讀列表時直接讀物化欄不即時聚合。
@@ -209,7 +230,7 @@ formula_def
 
 ---
 
-## 12. 開放問題(OQ-FML-N)— ✅ 已裁定(2026-07-19,全採建議)
+## 12. 開放問題(OQ-FML-N)— OQ-1..8 ✅ 已裁定(全採建議);OQ-9/10 研究後新增待裁定
 
 | # | 議題 | 選項 | 裁定(全採建議)|
 |---|---|---|---|
@@ -221,6 +242,8 @@ formula_def
 | **OQ-FML-6** | 函數集 MVP 範圍 | A. math/logic/text/date/聚合 核心 ~30 函數 <br> B. 對齊 Ragic/Airtable 全集 <br> C. 極簡僅四則 + IF | **A** — 覆蓋 80% 場景;其餘(財務函數 / 進階文字 / 正則)P1-I 逐一加 registry。避免一次做全集 |
 | **OQ-FML-7** | 前後端求值一致 | A. 同 ANTLR 文法編譯到 JS(前端預覽)+ 後端(權威),共享語意 <br> B. 前端另寫一套 <br> C. 前端不預覽,一律後端 | **A** — 單一文法來源避免前後端漂移;後端恆為權威,前端僅即時預覽(docs/14) |
 | **OQ-FML-8** | 物化 vs 讀時算 選擇準則 | A. 依 fan-in(被多少下游依賴)+ 讀寫比 + 是否跨表聚合 自動 / 半自動決定 <br> B. 一律讓用戶手選 <br> C. 全預設讀時算,超標才物化 | **A** — 預設規則自動分流(跨表 Rollup / 高讀寫比 → 物化;同列輕量 → 讀時算),進階可覆寫;不逼用戶懂物化 |
+| **OQ-FML-9**(研究後新增)| 多層鏈式 Rollup(grandchild)| A. 支援(依賴圖天生鏈式 + 深度上限)<br> B. 只單層(如 Salesforce 標準)| **A** — 依賴圖本就支援 Rollup 欄再被上層 Rollup 依賴;設深度上限(如 ≤5)防爆炸。**差異化**(Salesforce 至今不支援 grandchild);待用戶確認是否 MVP 就開或限深度 |
+| **OQ-FML-10**(研究後新增)| 條件式 Rollup(篩選子記錄)| A. MVP 就做(篩選「哪些子記錄計入」)<br> B. P1-I 再補 | **A** — Airtable 標配,客戶常用場景(「訂單合計只加已核准明細」);與 Rollup 同期做邊際成本低。待用戶確認 MVP 範圍 |
 
 ---
 
@@ -242,3 +265,4 @@ formula_def
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
+| 2026-07-19 | v0.3 | **企業級做法研究(站在巨人肩膀上)**:新增 §2-bis 參考表(HyperFormula 計算引擎內構 + SCC 循環偵測 + 增量 + lazy · Airtable 條件式 rollup · Salesforce DLRS 三重算模式 + 三反面教材 · Notion 函數集);A2/A4 據此強化(SCC / 增量 / Realtime·Scheduled·Bulk 三模式 / 條件式 rollup / 多層鏈式 / 刪除必重算);新增 OQ-FML-9(多層 rollup)+ OQ-FML-10(條件式 rollup)待裁定(不阻擋 M1/M2)| Claude Code |
