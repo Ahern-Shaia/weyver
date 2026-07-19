@@ -11,7 +11,8 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common"
-import { DevTenantGuard, type TenantContext } from "../../http/dev-tenant.guard.js"
+import { TenantGuard } from "../../auth/tenant.guard.js"
+import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
@@ -34,7 +35,7 @@ import type { z } from "zod"
 
 /* 薄 controller(AGENTS 分層鐵則):只做 HTTP 形狀 ↔ service 呼叫,零業務邏輯 */
 @Controller("api/forms")
-@UseGuards(DevTenantGuard)
+@UseGuards(TenantGuard)
 export class FormsController {
   constructor(
     @Inject(DdlService) private readonly ddl: DdlService,

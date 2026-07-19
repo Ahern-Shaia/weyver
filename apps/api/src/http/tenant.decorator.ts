@@ -1,5 +1,5 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common"
-import type { RequestWithTenant, TenantContext } from "./dev-tenant.guard.js"
+import type { RequestWithTenant, TenantContext } from "./tenant-context.js"
 
 export const Tenant = createParamDecorator(
   (_data: unknown, context: ExecutionContext): TenantContext => {

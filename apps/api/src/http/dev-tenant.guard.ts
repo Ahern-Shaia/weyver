@@ -7,16 +7,9 @@ import {
 } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { Inject } from "@nestjs/common"
-import type { FastifyRequest } from "fastify"
+import type { RequestWithTenant } from "./tenant-context.js"
 
-export interface TenantContext {
-  readonly tenantId: number
-  readonly actorId: number
-}
-
-export type RequestWithTenant = FastifyRequest & { tenantContext?: TenantContext }
-
-/* ⚠️ F-2(Better Auth + JWT)前的開發期 stub:
+/* ⚠️ 開發 / 測試期 stub(prod 由 AuthGuard 接管,見 tenant.guard.ts 分派):
    - 租戶識別暫取 x-dev-tenant header(F-2 後改為驗證過的 JWT tenant_id,剝除 client header — 鐵則 3)
    - production 一律拒絕(fail-closed):auth 未接不得對外服務 */
 @Injectable()
