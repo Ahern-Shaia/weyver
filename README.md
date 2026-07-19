@@ -19,7 +19,7 @@
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver T 策略)|
 | **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver J-Q 策略)|
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Weyver A-I 借鑑分類)|
-| **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-18 v9**(OSS-only stack + Modular Monolith;**§ 7.10 AI 輔助設計工具鏈(Skills + MCP)**;§ 16.5-16.11 Prod 雲端部署架構 AWS/GCP + 全服務成本|主推 GCP 台灣區 + Cloud Run;Tier E ~NT$14-22K/月)|
+| **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-19 v10**(OSS-only stack + Modular Monolith;**v10 § 7–8 視覺數值對齊 docs/14 v2.1**|清 v1 軟 SaaS 殘留 IBM Plex / 三配色 / 禁陰影框線 / 方角禁 pill / 動效近乎無;§ 7.10 AI 工具鏈保留;§ 16.5-16.11 Prod 雲端部署 AWS/GCP|主推 GCP 台灣區 + Cloud Run)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
 | **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.3**(**buildable sprint 順序**|Phase 1 Ragic 229 → Phase 2 ERP +203 → Phase 3 MES/ISO +40;sprint 代號 legend;HR→Phase 2、MES/ISO→Phase 3(docs/25 C1);dependency + solo M18 + risk gates)|
 | **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-19 v2.1**(**嚴謹企業級定案**|上游=docs/24 form-first;全框線/方角/禁陰影 pill/扁平分段條/密度/信任訊號;套件×surface 對映;權威稿 workspace-form-first-v2(內建三主題切換器);**v2.1 三配色主題定案**(深藍預設/深海青/石墨))|
