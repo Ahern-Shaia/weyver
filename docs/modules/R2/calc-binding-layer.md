@@ -1,6 +1,6 @@
 # calc-binding-layer.md — [R2 命門] 語意計算綁定層(自由表單 ↔ 算)設計文件
 
-> 🚧 **狀態:DRAFT — 待裁定 OQ-CBL-1..8(2026-07-19)**
+> ✅ **狀態:APPROVED — OQ-CBL-1..8 全採建議(2026-07-19 裁定)**;R2 design-ahead,M1–M7 待 R2 計算層啟動時實作
 >
 > **一句話**|把「用戶自建的自由表單」連到「剛性計算層(GL 過帳 / 估值 / 成本 / MRP)」的那座橋。**橋本身必須自助化(no-code)**——否則背叛 Ragic 核心價值,Weyver 退化成剛性 ERP。此為「以 Ragic 表單引擎為基底,取代 ERP」能否兌現的地基(見 memory `feedback-calc-binding-self-service`)。
 >
@@ -194,11 +194,11 @@ Drizzle 固定 schema(非動態 Tier-2);binding 引用的 form 欄位為軟引�
 
 ---
 
-## 10. 開放問題(OQ-CBL-N)— 待裁定
+## 10. 開放問題(OQ-CBL-N)— ✅ 已裁定(2026-07-19,全採建議)
 
 > 命門總約束(所有 OQ 之答案不得違反)|**綁定必須自助化,逃生門絕不落到寫程式**([[feedback-calc-binding-self-service]])。
 
-| # | 議題 | 選項 | 建議 |
+| # | 議題 | 選項 | 裁定(全採建議)|
 |---|---|---|---|
 | **OQ-CBL-1** | 綁定表達層次 | A. 語意角色映射(L1)+ ZEN 決策(L3)分層,簡單情形免 ZEN <br> B. 一律走 ZEN <br> C. 只做固定映射不做條件決定 | **A** — 簡單綁定(單科目)用 L1 零決策表,依欄位值決定科目 / 稅才用 ZEN;兼顧「簡單事簡單做」與「複雜可自助」,不強迫每個綁定都碰決策表 |
 | **OQ-CBL-2** | 科目決定機制 | A. ZEN 決策表(輸入品項/對象/稅別 → 科目)<br> B. 表單欄位直接選科目 <br> C. 兩者皆可 | **C** — 預設 B(用戶欄位就標「科目」角色,直接選);進階(依品類自動決科目)用 A(ZEN)。承 OQ-CBL-1 分層精神 |
@@ -228,3 +228,4 @@ Drizzle 固定 schema(非動態 Tier-2);binding 引用的 form 欄位為軟引�
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — 命門「語意計算綁定層」;A1–A7 切分 + OQ-CBL-1..8;上游 = docs/15 引擎(SHIPPED)+ docs/18 算 + docs/20 ZEN/DBOS + docs/17 AI;自助化四級階梯(L0 模板 / L1 角色 / L2 AI 提議 / L3 ZEN)為命門約束落地;R2 design-ahead,人月內含 R2 計算層預算 | Claude Code |
+| 2026-07-19 | v0.2 | OQ-CBL-1..8 全採建議裁定;狀態 DRAFT → APPROVED(R2 design-ahead,M1–M7 待 R2 計算層啟動實作)| Claude Code |
