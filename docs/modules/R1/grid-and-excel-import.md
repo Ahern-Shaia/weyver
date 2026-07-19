@@ -131,7 +131,7 @@
 | 里程碑 | 內容 | 預估 | 狀態 |
 |---|---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-GEI-1..7)| — | ⏳ |
-| **M1** A1 | bulk 建立 API + hooks + 整合測試 | ~3 天 | ⏳ |
+| **M1** A1 | bulk 建立 API + hooks + 整合測試 | ~3 天 | ✅ 2026-07-19(fa05d65;api 64 tests + live smoke;rollback+rowIndex)|
 | **M2** A2 | Glide 網格接引擎(讀 + cell edit + 新增列)| ~1.5 週 | ⏳ |
 | **M3** A3+A4 | Excel 解析 + 型別推斷 + 預覽校正 + 建表灌資料 | ~2 週 | ⏳ |
 | **M4** A5 + 收尾 | Playwright 固化 + FMEA + SHIPPED | ~4 天 | ⏳ |
