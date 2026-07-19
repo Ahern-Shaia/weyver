@@ -1,17 +1,23 @@
 import {
   collectAstReferences,
+  detectCycle,
+  evaluateFormula,
+  evaluationOrder,
   type FormulaAst,
+  type FormulaNode,
   FormulaSyntaxError,
   type FormulaType,
+  type FormulaValue,
   inferAstType,
   parseFormula,
 } from "@weyver/formula"
 import { Inject, Injectable } from "@nestjs/common"
-import { sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { formulaDefs } from "../../db/schema.js"
 import {
   FieldNotFoundError,
+  FormulaCycleError,
   FormulaDefinitionError,
   FormulaReferenceError,
   FormulaSelfReferenceError,
@@ -38,20 +44,49 @@ function toFormulaType(cellValueType: string): FormulaType {
   return "unknown"
 }
 
+/* 原始記錄值 → 公式值(布林保留;其餘轉字串,求值器再依運算子強制轉 Decimal 等)*/
+function toFormulaValue(raw: unknown): FormulaValue {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === "boolean") return raw
+  return String(raw)
+}
+
+function parseDeps(raw: unknown): number[] {
+  return Array.isArray(raw) ? raw.filter((x): x is number => typeof x === "number") : []
+}
+
 export interface FormulaDefinition {
   readonly fieldId: number
   readonly resultType: FormulaType
   readonly dependsOn: readonly number[]
 }
 
-/* A1|公式定義(metadata 車道 DRIZZLE):parse → 收集參照 → 名稱解析成 field id(穩定於改名)
-   → 型別推斷 → 存 formula_def。unknown 參照 / 自我參照 / 語法錯 皆設計期擋。依賴圖重算為 M2。 */
+interface StoredDef {
+  readonly fieldId: number
+  readonly exprSource: string
+  readonly dependsOn: number[]
+}
+
+/* 公式引擎(P0-3):定義(parse / 依賴解析 / 型別推斷 / 循環偵測)+ 讀時重算(拓樸序)。
+   metadata 車道 DRIZZLE;依賴 depends_on 存 field id(穩定於改名)。物化 / 背景重算為後續優化(OQ-FML-8)。 */
 @Injectable()
 export class FormulaService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(MetadataService) private readonly metadata: MetadataService,
   ) {}
+
+  private async loadDefs(tenantId: number, formId: number): Promise<StoredDef[]> {
+    const rows = await this.db
+      .select()
+      .from(formulaDefs)
+      .where(and(eq(formulaDefs.tenantId, tenantId), eq(formulaDefs.formId, formId)))
+    return rows.map((r) => ({
+      fieldId: r.fieldId,
+      exprSource: r.exprSource,
+      dependsOn: parseDeps(r.dependsOn),
+    }))
+  }
 
   async defineFormula(
     tenantId: number,
@@ -79,6 +114,18 @@ export class FormulaService {
       dependsOn.push(ref.id)
     }
 
+    // 循環偵測:既有定義(去掉本欄舊版)+ 本候選 → Tarjan SCC(HyperFormula 式)
+    const existing = await this.loadDefs(tenantId, formId)
+    const nodes: FormulaNode[] = existing
+      .filter((d) => d.fieldId !== fieldId)
+      .map((d) => ({ fieldId: d.fieldId, dependsOn: d.dependsOn }))
+    nodes.push({ fieldId, dependsOn })
+    const cycle = detectCycle(nodes)
+    if (cycle !== null) {
+      const idToName = new Map(fields.map((f) => [f.id, f.name]))
+      throw new FormulaCycleError(cycle.map((id) => idToName.get(id) ?? `#${id}`))
+    }
+
     const resultType = inferAstType(ast, (name) => {
       const f = byName.get(name)
       return f === undefined ? "unknown" : toFormulaType(f.cellValueType)
@@ -93,5 +140,44 @@ export class FormulaService {
       })
 
     return { fieldId, resultType, dependsOn }
+  }
+
+  /* 讀時重算(M2 核心;讀時算模式):給一筆記錄原始值 → 依拓樸序算出所有公式欄值(鏈式正確)。
+     回傳以「公式欄名 → 值」。物化 / 背景 / bulk 模式為後續優化。 */
+  async computeRecord(
+    tenantId: number,
+    formId: number,
+    rawValues: Record<string, unknown>,
+  ): Promise<Record<string, FormulaValue>> {
+    const { fields } = await this.metadata.getForm(tenantId, formId)
+    const defs = await this.loadDefs(tenantId, formId)
+    if (defs.length === 0) return {}
+
+    const byName = new Map(fields.map((f) => [f.name, f]))
+    const nameById = new Map(fields.map((f) => [f.id, f.name]))
+    const defByField = new Map(defs.map((d) => [d.fieldId, d]))
+    const order = evaluationOrder(defs.map((d) => ({ fieldId: d.fieldId, dependsOn: d.dependsOn })))
+
+    const computed = new Map<number, FormulaValue>()
+    const resolve = (name: string): FormulaValue => {
+      const field = byName.get(name)
+      if (field === undefined) return null
+      const memo = computed.get(field.id)
+      if (memo !== undefined) return memo
+      return toFormulaValue(rawValues[name])
+    }
+
+    for (const fieldId of order) {
+      const def = defByField.get(fieldId)
+      if (def === undefined) continue
+      computed.set(fieldId, evaluateFormula(def.exprSource, resolve))
+    }
+
+    const out: Record<string, FormulaValue> = {}
+    for (const [fieldId, value] of computed) {
+      const name = nameById.get(fieldId)
+      if (name !== undefined) out[name] = value
+    }
+    return out
   }
 }

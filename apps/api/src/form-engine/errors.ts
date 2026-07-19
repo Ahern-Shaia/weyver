@@ -110,3 +110,9 @@ export class FormulaSelfReferenceError extends DomainError {
     super(`公式不可參照自身:${name}`)
   }
 }
+
+export class FormulaCycleError extends DomainError {
+  constructor(names: readonly string[]) {
+    super(`公式循環依賴:${names.join(" → ")}`)
+  }
+}

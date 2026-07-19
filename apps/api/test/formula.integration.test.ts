@@ -5,8 +5,10 @@ import { createDdlKnex, createDrizzle, type DrizzleDb } from "../src/db/db.modul
 import { runMigrations } from "../src/db/migrate.js"
 import { formulaDefs, tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
+import { toText } from "@weyver/formula"
 import {
   FieldNotFoundError,
+  FormulaCycleError,
   FormulaDefinitionError,
   FormulaReferenceError,
   FormulaSelfReferenceError,
@@ -121,5 +123,23 @@ describe("FormulaService.defineFormula", () => {
     await expect(formula.defineFormula(tenantA, formId, 999_999, "1 + 1")).rejects.toThrow(
       FieldNotFoundError,
     )
+  })
+})
+
+describe("FormulaService — 循環偵測 + 讀時重算(M2)", () => {
+  it("跨欄循環依賴 → FormulaCycleError(Tarjan SCC)", async () => {
+    // 小計 依賴 數量;再讓 數量 依賴 小計 → 環
+    await formula.defineFormula(tenantA, formId, field.小計 ?? 0, "{數量} * 2")
+    await expect(
+      formula.defineFormula(tenantA, formId, field.數量 ?? 0, "{小計} + 1"),
+    ).rejects.toThrow(FormulaCycleError)
+  })
+
+  it("讀時重算:鏈式公式依拓樸序算出(數量 為公式 → 小計 依賴之)", async () => {
+    await formula.defineFormula(tenantA, formId, field.數量 ?? 0, "5 + 5")
+    await formula.defineFormula(tenantA, formId, field.小計 ?? 0, "{數量} * {單價}")
+    const computed = await formula.computeRecord(tenantA, formId, { 單價: "12.5" })
+    expect(toText(computed.數量 ?? null)).toBe("10")
+    expect(toText(computed.小計 ?? null)).toBe("125") // 拓樸序:數量(10)先算 → 小計 = 10 × 12.5
   })
 })

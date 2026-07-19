@@ -5,6 +5,8 @@ export type { FieldResolver } from "./evaluate"
 export { inferAstType, inferFormulaType } from "./infer"
 export type { FieldTypeResolver } from "./infer"
 export { collectAstReferences, collectFormulaReferences } from "./references"
+export { detectCycle, evaluationOrder, FormulaCycleError } from "./graph"
+export type { FormulaNode } from "./graph"
 export { callFunction, functionReturnType, isKnownFunction } from "./functions"
 export {
   compareValue,
