@@ -12,7 +12,7 @@
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
 | Monorepo + NestJS + PG 骨架 | F-1 | ✅ 隨 form-engine-core M2 落地(`apps/api`)| —(見 R1/form-engine-core §9-bis)|
-| **Auth + 租戶 context + RBAC**(Better Auth + JWT + nestjs-cls)| F-2 | ⬜ **對外上線硬前提**(form-engine-core FMEA §12.7:T1/T2/T4 治本)| 待建 |
+| **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | 📝 **M0 DRAFT — 待裁定 OQ-AUTH-1..8**(對外上線硬前提;保留 TenantContext 介面 → services 零改;三層 RBAC 屬 P0-4)| [foundation/auth.md](foundation/auth.md) |
 | UI shell + design tokens + deploy | F-3 | ✅ 前端 v2.1(`packages/ui` + `/app`)| —(見 docs/14)|
 
 ---
