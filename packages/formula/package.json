@@ -1,0 +1,22 @@
+{
+  "name": "@weyver/formula",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome lint src",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf .turbo node_modules/.cache"
+  },
+  "dependencies": {
+    "antlr4ts": "0.5.0-alpha.4"
+  },
+  "devDependencies": {
+    "@weyver/config": "workspace:*",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  }
+}

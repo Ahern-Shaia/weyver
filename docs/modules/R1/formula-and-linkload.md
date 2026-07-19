@@ -1,6 +1,6 @@
 # formula-and-linkload.md — [P0-3] 公式引擎 + 關聯 Link&Load 設計文件
 
-> ✅ **狀態:APPROVED — OQ-FML-1..8 全採建議(2026-07-19 裁定)**;含 OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,clean-room),進 M1。**OQ-FML-9/10(2026-07-19 企業級研究後新增)待裁定**——不阻擋 M1/M2,於 M4(Rollup)前定即可
+> ✅ **狀態:APPROVED — OQ-FML-1..10 全採建議(2026-07-19 裁定)**;含 OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,clean-room);OQ-9 多層鏈式 Rollup(+深度上限)、OQ-10 條件式 Rollup 皆 MVP 做。**M1 進行中**
 >
 > **一句話**|Ragic 兩大招牌的技術核心:**欄位公式即時重算**(C 模組)+ **關聯 Link&Load / Lookup / Rollup**(D 模組)。兩者共用「依賴圖 + 重算引擎」故合為一個 P0-3 模組。**這是 R1 實作模組**(非 design-ahead)。
 >
@@ -221,7 +221,7 @@ formula_def
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-FML-1..8;含 OQ-FEC-7 fork 決策)| ⏳ |
-| **M1** A1 | 公式 parser(fork/自研 ANTLR)+ 函數庫 + 型別推斷 + formula_def | ⬜ |
+| **M1** A1 | 公式 parser(fork Teable ANTLR)+ 函數庫 + 型別推斷 + formula_def | 🚧 **parser vendored ✅**(`packages/formula`;Teable MIT ANTLR + Weyver `parseFormula` wrapper + 4 smoke tests;CLEANROOM.md 登錄 Baserow←Teable←Weyver MIT 鏈)· 函數庫/型別推斷/formula_def 續 |
 | **M2** A2 | 依賴圖 + 循環偵測 + 重算引擎(讀時算 / 物化混合)| ⬜ |
 | **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ⬜ |
 | **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ⬜ |
@@ -230,7 +230,7 @@ formula_def
 
 ---
 
-## 12. 開放問題(OQ-FML-N)— OQ-1..8 ✅ 已裁定(全採建議);OQ-9/10 研究後新增待裁定
+## 12. 開放問題(OQ-FML-N)— ✅ OQ-1..10 全數裁定(全採建議)
 
 | # | 議題 | 選項 | 裁定(全採建議)|
 |---|---|---|---|
@@ -242,8 +242,8 @@ formula_def
 | **OQ-FML-6** | 函數集 MVP 範圍 | A. math/logic/text/date/聚合 核心 ~30 函數 <br> B. 對齊 Ragic/Airtable 全集 <br> C. 極簡僅四則 + IF | **A** — 覆蓋 80% 場景;其餘(財務函數 / 進階文字 / 正則)P1-I 逐一加 registry。避免一次做全集 |
 | **OQ-FML-7** | 前後端求值一致 | A. 同 ANTLR 文法編譯到 JS(前端預覽)+ 後端(權威),共享語意 <br> B. 前端另寫一套 <br> C. 前端不預覽,一律後端 | **A** — 單一文法來源避免前後端漂移;後端恆為權威,前端僅即時預覽(docs/14) |
 | **OQ-FML-8** | 物化 vs 讀時算 選擇準則 | A. 依 fan-in(被多少下游依賴)+ 讀寫比 + 是否跨表聚合 自動 / 半自動決定 <br> B. 一律讓用戶手選 <br> C. 全預設讀時算,超標才物化 | **A** — 預設規則自動分流(跨表 Rollup / 高讀寫比 → 物化;同列輕量 → 讀時算),進階可覆寫;不逼用戶懂物化 |
-| **OQ-FML-9**(研究後新增)| 多層鏈式 Rollup(grandchild)| A. 支援(依賴圖天生鏈式 + 深度上限)<br> B. 只單層(如 Salesforce 標準)| **A** — 依賴圖本就支援 Rollup 欄再被上層 Rollup 依賴;設深度上限(如 ≤5)防爆炸。**差異化**(Salesforce 至今不支援 grandchild);待用戶確認是否 MVP 就開或限深度 |
-| **OQ-FML-10**(研究後新增)| 條件式 Rollup(篩選子記錄)| A. MVP 就做(篩選「哪些子記錄計入」)<br> B. P1-I 再補 | **A** — Airtable 標配,客戶常用場景(「訂單合計只加已核准明細」);與 Rollup 同期做邊際成本低。待用戶確認 MVP 範圍 |
+| **OQ-FML-9** | 多層鏈式 Rollup(grandchild)| A. 支援(依賴圖天生鏈式 + 深度上限)<br> B. 只單層 | **A** — MVP 支援,深度上限 ≤5 防爆炸;差異化勝 Salesforce(2026-07-19 裁定)|
+| **OQ-FML-10** | 條件式 Rollup(篩選子記錄)| A. MVP 就做 <br> B. P1-I 再補 | **A** — MVP 做(Airtable 標配「只加已核准明細」);與 Rollup 同期邊際成本低(2026-07-19 裁定)|
 
 ---
 
@@ -265,4 +265,6 @@ formula_def
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
+| 2026-07-19 | v0.5 | **M1 首交付:fork Teable parser 落地**|建 `packages/formula`,vendored `@teable/formula`(MIT,文法源自 Baserow MIT)ANTLR parser(隔離出 strict gate + `@ts-nocheck` + CLEANROOM.md 登錄)+ Weyver `parseFormula()` typed wrapper(parse 非 eval,typed FormulaSyntaxError)+ 4 smoke tests 綠;antlr4ts runtime dep。函數庫 / 型別推斷 / 依賴圖 / formula_def 續 | Claude Code |
+| 2026-07-19 | v0.4 | OQ-FML-9/10 全採建議裁定(多層 rollup 深度 ≤5 / 條件式 rollup MVP 做);進 M1 | Claude Code |
 | 2026-07-19 | v0.3 | **企業級做法研究(站在巨人肩膀上)**:新增 §2-bis 參考表(HyperFormula 計算引擎內構 + SCC 循環偵測 + 增量 + lazy · Airtable 條件式 rollup · Salesforce DLRS 三重算模式 + 三反面教材 · Notion 函數集);A2/A4 據此強化(SCC / 增量 / Realtime·Scheduled·Bulk 三模式 / 條件式 rollup / 多層鏈式 / 刪除必重算);新增 OQ-FML-9(多層 rollup)+ OQ-FML-10(條件式 rollup)待裁定(不阻擋 M1/M2)| Claude Code |

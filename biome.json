@@ -3,7 +3,14 @@
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "ignoreUnknown": true,
-    "ignore": [".next", "dist", "storybook-static", "node_modules", "docs/**"]
+    "ignore": [
+      ".next",
+      "dist",
+      "storybook-static",
+      "node_modules",
+      "docs/**",
+      "**/vendor/**"
+    ]
   },
   "formatter": {
     "enabled": true,
