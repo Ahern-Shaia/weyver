@@ -215,6 +215,8 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .iconrow span{width:30px;height:30px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink2);}
 .iconrow svg{width:16px;height:16px;}
 .mini-h{font-size:11px;font-weight:600;color:var(--ink2);margin:0 0 6px;}
+.why{font-size:11px;line-height:1.55;color:var(--ink3);border-left:2px solid var(--primary);background:var(--primary-t);padding:6px 11px;margin:0 0 13px;}
+.why b{color:var(--ink2);font-weight:600;margin-right:5px;}
 
 /* 視圖套件樣本 §16 */
 .view-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -288,6 +290,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     <div class="lead">
       <h1>Weyver 織雲 — 品牌識別 + 前端視覺技術棧(開發前 review)</h1>
       <p>單頁涵蓋 <b style="color:var(--ink2)">docs/26 品牌</b>(§01–08、§16)+ <b style="color:var(--ink2)">docs/14 前端設計規則與技術棧</b>全部視覺與技術決策(§06 元件庫、§09 技術棧、§10–15 視覺規範),供**開發前一次 review**。本頁本身照 docs/14 v2.1(全框線 / 方角 / 禁陰影 / IBM Plex / 12.5px 密度);右上切換三配色主題,全站即時換色。</p>
+      <p style="margin-top:8px"><b style="color:var(--ink2)">審閱原則</b>|依 <b style="color:var(--ink2)">docs/11 §7.1</b>「每個 UI 決策有 rationale,不用 vibe」—— 各決策段開頭附<b style="color:var(--ink2)">理由</b>行,評審請就理據挑戰,而非只看好不好看。</p>
     </div>
 
     <!-- 品牌故事 -->
@@ -298,6 +301,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 標誌 -->
     <div class="sec"><div class="sec-h"><span class="n">02</span>標誌系統<span class="r">W 方塊:圓角 3px · 主色實底 · 白 W · IBM Plex 700 · 禁陰影</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>採字母標(W 方塊)而非圖形 / 雲朵 icon,降低與他牌商標近似風險並免插畫維護;方角 3px、主色實底、禁陰影 —— 與產品同語彙,避免介面出現圓潤 / 漂浮的不一致元素。</div>
       <div class="logos">
         <div class="logobox"><div class="mark-lg">W</div><div class="cap">App Mark · 主色</div></div>
         <div class="logobox dark"><div class="mark-lg rev">W</div><div class="cap">反白 · 深底</div></div>
@@ -315,6 +319,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 色彩 -->
     <div class="sec"><div class="sec-h"><span class="n">03</span>色彩<span class="r">一套系統 · 三配色主題(語意 token 換值);色票權威見 docs/14 §2</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>單一語意 token 系統只換主色值,同一套元件即可支援白牌與客戶偏好而不分叉程式碼;深藍為對外預設(製造 / 食品業信任色,且與 Ragic 品牌藍區隔),深海青、石墨為情境備選。</div>
       <div class="grp-t">主色 · 三配色主題</div>
       <div class="themes-row">
         <div class="theme-card"><div class="th" style="background:#1E4E79">深藍 navy<span class="df">預設 / 對外建議</span></div><div class="steps"><i style="background:#173D5F"></i><i style="background:#1E4E79"></i><i style="background:#E7EEF5"></i></div><div class="meta"><b class="mono">#173D5F · #1E4E79 · #E7EEF5</b> · 品類母語、企業可信</div></div>
@@ -346,6 +351,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 字型 -->
     <div class="sec"><div class="sec-h"><span class="n">04</span>字型<span class="r">IBM Plex 超家族(鎖定)· 數字一律 Mono + tabular</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>IBM Plex 為開源超家族(Sans / Sans TC / Mono 同源鑄字),繁中涵蓋完整且刻意避開被視為「AI 預設」的 Inter;數值一律 Mono + tabular,使金額、數量欄位等寬對齊、不因位數增減而跳動。</div>
       <div class="type-specimen">
         <div class="spec"><div class="big">Weyver</div><div class="nm">IBM Plex Sans</div><div class="rl">UI · 標題 · 內文 · Logo</div></div>
         <div class="spec"><div class="big">織雲平台</div><div class="nm">IBM Plex Sans TC</div><div class="rl">繁體中文(同源)</div></div>
@@ -523,6 +529,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 形狀 · 深度 · 間距 -->
     <div class="sec"><div class="sec-h"><span class="n">10</span>形狀 · 深度 · 間距<span class="r">§2.4</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>方角 2–3px 傳達精確而非消費級玩具感;深度以框線而非陰影表達 —— 高密度表格疊陰影會產生視覺噪音,框線在列印與截圖下也一致;間距鎖 4 / 8,對齊 Tailwind scale 與後端 spacing token。</div>
       <div class="spec-grid">
         <div>
           <div class="mini-h">圓角(方角 2–3px · 禁 pill / 禁 &gt;4px)</div>
@@ -581,6 +588,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 無障礙 -->
     <div class="sec"><div class="sec-h"><span class="n">13</span>無障礙 a11y<span class="r">§3.14 · AA 4.5:1 · 鍵盤全可達 · 雙編碼</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>AA 4.5:1 是企業採購與法遵底線,非加分項;狀態一律色 + 文字雙編碼,確保色盲使用者與黑白列印仍可辨識,落實「不單靠顏色傳達資訊」。</div>
       <div class="mini-h">主色白字對比(三主題皆 ≥7:1)</div>
       <div class="a11y-pairs">
         <div class="p" style="background:#1E4E79">深藍<small>7.4:1</small></div>
@@ -597,6 +605,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 狀態設計 -->
     <div class="sec"><div class="sec-h"><span class="n">14</span>狀態設計(每 surface 皆設計)<span class="r">§3.13</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>每個 surface 都必然遇到空 / 載入 / 錯誤三態,預先定案可避免開發期臨時的 vibe 決策;錯誤訊息一律含原因 + 復原路徑,與借貸平衡等信任訊號同一標準。</div>
       <div class="spec-grid" style="grid-template-columns:repeat(3,1fr)">
         <div><div class="mini-h">空狀態</div><div class="state-box"><b>尚無採購單</b>從上方「新增」建立第一筆,或匯入 Excel。</div></div>
         <div><div class="mini-h">載入(skeleton,方角無 shimmer)</div><div class="skel"><i style="width:60%"></i><i style="width:90%"></i><i style="width:75%"></i><i style="width:40%"></i></div></div>
@@ -606,6 +615,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
     <!-- 圖示 -->
     <div class="sec"><div class="sec-h"><span class="n">15</span>圖示<span class="r">§1.4 · Lucide outline · stroke ~1.5 · 功能性 · 無 emoji</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>單一 Lucide outline 家族(stroke ~1.5)確保全站圖示視覺一致;功能性、無 emoji 與彩色圖塊 —— 消費級圖示破壞企業級嚴謹感,且跨平台 emoji 樣式不可控。</div>
       <div class="iconrow">
         <span title="search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
         <span title="plus"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
