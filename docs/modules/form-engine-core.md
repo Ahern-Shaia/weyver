@@ -250,8 +250,8 @@ CREATE TABLE data.t{formId} (
 | 里程碑 | 內容 | 預估 | 狀態 |
 |---|---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-FEC-1..7)| — | ⏳ |
-| **M1** Spike + 前置 | `apps/api` NestJS 最小骨架 + Docker Compose PG16 + Testcontainers;**spike:10K 表 catalog 壓測 / 並發 DDL 鎖 / 動態表 RLS 可行性**(docs/15 §12 Gate)| 1-2 週 | ⏳ |
-| **M2** A1+A2 | metadata catalog + 型別 registry + unit tests | 3 週 | ⏳ |
+| **M1** Spike + 前置 | Docker Compose PG16 + **spike S1/S2/S3(10K 表 catalog / 並發 DDL 鎖 / 動態表 RLS)** → § 9-ter | 1-2 週 | ✅ **Gate 通過 2026-07-19**(`apps/api` 骨架 + Testcontainers 移 M2 開頭)|
+| **M2** A1+A2 | `apps/api` NestJS 骨架 + Testcontainers + metadata catalog + 型別 registry + unit tests | 3 週 | ⏳ |
 | **M3** A3 | DDL 服務 + 安全鏈 + provision state + 整合測試 | 2.5 週 | ⏳ |
 | **M4** A4+A5 | 記錄 DML + 子表 tx + 整合測試 | 3 週 | ⏳ |
 | **M5** A6 | 租戶隔離整合 + 隔離測試 gate | 1.5 週 | ⏳ |
@@ -259,6 +259,46 @@ CREATE TABLE data.t{formId} (
 | **M7** FMEA + 收尾 | §12 FMEA(P0 全清才 SHIPPED)+ SOP + MODULES.md ✅ | 2-3 天 | ⏳ |
 
 **M1 spike 為 Gate**:catalog 壓測或 RLS 動態表任一不過 → 回 M0 修設計(fallback = schema-per-tenant 選配提前,或表數 quota 收緊),不硬闖。
+
+---
+
+## 9-ter. M1 Spike 結果(2026-07-19,本機 OrbStack PG16)
+
+> Spike code:`spikes/p01-dynamic-schema/`(throwaway 驗證碼,非 production)。
+
+### S3|動態表 RLS FORCE 隔離 — ✅ 全過(8 斷言)
+
+app 角色只見自己租戶 / WITH CHECK 擋跨租戶寫入 / 無 context → 0 列 / 跨租戶 UPDATE·DELETE → 0 affected / **owner 在 FORCE 下同受 RLS** / superuser 對照可見全部(⇒ app·migration 角色禁 superuser·BYPASSRLS,鐵則 3 佐證)。
+
+**兩個 production 級發現(直接進 A3/A6 實作規格)**:
+1. **`SET LOCAL` 不可參數綁定** → 一律 `SELECT set_config('app.tenant_id', $1, true)`(交易範圍等價,可參數化)。
+2. **custom GUC 於 session 內 set 過後,reset 值為 `''` 而非 NULL** → `''::bigint` 炸 22P02(連線池下必踩)。**policy 標準寫法:`tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::bigint`**(空值 → policy false → 乾淨 deny,fail-closed)。
+
+### S2|並發 DDL — ✅ 過(advisory lock 開銷可忽略)
+
+| 情境 | 結果 |
+|---|---|
+| 異表並行 10 × ADD COLUMN | ~20ms,互不阻塞 |
+| 同表並發 10 × ADD COLUMN(無 lock)| ~18ms,PG 自行排 ACCESS EXCLUSIVE 隊 |
+| 同表並發 + `pg_advisory_xact_lock(formId)` | ~33ms,序列化開銷 ~10ms 可忽略 → **OQ-FEC-6 = A 成立** |
+| **rewrite 型 DDL(volatile DEFAULT)期間讀者延遲** | 200K 列表 p50 ~248ms / worst ~289ms — 讀者被 rewrite 持鎖擋住 |
+
+**規格影響**:A3 DDL 服務**禁止 rewrite 型 DDL 於線上表** —— 加欄一律 nullable、無 volatile default(預設值由 app 層 / 非 volatile 常數處理,PG11+ 免 rewrite);改型別走 OQ-FEC-4 白名單(免 rewrite 的轉換)。
+
+### S1|10K 表 catalog 壓測 — ✅ 過(近線性,無 catalog 瓶頸)
+
+| 指標 | 結果 |
+|---|---|
+| 10,000 表(各 ~12 欄 + RLS policy + tenant index)建置 | 135.6s 總計;**per-table 12.3ms(前段)→ 15.0ms(末段),衰退僅 ×1.22** — 近線性 |
+| catalog 膨脹 | pg_class 60K 列(18 MB)/ pg_attribute 413K 列(80 MB)/ pg_policy 10K 列;**DB 總 505 MB ≈ ~50 KB/空表固定成本**(PK index + tenant index + toast)|
+| 查詢 plan(第 9999 張表)| cold 0.4ms / warm 0.3ms — **relcache 無退化** |
+| `pg_tables` 全 schema 列表 | 13.7ms @ 10K 表 |
+
+**規格影響**:pilot 規模(17 家 × ~50 表 ≈ 2K 表含子表)距 10K 驗證上限有 5 倍餘裕;**per-tenant 表數 quota(7-bis DDL DoS 緩解)以 ~50 KB/表固定成本計價**;fallback(schema-per-tenant)無需啟動。
+
+### Gate P0-1 Spike 判定 — ✅ **通過**(2026-07-19)
+
+S1 catalog / S2 並發 DDL / S3 RLS 隔離全過,依 § 9-bis Gate 判準**進入 M2 正式開發**。docs/16 § 2 之「三家未公布表數上限」已知風險就此關閉(至 10K 實測)。
 
 ---
 
@@ -294,3 +334,4 @@ CREATE TABLE data.t{formId} (
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A7 切分 + OQ-FEC-1..7;綜合 docs/15 v2 / docs/16 / docs/21 / docs/22 成 buildable spec | Claude Code |
 | 2026-07-19 | v0.2 | OQ-FEC-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 spike(OrbStack 本機容器環境就緒)| Claude Code |
+| 2026-07-19 | v0.3 | **M1 spike 完成,Gate P0-1 通過**(§ 9-ter:S1 10K 表近線性 ×1.22 / S2 advisory lock 開銷可忽略·禁 rewrite 型 DDL / S3 RLS 8 斷言全過 + set_config 參數化 + NULLIF policy 兩發現);api 骨架移 M2 | Claude Code |
