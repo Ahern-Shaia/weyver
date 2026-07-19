@@ -6,7 +6,7 @@
 > 收掉 **Gate P0-1 的 UI 路徑**:「使用者可在 UI 上建一張採購單表單(含 header + line items + 欄位型別),自動生成 DB schema,可存資料」。後端路徑已由 `form-engine-core` v1.0 達成(live smoke:API 建表→DDL→存記錄);本模組把 S3 設計器與 S4 填單從 mockup 接上真 API —— **「自己建自己填」在瀏覽器裡真正跑起來**(docs/24 心智模型)。
 >
 > 作者:Claude Code(草擬)
-> 版本:v0.1(2026-07-19)
+> 版本:v1.1(2026-07-19)
 
 ---
 
@@ -52,6 +52,21 @@
 | 視覺 / 元件 | ✅ `/app` 四視圖 mockup + packages/ui v2.1(FormSection/FieldGrid/SubTable/Toolbar/StatusChip…)| mockup 為 static 資料,無 API 接線 |
 | 跨源 | — | web(:3000)↔ api(:3001)跨源:**Next rewrites 代理**(`/api/engine/* → :3001/api/*`),同源免 CORS(prod 由 reverse proxy 同源)|
 | 型別驗證 | ✅ 後端 registry valueSchema 權威 | 前端需基本 client 驗證(見 OQ-FDU-5)|
+
+---
+
+## 2-bis. 巨人的肩膀:schema-driven UI 企業級做法對照(2026-07-19 web 研究,retrospective 補)
+
+> 表單設計器 / 填單皆為 **metadata-driven UI**(由 `field_def` 生成)。對照企業級 schema-driven form 做法,驗證模式並記下可借鏡的分層。
+
+| 系統 / 模式 | 做法 | 對 Weyver 的意義 |
+|---|---|---|
+| **Salesforce Lightning**(Dynamic Forms + LWC)| metadata 驅動:「資產定義一次,處處復用」——同一定義帶 UI / 驗證 / 權限;低碼→pro-code 連續帶 | 佐證 Weyver「表單=metadata、UI 由型別生成」方向;權限 / 驗證應綁 metadata 同源(P0-4)|
+| **react-jsonschema-form(RJSF)** | 分兩層:**data schema(what)+ uiSchema(how)** —— 資料型別與版面呈現解耦 | **可借鏡的分層**:Weyver 目前 UI 純由 `field_def.type` 推導(單源);未來版面客製(Section / 欄寬 / 條件顯示,docs/04 B)宜獨立成 **UI-hint 層**(對映 uiSchema),不污染資料 schema |
+| **JSON Forms** | data schema + uischema(layout + 動態 rules)| 同上;條件顯示走宣告式 rules 非硬碼 |
+| **best practice(registry-based)** | 驗證 / workflow / UI 元件為獨立可復用模組 | **Weyver `field-input.tsx`(型別→元件 map)正是此 registry 模式**;已對齊 |
+
+**結論**|Weyver 現行「型別 registry → 元件」與企業級 metadata-driven 一致(✅ 已站對)。唯一**明文化的向上點**:版面 / 條件顯示應仿 RJSF `uiSchema` 獨立成 **UI-hint metadata 層**(P0-4 設計器進階時),與資料 `field_def` 解耦 —— 現行單源夠用,但擴充前先記下。
 
 ---
 
@@ -216,4 +231,5 @@
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A6 切分 + OQ-FDU-1..6;上游 = form-engine-core v1.0 API + `/app` mockup + docs/14 v2.1 / docs/24 | Claude Code |
 | 2026-07-19 | v0.2 | OQ-FDU-1..6 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 | Claude Code |
+| 2026-07-19 | v1.1 | **retrospective 補企業級 giants 對照(§2-bis)**:Salesforce Lightning metadata-driven · RJSF/JSON Forms(data schema + uiSchema 分層)· registry-based best practice;確認 `field-input.tsx` 型別→元件 registry 已對齊,記下向上點(版面/條件顯示宜獨立 UI-hint 層仿 uiSchema,P0-4)。不改實作 | Claude Code |
 | 2026-07-19 | v1.0 | **M1–M5 全 SHIPPED**(M1 API client 9fe7d29 / M2 設計器雙模式+position API cbfe93f / M3 填單+記錄檢視+pg DATE 修 1ed47ac / M4 子表 saveWithLines c727b16 / M5 Playwright golden path 固化)；web 18 + api 60 單元/整合 + e2e golden path;§11 SOP + §12 FMEA(P0 全 ✅);狀態 APPROVED → **SHIPPED v1.0**。**Gate P0-1 全數達成**(後端 + UI 兩條路徑)| Claude Code |

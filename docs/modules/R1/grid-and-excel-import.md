@@ -5,7 +5,7 @@
 > P0-2 兩大招牌:**(1) Excel-like 網格主檢視**(Glide canvas,可直接改格 —— Ragic 用戶最熟悉的操作面)+ **(2) 用既有 Excel 建表 onboarding**(上傳 xlsx → 推斷欄位 → 生成表單 + 灌入資料),docs/10 標「Ragic 差異化 onboarding 神器」。上游 = form-engine-core v1.0(引擎 API)+ form-designer-ui v1.0(client 層 / builder)+ packages/ui `GridSheet`(Glide 封裝已備)。
 >
 > 作者:Claude Code(草擬)
-> 版本:v0.1(2026-07-19)
+> 版本:v1.1(2026-07-19)
 
 ---
 
@@ -52,6 +52,21 @@
 | Excel 解析 | ❌ 無 xlsx 套件 | 需選型(OQ-GEI-3;SheetJS `xlsx` 純前端解析)|
 | mockup grid | `/app/_components/po-grid-view.tsx`(Glide + 靜態 fx 資料)| 視覺基準;本模組出真 grid,mockup 標「示意」|
 | 型別 registry | ✅ 15 型別 + 前端 field-types meta | 推斷邏輯映射到此子集(text/number/money/date/singleSelect…)|
+
+---
+
+## 2-bis. 巨人的肩膀:企業級 data grid + Excel 匯入做法對照(2026-07-19 web 研究,retrospective 補)
+
+> 兩招牌各對照企業級標竿:網格對 data grid 三雄、Excel 匯入對專業匯入 UX(flatfile 式)。
+
+| 領域 | 標竿 | 對 Weyver 的意義 |
+|---|---|---|
+| **Canvas data grid** | **Glide Data Grid**(選用,MIT):canvas 渲染、百萬列、原生捲動,「React 追求原始捲動效能時很有說服力」 | ✅ 選型獲驗證 |
+| | **AG Grid**:企業功能矩陣最完整 **但進階功能商用授權** | OSS-only 排除(docs/11 v5 已定);功能缺口以自建 pivot/master-detail 補 |
+| | **Handsontable**:試算表 + 內建公式 + Excel 編輯,**但 GPL/商用** | 授權排除;公式走自建 P0-3(fork Teable MIT) |
+| **Excel 匯入 UX** | **flatfile.com**(專業匯入 SaaS)模式:**parse → 型別推斷 → 欄位對映 / 校正 → 驗證 → commit** | **Weyver ExcelImportPanel 正是此流程**(SheetJS parse → heuristic 推斷 → 預覽校正 → bulk;M3 已 SHIPPED)✅ 已對齊 |
+
+**結論**|網格選 Glide(canvas + OSS + 捲動效能)在三雄取捨中站對(AG Grid 卡商用、Handsontable 卡 GPL);Excel 匯入的「解析→推斷→校正→灌入」流程與專業匯入 SaaS(flatfile)同構。皆 ✅ 已對齊,無向上缺口。
 
 ---
 
@@ -186,3 +201,4 @@
 | 2026-07-19 | v0.3 | M1 ✅(bulk API)· M2 ✅(Glide 網格接引擎:讀/編輯/新增列 + `#portal`);頁大小校正 500→200(list 上限) | Claude Code |
 | 2026-07-19 | v0.4 | M3 ✅(Excel→建表:SheetJS 前端解析 + 型別推斷 + 預覽校正 + bulk 灌資料;面板動態 import);dep SheetJS 官方 CDN 0.20.3 | Claude Code |
 | 2026-07-19 | v1.0 | **M4 ✅ → SHIPPED**;Playwright 固化 `grid-import.spec.ts`(overlay `.fill()` 穩定改格)+ §11 SOP + §12 FMEA(F1–F4 P0 全緩解)| Claude Code |
+| 2026-07-19 | v1.1 | **retrospective 補企業級 giants 對照(§2-bis)**:Glide vs AG Grid(商用)vs Handsontable(GPL)三雄取捨驗證選型;Excel 匯入「解析→推斷→校正→灌入」對映 flatfile 式專業匯入 UX;皆已對齊無缺口。不改實作 | Claude Code |
