@@ -1,6 +1,6 @@
 # grid-and-excel-import.md — [P0-2] 網格主檢視 + Excel 建表 onboarding 設計文件
 
-> 🚧 **狀態:DRAFT — 待裁定 OQ-GEI-1..7(2026-07-19)**
+> ✅ **狀態:APPROVED — OQ-GEI-1..7 全採建議(2026-07-19 裁定),進 M1**
 >
 > P0-2 兩大招牌:**(1) Excel-like 網格主檢視**(Glide canvas,可直接改格 —— Ragic 用戶最熟悉的操作面)+ **(2) 用既有 Excel 建表 onboarding**(上傳 xlsx → 推斷欄位 → 生成表單 + 灌入資料),docs/10 標「Ragic 差異化 onboarding 神器」。上游 = form-engine-core v1.0(引擎 API)+ form-designer-ui v1.0(client 層 / builder)+ packages/ui `GridSheet`(Glide 封裝已備)。
 >
@@ -138,17 +138,17 @@
 
 ---
 
-## 10. 開放問題(OQ-GEI-N)— 待裁定
+## 10. 開放問題(OQ-GEI-N)— ✅ 已裁定(2026-07-19,全採建議)
 
-| # | 訴求 | 議題 | 選項 | 建議 |
-|---|:-:|---|---|---|
-| **OQ-GEI-1** | ② | 網格首發是唯讀還是可編輯? | A. **可編輯**(cell edit → updateRecord;Ragic 核心體驗) <br> B. 先唯讀,編輯 P1-I | **A** — docs/24 明訂主畫面是「可編輯網格」;updateRecord API 已齊,唯讀會讓 grid 淪為只是好看的 list |
-| **OQ-GEI-2** | ② | 網格資料載入? | A. **一次載一頁(如 500 列)**,超出「載更多」按鈕 <br> B. 完整 lazy(Glide getCellsForSelection + cursor 無限捲) <br> C. 一次全載 | **A** — 簡單可預期,涵蓋 pilot 資料量;B 為 scale 優化(大表)留 P1-I;C 大表會爆 |
-| **OQ-GEI-3** | ③ | Excel 解析在哪? | A. **前端解析**(SheetJS `xlsx`,原檔不離瀏覽器) <br> B. 後端解析(上傳檔 → server parse) | **A** — 隱私(客戶資料不上傳原檔)+ 免後端存檔/掃毒;SheetJS 純前端成熟;大檔限大小 |
-| **OQ-GEI-4** | ③ | Excel 匯入目標? | A. **只做「Excel → 新表單」**(建表 + 灌資料) <br> B. 也做「匯入到既有表單」(欄位對映) | **A** — onboarding 主場景是「貼舊表秒建」;匯入既有表需欄位對映 UI(複雜),遞延 P1-I |
-| **OQ-GEI-5** | ③ | 型別推斷積極度? | A. **保守**(§4.4;不確定 fallback text,使用者預覽可改) <br> B. 積極(盡量猜 select/money/date)| **A** — 錯誤推斷(把訂單編號猜成 number 丟前導零)比 text 更難救;保守 + 預覽可改最安全 |
-| **OQ-GEI-6** | ② | 網格取代 mockup / FDU「資料」表? | A. **grid 為新「網格」模式**,FDU「資料」表格保留(唯讀速覽);mockup grid/list 標示意 <br> B. grid 取代 FDU 資料表 | **A** — 兩者用途不同(表格=速覽、網格=編輯);FDU 資料表已可用,不拆 |
-| **OQ-GEI-7** | ③ | bulk 失敗策略? | A. **全 rollback**(任一列敗整批退,回失敗列 index) <br> B. 部分成功(跳過壞列,回報)| **A** — 遷移要「資料一致」,半灌難對帳;回失敗列讓使用者修 Excel 重試;與引擎「單據原子性」一致 |
+| # | 議題 | 裁定 | 落地影響 |
+|---|---|---|---|
+| **OQ-GEI-1** | 網格唯讀/可編輯 | **A 可編輯** | A2 cell edit → updateRecord(樂觀鎖 409 提示);stub/autoNumber 唯讀 |
+| **OQ-GEI-2** | 資料載入 | **A 一次一頁(500)+ 載更多** | 完整 lazy 無限捲列 P1-I scale backlog |
+| **OQ-GEI-3** | Excel 解析在哪 | **A 前端 SheetJS** | 原檔不上傳;`xlsx` 套件裝於 web;大檔限大小 |
+| **OQ-GEI-4** | 匯入目標 | **A 只做 Excel→新表單** | 匯入到既有表(欄位對映)列 P1-I |
+| **OQ-GEI-5** | 推斷積極度 | **A 保守 + 預覽可改** | §4.4 heuristic;信心不足 fallback text |
+| **OQ-GEI-6** | 網格 vs FDU 資料表 | **A 各自保留** | grid 為新「網格」模式;FDU「資料」表格留;mockup grid/list 標示意 |
+| **OQ-GEI-7** | bulk 失敗策略 | **A 全 rollback + 回失敗列** | A1 單一 tx;任一列敗整批退 + 回失敗列 index/原因 |
 
 ---
 
@@ -163,3 +163,4 @@
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A5 切分 + OQ-GEI-1..7;上游 = form-engine-core v1.0 + form-designer-ui v1.0 + packages/ui GridSheet | Claude Code |
+| 2026-07-19 | v0.2 | OQ-GEI-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1(bulk API) | Claude Code |
