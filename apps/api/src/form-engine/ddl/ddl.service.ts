@@ -5,7 +5,7 @@ import { ddlAudits } from "../../db/schema.js"
 import { FormNotPendingError, FormNotReadyError, InvalidTypeConversionError } from "../errors.js"
 import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
 import { isSafeConversion } from "../field-types/type-conversions.js"
-import { DATA_SCHEMA, physicalColumnName, physicalTableName } from "../identifiers.js"
+import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import {
   MetadataService,
   type FieldDefRow,
@@ -50,6 +50,9 @@ export class DdlService {
           })
           .toSQL()
         executedSql = await this.runStatements(trx, statements)
+        if (spec.type === "autoNumber") {
+          executedSql += await this.runRaw(trx, [this.sequenceDdl(table, row.id)])
+        }
       })
       await this.metadata.bumpVersion(tenantId, formId)
       await this.audit(tenantId, formId, "addField", spec, executedSql, "ok")
@@ -137,6 +140,11 @@ export class DdlService {
           .toSQL()
         executedSql = await this.runStatements(trx, create)
         executedSql += await this.runRaw(trx, this.rlsStatements(table))
+        for (const field of fields) {
+          if (field.cellValueType === "autoNumber") {
+            executedSql += await this.runRaw(trx, [this.sequenceDdl(table, field.id)])
+          }
+        }
         if (parentTable !== null) {
           executedSql += await this.runRaw(trx, [
             `ALTER TABLE "${DATA_SCHEMA}"."${table}" ADD CONSTRAINT "${table}_parent_fk" ` +
@@ -161,6 +169,15 @@ export class DdlService {
       )
       throw error
     }
+  }
+
+  private sequenceDdl(table: string, fieldId: number): string {
+    const seq = sequenceName(fieldId)
+    const column = physicalColumnName(fieldId)
+    return (
+      `CREATE SEQUENCE "${DATA_SCHEMA}"."${seq}" ` +
+      `OWNED BY "${DATA_SCHEMA}"."${table}"."${column}"`
+    )
   }
 
   private rlsStatements(table: string): string[] {

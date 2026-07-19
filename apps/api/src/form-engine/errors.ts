@@ -26,6 +26,48 @@ export class FormNotReadyError extends DomainError {
   }
 }
 
+export class RecordNotFoundError extends DomainError {
+  constructor(recordId: number) {
+    super(`record ${recordId} not found`)
+  }
+}
+
+export class VersionConflictError extends DomainError {
+  constructor(recordId: number, expected: number) {
+    super(`record ${recordId} version conflict (expected ${expected}); reload and retry`)
+  }
+}
+
+export class UnknownFieldError extends DomainError {
+  constructor(name: string) {
+    super(`unknown field: ${name}`)
+  }
+}
+
+export class SystemManagedFieldError extends DomainError {
+  constructor(name: string) {
+    super(`field ${name} is system managed and cannot be written`)
+  }
+}
+
+export class RequiredFieldError extends DomainError {
+  constructor(name: string) {
+    super(`field ${name} is required`)
+  }
+}
+
+export class FieldValueError extends DomainError {
+  constructor(name: string, detail: string) {
+    super(`invalid value for field ${name}: ${detail}`)
+  }
+}
+
+export class InvalidFilterError extends DomainError {
+  constructor(detail: string) {
+    super(`invalid filter: ${detail}`)
+  }
+}
+
 export class InvalidTypeConversionError extends DomainError {
   constructor(from: string, to: string) {
     super(

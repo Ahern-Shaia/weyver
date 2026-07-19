@@ -27,3 +27,11 @@ export function physicalColumnName(fieldId: number): string {
   }
   return assertIdentifier(`f${fieldId}`)
 }
+
+/* autoNumber 取號 sequence(OWNED BY 該欄,欄 / 表刪除即隨之清理) */
+export function sequenceName(fieldId: number): string {
+  if (!Number.isSafeInteger(fieldId) || fieldId <= 0) {
+    throw new IdentifierError(`illegal fieldId: ${String(fieldId)}`)
+  }
+  return assertIdentifier(`s${fieldId}`)
+}
