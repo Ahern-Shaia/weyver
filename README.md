@@ -22,8 +22,8 @@
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-18 v9**(OSS-only stack + Modular Monolith;**§ 7.10 AI 輔助設計工具鏈(Skills + MCP)**;§ 16.5-16.11 Prod 雲端部署架構 AWS/GCP + 全服務成本|主推 GCP 台灣區 + Cloud Run;Tier E ~NT$14-22K/月)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
 | **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.3**(**buildable sprint 順序**|Phase 1 Ragic 229 → Phase 2 ERP +203 → Phase 3 MES/ISO +40;sprint 代號 legend;HR→Phase 2、MES/ISO→Phase 3(docs/25 C1);dependency + solo M18 + risk gates)|
-| **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-18 v1.1**(開發前定案|tech stack + design token + 設計規則 + Do&Don't;企業級基準;**v1.1 § 1.5 記錄 Vite 8 / Storybook 10 / Vitest 4**)|
-| — | [設計系統 / 首頁 v6 / 表單引擎](docs/mockups/) | ✅ 2026-07-17 mockups(企業級,深海青)|
+| **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-19 v2.1**(**嚴謹企業級定案**|上游=docs/24 form-first;全框線/方角/禁陰影 pill/扁平分段條/密度/信任訊號;套件×surface 對映;權威稿 workspace-form-first-v2(內建三主題切換器);**v2.1 三配色主題定案**(深藍預設/深海青/石墨))|
+| — | [mockups](docs/mockups/) | ✅ 權威=workspace-form-first-v2(嚴謹企業級);v1 design-system/homepage 系列 SUPERSEDED |
 | **⭐ 15** | **[表單引擎技術設計](docs/15-表單引擎技術設計.md)** | ✅ **2026-07-18 v2**(命門地基|兩層資料模型 + 真實表 + ORM 雙軌 + 公式 + 權限 + 計算層 + P0-1 spike)|
 | **⭐ 16** | **[OSS 表單引擎技術拆解](docs/16-OSS表單引擎技術拆解.md)** | ✅ **2026-07-18 v1**(Baserow/NocoDB/Teable|真實表驗證 + Prisma+Knex 雙軌 + MIT 可復用地圖)|
 | **⭐ 17** | **[AI-native 向上設計](docs/17-AI-native-向上設計.md)** | ✅ **2026-07-18 v1**(向上軸|架構天生 AI-friendly;旗艦 AI 遷移建表助手 = GTM 楔子;企業 guardrails)|

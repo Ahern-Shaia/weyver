@@ -251,6 +251,8 @@
     "Rolldown",
     "Turbopack",
     "Vitest",
-    "Storybook"
+    "Storybook",
+    "Fiori",
+    "topbar"
   ]
 }
