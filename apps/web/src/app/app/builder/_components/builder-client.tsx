@@ -7,16 +7,25 @@ import { FormListRail } from "./form-list-rail"
 import { FormWorkspace } from "./form-workspace"
 import { NewFormPanel } from "./new-form-panel"
 
+interface NewFormState {
+  readonly parentFormId: number | null
+  readonly parentName: string | null
+}
+
 export function BuilderClient() {
   const [formId, setFormId] = useQueryState("form", parseAsInteger)
-  const [creating, setCreating] = useState(false)
+  const [newForm, setNewForm] = useState<NewFormState | null>(null)
 
   const select = (id: number) => {
-    setCreating(false)
+    setNewForm(null)
     void setFormId(id)
   }
   const startNew = () => {
-    setCreating(true)
+    setNewForm({ parentFormId: null, parentName: null })
+    void setFormId(null)
+  }
+  const startSubtable = (parentFormId: number, parentName: string) => {
+    setNewForm({ parentFormId, parentName })
     void setFormId(null)
   }
 
@@ -41,10 +50,15 @@ export function BuilderClient() {
         <FormListRail activeFormId={formId} onSelect={select} onNew={startNew} />
 
         <div className="min-w-0 flex-1">
-          {creating ? (
-            <NewFormPanel onCreated={select} onCancel={() => setCreating(false)} />
+          {newForm !== null ? (
+            <NewFormPanel
+              onCreated={select}
+              onCancel={() => setNewForm(null)}
+              parentFormId={newForm.parentFormId ?? undefined}
+              parentName={newForm.parentName ?? undefined}
+            />
           ) : formId !== null ? (
-            <FormWorkspace key={formId} formId={formId} />
+            <FormWorkspace key={formId} formId={formId} onAddSubtable={startSubtable} />
           ) : (
             <div className="flex h-full items-center justify-center bg-surface">
               <div className="max-w-[320px] text-center">

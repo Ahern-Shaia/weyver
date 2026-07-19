@@ -12,7 +12,13 @@ const MODES = [
   { label: "資料", value: "records" },
 ] as const
 
-export function FormWorkspace({ formId }: { formId: number }) {
+export function FormWorkspace({
+  formId,
+  onAddSubtable,
+}: {
+  formId: number
+  onAddSubtable: (parentFormId: number, parentName: string) => void
+}) {
   const [mode, setMode] = useState<string>("design")
 
   return (
@@ -21,7 +27,7 @@ export function FormWorkspace({ formId }: { formId: number }) {
         <Segmented ariaLabel="模式" value={mode} onValueChange={setMode} options={MODES} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
-        {mode === "design" ? <EditFormPanel formId={formId} /> : null}
+        {mode === "design" ? <EditFormPanel formId={formId} onAddSubtable={onAddSubtable} /> : null}
         {mode === "fill" ? <RecordFormPanel formId={formId} /> : null}
         {mode === "records" ? <RecordsListPanel formId={formId} /> : null}
       </div>

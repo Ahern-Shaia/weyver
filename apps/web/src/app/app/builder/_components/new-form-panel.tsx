@@ -49,9 +49,13 @@ function buildOptions(field: DraftField): Record<string, unknown> {
 export function NewFormPanel({
   onCreated,
   onCancel,
+  parentFormId,
+  parentName,
 }: {
   onCreated: (formId: number) => void
   onCancel: () => void
+  parentFormId?: number | undefined
+  parentName?: string | undefined
 }) {
   const [name, setName] = useState("")
   const [fields, setFields] = useState<DraftField[]>([])
@@ -100,6 +104,7 @@ export function NewFormPanel({
     setError(null)
     const input: CreateFormInput = {
       name: name.trim(),
+      ...(parentFormId !== undefined ? { parentFormId } : {}),
       fields: fields.map((f) => ({
         name: f.name.trim(),
         type: f.type,
@@ -120,7 +125,11 @@ export function NewFormPanel({
       <div className="min-w-0 flex-1 overflow-y-auto bg-surface p-4">
         <div className="mx-auto max-w-[680px]">
           <div className="mb-3 flex items-center gap-2">
-            <span className="text-[11px] text-ink-3">新表單(草稿 · 發布後生成資料表)</span>
+            <span className="text-[11px] text-ink-3">
+              {parentFormId !== undefined
+                ? `新子表(明細 · 隸屬「${parentName ?? ""}」)`
+                : "新表單(草稿 · 發布後生成資料表)"}
+            </span>
             <div className="ml-auto flex gap-1.5">
               <Button onClick={onCancel}>取消</Button>
               <Button variant="primary" onClick={publish} disabled={createForm.isPending}>

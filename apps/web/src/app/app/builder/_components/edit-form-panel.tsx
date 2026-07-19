@@ -45,7 +45,13 @@ function pendingOptions(pending: PendingField): Record<string, unknown> {
   return {}
 }
 
-export function EditFormPanel({ formId }: { formId: number }) {
+export function EditFormPanel({
+  formId,
+  onAddSubtable,
+}: {
+  formId: number
+  onAddSubtable: (parentFormId: number, parentName: string) => void
+}) {
   const formQuery = useForm(formId)
   const addField = useAddField(formId)
   const alterType = useAlterFieldType(formId)
@@ -112,6 +118,9 @@ export function EditFormPanel({ formId }: { formId: number }) {
             <span className="ml-auto font-mono text-[11px] text-ink-3">
               v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
             </span>
+            {form.parentFormId === null ? (
+              <Button onClick={() => onAddSubtable(form.id, form.name)}>＋ 加子表</Button>
+            ) : null}
           </div>
 
           {error !== null ? (
