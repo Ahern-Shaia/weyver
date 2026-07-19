@@ -13,7 +13,7 @@
 **Weyver(織雲)** —— **以 Ragic 表單引擎為基底,取代 ERP,融合 MES + ISO 的一站式企業平台**(Cloud SaaS + On-premise Edge Gateway hybrid,**統一 TypeScript 全棧**,全 OSS,不 fork Odoo)。**廠商放棄原有 ERP(鼎新 / 千奧 / 正航),全面改用 Ragic 範式取代 ERP**,並在同一基底開展 MES + ISO。**架構主張(2026-07-17)**|表單引擎是 substrate(平台底層),不是模組之一 —— 採購單 / 銷貨單 / 工單 / BOM / 品檢 / ISO 文件皆為引擎上的表單 app;深層計算(GL 過帳期結 / MRP / 成本 / 估值)由引擎之上的計算層補齊(「算」不是「填」)。Q 多 ERP 對帳角色收斂(客戶放棄原 ERP,至多 onboarding 一次匯入)。
 
 - 首波 pilot|鮮勇 為首波客戶(食品加工,既有 Ragic 用戶,內部有 3 家 ERP);pipeline 17 家集中食品/團膳,但平台不限產業
-- 現況|**2026-07-19 起進入 Phase 1 工程**(規劃已完成)。首個模組 **P0-1 表單引擎動態 schema 核心已 SHIPPED v1.0**(`docs/modules/R1/form-engine-core.md`|M0 設計→OQ 裁定→spike Gate→實作→FMEA 全流程;`apps/api` NestJS+Fastify、59 tests、RLS 隔離實證)。工程紀律|新 non-trivial 模組必先 M0 design doc + OQ 裁定(`docs/modules/_template.md`),模組索引 `docs/modules/MODULES.md`
+- 現況|**2026-07-19 起進入 Phase 1 工程**(規劃已完成)。**✅ Gate P0-1(docs/13 最大 risk gate)全數達成**:後端 **form-engine-core v1.0 SHIPPED**(`apps/api` NestJS+Fastify;動態 schema/型別/DDL 安全鏈/記錄 DML/子表/RLS 隔離/REST API)+ UI **form-designer-ui v1.0 SHIPPED**(`apps/web/app/builder`;設計器雙模式 + 15 型別填單 + 子表 saveWithLines + 記錄檢視;Playwright golden path 固化)。瀏覽器可建表→加欄→填單→子表→檢視,引擎生成真實 PG 表。兩模組 doc 見 `docs/modules/R1/`。工程紀律|新 non-trivial 模組必先 M0 design doc + OQ 裁定(`docs/modules/_template.md`),模組索引 `docs/modules/MODULES.md`
 - 對外上 prod 前提|F-2 auth(Better Auth + JWT)+ form-engine-core §12.7 可靠性 checklist(idempotency key / quota / throttler / helmet)
 
 ## 品牌故事(業務簡報第一頁用)
@@ -126,6 +126,7 @@
 
 ## 時間戳
 
+- 2026-07-19|**Gate P0-1 全數達成:form-designer-ui M0→SHIPPED v1.0(前端接引擎 API)**|承後端核心後,依 M0 流程(OQ-FDU-1..6 全採建議)接前端:M1 engine API client(錯誤信封→EngineApiError / dev tenant localStorage 單點 / Zod 解析 / TanStack Query hooks / Next rewrites 同源代理免 CORS)→ M2 `/app/builder` 表單清單(nuqs URL)+ 設計器雙模式(新建發布 / 編輯增欄·白名單改型別·上下移;後端補 PATCH position API)→ M3 填單動態渲染(15 型別 field-input;修 pg DATE type parser 位移 bug)+ 記錄檢視 → M4 子表 header+lines 走 saveWithLines(DB parent_id/line_no 驗證)→ M5 **Playwright golden path 固化進 CI**(建表→加欄→填單→子表→檢視,對真 api+真 PG 綠)+ FMEA(P0 全清)。web 18 + api 60 單元/整合 + e2e。每步 Playwright MCP 實走真瀏覽器驗證(抓到並修 date parser bug)。**瀏覽器裡「自己建自己填」完整跑通** —— Ragic 範式核心迴圈成立。
 - 2026-07-19|**進入 Phase 1 工程;P0-1 表單引擎核心 M0→SHIPPED v1.0 一日走完**|用戶拍板開發起跑 → M0 design doc(OQ-FEC-1..7 全採建議)→ M1 spike Gate 通過(10K 表 catalog 近線性 ×1.22 / advisory lock 開銷可忽略·禁 rewrite DDL / RLS 8 斷言 + 兩個 production 發現:set_config 參數化、GUC reset `''` 需 NULLIF)→ M2 `apps/api` NestJS+Fastify 骨架 + metadata catalog(physical identifier 由 DB generated column 保證)+ 15 型別雙軸 registry → M3 DDL 安全鏈(三段式 provision + advisory lock + ddl_audit)→ M4 記錄 DML(name-keyed values / autoNumber sequence / filter 白名單)+ 子表單一 tx → M5 租戶隔離(weyver_app 角色分離 + 每 tx set_config;**BOLA killer 測試:無 WHERE 的查詢 RLS 兜底不洩漏**)→ M6 REST API(錯誤信封 / dev guard prod fail-closed;Swagger→zod-openapi deviation)→ M7 FMEA(P0 12 項全清,殘留 6 項 P1/P2 歸屬明確)。59 tests(Testcontainers 真 PG)+ dev live smoke。docker-compose PG16(OrbStack :5433)+ spikes/ workspace。模組流程紀律確立:`docs/modules/`(_template + MODULES.md 索引)。
 - 2026-07-16|專案啟動,完成 01 工程量估算 + 02 命名候選,主選 Weft
 - 2026-07-16|資料夾從 `ragic-saas` 改名 `weft`
