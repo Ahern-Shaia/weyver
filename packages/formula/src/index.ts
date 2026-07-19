@@ -4,6 +4,7 @@ export { evaluateAst, evaluateFormula } from "./evaluate"
 export type { FieldResolver } from "./evaluate"
 export { inferAstType, inferFormulaType } from "./infer"
 export type { FieldTypeResolver } from "./infer"
+export { collectAstReferences, collectFormulaReferences } from "./references"
 export { callFunction, functionReturnType, isKnownFunction } from "./functions"
 export {
   compareValue,
