@@ -1,6 +1,7 @@
 # form-engine-core.md — [P0-1] 表單引擎動態 schema 核心 設計文件
 
-> ✅ **狀態:APPROVED — OQ-FEC-1..7 全採建議(2026-07-19 裁定),進 M1 spike**
+> 🚢 **狀態:SHIPPED v1.0(2026-07-19)— M0–M7 全完成;§12 FMEA P0 全清(12 項 ✅),殘留 6 項 P1/P2 歸屬明確**
+> ⚠️ SHIPPED = 模組核心正確性達標(59 tests + live smoke);**對外上 prod 前提 = F-2 auth + §12.7 可靠性 checklist**
 >
 > Weyver 的 substrate 命門:Tier-2 動態真實表引擎(metadata catalog + runtime DDL 安全鏈 + 欄位型別系統 + 記錄 DML + 租戶隔離)。docs/13 標明的**最大 risk gate(Gate P0-1)**,blocks 90% 下游模組;設計依據 docs/15 v2(兩層資料模型)+ docs/16(三家 OSS 實證)+ docs/21(多租戶)+ docs/22(威脅模型 #1 = 動態 identifier 注入)。
 >
@@ -256,7 +257,7 @@ CREATE TABLE data.t{formId} (
 | **M4** A4+A5 | 記錄 DML + 子表 tx + 整合測試 | 3 週 | ✅ 2026-07-19(f1c41e8;44 tests)|
 | **M5** A6 | 租戶隔離整合 + 隔離測試 gate | 1.5 週 | ✅ 2026-07-19(b01ba2b;50 tests,BOLA killer 過)|
 | **M6** A7 | 最小 REST API + e2e(Swagger → P0-5 zod-openapi,deviation)| 1 週 | ✅ 2026-07-19(e48cdac;59 tests + live smoke)|
-| **M7** FMEA + 收尾 | §12 FMEA(P0 全清才 SHIPPED)+ SOP + MODULES.md ✅ | 2-3 天 | ⏳ |
+| **M7** FMEA + 收尾 | §12 FMEA(P0 全清才 SHIPPED)+ SOP + MODULES.md ✅ | 2-3 天 | ✅ 2026-07-19(P0 12 項全清;殘留 6 項 P1/P2 歸屬 §12.7)|
 
 **M1 spike 為 Gate**:catalog 壓測或 RLS 動態表任一不過 → 回 M0 修設計(fallback = schema-per-tenant 選配提前,或表數 quota 收緊),不硬闖。
 
@@ -318,13 +319,124 @@ S1 catalog / S2 並發 DDL / S3 RLS 隔離全過,依 § 9-bis Gate 判準**進�
 
 ## 11. SOP — 日常操作
 
-> M7 收尾時補齊(操作指引 / 失敗模式排查 / 審計 SQL)。預留:孤兒表清理 job 操作、provision failed 排查、隔離測試手動重跑。
+### 11.1 本機啟動
+
+1. `docker compose up -d postgres`(OrbStack;PG16 @ :5433)
+2. `cd apps/api && pnpm db:migrate`(**migration 必先於 app 啟動** — 0003 建 `weyver_app` 角色,DdlService 建表 GRANT 依賴它)
+3. 首次需種租戶:`docker exec weyver-pg psql -U weyver -d weyver -c "INSERT INTO tenants (name) VALUES ('dev 廠')"`
+4. `PORT=3001 pnpm dev`(3000 常被 web dev 佔用)→ `curl :3001/health`
+5. API 呼叫帶 `x-dev-tenant: <id>`(F-2 前 dev stub;production 直接 403)
+
+### 11.2 失敗模式排查
+
+| 症狀 | 含意 | 處置 |
+|---|---|---|
+| form 卡 `pending` 很久 | provision 中途 crash(metadata 已寫、DDL 未完成)| 查 `ddl_audit` 該 formId;確認 `data.t{id}` 不存在後手動 `UPDATE form_def SET provision_state='failed'`;清理 job 落地前為手動 |
+| form `failed` | DDL 失敗(常見:同名物理表殘留)| 看 `ddl_audit.error_message`;`DROP TABLE IF EXISTS data.t{id}` 後重建表單 |
+| API 409 `VERSION_CONFLICT` | 樂觀鎖:資料已被他人改 | 前端重新載入記錄再送;非系統故障 |
+| API 401 `TENANT_REQUIRED` | 缺 `x-dev-tenant` header | 補 header;F-2 後改 JWT |
+| API 403 `AUTH_NOT_CONFIGURED` | production 環境跑 dev guard | 預期行為(fail-closed);接 F-2 才可對外 |
+| app 車道 `permission denied` | `weyver_app` grants 缺(migration 0003 未跑 / 新表未 GRANT)| 跑 migration;確認 `ddl_audit` 該表 GRANT 語句有出現 |
+
+### 11.3 審計查詢
+
+```sql
+-- 最近 7 天 DDL 操作(含失敗)
+SELECT created_at, tenant_id, form_id, action, result, error_message
+FROM ddl_audit WHERE created_at > now() - interval '7 days' ORDER BY created_at DESC;
+
+-- 孤兒 pending(> 10 分鐘未完成 → 需人工 / 清理 job 處理)
+SELECT id, tenant_id, name, created_at FROM form_def
+WHERE provision_state = 'pending' AND created_at < now() - interval '10 minutes';
+
+-- 租戶表數(quota 監控)
+SELECT tenant_id, count(*) FROM form_def WHERE deleted_at IS NULL GROUP BY tenant_id;
+
+-- RLS 覆蓋檢查:data schema 內未 FORCE RLS 的表(應為 0)
+SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'data' AND c.relkind = 'r' AND NOT c.relforcerowsecurity;
+```
+
+### 11.4 隔離測試手動重跑(CI gate 同源)
+
+`cd apps/api && pnpm exec vitest run test/tenant-isolation.integration.test.ts`
 
 ---
 
-## 12. 失效場景反思(FMEA)— M7 收尾必填(R17)
+## 12. 失效場景反思(FMEA)— ✅ 已填(2026-07-19,M7)
 
-> M7 前不填。屆時逐路徑(建表 / 改欄 / CRUD / 子表 tx / 並發 DDL / 部署順序)列失效 → 嚴重度 → 緩解;**任一 P0 未 ✅ 不得標 SHIPPED**。
+> 嚴重度:`P0` = 核心流程不能走 / 資料毀損 / 跨租戶外洩;`P1` = 資料髒 / 可繞過 / 體驗差;`P2` = 邊角。
+> 狀態:✅ 已處理|⚠️ 已知殘留(為何可忍 + 治本方向)|🔒 被外部 gate 擋。
+> **判定:P0 全 ✅ → 可標 SHIPPED。**「SHIPPED = 模組核心正確性達標」≠「可上 prod 對外」——上 prod 另需 § 12.3 之 F-2 / 可靠性清單。
+
+### 12.1 建表 provision(POST /api/forms)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| C1 | 使用者輸入進入 SQL identifier(注入)| 不可能:identifier 全系統生成(DB generated column)+ regex 斷言 + knex quote;測試覆蓋注入形狀 | ✅ | P0 |
+| C2 | metadata 寫入後、DDL 前 crash | form 卡 `pending`,對外不可用(僅 ready 可用)→ 無資料損毀;孤兒需清理 | ✅(⚠️ 清理 job 未實作,SOP 11.3 SQL 手動掃;治本 = I 可靠性工程排程 job)| P1 |
+| C3 | DDL 成功、markProvisioned 前 crash | 物理表存在 + metadata pending;重 provision 撞名 → 失敗路徑 DROP IF EXISTS 冪等清掉 + failed;無使用者資料在內 | ✅ | P1 |
+| C4 | 並發同名建表 | `(tenant_id, name)` partial unique index 擋,一成一敗 | ✅ | P1 |
+| C5 | 惡意大量建表(DDL DoS)| **無 per-tenant quota、無 rate limit** | ⚠️ 殘留:單租戶 catalog 膨脹(spike 證 10K 表無恙 = 5× pilot 餘裕);dev 環境無外部流量;治本 = quota 常數 + @nestjs/throttler(上 prod 前必裝,§ 12.3)| P1 |
+| C6 | 子表指向他租戶 / 未 ready 父表 | readyParentTable 租戶內查 + 狀態檢查,拒 | ✅ | P0 |
+
+### 12.2 schema 變更(addField / alterFieldType / dropField)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| S1 | ALTER 失敗(鎖超時 / 型別衝突)| metadata 回收(hardDelete)+ audit failed;表回原狀 | ✅ | P1 |
+| S2 | 並發 addField 同表 | advisory lock 序列化(整合測試 5 並發全成)| ✅ | P1 |
+| S3 | rewrite 型 DDL 鎖死線上讀者 | 禁止:加欄一律 nullable 無 default(測試斷言全型別)| ✅ | P0 |
+| S4 | 有損型別轉換毀資料 | OQ-FEC-4 白名單(物理 no-op 才准),其餘 422 | ✅ | P0 |
+| S5 | dropField 後歷史資料遺失 | metadata soft-delete、物理欄保留(資料完整;清理 job 之後收)| ✅ | P1 |
+
+### 12.3 記錄 CRUD / 子表(records API)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| R1 | 跨租戶讀 / 寫(BOLA)| app WHERE + RLS FORCE 雙防線;**app 車道無 WHERE 的 raw 查詢實測不洩漏**(BOLA killer 測試)| ✅ | P0 |
+| R2 | 無租戶 context | RLS `NULLIF` → 0 列 fail-closed(非報錯洩訊)| ✅ | P0 |
+| R3 | 並發更新互蓋 | 樂觀鎖 version → 409;**殘留:saveWithLines header 未帶 expectedVersion 時為 last-write-wins**(API 端 expectedVersion optional)| ✅(⚠️ P2 殘留:前端 M 系列強制帶版本)| P1 |
+| R4 | 金額以 float 進入 | money = 十進位字串 regex,float 直接 422(測試)| ✅ | P0 |
+| R5 | 子表部分寫入(header 成 lines 敗)| 單一 tx 全 rollback(測試斷言)| ✅ | P0 |
+| R6 | LIKE / filter 注入 | 欄名 catalog whitelist + 運算子型別 whitelist + LIKE escape(`%` 注入測試)| ✅ | P0 |
+| R7 | **HTTP retry 重複建記錄(冪等性)** | **無 idempotency key** — 重試會建重複記錄(資料髒非毀損)| ⚠️ 殘留:AGENTS ⚙️ 鐵則要求 mutation 帶 idempotency key;現階段無對外流量(prod fail-closed);**治本 = I 平台可靠性工程(docs/04 v2.4 +8 人月)實作 idempotency key,pilot 上線前必補** | P1 |
+| R8 | 大表慢查詢拖垮 app 車道 | cursor 分頁 + limit 200 上限;**殘留:app 車道無 statement_timeout** | ⚠️ P2:pilot 資料量(10K 級)實測無虞;治本 = app 車道連線 `statement_timeout` 預設 | P2 |
+
+### 12.4 租戶 context / 認證
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| T1 | production 無真 auth 裸奔 | DevTenantGuard 於 production **fail-closed 403**(e2e 未測 prod env,程式碼路徑單純)| ✅(🔒 對外服務被 F-2 gate 擋 — 本模組刻意不解)| P0 |
+| T2 | dev header 偽造租戶 | dev-only 已知限制(等價於拿到 DB 憑證);F-2 換 JWT 真實來源 + 剝 client header(鐵則 3)| ✅(dev scope)| P1 |
+| T3 | GUC reset `''` 炸查詢(連線池)| policy `NULLIF` 標準寫法(spike S3 發現→全 policy 落地)| ✅ | P0 |
+| T4 | metadata 車道(Drizzle)仍為特權憑證 | MetadataService 每查詢 WHERE tenant 為現行防線;RLS 對 superuser 不生效 | ⚠️ 殘留:單防線(無 RLS 兜底);dev 可忍;**治本 = F-2 時 metadata 切 app 車道 + nestjs-cls context(設計已預留 token 分離)** | P1 |
+
+### 12.5 audit / 觀測
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| A1 | audit 寫入失敗掩蓋原錯 | try/catch 只記 stderr,原錯照拋 | ✅ | P1 |
+| A2 | 錯誤回應洩 stack / DB 原文 | 統一信封,未預期錯誤只回 correlationId(e2e 斷言)| ✅ | P0 |
+| A3 | 無 metrics(§7-bis 之 ddl_operations_total 等)| ⚠️ 殘留:ddl_audit 表可查但無 Prometheus;治本 = P0-10 監控 sprint(GlitchTip + metrics)| ⚠️ | P2 |
+| A4 | ddl_audit 無 retention | ⚠️ 殘留:量小(DDL 低頻);清理 job 一併處理 | ⚠️ | P2 |
+
+### 12.6 部署順序
+
+| # | 場景 | 風險 | 緩解 |
+|---|---|---|---|
+| D1 | app 先於 migration 0003 啟動 | DdlService 建表 `GRANT TO weyver_app` 失敗 → 建表全掛 | **migration 必先**(SOP 11.1 順序;CI/CD 落地時 pipeline 強制)|
+| D2 | 多實例同時跑 migration | drizzle migrator 有 lock 表 | ✅ drizzle 內建 |
+
+### 12.7 不在本模組 scope 修的 pre-existing / 後續 backlog
+
+- **F-2 Better Auth + JWT + nestjs-cls**(T1/T2/T4 治本)— 下一個 M0 模組;**對外上線的硬前提**
+- **idempotency key**(R7)+ **清理 job**(C2/A4)+ **per-tenant quota + throttler**(C5)+ **helmet/CORS**(AGENTS 安全鐵則)— I 平台可靠性工程(docs/04 v2.4 已列 8 人月);pilot 上線前 checklist
+- **metadata 快取**(§4.2 form_def version 失效)— DML 熱路徑優化,量測後再做
+- **zod-openapi**(M6 deviation)— P0-5 API sprint
+
+> **檢查點:P0 全數 ✅(C1/C6/S3/S4/R1/R2/R4/R5/R6/T1/T3/A2)→ 可標 SHIPPED。**
+> ⚠️ 殘留 6 項(C5/R7/R8/T4/A3/A4)全為 P1/P2,各有明確治本歸屬;**「SHIPPED」≠「可對外上 prod」— 對外前提 = F-2 + § 12.7 可靠性 checklist**。
 
 ---
 
@@ -335,3 +447,4 @@ S1 catalog / S2 並發 DDL / S3 RLS 隔離全過,依 § 9-bis Gate 判準**進�
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A7 切分 + OQ-FEC-1..7;綜合 docs/15 v2 / docs/16 / docs/21 / docs/22 成 buildable spec | Claude Code |
 | 2026-07-19 | v0.2 | OQ-FEC-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 spike(OrbStack 本機容器環境就緒)| Claude Code |
 | 2026-07-19 | v0.3 | **M1 spike 完成,Gate P0-1 通過**(§ 9-ter:S1 10K 表近線性 ×1.22 / S2 advisory lock 開銷可忽略·禁 rewrite 型 DDL / S3 RLS 8 斷言全過 + set_config 參數化 + NULLIF policy 兩發現);api 骨架移 M2 | Claude Code |
+| 2026-07-19 | v1.0 | **M2–M7 全 SHIPPED**(M2 catalog+型別 ca1d107 / M3 DDL 鏈 b14c211 / M4 DML+子表 f1c41e8 / M5 隔離 b01ba2b / M6 API e48cdac);59 tests + dev live smoke;§11 SOP + **§12 FMEA(P0 12 項全 ✅;殘留 C5/R7/R8/T4/A3/A4 歸屬 §12.7)**;M6 deviation:Swagger→zod-openapi(P0-5);狀態 APPROVED → **SHIPPED v1.0**(≠ 可對外上 prod,前提 F-2 + 可靠性 checklist)| Claude Code |
