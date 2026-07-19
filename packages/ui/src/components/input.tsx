@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactElement, ReactNode } from "react"
 import { cn } from "../lib/utils"
 
+/* docs/14 v2 §2.6|輸入高 26-28px、方角 2px、框線 */
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   readonly icon?: ReactNode
 }
@@ -9,15 +10,15 @@ export function Input({ className, icon, type = "text", ...props }: InputProps):
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-2 text-[13px] shadow-sm",
-        "transition-colors duration-[130ms] focus-within:border-brand focus-within:shadow-[0_0_0_3px_var(--color-brand-tint)]",
+        "flex h-[27px] items-center gap-1.5 rounded-xs border border-line bg-card px-2 text-[12px]",
+        "focus-within:border-primary",
         className,
       )}
     >
-      {icon ? <span className="text-ink-3 [&_svg]:size-3.5">{icon}</span> : null}
+      {icon ? <span className="text-ink-4 [&_svg]:size-3">{icon}</span> : null}
       <input
         type={type}
-        className="min-w-0 flex-1 bg-transparent text-ink placeholder:text-ink-3 focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent text-ink placeholder:text-ink-4 focus:outline-none"
         {...props}
       />
     </div>

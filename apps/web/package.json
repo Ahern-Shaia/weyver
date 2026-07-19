@@ -12,11 +12,21 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
+    "@tanstack/react-query": "^5.101.2",
+    "@trpc/client": "^11.18.0",
+    "@trpc/react-query": "^11.18.0",
+    "@trpc/server": "^11.18.0",
     "@weyver/ui": "workspace:*",
     "lucide-react": "^0.469.0",
     "next": "^15.5.4",
+    "next-intl": "^4.13.2",
+    "nuqs": "^2.9.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.82.0",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

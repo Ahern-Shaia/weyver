@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react"
 import { cn } from "../lib/utils"
 
+/* docs/14 v2 §3.10|列表(次要視圖):hairline + 表頭 head 底、數字右對齊 Mono、禁斑馬、~28px 列高 */
 export interface Column<T> {
   readonly key: string
   readonly header: string
@@ -13,6 +14,7 @@ export interface DataTableProps<T> {
   readonly columns: readonly Column<T>[]
   readonly data: readonly T[]
   readonly getRowKey: (row: T, index: number) => string
+  readonly selectedKey?: string
   readonly className?: string
 }
 
@@ -20,10 +22,11 @@ export function DataTable<T>({
   columns,
   data,
   getRowKey,
+  selectedKey,
   className,
 }: DataTableProps<T>): ReactElement {
   return (
-    <div className={cn("overflow-hidden rounded-md border border-border", className)}>
+    <div className={cn("overflow-hidden border border-line", className)}>
       <table className="w-full border-collapse">
         <thead>
           <tr>
@@ -31,7 +34,7 @@ export function DataTable<T>({
               <th
                 key={column.key}
                 className={cn(
-                  "border-b border-border-2 bg-head px-3.5 py-2 text-[10.5px] font-semibold uppercase tracking-wide text-ink-3",
+                  "border-b border-line bg-head px-3 py-[6px] text-[10.5px] font-semibold text-ink-2",
                   column.align === "right" ? "text-right" : "text-left",
                 )}
               >
@@ -41,25 +44,33 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
-            <tr
-              key={getRowKey(row, index)}
-              className="transition-colors duration-[130ms] hover:bg-surface"
-            >
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className={cn(
-                    "border-b border-border-3 px-3.5 py-2.5 text-[12.5px] [tr:last-child_&]:border-b-0",
-                    column.align === "right" && "text-right font-mono tabular-nums",
-                    column.cellClassName,
-                  )}
-                >
-                  {column.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {data.map((row, index) => {
+            const key = getRowKey(row, index)
+            const selected = key === selectedKey
+            return (
+              <tr
+                key={key}
+                className={cn(
+                  selected
+                    ? "bg-primary-t shadow-[inset_3px_0_0_var(--color-primary)]"
+                    : "hover:bg-head",
+                )}
+              >
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={cn(
+                      "border-b border-line-2 px-3 py-[5px] text-[12px] [tr:last-child_&]:border-b-0",
+                      column.align === "right" && "text-right font-mono tabular-nums",
+                      column.cellClassName,
+                    )}
+                  >
+                    {column.render(row)}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

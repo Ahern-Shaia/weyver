@@ -10,24 +10,24 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* docs/14 v2|資料密度基準 12.5px;長文另行放大至 ≥14px */
   body {
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: 12.5px;
     line-height: 1.5;
     color: var(--color-ink);
     background-color: var(--color-surface);
   }
 
-  /* 數字 / 金額 / 批號 tabular 對齊 */
+  /* 數字 / 金額 / 批號 / 時間戳 tabular 對齊 */
   .tabular {
     font-family: var(--font-mono);
     font-feature-settings: "tnum" 1;
   }
 
-  /* 企業級 focus:深海青 3px tint ring */
+  /* docs/14 v2 §3.14|focus = 2px 主色 outline */
   :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-brand-tint);
-    border-color: var(--color-brand);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
   }
 }

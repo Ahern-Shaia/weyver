@@ -6,9 +6,8 @@ const preview: Preview = {
     layout: "centered",
     backgrounds: {
       options: {
-        surface: { name: "surface", value: "#F4F6F8" },
+        surface: { name: "surface", value: "#E8EAED" },
         card: { name: "card", value: "#FFFFFF" },
-        ink: { name: "ink", value: "#181E26" },
       },
     },
     controls: {
