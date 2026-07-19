@@ -1,7 +1,9 @@
-import { Inject, Injectable } from "@nestjs/common"
+import { Decimal } from "@weyver/formula"
+import { Inject, Injectable, Optional } from "@nestjs/common"
 import type { Knex } from "knex"
 import { z } from "zod"
 import { APP_KNEX } from "../../db/db.module.js"
+import { FormulaService } from "../formula/formula.service.js"
 import {
   BulkRowError,
   BulkTooLargeError,
@@ -52,7 +54,31 @@ export class RecordService {
   constructor(
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(MetadataService) private readonly metadata: MetadataService,
+    // 讀時算公式注入(P0-3 M6);optional 使既有測試 new RecordService(knex, metadata) 不受影響
+    @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
   ) {}
+
+  /* 讀時公式注入:formula 欄之值不儲存,讀取時以其他欄計算後併入(docs OQ-FML-8 之讀時算模式)。
+     非公式表零額外查詢(hasFormula 短路);公式表每列一次 computeRecord(N+1 為已知優化點,見 FMEA)。 */
+  private async withFormulas(
+    tenantId: number,
+    formId: number,
+    resolved: ResolvedForm,
+    records: readonly RecordRow[],
+  ): Promise<RecordRow[]> {
+    const hasFormula = resolved.fields.some((f) => f.type === "formula")
+    if (this.formula === undefined || !hasFormula || records.length === 0) return [...records]
+    const out: RecordRow[] = []
+    for (const record of records) {
+      const computed = await this.formula.computeRecord(tenantId, formId, record.values)
+      const values: RecordValues = { ...record.values }
+      for (const [name, value] of Object.entries(computed)) {
+        values[name] = value instanceof Decimal ? value.toString() : value
+      }
+      out.push({ ...record, values })
+    }
+    return out
+  }
 
   /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(M1 spike S3) */
   private async inTenantTx<T>(
@@ -103,13 +129,15 @@ export class RecordService {
 
   async getRecord(tenantId: number, formId: number, recordId: number): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    return this.inTenantTx(tenantId, async (trx) => {
+    const record = await this.inTenantTx(tenantId, async (trx) => {
       const row = await this.baseQuery(trx, tenantId, resolved)
         .where(`${resolved.table}.id`, recordId)
         .first()
       if (row === undefined) throw new RecordNotFoundError(recordId)
       return this.toRecord(resolved, row as Record<string, unknown>)
     })
+    const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
+    return injected ?? record
   }
 
   /* 子表批次取數(Rollup 之 N+1 防護):一次 whereIn parent_id 撈全部子列,呼叫端在 app 層分組聚合。 */
@@ -135,7 +163,7 @@ export class RecordService {
     query: ListQuery,
   ): Promise<{ records: RecordRow[]; nextCursor: number | null }> {
     const resolved = await this.resolveForm(tenantId, formId)
-    return this.inTenantTx(tenantId, async (trx) => {
+    const result = await this.inTenantTx(tenantId, async (trx) => {
       let builder = this.baseQuery(trx, tenantId, resolved)
 
       for (const filter of query.filters) {
@@ -159,6 +187,8 @@ export class RecordService {
       const last = records[records.length - 1]
       return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
     })
+    const records = await this.withFormulas(tenantId, formId, resolved, result.records)
+    return { records, nextCursor: result.nextCursor }
   }
 
   async updateRecord(

@@ -1,7 +1,8 @@
-import { Inject, Injectable } from "@nestjs/common"
+import { Inject, Injectable, Optional } from "@nestjs/common"
 import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { ddlAudits } from "../../db/schema.js"
+import { FormulaService } from "../formula/formula.service.js"
 import {
   FieldNotFoundError,
   FormNotPendingError,
@@ -30,12 +31,32 @@ export class DdlService {
     @Inject(DDL_KNEX) private readonly knex: Knex,
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(MetadataService) private readonly metadata: MetadataService,
+    // formula 欄建立後自動註冊 formula_def(P0-3 M6);optional 不影響既有測試建構
+    @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
   ) {}
 
   async createForm(tenantId: number, spec: CreateFormSpec): Promise<FormWithFields> {
     const draft = await this.metadata.createFormDraft(tenantId, spec)
     await this.provisionForm(tenantId, draft)
-    return this.metadata.getForm(tenantId, draft.form.id)
+    const loaded = await this.metadata.getForm(tenantId, draft.form.id)
+    await this.defineFormulaFields(tenantId, loaded)
+    return loaded
+  }
+
+  /* formula 欄:parse / 依賴解析 / 型別推斷 / 循環偵測 → 存 formula_def(FormulaService)。 */
+  private async defineFormulaFields(tenantId: number, loaded: FormWithFields): Promise<void> {
+    if (this.formula === undefined) return
+    for (const field of loaded.fields) {
+      if (field.cellValueType !== "formula") continue
+      const options = field.options
+      const expr =
+        options !== null && typeof options === "object" && "expression" in options
+          ? (options as { expression: unknown }).expression
+          : undefined
+      if (typeof expr === "string") {
+        await this.formula.defineFormula(tenantId, loaded.form.id, field.id, expr)
+      }
+    }
   }
 
   async addField(tenantId: number, formId: number, spec: AddFieldSpec): Promise<FieldDefRow> {
