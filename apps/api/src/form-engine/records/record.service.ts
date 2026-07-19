@@ -154,7 +154,11 @@ export class RecordService {
     tenantId: number,
     parentFormId: number,
     childFormId: number,
-    header: { id?: number; expectedVersion?: number; values: RecordValues },
+    header: {
+      id?: number | undefined
+      expectedVersion?: number | undefined
+      values: RecordValues
+    },
     lines: readonly LineInput[],
     actorId: number,
   ): Promise<{ header: RecordRow; lines: RecordRow[] }> {

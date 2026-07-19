@@ -55,6 +55,6 @@ export interface RecordRow {
 }
 
 export interface LineInput {
-  readonly id?: number
+  readonly id?: number | undefined
   readonly values: RecordValues
 }

@@ -1,0 +1,105 @@
+import { randomUUID } from "node:crypto"
+import {
+  Catch,
+  HttpException,
+  HttpStatus,
+  type ArgumentsHost,
+  type ExceptionFilter,
+} from "@nestjs/common"
+import type { FastifyReply } from "fastify"
+import { ZodError } from "zod"
+import {
+  DomainError,
+  FieldNotFoundError,
+  FieldValueError,
+  FormNotFoundError,
+  FormNotPendingError,
+  FormNotReadyError,
+  InvalidFilterError,
+  InvalidTypeConversionError,
+  RecordNotFoundError,
+  RequiredFieldError,
+  SystemManagedFieldError,
+  UnknownFieldError,
+  VersionConflictError,
+} from "../form-engine/errors.js"
+import { IdentifierError } from "../form-engine/identifiers.js"
+
+interface ErrorEnvelope {
+  readonly code: string
+  readonly message: string
+  readonly correlationId: string
+  readonly timestamp: string
+}
+
+function mapDomainError(error: DomainError): { status: number; code: string } {
+  if (error instanceof FormNotFoundError || error instanceof FieldNotFoundError) {
+    return { status: HttpStatus.NOT_FOUND, code: "FORM_NOT_FOUND" }
+  }
+  if (error instanceof RecordNotFoundError) {
+    return { status: HttpStatus.NOT_FOUND, code: "RECORD_NOT_FOUND" }
+  }
+  if (error instanceof VersionConflictError) {
+    return { status: HttpStatus.CONFLICT, code: "VERSION_CONFLICT" }
+  }
+  if (error instanceof FormNotPendingError || error instanceof FormNotReadyError) {
+    return { status: HttpStatus.CONFLICT, code: "FORM_STATE_CONFLICT" }
+  }
+  if (error instanceof InvalidTypeConversionError) {
+    return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "UNSAFE_TYPE_CONVERSION" }
+  }
+  if (
+    error instanceof RequiredFieldError ||
+    error instanceof FieldValueError ||
+    error instanceof UnknownFieldError ||
+    error instanceof SystemManagedFieldError ||
+    error instanceof InvalidFilterError
+  ) {
+    return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "INVALID_FIELD_INPUT" }
+  }
+  return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "DOMAIN_ERROR" }
+}
+
+/* 統一錯誤信封(AGENTS 橫切鐵則):code / message / correlationId / timestamp;
+   絕不回傳 stack trace / DB 錯誤原文(docs/22 禁令 8)。 */
+@Catch()
+export class DomainExceptionFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost): void {
+    const reply = host.switchToHttp().getResponse<FastifyReply>()
+    const correlationId = randomUUID()
+    const timestamp = new Date().toISOString()
+
+    let status: number = HttpStatus.INTERNAL_SERVER_ERROR
+    let code = "INTERNAL_ERROR"
+    let message = "internal error"
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus()
+      const body = exception.getResponse()
+      if (typeof body === "string") {
+        message = body
+      } else {
+        const record = body as { code?: string; message?: string | string[] }
+        code = record.code ?? exception.constructor.name.replace(/Exception$/, "").toUpperCase()
+        message = Array.isArray(record.message)
+          ? record.message.join("; ")
+          : (record.message ?? exception.message)
+      }
+    } else if (exception instanceof IdentifierError || exception instanceof ZodError) {
+      status = HttpStatus.BAD_REQUEST
+      code = "VALIDATION_FAILED"
+      message = exception instanceof ZodError ? "invalid request shape" : "invalid identifier"
+    } else if (exception instanceof DomainError) {
+      const mapped = mapDomainError(exception)
+      status = mapped.status
+      code = mapped.code
+      message = exception.message
+    } else {
+      // 未預期錯誤:log 全文(含 stack),對外只回 correlationId
+      console.error(`[${correlationId}]`, exception)
+    }
+
+    const envelope: ErrorEnvelope = { code, message, correlationId, timestamp }
+    void reply.status(status).send(envelope)
+  }
+}

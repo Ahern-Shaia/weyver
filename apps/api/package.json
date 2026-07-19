@@ -27,6 +27,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@nestjs/testing": "^10.4.22",
     "@testcontainers/postgresql": "^10.16.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.11.10",

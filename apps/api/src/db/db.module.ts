@@ -1,4 +1,4 @@
-import { Global, Module } from "@nestjs/common"
+import { Global, Inject, Injectable, Module, type OnModuleDestroy } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import knex, { type Knex } from "knex"
@@ -26,9 +26,24 @@ export function createAppKnex(connectionString: string): Knex {
   return knex({ client: "pg", connection: connectionString, pool: { min: 0, max: 10 } })
 }
 
+/* graceful shutdown:app.close() / SIGTERM 時收乾連線(零停機滾動部署前提) */
+@Injectable()
+class DbLifecycle implements OnModuleDestroy {
+  constructor(
+    @Inject(PG_POOL) private readonly pool: pg.Pool,
+    @Inject(DDL_KNEX) private readonly ddlKnex: Knex,
+    @Inject(APP_KNEX) private readonly appKnex: Knex,
+  ) {}
+
+  async onModuleDestroy(): Promise<void> {
+    await Promise.all([this.pool.end(), this.ddlKnex.destroy(), this.appKnex.destroy()])
+  }
+}
+
 @Global()
 @Module({
   providers: [
+    DbLifecycle,
     {
       provide: PG_POOL,
       useFactory: (config: ConfigService): pg.Pool =>
