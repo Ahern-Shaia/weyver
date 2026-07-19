@@ -1,11 +1,18 @@
 "use client"
 
 import { ThemeSwitcher } from "@weyver/ui/theme-switcher"
+import dynamic from "next/dynamic"
 import { parseAsInteger, useQueryState } from "nuqs"
 import { useState } from "react"
 import { FormListRail } from "./form-list-rail"
 import { FormWorkspace } from "./form-workspace"
 import { NewFormPanel } from "./new-form-panel"
+
+/* 匯入面板拉入 SheetJS(~380KB)→ 動態載入,不進 builder 主 bundle(僅點「匯入」才載)*/
+const ExcelImportPanel = dynamic(
+  () => import("./excel-import-panel").then((m) => m.ExcelImportPanel),
+  { ssr: false, loading: () => <div className="p-6 text-[12px] text-ink-3">載入匯入工具…</div> },
+)
 
 interface NewFormState {
   readonly parentFormId: number | null
@@ -15,17 +22,26 @@ interface NewFormState {
 export function BuilderClient() {
   const [formId, setFormId] = useQueryState("form", parseAsInteger)
   const [newForm, setNewForm] = useState<NewFormState | null>(null)
+  const [importing, setImporting] = useState(false)
 
   const select = (id: number) => {
     setNewForm(null)
+    setImporting(false)
     void setFormId(id)
   }
   const startNew = () => {
     setNewForm({ parentFormId: null, parentName: null })
+    setImporting(false)
+    void setFormId(null)
+  }
+  const startImport = () => {
+    setImporting(true)
+    setNewForm(null)
     void setFormId(null)
   }
   const startSubtable = (parentFormId: number, parentName: string) => {
     setNewForm({ parentFormId, parentName })
+    setImporting(false)
     void setFormId(null)
   }
 
@@ -47,10 +63,17 @@ export function BuilderClient() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <FormListRail activeFormId={formId} onSelect={select} onNew={startNew} />
+        <FormListRail
+          activeFormId={formId}
+          onSelect={select}
+          onNew={startNew}
+          onImport={startImport}
+        />
 
         <div className="min-w-0 flex-1">
-          {newForm !== null ? (
+          {importing ? (
+            <ExcelImportPanel onCreated={select} onCancel={() => setImporting(false)} />
+          ) : newForm !== null ? (
             <NewFormPanel
               onCreated={select}
               onCancel={() => setNewForm(null)}

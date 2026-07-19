@@ -20,21 +20,30 @@ export function FormListRail({
   activeFormId,
   onSelect,
   onNew,
+  onImport,
 }: {
   activeFormId: number | null
   onSelect: (formId: number) => void
   onNew: () => void
+  onImport: () => void
 }) {
   const forms = useForms()
 
   return (
     <div className="flex w-[228px] shrink-0 flex-col border-r border-line bg-card">
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+      <div className="flex items-center gap-1.5 border-b border-line px-3 py-2">
         <span className="text-[12px] font-semibold text-ink-2">我的表單</span>
         <button
           type="button"
+          onClick={onImport}
+          className="ml-auto rounded-xs border border-line px-2 py-0.5 text-[11px] font-medium text-ink-2 hover:bg-head"
+        >
+          匯入 Excel
+        </button>
+        <button
+          type="button"
           onClick={onNew}
-          className="ml-auto rounded-xs border border-primary bg-primary px-2 py-0.5 text-[11px] font-medium text-white"
+          className="rounded-xs border border-primary bg-primary px-2 py-0.5 text-[11px] font-medium text-white"
         >
           + 新增
         </button>
