@@ -1,6 +1,8 @@
 # mfa.md — [F-4] 二步驟驗證(MFA / TOTP) 設計文件
 
-> 🚧 **APPROVED · M1 ✅**(後端 twoFactor plugin + spike 確認 flow + 4 整合測);續 M2(設定啟用/停用 UI)。OQ-MFA-1..6 全採建議(2026-07-20 裁定)。
+> ✅ **狀態:SHIPPED v1.0(2026-07-20)** — M0–M4 全數完成。自助 TOTP 二步驟驗證上線:帳號設定啟用(QR + backup codes)、登入密碼步後二步 challenge、驗證端點防暴力、FMEA P0 全緩解;後端 4 整合測 + `e2e/mfa.spec.ts` 固化綠。OQ-MFA-1..6 全採建議裁定。
+>
+> **後續**(非本模組):管理員協助重設之身分核驗政策 · passkey/WebAuthn · org 強制 2FA 政策。
 >
 > **一句話**|在已 SHIPPED 的 F-2 認證上,加**自助 TOTP 二步驟驗證**:使用者用 authenticator app(Google Authenticator / 1Password / Authy)綁定,登入時密碼通過後再驗一次性碼才發 session。純自助、不需 email/簡訊基礎設施。
 >
@@ -104,9 +106,9 @@
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(OQ-MFA-1..6 全採建議,2026-07-20)| ✅ |
 | **M1** A1 | twoFactor plugin + migration + spike 驗證 API 形狀 + 後端整合測 | ✅ **DONE**|createAuth 掛 `twoFactor({ issuer: "Weyver" })`(secret 加密/backup 雜湊內建);`twoFactor` 表由 getMigrations 生成;rateLimit 加 `/two-factor/verify-totp`、`/verify-backup-code` 5/60s。**spike 確認 API 形狀**:`enableTwoFactor({password})`→`{totpURI,backupCodes}`(未啟用)→ `verifyTOTP` 才啟用;啟用後 `signInEmail` 回 **`twoFactorRedirect:true`(不發完整 session)** → 帶 challenge cookie `verifyTOTP`/`verifyBackupCode` 才發 session。4 整合測(表建立+enable / 登入二步 / 錯碼拒 / **backup 一次性**;otplib 確定性產碼)。全 api 套件 114 綠 |
-| **M2** A2 | 帳號設定「二步驟驗證」UI(啟用 QR + backup codes + 停用)| ⬜ |
-| **M3** A3 | 登入 challenge 第二步 UI(`/login/2fa`,TOTP + backup)| ⬜ |
-| **M4** 收尾 | 安全硬化(驗證端點 rate-limit)+ Playwright 固化 + FMEA + SHIPPED | ⬜ |
+| **M2** A2 | 帳號設定「二步驟驗證」UI | ✅ **DONE**|`/app/settings/security`:啟用(密碼 → enable → QR〔qrcode.react〕+ 手動碼 + backup codes → 輸入碼 verifyTotp → 已啟用)/ 停用(重新驗證);header 加「安全」入口;authClient 加 twoFactorClient |
+| **M3** A3 | 登入 challenge 第二步 UI | ✅ **DONE**|login signIn 回 twoFactorRedirect → `/login/2fa`(TOTP,或「改用備用碼」verifyBackupCode)→ 設 active org → 進 /app;登入/2FA 成功改全頁導向讓 session 重新 hydrate(修 active org 顯示 lag)|
+| **M4** 收尾 | rate-limit + Playwright 固化 + FMEA + SHIPPED | ✅ **DONE**|verify 端點 rateLimit(M1 已含)· `e2e/mfa.spec.ts` 固化(otplib 產碼:註冊→啟用→登出→登入二步→進工作區;5 web e2e 全綠)· §12 FMEA P0 全緩解 · **SHIPPED v1.0** |
 
 ---
 
@@ -124,15 +126,33 @@
 ---
 
 ## 11. SOP — 日常操作
-> M4 收尾填(使用者遺失 authenticator → 用 backup code 登入 → 重新綁定;backup 用罄 → 重產;管理員協助 → 需身分核驗流程)。
+- **遺失 authenticator**|/login/2fa 選「改用備用碼」→ 登入 → 設定頁停用後重新啟用綁新裝置。
+- **backup 用罄**|設定頁重新產生(`generateBackupCodes`,需重新驗證);⚠️ 產新即舊碼全失效。
+- **管理員協助重設**|需人工身分核驗政策(非自助;避免社交工程繞過 2FA)—— 政策待定,非本模組工程。
 
-## 12. 失效場景反思(FMEA)— 收尾必填(R17)
-> M4 收尾逐路徑填(啟用 / 驗證 / backup 一次性 / 停用防護 / 中間狀態不發 session / 驗證暴力 / secret 外洩)。**P0 未緩解不得上 prod**。
+## 12. 失效場景反思(FMEA)— M4 收尾(R17)
+
+> **P0 未緩解不得上 prod**。P0(1–4)全緩解。
+
+| # | 路徑 / 失效模式 | 影響 | 嚴重 | 緩解 | 狀態 |
+|---|---|---|---|---|---|
+| 1 | **TOTP secret 外洩**(log / 明文 / 傳輸) | 2FA 被繞過 | **P0** | Better Auth 以 app secret 加密 secret;不落 log;totpURI(含 secret)僅 enable 一次性回於已認證通道 | ✅ |
+| 2 | **backup code 外洩 / 重用** | 帳號淪陷 | **P0** | backup codes 雜湊儲存 + 一次性(用過失效,整合測斷言) | ✅ |
+| 3 | **驗證碼暴力**(TOTP / backup 猜測) | 繞過 2FA | **P0** | rateLimit `/two-factor/verify-totp`、`/verify-backup-code` 5/60s;6 碼 + 30s 窗 | ✅ |
+| 4 | **中間狀態發完整 session**(2FA 未完成即放行) | 繞過 2FA | **P0** | signIn 回 `twoFactorRedirect`(不發完整 session),唯 verify 通過才發;整合測斷言 | ✅ |
+| 5 | **停用被劫持會話者關閉** | 失去保護 | P1 | disable 需重新驗證(密碼);設定頁停用要密碼 | ✅ |
+| 6 | **遺失 authenticator → 無法登入** | 使用者卡死 | P1 | backup codes 救援;/login/2fa 提供「改用備用碼」;SOP §11 | ✅ |
+| 7 | **enable 後未 verify 誤以為已啟用** | 誤以為受保護 | P2 | `skipVerificationOnEnable=false` → 未 verify 不啟用(status 仍未啟用);UI 三步明確 | ✅ |
+| 8 | **TOTP 時鐘漂移** | 正常碼被拒 | P2 | Better Auth 容忍 ±1 window;伺服器 NTP 同步(ops) | ✅ |
+| 9 | **reactive store 未更新致 active org 顯示錯** | UX 混淆(非安全) | P2 | 登入 / 2FA 成功全頁導向重新 hydrate;DB session.activeOrganizationId 為準 | ✅ 已修 |
+
+**殘留**:管理員協助重設之身分核驗政策(SOP,人工)· passkey/WebAuthn · org 強制 2FA 政策(皆後續)。
 
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-20 | v1.0 | **M2–M4 完成 → SHIPPED**|M2 帳號設定啟用/停用 UI(QR via qrcode.react + 手動碼 + backup codes + 停用需驗證;header「安全」入口;twoFactorClient)· M3 登入二步(twoFactorRedirect → /login/2fa,TOTP/備用碼;登入&2FA 成功全頁導向修 active org 顯示 lag)· M4 verify 端點 rateLimit + `e2e/mfa.spec.ts` 固化(otplib 產碼,5 web e2e 綠)+ §12 FMEA(P0 全緩解)。Playwright MCP 實走全流程。**自助 TOTP 二步驟驗證上線** | Claude Code |
 | 2026-07-20 | v0.3 | **M1 後端完成**|createAuth 掛 twoFactor plugin(issuer Weyver;secret/backup 內建保護)+ verify 端點 rateLimit;spike 確認 Better Auth flow(enable→verifyTotp 啟用 / signIn→twoFactorRedirect / challenge cookie→verify 發 session);4 整合測(otplib 確定性產碼)綠;api 套件 114 | Claude Code |
 | 2026-07-20 | v0.2 | OQ-MFA-1..6 全採建議裁定(TOTP+backup only · opt-in+預留 org policy · 不做 trustDevice · 前端生 QR · Better Auth 內建保護 · 獨立 F-4);狀態 → APPROVED,進 M1 | Claude Code |
 | 2026-07-20 | v0.1 | 初版 DRAFT — F-4 MFA(TOTP + backup codes);承 2026-07-20 對話裁定「MFA 可提前、密碼重設等 email、SSO 等客戶」;上游 F-2 auth SHIPPED + Better Auth two-factor 核心 plugin;A1–A4 切分 + OQ-MFA-1..6;scope out email/SMS OTP · passkey · org 強制 · trustDevice | Claude Code |

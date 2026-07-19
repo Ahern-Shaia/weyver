@@ -14,7 +14,7 @@
 | Monorepo + NestJS + PG 骨架 | F-1 | ✅ 隨 form-engine-core M2 落地(`apps/api`)| —(見 R1/form-engine-core §9-bis)|
 | **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | ✅ **SHIPPED v1.0**(M0–M5:引擎+DI · 對映表+IdentityService · AuthGuard session→tenant + 剝 client header + TenantGuard 環境分派 + 跨租戶隔離 e2e · `/api/auth/*` handler + 前端登入/註冊/登出 + 受保護 layout〔強制登入僅 prod〕· rateLimit/安全標頭/throttler 硬化 · auth.spec 固化 · FMEA P0 全緩解;§6-bis 登入分層+治理;org→tenant 走 afterCreateOrganization hook;**dev header→真實認證,R1 上 prod 硬前提達成**。三層 RBAC=P0-4;SSO/MFA=後續)| [foundation/auth.md](foundation/auth.md) |
 | UI shell + design tokens + deploy | F-3 | ✅ 前端 v2.1(`packages/ui` + `/app`)| —(見 docs/14)|
-| **二步驟驗證(MFA / TOTP)** | F-4 | 🚧 **M0 APPROVED — OQ-MFA-1..6 全採建議**(進 M1;承 F-2;Better Auth two-factor 核心 plugin;TOTP + backup codes 自助啟用 + 登入二步;scope out email/SMS OTP · passkey · org 強制 · trustDevice)| [foundation/mfa.md](foundation/mfa.md) |
+| **二步驟驗證(MFA / TOTP)** | F-4 | ✅ **SHIPPED v1.0**(M0–M4:twoFactor plugin + 4 整合測 · 帳號設定啟用/停用 UI〔QR + backup codes〕· 登入二步 challenge〔/login/2fa,TOTP + 備用碼〕· verify 端點 rateLimit · mfa.spec 固化 · FMEA P0 全緩解;承 F-2;scope out email/SMS OTP · passkey · org 強制 · trustDevice)| [foundation/mfa.md](foundation/mfa.md) |
 
 ---
 

@@ -193,6 +193,9 @@ importers:
       happy-dom:
         specifier: ^20.11.0
         version: 20.11.0
+      otplib:
+        specifier: ^12.0.1
+        version: 12.0.1
       pg:
         specifier: ^8.22.0
         version: 8.22.0
