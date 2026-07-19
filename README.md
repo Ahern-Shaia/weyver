@@ -13,7 +13,7 @@
 |---|---|---|
 | 01 | [Ragic 側核心功能工程量估算](docs/01-核心功能工程量估算.md) | ✅ 完成(保留作 Ragic 側詳表) |
 | 02 | [產品命名候選](docs/02-產品命名候選.md) | ✅ 主選 **Weyver(織雲)** — 2026-07-16 換案 |
-| **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-16 v2.1 定稿**(**一體 offering 缺一不可**;**429 MVP OSS-only**;Weyver 自建全套 ERP CORE;省 NT$70-100K/年授權)|
+| **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-19 v2.4**(**一體 offering 缺一不可**;**472 MVP OSS-only**|docs/25 審計補遺 +32:AI MVP 5 項 / ZEN 規則編輯器 / 帳齡·三方比對 / 白牌·配額 / 平台可靠性,並修 B 小計算術漏;Weyver 自建全套 ERP CORE)|
 | — | [策略簡報](docs/strategy-slides.html) | ✅ 2026-07-18 重刷(對齊 v2.3 / solo 時程 / 全自研 TS / OSS / 13 張)|
 | **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-18 v2.8**(新增 § 1.4 Vernova AI 實測產能校準|僅計 ahern 本人 commit;solo 完整 MVP 加速 ~2 年 / 務實 ~3-4 年)|
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver T 策略)|
@@ -21,7 +21,7 @@
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Weyver A-I 借鑑分類)|
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-18 v9**(OSS-only stack + Modular Monolith;**§ 7.10 AI 輔助設計工具鏈(Skills + MCP)**;§ 16.5-16.11 Prod 雲端部署架構 AWS/GCP + 全服務成本|主推 GCP 台灣區 + Cloud Run;Tier E ~NT$14-22K/月)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
-| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-16 v1**(**buildable sprint 順序**|Foundation + Phase 0 + Phase 1;dependency + solo M18 + risk gates)|
+| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.3**(**buildable sprint 順序**|Phase 1 Ragic 229 → Phase 2 ERP +203 → Phase 3 MES/ISO +40;sprint 代號 legend;HR→Phase 2、MES/ISO→Phase 3(docs/25 C1);dependency + solo M18 + risk gates)|
 | **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-18 v1.1**(開發前定案|tech stack + design token + 設計規則 + Do&Don't;企業級基準;**v1.1 § 1.5 記錄 Vite 8 / Storybook 10 / Vitest 4**)|
 | — | [設計系統 / 首頁 v6 / 表單引擎](docs/mockups/) | ✅ 2026-07-17 mockups(企業級,深海青)|
 | **⭐ 15** | **[表單引擎技術設計](docs/15-表單引擎技術設計.md)** | ✅ **2026-07-18 v2**(命門地基|兩層資料模型 + 真實表 + ORM 雙軌 + 公式 + 權限 + 計算層 + P0-1 spike)|
@@ -32,8 +32,9 @@
 | **⭐ 20** | **[領域引擎 build-on 分析](docs/20-領域引擎build-on分析.md)** | ✅ **2026-07-18 v1**(巨人肩膀|規則→GoRules ZEN / workflow→DBOS+BullMQ / 帳務→自研 ERPNext-OFBiz 藍圖+TigerBeetle escape hatch)|
 | **⭐ 21** | **[多租戶架構](docs/21-多租戶架構.md)** | ✅ **2026-07-18 v1**(五層巨人|RLS+SET LOCAL / nestjs-cls / Caddy 自訂網域 / JWT 為真實來源 / Better Auth orgs + authz in-app→Cerbos)|
 | **⭐ 22** | **[資安規範與威脅模型](docs/22-資安規範與威脅模型.md)** | ✅ **2026-07-18 v2**(OWASP Top10/API/LLM + 威脅模型 + AI 安全載重不變量 + 供應鏈/secrets/容器 + 四軸反思→AGENTS.md ⚙️)|
-| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-18 v5**(對客戶功能時程|R1→R2→R3(完整 MVP)→R4(持續);模組×階段矩陣;**時程基準改 solo(單一開發者 AI 輔助)非 8 人團隊**,務實(承諾底線)R1 ~2-2.5 年 / R2 ~3.5 年 / R3 ~4-4.5 年,加速(努力目標)R1 ~1.5 年 / R2 ~2 年 / R3 ~3 年,據 docs/07 §1.4;若擴編則後段加速;pilot subset 先行;每階段可用不半殘)|
-| **⭐⭐ 24** | **[用戶心智模型與設計原點](docs/24-用戶心智模型與設計原點.md)** | ✅ **2026-07-19 v1.1**(視覺之上游依據|Weyver 用戶=Ragic 範式思考者,**主要畫面=「自己建自己填」的表單資料庫非 KPI 儀表板**;客戶校準:ERP/MES/ISO **織入同一 Ragic 工作區、非每系統一 tab**;反面教材=為 SaaS 而 SaaS + 分立模組 tab)|
+| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-19 v6.1**(對客戶功能時程|Ragic-parity-first:R1 完整 Ragic(~229,含 AI 建表/NL/ZEN)→ R2 ERP+計算層(+~203)→ R3 MES+ISO(+~40,完整 MVP)→ R4 對標+AI;電子簽章拆基本 R1 / 合規 R2;solo 務實 R1 ~2-2.5 年 / R3 ~4-4.5 年)|
+| **⭐⭐ 24** | **[用戶心智模型與設計原點](docs/24-用戶心智模型與設計原點.md)** | ✅ **2026-07-19 v1.2**(視覺之上游依據|Weyver 用戶=Ragic 範式思考者,**主要畫面=「自己建自己填」的表單資料庫非 KPI 儀表板**;客戶校準:ERP/MES/ISO **織入同一 Ragic 工作區、非每系統一 tab**;**v1.2 §6 docs/04 對齊前端 surface 地圖 S1–S21**)|
+| **⭐ 25** | **[功能完整對照清單](docs/25-功能完整對照清單.md)** | ✅ **2026-07-19 v1.1**(開發對照權威 checklist|A–U 全子功能 × R1–R4 × S1–S21;8 缺口 + 5 衝突**已全數拍板**併入 docs/04 v2.4(472)並 cascade 13/23/README)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照 + Weyver 選型 update)|
 | PDF | [`docs/pdf/`](docs/pdf/) 04 + 07 兩份 PDF | ✅ 2026-07-16,`bash docs/pdf/build.sh` 重生 |
 | 03 | 鮮勇當前表單分析(Ragic 已滿足 vs 需 ERP 補強) | ⏳ 待做 |

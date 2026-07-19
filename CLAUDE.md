@@ -43,17 +43,17 @@
 
 | 項目 | 數字 | 來源 |
 |---|---|---|
-| **完整 MVP 總人月(路線 A + 全自研 TypeScript + OSS-only + 通訊平台)** | **440** | docs/04 v2.2 |
-| ├── Ragic 側(A–I 9 模組,含 Glide Data Grid + 通訊平台通道) | **204** | v2.2 +11 vs v2.1(LINE/Slack/Teams/Telegram/WhatsApp/Discord 通知通道)|
-| ├── ERP 側(J–Q 8 模組,全 Weyver 自建)| 183 | J 49 + K 27 + L 31 + M 13 + N 15 + O 11 + P 17 + Q bridge 20 |
+| **完整 MVP 總人月(路線 A + 全自研 TS + OSS-only + 通訊平台 + 審計補遺)** | **472** | docs/04 **v2.4**(2026-07-19 docs/25 審計:+AI MVP 16 + ZEN 3 + 帳齡/三方 2 + 白牌/配額 3 + 可靠性 8;修 B 小計算術漏)|
+| ├── Ragic 側(A–I 9 模組,含 Glide Data Grid + 通訊平台通道 + v2.4 AI 建表/公式/NL + ZEN + 白牌/配額 + 可靠性) | **229** | v2.4 +25 vs v2.2 |
+| ├── ERP 側(J–Q 8 模組,全 Weyver 自建)| 188 | J 50 + K 31(v2.4 +帳齡/三方/AI 抽單)+ L 31 + M 13 + N 15 + O 11 + P 17 + Q bridge 20 |
 | ├── HR / 薪資(R) | 15 | 台灣班別 / 加班 / 薪資合規 |
 | ├── MES(T,Cloud + Edge hybrid)| 22 | Cloud + Edge Gateway |
-| ├── ISO / 品管(U,通用工具) | 16 | 產業特化客戶自建 |
+| ├── ISO / 品管(U,通用工具 + v2.4 AI CAPA) | 18 | 產業特化客戶自建 |
 | └── CRM(S) MVP | 0 | 明確範圍外,對標 12 人月 |
-| 完整對標人月(路線 A)| ~823 | docs/04 v2.1 |
+| 完整對標人月(路線 A)| ~885 | docs/04 v2.4 |
 | 對照組|若採 Odoo fork(拒絕全自研 TS) | ~361 MVP | v2.1 全自研 TS 比 Odoo fork +68 |
 | **Solo|完整 MVP(路線 A)** | **務實 ~4-4.5 年 / 加速 ~3 年** | docs/07 §1.4 + docs/23 v5(8 人團隊對照 ~5.6 年;solo 主基準因實際資源為單人 AI 輔助)|
-| **Solo|R1 完整 Ragic 平台**(~204 人月,Ragic-parity-first,既有客戶遷移 land)| **務實 ~2-2.5 年 / 加速 ~1.5 年** | docs/23 v6 + docs/07 §1.4(8 人團隊對照 ~2.2 年)|
+| **Solo|R1 完整 Ragic 平台**(~229 人月 v2.4,Ragic-parity-first,既有客戶遷移 land)| **務實 ~2-2.5 年 / 加速 ~1.5 年** | docs/23 v6.1 + docs/07 §1.4(8 人團隊對照 ~2.2 年)|
 | **Solo M18 milestone 交付**(Ragic-first)| 表單引擎核心(動態 schema + Glide Data Grid basic + 基本公式)+ 關聯 + 基本權限 + 匯入匯出 + 1 家 pilot 遷移最常用 Ragic 表單上線(不碰 ERP/Q,ERP 於 Phase 2)| ~25 人月(佔 MVP 5.8%) |
 | **v2.1 OSS-only|省 商業授權年費** | **NT$70-100K/年** | AG Grid + Sentry Cloud + Doppler + Chromatic + Vercel Pro 全砍 |
 | ⚠️ 訂閱計費從 MVP 移 Phase 2 | 2026-07-16 決策(A7 假設) | docs/04 v1.1 |
@@ -68,7 +68,7 @@
 |---|---|---|
 | 01 | [Ragic 側核心功能工程量估算](docs/01-核心功能工程量估算.md) | ✅ 完成(保留作 Ragic 側詳表)|
 | 02 | [產品命名候選](docs/02-產品命名候選.md) | ✅ **主選 Weyver(織雲)** — 2026-07-16 從 Weft 換案 |
-| **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-18 v2.3**(**一體 offering 缺一不可**;**440 MVP**;OSS-only;H 通知模組加 LINE/Slack/Teams/Telegram/WhatsApp/Discord 通道 + 路由引擎;**v2.3 時程換算基準改 solo**|完整 MVP 務實 ~4-4.5 年 / 加速 ~3 年,8 人團隊降為若擴編對照)|
+| **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-19 v2.4**(**一體 offering 缺一不可**;**472 MVP**(docs/25 審計補遺 +32:AI MVP 5 項 / ZEN 規則編輯器 / 帳齡·三方比對 / 白牌網域·配額 / 平台可靠性;修 B 小計算術漏);OSS-only;solo 時程 band 不變 務實 ~4-4.5 年 / 加速 ~3 年)|
 | — | [策略簡報](docs/strategy-slides.html) | ✅ **2026-07-18 重刷**(對齊 docs/04 v2.3 + docs/07 v2.9 + docs/23 v5|13 張:Ragic substrate 取代 ERP+MES+ISO 定位 / 21 模組 / 440 MVP / **全自研 TS 拋 Odoo fork** / OSS-only / solo 時程 + Vernova 校準 / 計算層差異化 / 商業模式;品牌 token 對齊 深海青 #0C5F73 + IBM Plex。reveal.js,可直接開啟)|
 | **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-18 v2.9**(§ 1.4 校正 calendar 稀釋|舊「前 ~1 年導入」修為 ~6 個月密集期(對齊 § 3)+ 疊加稀釋重算三表;**關鍵|solo 時程主導因子為穩定期 ~30% 維運拖累非 coding 速度**,加速+卸載維運 完整 MVP ~2.7 年 < 3 年 / 務實 ~4-4.5 年;前 v2.8 Vernova commit 實證校準)|
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 MES vendor 分析 + 功能對照矩陣 + Weyver T 模組策略)|
@@ -76,9 +76,10 @@
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Enterprise 特殊功能 + Weyver A-I 借鑑分類)|
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-18 v9**(**Ragic substrate + Modular Monolith**;**v9 新增 § 7.10 AI 輔助設計工具鏈(Claude Code Skills + MCP)**|前端視覺設計 Skills 依定位分主用/情境/不採用 + shadcn/Playwright MCP + 擴充管道;權威仍為 docs/14;**v8** § 16.5-16.11 Prod 雲端部署架構(AWS/GCP)+ 全服務成本,主推 GCP asia-east1 台灣 + Cloud Run,OSS-only)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native 10x + Fastify/NestJS/Encore.ts/Hono 對照 + Weyver 選型 update 建議)|
-| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-18 v1.2**(440 MVP 拆 sprint;dependency 圖;**v1.2 §1 階段重排 Ragic-parity-first**|Phase 1 完整 Ragic 204 → Phase 2 ERP+計算層 +198 → Phase 3 MES+ISO +38 → Phase 4 對標;M18 改 Ragic-first(表單引擎核心+pilot 遷移,不碰 ERP);v1.1 時程改 solo 主基準;團隊 8 人 5 track 為若擴編對照)|
+| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.3**(472 MVP 拆 sprint;dependency 圖;**v1.3 docs/25 拍板 cascade**|C1:P0-9 之 HR→Phase 2、MES/ISO→Phase 3;C3:sprint 代號 legend(P0-x=Phase 1 / P1-x=Phase 2 沿用);§1 人月同步 v2.4(Phase 1 229 / +203 / +40);M18 Ragic-first 不變)|
 | **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-18 v1.1**(**開發前定案**|前端 tech stack + design token + 設計規則 + Do&Don't;對齊 Dynamics/Ramp/Sigma 企業級;配套 `docs/mockups/design-system.html`;**v1.1 § 1.5 記錄實裝建置版本 Vite 8 / Storybook 10 / Vitest 4**)|
-| **⭐⭐ 24** | **[用戶心智模型與設計原點](docs/24-用戶心智模型與設計原點.md)** | ✅ **2026-07-19 v1.1**(**視覺之上游依據**|Weyver 用戶=Ragic 範式思考者,**主要畫面=「自己建自己填」的表單資料庫非 KPI 儀表板**;**客戶校準確認 ERP/MES/ISO 織入同一 Ragic 工作區、非每系統一個 tab**(痛點=不想切多系統);反面教材=為 SaaS 而 SaaS + 分立模組 tab;置於 docs/14 之前)|
+| **⭐⭐ 24** | **[用戶心智模型與設計原點](docs/24-用戶心智模型與設計原點.md)** | ✅ **2026-07-19 v1.2**(**視覺之上游依據**|Weyver 用戶=Ragic 範式思考者,**主要畫面=「自己建自己填」的表單資料庫非 KPI 儀表板**;客戶校準:ERP/MES/ISO 織入同一 Ragic 工作區、**非每系統一個 tab**;**v1.2 §6 docs/04 對齊前端 surface 地圖 S1–S21**(A–I 核心 Phase 1 / J–U 織入 Phase 2+);反面教材=為 SaaS 而 SaaS + 分立模組 tab)|
+| **⭐ 25** | **[功能完整對照清單](docs/25-功能完整對照清單.md)** | ✅ **2026-07-19 v1.1**(**開發對照權威 checklist**|A–U 全子功能 × R1–R4 × S1–S21;審計 8 缺口 + 5 衝突 **已全數拍板採納**(缺口併入 docs/04 v2.4 = 472;C1–C5 已 cascade 至 13 v1.3 / 23 v6.1 / README);§3 補遺人月定案:AI MVP 16 + ZEN 3 + 明文化 2 + 白牌/配額 3 + 可靠性 8)|
 | — | [設計系統視覺稿](docs/mockups/design-system.html) + [首頁 v6](docs/mockups/homepage-v6.html) + [表單引擎](docs/mockups/form-engine.html) | ✅ 2026-07-17(企業級基準,可瀏覽器直開)|
 | **⭐ 15** | **[表單引擎技術設計](docs/15-表單引擎技術設計.md)** | ✅ **2026-07-18 v2**(命門地基|**兩層資料模型**:Tier1 固定真實表 + Tier2 動態真實表(共享 schema + tenant_id);ORM 雙軌 Drizzle+Knex;公式 fork Teable MIT;canvas grid;經 docs/16 實證校正)|
 | **⭐ 16** | **[OSS 表單引擎技術拆解](docs/16-OSS表單引擎技術拆解.md)** | ✅ **2026-07-18 v1**(Baserow/NocoDB/Teable 拆解|三家皆真實表非 EAV/JSONB;**Teable Prisma+Knex 雙軌解難題**;可復用地圖:Baserow core + Teable formula/grid packages MIT 可 fork 省數月;canvas grid 勝)|
@@ -88,7 +89,7 @@
 | **⭐ 20** | **[領域引擎 build-on 分析](docs/20-領域引擎build-on分析.md)** | ✅ **2026-07-18 v1**(巨人肩膀|整套 ERP 拒絕 / 領域引擎採用:**規則→GoRules ZEN**(MIT 視覺編輯器 no-code+AI 綜效)、**durable workflow→DBOS**(PG library 官方 NestJS 近零 ops)+BullMQ、**帳務 GL→自研**(ERPNext/OFBiz 藍圖 + TigerBeetle escape hatch);全塞表單範式底下不破定位)|
 | **⭐ 21** | **[多租戶架構](docs/21-多租戶架構.md)** | ✅ **2026-07-18 v1**(五層巨人|RLS FORCE+SET LOCAL+PgBouncer tx / nestjs-cls+transactional(背景工作 payload 帶租戶)/ Caddy on-demand TLS 自訂白牌網域 / JWT tenant_id 為真實來源防洩漏 / Better Auth orgs 足夠+authz MVP in-app,Cerbos 為 outgrow)|
 | **⭐ 22** | **[資安規範與威脅模型](docs/22-資安規範與威脅模型.md)** | ✅ **2026-07-18 v2**(OWASP Top10/API/**LLM Top10** + 威脅模型 6 面 + P0 同步 AGENTS.md 🔒;**AI 載重不變量**:模型結構化 intent→確定性驗證→人核准→audit;動態 identifier 安全鏈;供應鏈/secrets/容器;**四軸反思擴充**補冪等性/優雅降級+circuit breaker/N+1 → AGENTS.md ⚙️ 鐵則)|
-| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-18 v6**(**對客戶**功能時程|**Ragic-parity-first 階段重排**:R1 完整 Ragic 平台(既有客戶遷移 land)→ R2 ERP+計算層(補「算」取代 ERP)→ R3 MES+ISO(完整 MVP)→ R4 對標+AI;模組×階段矩陣重映;**solo 主基準**務實 R1 ~2-2.5 年 / R2 ~4 年 / R3 ~4-4.5 年,加速 R1 ~1.5 / R2 ~2.5-2.7 / R3 ~3 年;與 docs/19「ERP 先出」相反(docs/19 降 R2 技法);每階段可用不半殘、資料不重來)|
+| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-19 v6.1**(**v6.1 docs/25 拍板**:電子簽章拆基本 R1 / 合規 R2;AI 遷移建表·NL 查詢·ZEN 前移 R1、拍照抽單前移 R2;人月 R1 ~229 / R2 +~203 / R3 +~40 = 472;**對客戶**功能時程|**Ragic-parity-first 階段重排**:R1 完整 Ragic 平台(既有客戶遷移 land)→ R2 ERP+計算層(補「算」取代 ERP)→ R3 MES+ISO(完整 MVP)→ R4 對標+AI;模組×階段矩陣重映;**solo 主基準**務實 R1 ~2-2.5 年 / R2 ~4 年 / R3 ~4-4.5 年,加速 R1 ~1.5 / R2 ~2.5-2.7 / R3 ~3 年;與 docs/19「ERP 先出」相反(docs/19 降 R2 技法);每階段可用不半殘、資料不重來)|
 | PDF | `docs/pdf/*.pdf` snapshot | ⚠️ **手動重生**|對外分享才 `bash docs/pdf/build.sh`(2026-07-16 決策|對話中一律讀 .md,不自動重生 PDF)|
 | 03 | 鮮勇當前表單分析(Ragic 已滿足 vs 需 ERP 補強) | ⏳ 待做 |
 | **05** | **[商業模式驗證](docs/05-商業模式驗證.md)** | ✅ **2026-07-18 v1**(值不值得投入財務模型|競品定價錨 → Weyver 三段式(Pro ~NT$336K/年)→ 客戶分層 ACV 基準 NT$400K → ARR 5 年(Y3~11M/Y5~32M)→ OSS 高毛利 ~80% → 解耦提早營收 breakeven Y2-3;假設可調三情境 + 待拍板清單)|
@@ -152,4 +153,5 @@
 - 2026-07-18|**全庫 cascade|時程基準 8 人團隊 → solo(承 docs/23 v5)**|用戶指示「其他有 8 人團隊相關的都改 solo」。**分類處理**|(a) live 檯面內容改 solo 主基準:CLAUDE.md 已估算結論表(2 列)、docs/04 v2.3(時程 Scaling 節 + A5 假設 + Phased 出貨 + Talking Point,順帶修 stated 419→440)、docs/05 v1.1(回本模型 2 處)、docs/13 v1.1(§0.2 Solo bandwidth 校正 + §1 完整 MVP 標頭)、README docs/23 索引。統一數字|完整 MVP solo 務實 ~4-4.5 年 / 加速 ~3 年、Phase 0/R1 務實 ~2-2.5 年 / 加速 ~1.5 年,8 人列降為「若擴編」對照。(b) **保留不動**|各 doc 版本 changelog / CLAUDE 時間戳 log(歷史記錄)、docs/11 v4 changelog 之對齊註記、docs/01 legacy(168 人月舊 scope)、「團隊規模 5/8/12」開放決策項。(c) **待用戶決定**|docs/strategy-slides.html 數字 stale(323 人月 / 4.2 年,落後 3 版)需整體重整非只換 solo。
 - 2026-07-18|**docs/23 v5|時程基準 8 人團隊 → solo**|承上,用戶指出「開發僅 ahern 一人,應更快」。**8 人團隊 5.5 年係虛構基準且反較 solo-峰值慢**(docs/07 §1.4 (a) 純 focus solo 加速 ~2 年 < 8 人 5.5 年,因 8 人估算用傳統 ~0.8 人月/月/人,solo AI 輔助峰值為其數倍)。docs/23 全文改以 solo 為主基準:各 release 標頭 + §1.5 表 + 加速 band + footnote 換 solo **務實檔**(80% steady + 峰值×0.3,承諾底線)R1 ~2-2.5 / R2 ~3.5 / R3 ~4-4.5 年;**加速檔**(90% + 卸載維運,努力目標)R1 ~1.5 / R2 ~2 / R3 ~3 年。**壓不到 ~1-2 年之硬約束**|(1) 純 focus ~2 年已內含峰值×0.5 續航折損,(2) 17 家導入到 2026-12 為合約硬 deadline 前 ~1 年 R&D 近零。移除「團隊等比例調整」+ 加「擴編則後段加速」對照。
 - 2026-07-18|**docs/07 v2.9 + docs/23 v4|calendar 稀釋校正**|回應「已實測 Vernova 產能為何時程仍長」:(a) docs/07 § 1.4 校正舊「前 ~1 年 90-95% 導入」為 **~6 個月密集期(2026-07~12,對齊 § 3)**;新增純 focus (a) / 稀釋模型 (b) / 疊加後 calendar (c) 三表;**核心結論|solo 時程 bound 於穩定期 ~30% 維運拖累(17 家 live 客戶),非 coding 速度**——校正前段僅省 ~6 個月(小槓桿),唯有維運卸載至 ~90% focus 才使加速情境 完整 MVP 壓至 ~2.7 年(< 3 年);務實 ~4-4.5 年 與 8 人保守 5.5 年收斂(修正舊「solo 務實已快於 8 人」係未計稀釋)。(b) docs/23 § 1.5 加速 band 重算|R1 ~1.5 年 / 完整 MVP ~2.5-3.5 年;保守 8 人地板不變。cspell 加 Vernova。
+- 2026-07-19|**docs/25 功能審計 + 全數拍板 cascade(440 → 472)**|全 docs(01–24)交叉審計產 docs/25 功能完整對照清單(A–U 全子功能 × R1–R4 × S1–S21 開發追蹤 checklist)。發現 8 缺口 + 5 衝突,用戶「全採建議」:(a) **docs/04 v2.4**|補 AI MVP 5 項 16 人月(B 遷移建表 6 / C 公式助手 2 / F NL 查詢 3 / K 單據抽取 3 / U CAPA 2;Copilot 等 4 項留 R4)+ C ZEN 規則編輯器 3 + J 帳齡 1 + K 三方比對 1 + A 白牌網域 1 / 配額 2 + I 平台可靠性工程 8;**MVP 440 → 472**;**修 v2.1 起 B 小計算術漏**(47 誤植 37,各表加總與宣告總計自此一致);solo 時程 band 不變(+7% 在誤差帶內)。(b) **docs/13 v1.3**|C1 P0-9 之 HR→Phase 2、MES/ISO→Phase 3;C3 sprint 代號 legend。(c) **docs/23 v6.1**|C2 電子簽章拆基本 R1 / 合規 TWCA R2;AI 遷移建表·NL·ZEN 前移 R1、拍照抽單 R2;人月同步(檔頭誤植 v2 併修)。(d) README docs/23 版本 v5→v6.1 同步(C4)。(e) C5|Grid 依 Glide,Teable canvas SDK 列 Phase 2 評估。前端視覺工作另見 docs/24(心智模型)+ mockups(form-first 定調)。
 - 2026-07-18|**docs/23 客戶版發布藍圖 + docs/07 §1.4 實證校準 + 資料夾改名 + git init**|(a) docs/23 產品功能發布藍圖(對客戶 R1-R4 + 模組×階段矩陣 + 開發時程保守基準 + 加速情境)。(b) docs/07 §1.4|以 ahern 於 **Vernova AI** 專案 git 實測產能反推 Weyver 時程(**僅計本人 commit**,其餘協作者剔除):個人衝刺淨 +164K LOC / ~961 commits / 53 活躍日 → 峰值 ~86K 淨 LOC/月;三情境 solo 完整 MVP 加速 ~2 年 / 務實 ~3-4 年;binding constraint 為前 ~1 年導入 attention-split 非 coding 速度。(c) 資料夾 `weft/` → `weyver/` 改名 + memory path 同步 + **首次 `git init` commit**(.gitignore 排除 .DS_Store + 生成 PDF;保留 330 張競品截圖研究資產)。
