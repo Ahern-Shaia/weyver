@@ -223,7 +223,7 @@ formula_def
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-FML-1..8;含 OQ-FEC-7 fork 決策)| ⏳ |
 | **M1** A1 | 公式 parser(fork Teable ANTLR)+ 函數庫 + 型別推斷 + formula_def | ✅ **完成**|`packages/formula`(parser vendored + evaluate + ~28 函數 Decimal 禁 float + infer + 參照收集;28 tests;CLEANROOM MIT 鏈)+ apps/api `formula_def` 表(RLS+grants)+ `FormulaService.defineFormula`(parse→名稱解析成 field id→型別推斷→存;unknown/自我參照/語法錯設計期擋;7 整合測試真 PG)|
 | **M2** A2 | 依賴圖 + 循環偵測 + 重算引擎(讀時算 / 物化混合)| ✅ **核心完成**|`packages/formula/graph.ts`(**Tarjan SCC 循環偵測 + 拓樸求值序**,HyperFormula 式,11 tests)+ `FormulaService` 定義期循環檢查(FormulaCycleError 帶欄名鏈)+ `computeRecord` **讀時重算**(拓樸序鏈式,真 PG 9 整合測)· 物化 / Scheduled / Bulk 三模式為後續優化(OQ-FML-8/2) |
-| **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ⬜ |
+| **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ✅ **後端核心完成**|link 欄儲存(bigint 目標 id + options.targetFormId)已由 form-engine 型別系統落地;`RelationService`.registerRelation(寫 relation_def,idempotent)+ **load 帶入**(讀目標記錄指定欄值,採購單→供應商 帶入 地址/電話);6 整合測(真 PG)· **選記錄 UI(前端)+ M2M junction 續** |
 | **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ⬜ |
 | **M5** A5 | 前端共享求值即時預覽 + 後端權威重算一致性 | ⬜ |
 | **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | ⬜ |
@@ -265,6 +265,7 @@ formula_def
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
+| 2026-07-19 | v0.9 | **M3 後端核心:Link + Load**|發現 link 欄儲存已由 form-engine 型別系統落地(bigint 目標 id + options.targetFormId);新 `RelationService`(registerRelation 寫 relation_def idempotent + load 帶入讀目標記錄指定欄);6 Testcontainers 整合測(採購單 link 供應商 → 帶入 地址/電話 + 錯誤路徑)。選記錄 UI(前端 P0-3)+ M2M junction 為後續 | Claude Code |
 | 2026-07-19 | v0.8 | **M2 核心:依賴圖 + SCC 循環偵測 + 讀時重算**|`graph.ts` Tarjan 強連通分量(循環偵測 + 反拓樸求值序,11 tests);`FormulaService.defineFormula` 加定義期循環檢查(跨欄環 → FormulaCycleError);`computeRecord` 讀時重算(拓樸序鏈式,數量→小計 驗證);9 Testcontainers 整合測。物化 / 背景 / bulk 模式(OQ-FML-8)為後續優化。M3 Link/Load 續 | Claude Code |
 | 2026-07-19 | v0.7 | **M1 完成:formula_def + depends_on 落地(apps/api)**|`packages/formula` 加參照收集器(collectAstReferences,5 tests);apps/api 加 `formula_def` 表(Drizzle + RLS FORCE + weyver_app grants,migration 0004)+ `FormulaService.defineFormula`(名稱→field id 穩定解析 / 型別推斷 / unknown·自我參照·語法錯設計期擋 / upsert)+ 7 Testcontainers 整合測試。依賴圖 + 循環偵測 + 重算引擎 = M2 | Claude Code |
 | 2026-07-19 | v0.6 | **M1 二交付:求值 + 函數庫 + 型別推斷**|`evaluate.ts`(AST 樹走訪求值器,decimal.js 禁 float,除零/未知函數 typed error)+ `functions.ts`(registry ~28:SUM/AVERAGE/MIN/MAX/COUNT/ABS/ROUND/CEILING/FLOOR/MOD/POWER · IF/AND/OR/NOT/ISBLANK · CONCAT/LEN/TRIM/UPPER/LOWER/LEFT/RIGHT/MID · YEAR/MONTH/DAY/DATEDIF)+ `infer.ts`(靜態型別推斷,IF 取分支型別);23 tests(Decimal 0.1+0.2=0.3 驗證);formula_def metadata + depends_on 抽取(apps/api)續 | Claude Code |

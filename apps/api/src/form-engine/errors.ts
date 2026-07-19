@@ -116,3 +116,10 @@ export class FormulaCycleError extends DomainError {
     super(`公式循環依賴:${names.join(" → ")}`)
   }
 }
+
+/* P0-3 Link&Load */
+export class NotALinkFieldError extends DomainError {
+  constructor(name: string) {
+    super(`欄位 ${name} 不是關聯(link)欄位`)
+  }
+}

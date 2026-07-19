@@ -5,10 +5,11 @@ import { DdlService } from "./ddl/ddl.service.js"
 import { FormulaService } from "./formula/formula.service.js"
 import { MetadataService } from "./metadata/metadata.service.js"
 import { RecordService } from "./records/record.service.js"
+import { RelationService } from "./relations/relation.service.js"
 
 @Module({
   controllers: [FormsController, RecordsController],
-  providers: [MetadataService, DdlService, RecordService, FormulaService],
-  exports: [MetadataService, DdlService, RecordService, FormulaService],
+  providers: [MetadataService, DdlService, RecordService, FormulaService, RelationService],
+  exports: [MetadataService, DdlService, RecordService, FormulaService, RelationService],
 })
 export class FormEngineModule {}
