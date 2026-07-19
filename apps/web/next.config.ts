@@ -8,9 +8,12 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
-  // 同源代理引擎 API(免 CORS;prod 由 reverse proxy 同源)
+  // 同源代理引擎 API + Better Auth(免 CORS;cookie 同源;prod 由 reverse proxy 同源)
   async rewrites() {
-    return [{ source: "/api/engine/:path*", destination: `${ENGINE_API_ORIGIN}/api/:path*` }]
+    return [
+      { source: "/api/engine/:path*", destination: `${ENGINE_API_ORIGIN}/api/:path*` },
+      { source: "/api/auth/:path*", destination: `${ENGINE_API_ORIGIN}/api/auth/:path*` },
+    ]
   },
 }
 

@@ -37,7 +37,7 @@ export default function AppDemoPage() {
   const [view, setView] = useState<string>("form")
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <TopBar
         tabs={TABS}
         activeTab={activeTab}

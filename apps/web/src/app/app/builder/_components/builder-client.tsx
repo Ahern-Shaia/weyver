@@ -46,7 +46,7 @@ export function BuilderClient() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <header className="flex h-[42px] shrink-0 items-center gap-3 border-b-2 border-primary bg-card px-4">
         <span className="font-semibold text-[13.5px]">
           Weyver <span className="text-ink-3 text-[11px] font-normal">表單建構器</span>
