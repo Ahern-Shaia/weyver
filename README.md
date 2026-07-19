@@ -15,13 +15,13 @@
 | 02 | [產品命名候選](docs/02-產品命名候選.md) | ✅ 主選 **Weyver(織雲)** — 2026-07-16 換案 |
 | **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-19 v2.4**(**一體 offering 缺一不可**;**472 MVP OSS-only**|docs/25 審計補遺 +32:AI MVP 5 項 / ZEN 規則編輯器 / 帳齡·三方比對 / 白牌·配額 / 平台可靠性,並修 B 小計算術漏;Weyver 自建全套 ERP CORE)|
 | — | [策略簡報](docs/strategy-slides.html) | ✅ 2026-07-18 重刷(對齊 v2.3 / solo 時程 / 全自研 TS / OSS / 13 張)|
-| **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-18 v2.8**(新增 § 1.4 Vernova AI 實測產能校準|僅計 ahern 本人 commit;solo 完整 MVP 加速 ~2 年 / 務實 ~3-4 年)|
+| **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-19 v2.11**(**§4 逐月排程重編為 Ragic-first**|表單引擎核心→關聯/權限→pilot Ragic 遷移,移除 Odoo/AG Grid/Q/GL/電子發票(排 Phase 2);§0 表 + LOC + 成本對齊 docs/04 v2.4 472;OSS-only 砍商業授權;§ 1.4 Vernova 實測校準保留)|
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver T 策略)|
 | **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver J-Q 策略)|
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Weyver A-I 借鑑分類)|
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-19 v10**(OSS-only stack + Modular Monolith;**v10 § 7–8 視覺數值對齊 docs/14 v2.1**|清 v1 軟 SaaS 殘留 IBM Plex / 三配色 / 禁陰影框線 / 方角禁 pill / 動效近乎無;§ 7.10 AI 工具鏈保留;§ 16.5-16.11 Prod 雲端部署 AWS/GCP|主推 GCP 台灣區 + Cloud Run)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
-| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.3**(**buildable sprint 順序**|Phase 1 Ragic 229 → Phase 2 ERP +203 → Phase 3 MES/ISO +40;sprint 代號 legend;HR→Phase 2、MES/ISO→Phase 3(docs/25 C1);dependency + solo M18 + risk gates)|
+| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.4**(**buildable sprint 順序**|Phase 1 Ragic 229 → Phase 2 ERP +203 → Phase 3 MES/ISO +40 = 472;**v1.4 §3/§4 實體重編為 Ragic-parity release**(執行 sprint 明細 + release 對映表,取代舊 Phase 0 混切);dependency + Ragic-first M18 + risk gates)|
 | **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-19 v2.1**(**嚴謹企業級定案**|上游=docs/24 form-first;全框線/方角/禁陰影 pill/扁平分段條/密度/信任訊號;套件×surface 對映;權威稿 workspace-form-first-v2(內建三主題切換器);**v2.1 三配色主題定案**(深藍預設/深海青/石墨))|
 | — | [mockups](docs/mockups/) | ✅ 權威=workspace-form-first-v2(嚴謹企業級);v1 design-system/homepage 系列 SUPERSEDED |
 | **⭐ 15** | **[表單引擎技術設計](docs/15-表單引擎技術設計.md)** | ✅ **2026-07-18 v2**(命門地基|兩層資料模型 + 真實表 + ORM 雙軌 + 公式 + 權限 + 計算層 + P0-1 spike)|
