@@ -13,8 +13,8 @@
 **Weyver(織雲)** —— **以 Ragic 表單引擎為基底,取代 ERP,融合 MES + ISO 的一站式企業平台**(Cloud SaaS + On-premise Edge Gateway hybrid,**統一 TypeScript 全棧**,全 OSS,不 fork Odoo)。**廠商放棄原有 ERP(鼎新 / 千奧 / 正航),全面改用 Ragic 範式取代 ERP**,並在同一基底開展 MES + ISO。**架構主張(2026-07-17)**|表單引擎是 substrate(平台底層),不是模組之一 —— 採購單 / 銷貨單 / 工單 / BOM / 品檢 / ISO 文件皆為引擎上的表單 app;深層計算(GL 過帳期結 / MRP / 成本 / 估值)由引擎之上的計算層補齊(「算」不是「填」)。Q 多 ERP 對帳角色收斂(客戶放棄原 ERP,至多 onboarding 一次匯入)。
 
 - 首波 pilot|鮮勇 為首波客戶(食品加工,既有 Ragic 用戶,內部有 3 家 ERP);pipeline 17 家集中食品/團膳,但平台不限產業
-- 現況|**規劃 / 可行性評估階段**,尚未動工程
-- 決策階段|開會前的資料準備
+- 現況|**2026-07-19 起進入 Phase 1 工程**(規劃已完成)。首個模組 **P0-1 表單引擎動態 schema 核心已 SHIPPED v1.0**(`docs/modules/form-engine-core.md`|M0 設計→OQ 裁定→spike Gate→實作→FMEA 全流程;`apps/api` NestJS+Fastify、59 tests、RLS 隔離實證)。工程紀律|新 non-trivial 模組必先 M0 design doc + OQ 裁定(`docs/modules/_template.md`),模組索引 `docs/modules/MODULES.md`
+- 對外上 prod 前提|F-2 auth(Better Auth + JWT)+ form-engine-core §12.7 可靠性 checklist(idempotency key / quota / throttler / helmet)
 
 ## 品牌故事(業務簡報第一頁用)
 
@@ -126,6 +126,7 @@
 
 ## 時間戳
 
+- 2026-07-19|**進入 Phase 1 工程;P0-1 表單引擎核心 M0→SHIPPED v1.0 一日走完**|用戶拍板開發起跑 → M0 design doc(OQ-FEC-1..7 全採建議)→ M1 spike Gate 通過(10K 表 catalog 近線性 ×1.22 / advisory lock 開銷可忽略·禁 rewrite DDL / RLS 8 斷言 + 兩個 production 發現:set_config 參數化、GUC reset `''` 需 NULLIF)→ M2 `apps/api` NestJS+Fastify 骨架 + metadata catalog(physical identifier 由 DB generated column 保證)+ 15 型別雙軸 registry → M3 DDL 安全鏈(三段式 provision + advisory lock + ddl_audit)→ M4 記錄 DML(name-keyed values / autoNumber sequence / filter 白名單)+ 子表單一 tx → M5 租戶隔離(weyver_app 角色分離 + 每 tx set_config;**BOLA killer 測試:無 WHERE 的查詢 RLS 兜底不洩漏**)→ M6 REST API(錯誤信封 / dev guard prod fail-closed;Swagger→zod-openapi deviation)→ M7 FMEA(P0 12 項全清,殘留 6 項 P1/P2 歸屬明確)。59 tests(Testcontainers 真 PG)+ dev live smoke。docker-compose PG16(OrbStack :5433)+ spikes/ workspace。模組流程紀律確立:`docs/modules/`(_template + MODULES.md 索引)。
 - 2026-07-16|專案啟動,完成 01 工程量估算 + 02 命名候選,主選 Weft
 - 2026-07-16|資料夾從 `ragic-saas` 改名 `weft`
 - 2026-07-16|套用 claude-starter 模板(AGENTS.md + memory + docs 工作流程檔)
