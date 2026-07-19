@@ -110,3 +110,31 @@ export const relationDefs = pgTable(
   },
   (t) => [index("relation_def_form_idx").on(t.formId)],
 )
+
+/* P0-3 公式:每公式欄一列;depends_on = 依賴的 field_def id 陣列(名稱於定義期解析成 id,穩定於改名)。
+   本模組(M1)只建結構 + defineFormula 驗證/解析/存;依賴圖重算為 M2。 */
+export const formulaDefs = pgTable(
+  "formula_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references(() => formDefs.id),
+    fieldId: bigint("field_id", { mode: "number" })
+      .notNull()
+      .references(() => fieldDefs.id),
+    exprSource: text("expr_source").notNull(),
+    resultType: text("result_type").notNull(),
+    dependsOn: jsonb("depends_on").notNull().default([]),
+    materialized: boolean("materialized").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("formula_def_field_uq").on(t.fieldId),
+    index("formula_def_form_idx").on(t.formId),
+  ],
+)

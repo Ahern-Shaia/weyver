@@ -91,3 +91,22 @@ export class InvalidTypeConversionError extends DomainError {
     )
   }
 }
+
+/* P0-3 公式定義期錯誤 */
+export class FormulaDefinitionError extends DomainError {
+  constructor(detail: string) {
+    super(`公式語法錯誤:${detail}`)
+  }
+}
+
+export class FormulaReferenceError extends DomainError {
+  constructor(name: string) {
+    super(`公式參照不存在的欄位:${name}`)
+  }
+}
+
+export class FormulaSelfReferenceError extends DomainError {
+  constructor(name: string) {
+    super(`公式不可參照自身:${name}`)
+  }
+}

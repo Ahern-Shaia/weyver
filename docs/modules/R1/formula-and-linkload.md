@@ -221,7 +221,7 @@ formula_def
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-FML-1..8;含 OQ-FEC-7 fork 決策)| ⏳ |
-| **M1** A1 | 公式 parser(fork Teable ANTLR)+ 函數庫 + 型別推斷 + formula_def | 🚧 **parser + 求值 + 函數庫 + 型別推斷 ✅**(`packages/formula`;parser vendored + `parseFormula`/`evaluateFormula`/`inferFormulaType`;函數 registry ~28(math/logic/text/date/聚合)Decimal 精度禁 float;23 tests;CLEANROOM 登錄 MIT 鏈)· **formula_def metadata + depends_on 抽取(需 apps/api)續** |
+| **M1** A1 | 公式 parser(fork Teable ANTLR)+ 函數庫 + 型別推斷 + formula_def | ✅ **完成**|`packages/formula`(parser vendored + evaluate + ~28 函數 Decimal 禁 float + infer + 參照收集;28 tests;CLEANROOM MIT 鏈)+ apps/api `formula_def` 表(RLS+grants)+ `FormulaService.defineFormula`(parse→名稱解析成 field id→型別推斷→存;unknown/自我參照/語法錯設計期擋;7 整合測試真 PG)|
 | **M2** A2 | 依賴圖 + 循環偵測 + 重算引擎(讀時算 / 物化混合)| ⬜ |
 | **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ⬜ |
 | **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ⬜ |
@@ -265,6 +265,7 @@ formula_def
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
+| 2026-07-19 | v0.7 | **M1 完成:formula_def + depends_on 落地(apps/api)**|`packages/formula` 加參照收集器(collectAstReferences,5 tests);apps/api 加 `formula_def` 表(Drizzle + RLS FORCE + weyver_app grants,migration 0004)+ `FormulaService.defineFormula`(名稱→field id 穩定解析 / 型別推斷 / unknown·自我參照·語法錯設計期擋 / upsert)+ 7 Testcontainers 整合測試。依賴圖 + 循環偵測 + 重算引擎 = M2 | Claude Code |
 | 2026-07-19 | v0.6 | **M1 二交付:求值 + 函數庫 + 型別推斷**|`evaluate.ts`(AST 樹走訪求值器,decimal.js 禁 float,除零/未知函數 typed error)+ `functions.ts`(registry ~28:SUM/AVERAGE/MIN/MAX/COUNT/ABS/ROUND/CEILING/FLOOR/MOD/POWER · IF/AND/OR/NOT/ISBLANK · CONCAT/LEN/TRIM/UPPER/LOWER/LEFT/RIGHT/MID · YEAR/MONTH/DAY/DATEDIF)+ `infer.ts`(靜態型別推斷,IF 取分支型別);23 tests(Decimal 0.1+0.2=0.3 驗證);formula_def metadata + depends_on 抽取(apps/api)續 | Claude Code |
 | 2026-07-19 | v0.5 | **M1 首交付:fork Teable parser 落地**|建 `packages/formula`,vendored `@teable/formula`(MIT,文法源自 Baserow MIT)ANTLR parser(隔離出 strict gate + `@ts-nocheck` + CLEANROOM.md 登錄)+ Weyver `parseFormula()` typed wrapper(parse 非 eval,typed FormulaSyntaxError)+ 4 smoke tests 綠;antlr4ts runtime dep。函數庫 / 型別推斷 / 依賴圖 / formula_def 續 | Claude Code |
 | 2026-07-19 | v0.4 | OQ-FML-9/10 全採建議裁定(多層 rollup 深度 ≤5 / 條件式 rollup MVP 做);進 M1 | Claude Code |
