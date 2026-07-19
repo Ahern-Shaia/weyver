@@ -43,17 +43,17 @@
 
 | 項目 | 數字 | 來源 |
 |---|---|---|
-| **完整 MVP 總人月(路線 A + 全自研 TS + OSS-only + 通訊平台 + 審計補遺)** | **484** | docs/04 **v2.6**(2026-07-19 設定頁深掘:+AI 設定(BYO key)/通道連接/API 金鑰 4;v2.5 通用功能審計 +8;v2.4 docs/25 審計 +32)|
-| ├── Ragic 側(A–I 9 模組,含 Glide Data Grid + 通訊平台通道 + v2.4 AI 建表/公式/NL + ZEN + 白牌/配額 + 可靠性 + v2.5/v2.6 設定/管理類) | **241** | v2.6 +12 vs v2.4 |
-| ├── ERP 側(J–Q 8 模組,全 Weyver 自建)| 188 | J 50 + K 31(v2.4 +帳齡/三方/AI 抽單)+ L 31 + M 13 + N 15 + O 11 + P 17 + Q bridge 20 |
+| **完整 MVP 總人月(路線 A + 全自研 TS + OSS-only + 通訊平台 + 審計補遺)** | **503** | docs/04 **v2.7**(2026-07-19 ERP-parity 缺口:+委外/票據/信用/營業稅/SoD/連接器 19,全 R2;v2.6 設定頁 +4;v2.5 通用功能 +8;v2.4 審計 +32)|
+| ├── Ragic 側(A–I 9 模組;含設定/管理類 + v2.7 E SoD 3 + G 連接器 4 均 R2-release) | **248** | v2.7 +7 vs v2.6 |
+| ├── ERP 側(J–Q 8 模組,全 Weyver 自建)| 200 | J 53 + K 33 + L 36 + M 13 + N 15 + O 13 + P 17 + Q 20(v2.7 +委外/票據/信用/營業稅)|
 | ├── HR / 薪資(R) | 15 | 台灣班別 / 加班 / 薪資合規 |
 | ├── MES(T,Cloud + Edge hybrid)| 22 | Cloud + Edge Gateway |
 | ├── ISO / 品管(U,通用工具 + v2.4 AI CAPA) | 18 | 產業特化客戶自建 |
 | └── CRM(S) MVP | 0 | 明確範圍外,對標 12 人月 |
-| 完整對標人月(路線 A)| ~911 | docs/04 v2.6 |
+| 完整對標人月(路線 A)| ~944 | docs/04 v2.7 |
 | 對照組|若採 Odoo fork(拒絕全自研 TS) | ~361 MVP | v2.1 全自研 TS 比 Odoo fork +68 |
 | **Solo|完整 MVP(路線 A)** | **務實 ~4-4.5 年 / 加速 ~3 年** | docs/07 §1.4 + docs/23 v5(8 人團隊對照 ~5.6 年;solo 主基準因實際資源為單人 AI 輔助)|
-| **Solo|R1 完整 Ragic 平台**(~240 人月 v2.6,Ragic-parity-first,既有客戶遷移 land)| **務實 ~2-2.5 年 / 加速 ~1.5 年** | docs/23 v6.4 + docs/07 §1.4(8 人團隊對照 ~2.2 年)|
+| **Solo|R1 完整 Ragic 平台**(~240 人月 v2.7,Ragic-parity-first,既有客戶遷移 land)| **務實 ~2-2.5 年 / 加速 ~1.5 年** | docs/23 v6.5 + docs/07 §1.4(8 人團隊對照 ~2.2 年)|
 | **Solo M18 milestone 交付**(Ragic-first)| 表單引擎核心(動態 schema + Glide Data Grid basic + 基本公式)+ 關聯 + 基本權限 + 匯入匯出 + 1 家 pilot 遷移最常用 Ragic 表單上線(不碰 ERP/Q,ERP 於 Phase 2)| ~25 人月(佔 MVP 5.8%) |
 | **v2.1 OSS-only|省 商業授權年費** | **NT$70-100K/年** | AG Grid + Sentry Cloud + Doppler + Chromatic + Vercel Pro 全砍 |
 | ⚠️ 訂閱計費從 MVP 移 Phase 2 | 2026-07-16 決策(A7 假設) | docs/04 v1.1 |
@@ -68,18 +68,18 @@
 |---|---|---|
 | 01 | [Ragic 側核心功能工程量估算](docs/01-核心功能工程量估算.md) | ✅ 完成(保留作 Ragic 側詳表)|
 | 02 | [產品命名候選](docs/02-產品命名候選.md) | ✅ **主選 Weyver(織雲)** — 2026-07-16 從 Weft 換案 |
-| **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-19 v2.6**(**一體 offering 缺一不可**;**484 MVP**(v2.6 設定頁深掘 +4:AI 設定(BYO key)/ 通道連接 / API 金鑰;v2.5 通用功能審計 +8;v2.4 docs/25 審計補遺 +32);OSS-only;solo 時程 band 不變 務實 ~4-4.5 年 / 加速 ~3 年)|
+| **04** | **[完整產品功能表](docs/04-完整產品功能表.md)** | ✅ **2026-07-19 v2.7**(**一體 offering 缺一不可**;**503 MVP**(v2.7 ERP-parity 缺口 +19:委外/票據/信用/營業稅/SoD/連接器,全 R2;v2.6 設定頁 +4;v2.5 通用功能 +8;v2.4 審計 +32);OSS-only;solo 時程 band 不變 務實 ~4-4.5 年 / 加速 ~3 年)|
 | — | [策略簡報](docs/strategy-slides.html) | ✅ **2026-07-18 重刷**(對齊 docs/04 v2.3 + docs/07 v2.9 + docs/23 v5|13 張:Ragic substrate 取代 ERP+MES+ISO 定位 / 21 模組 / 440 MVP / **全自研 TS 拋 Odoo fork** / OSS-only / solo 時程 + Vernova 校準 / 計算層差異化 / 商業模式;品牌 token 對齊 深海青 #0C5F73 + IBM Plex。reveal.js,可直接開啟)|
-| **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-19 v2.13**(v2.6 補遺對齊|484 / Phase 1 ~240,**時程結論不變**;v2.11 §4 逐月排程由舊 Odoo-fork/Q-first 完整重編為 Ragic-first|月段 A-E 改表單引擎核心→關聯/權限→pilot Ragic 遷移,移除 Odoo/AG Grid/Q read/GL/電子發票 stub(排 Phase 2);§5 成本砍商業授權+Odoo 顧問(~800K-1.45M→~150K-400K);前 v2.9 calendar 稀釋校正|主導因子為穩定期 ~30% 維運拖累非 coding 速度)|
+| **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-19 v2.14**(v2.7 ERP-parity 缺口對齊|503 / Phase 2 +~223 / Phase 1 ~240,**時程結論不變**;v2.11 §4 逐月排程由舊 Odoo-fork/Q-first 完整重編為 Ragic-first|月段 A-E 改表單引擎核心→關聯/權限→pilot Ragic 遷移,移除 Odoo/AG Grid/Q read/GL/電子發票 stub(排 Phase 2);§5 成本砍商業授權+Odoo 顧問(~800K-1.45M→~150K-400K);前 v2.9 calendar 稀釋校正|主導因子為穩定期 ~30% 維運拖累非 coding 速度)|
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 MES vendor 分析 + 功能對照矩陣 + Weyver T 模組策略)|
 | **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 ERP vendor 分析 + 功能對照矩陣 + Weyver J-Q 策略)|
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Enterprise 特殊功能 + Weyver A-I 借鑑分類)|
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-19 v10**(**Ragic substrate + Modular Monolith**;**v10 § 7–8 視覺數值對齊 docs/14 v2.1**|清除 v1 軟 SaaS 殘留:字型 Inter→IBM Plex、色彩 warm+dark→冷中性三配色、陰影→框線深度、圓角 6/12/9999→方角 2-3px 禁 pill、動效收斂近乎無;§ 7.1 強化「rationale 不用 vibe」;架構概念(3-layer token / 元件清單 / 7 視圖 / § 7.10 AI 工具鏈)保留;**v8** § 16.5-16.11 Prod 雲端部署架構(AWS/GCP),主推 GCP asia-east1 台灣 + Cloud Run,OSS-only)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native 10x + Fastify/NestJS/Encore.ts/Hono 對照 + Weyver 選型 update 建議)|
-| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.7**(484 MVP 拆 sprint;v1.7 v2.6 cascade|Phase 1 ~240 / P1-I ~91;dependency 圖;v1.5 §3.1 P0-1 後端核心 SHIPPED;v1.4 §3/§4 Ragic-parity release 重編)|
+| **⭐ 13** | **[產品開發功能順序表](docs/13-產品開發功能順序表.md)** | ✅ **2026-07-19 v1.8**(503 MVP 拆 sprint;v1.8 v2.7 ERP-parity cascade|Phase 2 +~223;v1.7 v2.6 Phase 1 ~240 / P1-I ~91;v1.5 §3.1 P0-1 後端核心 SHIPPED)|
 | **⭐ 14** | **[前端設計規則與技術棧](docs/14-前端設計規則與技術棧.md)** | ✅ **2026-07-19 v2.1**(**嚴謹企業級定案,全文改寫**|上游=docs/24 form-first;全框線欄位表 / 方角 2-3px / **禁陰影禁 pill** / 扁平主色分段條 / 帶框狀態章 / 12.5px 密度 / 信任訊號鐵則(時間戳/版本/稽核/借貸平衡/記錄導航/狀態列)/ 動效近乎無;§1.2 套件×surface S1–S21 對映;權威稿=`workspace-form-first-v2.html`,v1 mockups SUPERSEDED;**v2.1 品牌色定案=一套系統三配色主題可切換**(深藍預設/深海青/石墨,`[data-theme]` 語意 token))|
 | **⭐⭐ 24** | **[用戶心智模型與設計原點](docs/24-用戶心智模型與設計原點.md)** | ✅ **2026-07-19 v1.3**(**視覺之上游依據**|Weyver 用戶=Ragic 範式思考者,**主要畫面=「自己建自己填」的表單資料庫非 KPI 儀表板**;客戶校準:ERP/MES/ISO 織入同一 Ragic 工作區、**非每系統一個 tab**;§6 前端 surface 地圖 **S1–S22**(v1.4 S22 擴充 AI 設定/通道連接/API 金鑰;Phase 1 = S1–S13+S22 / J–U 織入 Phase 2+);反面教材=為 SaaS 而 SaaS + 分立模組 tab)|
-| **⭐ 25** | **[功能完整對照清單](docs/25-功能完整對照清單.md)** | ✅ **2026-07-19 v1.3**(**開發對照權威 checklist**|A–U 全子功能 × R1–R4 × S1–S22;v1.3 v2.6 設定頁補遺(A 29 / E 14 / G 17 / H 33 / I 24 = 484);v1.1 審計 8 缺口 + 5 衝突已全數拍板併入 docs/04 v2.4;§3 補遺人月定案:AI MVP 16 + ZEN 3 + 明文化 2 + 白牌/配額 3 + 可靠性 8)|
+| **⭐ 25** | **[功能完整對照清單](docs/25-功能完整對照清單.md)** | ✅ **2026-07-19 v1.4**(**開發對照權威 checklist**|A–U 全子功能 × R1–R4 × S1–S22;v1.4 v2.7 ERP-parity 缺口(E 17 / G 21 / J 53 / K 33 / L 36 / O 13 = 503);v1.1 審計 8 缺口 + 5 衝突已全數拍板併入 docs/04 v2.4;§3 補遺人月定案:AI MVP 16 + ZEN 3 + 明文化 2 + 白牌/配額 3 + 可靠性 8)|
 | **⭐ 26** | **[品牌識別手冊](docs/26-品牌識別手冊.md)** | ✅ **2026-07-19 v1**(**品牌是誰**,與 docs/14 配對|策略(本質/定位/支柱 一體·嚴謹·自助·可信)+ 織雲故事與隱喻邊界(存於敘事**非介面裝飾**)+ 命名(Weyver/織雲/商標紅線)+ W 方塊標誌 + 三配色主題品牌策略(對外代表色建議深藍)+ IBM Plex 理由 + 視覺簽名=全框線非雲朵 + 聲音語氣(sober,文案 Do&Don't)+ 應用/白牌;色彩字型 token 引 docs/14 不重複)|
 | — | [表單記錄 v2 權威稿](docs/mockups/workspace-form-first-v2.html)(嚴謹企業級)· ~~design-system / homepage-v6~~(v1 軟 SaaS,SUPERSEDED)| ✅ 2026-07-19(可瀏覽器直開)|
 | **⭐ 15** | **[表單引擎技術設計](docs/15-表單引擎技術設計.md)** | ✅ **2026-07-18 v2**(命門地基|**兩層資料模型**:Tier1 固定真實表 + Tier2 動態真實表(共享 schema + tenant_id);ORM 雙軌 Drizzle+Knex;公式 fork Teable MIT;canvas grid;經 docs/16 實證校正)|
@@ -90,7 +90,7 @@
 | **⭐ 20** | **[領域引擎 build-on 分析](docs/20-領域引擎build-on分析.md)** | ✅ **2026-07-18 v1**(巨人肩膀|整套 ERP 拒絕 / 領域引擎採用:**規則→GoRules ZEN**(MIT 視覺編輯器 no-code+AI 綜效)、**durable workflow→DBOS**(PG library 官方 NestJS 近零 ops)+BullMQ、**帳務 GL→自研**(ERPNext/OFBiz 藍圖 + TigerBeetle escape hatch);全塞表單範式底下不破定位)|
 | **⭐ 21** | **[多租戶架構](docs/21-多租戶架構.md)** | ✅ **2026-07-18 v1**(五層巨人|RLS FORCE+SET LOCAL+PgBouncer tx / nestjs-cls+transactional(背景工作 payload 帶租戶)/ Caddy on-demand TLS 自訂白牌網域 / JWT tenant_id 為真實來源防洩漏 / Better Auth orgs 足夠+authz MVP in-app,Cerbos 為 outgrow)|
 | **⭐ 22** | **[資安規範與威脅模型](docs/22-資安規範與威脅模型.md)** | ✅ **2026-07-18 v2**(OWASP Top10/API/**LLM Top10** + 威脅模型 6 面 + P0 同步 AGENTS.md 🔒;**AI 載重不變量**:模型結構化 intent→確定性驗證→人核准→audit;動態 identifier 安全鏈;供應鏈/secrets/容器;**四軸反思擴充**補冪等性/優雅降級+circuit breaker/N+1 → AGENTS.md ⚙️ 鐵則)|
-| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-19 v6.4**(**v6.4 v2.6 cascade**:R1 補 AI 設定(BYO key)/ 通道連接 / API 金鑰;**v6.3 v2.5 cascade**:設定中心/使用者管理/回收桶等;人月 R1 ~240 / R2 +~204 / R3 +~40 = 484;**v6.2 §1.6 開發啟動狀態**:Phase 1 工程 2026-07-19 起跑,R1 命門(表單引擎核心 = Gate P0-1)已 SHIPPED 並通過隔離/壓測驗證,**時程承諾不變**;**v6.1 docs/25 拍板**:電子簽章拆基本 R1 / 合規 R2;AI 遷移建表·NL 查詢·ZEN 前移 R1、拍照抽單前移 R2;**對客戶**功能時程|**Ragic-parity-first 階段重排**:R1 完整 Ragic 平台(既有客戶遷移 land)→ R2 ERP+計算層(補「算」取代 ERP)→ R3 MES+ISO(完整 MVP)→ R4 對標+AI;**solo 主基準**務實 R1 ~2-2.5 年 / R2 ~4 年 / R3 ~4-4.5 年,加速 R1 ~1.5 / R2 ~2.5-2.7 / R3 ~3 年;每階段可用不半殘、資料不重來)|
+| **⭐ 23** | **[產品功能發布藍圖(客戶版)](docs/23-產品功能發布藍圖.md)** | ✅ **2026-07-19 v6.5**(**v6.5 v2.7 ERP-parity**:R2 補 委外/票據/信用/營業稅/SoD/連接器 +19 → +~223;**v6.4 v2.6**:R1 AI 設定(BYO key)/ 通道連接 / API 金鑰;**v6.3 v2.5 cascade**:設定中心/使用者管理/回收桶等;人月 R1 ~240 / R2 +~223 / R3 +~40 = 503;**v6.2 §1.6 開發啟動狀態**:Phase 1 工程 2026-07-19 起跑,R1 命門(表單引擎核心 = Gate P0-1)已 SHIPPED 並通過隔離/壓測驗證,**時程承諾不變**;**v6.1 docs/25 拍板**:電子簽章拆基本 R1 / 合規 R2;AI 遷移建表·NL 查詢·ZEN 前移 R1、拍照抽單前移 R2;**對客戶**功能時程|**Ragic-parity-first 階段重排**:R1 完整 Ragic 平台(既有客戶遷移 land)→ R2 ERP+計算層(補「算」取代 ERP)→ R3 MES+ISO(完整 MVP)→ R4 對標+AI;**solo 主基準**務實 R1 ~2-2.5 年 / R2 ~4 年 / R3 ~4-4.5 年,加速 R1 ~1.5 / R2 ~2.5-2.7 / R3 ~3 年;每階段可用不半殘、資料不重來)|
 | PDF | `docs/pdf/*.pdf` snapshot | ⚠️ **手動重生**|對外分享才 `bash docs/pdf/build.sh`(2026-07-16 決策|對話中一律讀 .md,不自動重生 PDF)|
 | 03 | 鮮勇當前表單分析(Ragic 已滿足 vs 需 ERP 補強) | ⏳ 待做 |
 | **05** | **[商業模式驗證](docs/05-商業模式驗證.md)** | ✅ **2026-07-18 v1**(值不值得投入財務模型|競品定價錨 → Weyver 三段式(Pro ~NT$336K/年)→ 客戶分層 ACV 基準 NT$400K → ARR 5 年(Y3~11M/Y5~32M)→ OSS 高毛利 ~80% → 解耦提早營收 breakeven Y2-3;假設可調三情境 + 待拍板清單)|
@@ -126,6 +126,7 @@
 
 ## 時間戳
 
+- 2026-07-19|**docs/04 v2.7 ERP-parity 缺口審計(484 → 503)**|反思「取代 ERP」定位後對照鼎新/正航/Odoo 標配掃缺口(排除已規劃之銀行對帳/合併報表/預算控管):採積極型補 6 項全 R2 —— L 委外加工 5(食品加工硬需求)· J 票據管理 3 · K 信用額度 2 · O 營業稅申報 401/403 2(開票≠報稅)· E 職責分離 SoD/內控 3 · G 預建連接器庫 4(銀行/物流/電商/政府)。SoD/連接器 homed 於 A-I 但 release 歸 R2。**MVP 484→503(R2 +204→+223,R1 ~240 不變);對標 ~944;累計 440→503 +14% 由維運拖累吸收,band 不變**。對標暫緩|量測校驗 / 協同 portal。cascade|04 v2.7 · 25 v1.4 · 23 v6.5 · 13 v1.8 · 07 v2.14 · CLAUDE/README。相關|命門原則見 [[feedback-calc-binding-self-service]](算的綁定須自助化)。
 - 2026-07-19|**docs/04 v2.6 S22 設定頁深掘(480 → 484)**|用戶追問「通知設定 / 自建員工帳號 / AI API key 這類設定頁功能是否完整」→ 對照國際級設定頁分類(Salesforce Setup / M365 admin / Slack admin / Odoo Settings)逐類掃描:員工帳號 v2.5 已補;通知路由與個人偏好已有、**缺租戶通道連接憑證 UI**;**AI 設定頁全缺**(docs/17 只有 provider 抽象層工程面 —— OSS-only 下客戶 BYO API key 為唯一路徑,R1 AI 功能無此頁不可用)。全採補 3:A AI 設定頁 +2(BYO key 加密 / 模型 / 用量 / 資料外送同意 / 表單級 AI 開關)、H 通知通道連接 UI +1(LINE token / webhook / SMTP 網域驗證 + 測試發送)、G API 金鑰管理 UI +1(簽發/輪替/撤銷/scope);SSO 自助設定 UI 明文化入 A 認證。**MVP 484(R1 ~240);對標 ~911;band 不變(+0.8%)**。cascade|04 v2.6 · 25 v1.3 · 24 v1.4(S22 擴充)· 23 v6.4 · 13 v1.7(P1-I ~91)· 07 v2.13 · CLAUDE/README。
 - 2026-07-19|**docs/04 v2.5 企業級 SaaS 通用功能審計(472 → 480)**|用戶質疑「設定/權限等通用功能是否缺列」→ 反查 docs/10 §3.1(Ragic 平台/帳號管理)+ 通用功能清單:權限模型 E 已列,**「設定/管理」surface 從未列項**(R1 Ragic parity 破口)。全採建議補 8 缺口:A 租戶設定中心 2 / 帳號安全操作面 1(併 F-2 Auth)、E 使用者管理後台 UI 1 / 外部使用者 1、H 個人設定 1 / 資源回收桶 1(引擎 soft delete 地基已 SHIPPED)、I PDPA 資料權利 1(R2);對標暫緩|測試環境 sandbox(+3)/ 公告導覽(+2)。**MVP 480(R1 +7 → ~236 / R2 +1 → +~204);對標 ~904;solo 時程 band 不變(+1.7%)**。cascade|docs/04 v2.5 · 24 v1.3(**補 S22 設定中心**,Phase 1 = S1–S13+S22,入口收 topbar 帳號選單不佔側欄)· 25 v1.2 · 23 v6.3 · 13 v1.6(P1-I ~87)· CLAUDE/README。已涵蓋確認不缺|權限模型 E12 / 認證 SSO·2FA A3+SCIM G3 / 稽核 S13 / 備份匯出 I / 客服後台假登入 I / 白牌配額 A / 通知路由 S10 / 範本庫 B2 / 計費 Phase 2。
 - 2026-07-19|**Gate P0-1 全數達成:form-designer-ui M0→SHIPPED v1.0(前端接引擎 API)**|承後端核心後,依 M0 流程(OQ-FDU-1..6 全採建議)接前端:M1 engine API client(錯誤信封→EngineApiError / dev tenant localStorage 單點 / Zod 解析 / TanStack Query hooks / Next rewrites 同源代理免 CORS)→ M2 `/app/builder` 表單清單(nuqs URL)+ 設計器雙模式(新建發布 / 編輯增欄·白名單改型別·上下移;後端補 PATCH position API)→ M3 填單動態渲染(15 型別 field-input;修 pg DATE type parser 位移 bug)+ 記錄檢視 → M4 子表 header+lines 走 saveWithLines(DB parent_id/line_no 驗證)→ M5 **Playwright golden path 固化進 CI**(建表→加欄→填單→子表→檢視,對真 api+真 PG 綠)+ FMEA(P0 全清)。web 18 + api 60 單元/整合 + e2e。每步 Playwright MCP 實走真瀏覽器驗證(抓到並修 date parser bug)。**瀏覽器裡「自己建自己填」完整跑通** —— Ragic 範式核心迴圈成立。
