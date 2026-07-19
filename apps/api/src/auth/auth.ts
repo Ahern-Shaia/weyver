@@ -49,14 +49,15 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
           verify(data.hash, data.password),
       },
     },
-    // 登入 / 註冊暴力防護(AGENTS 可靠鐵則);其餘端點沿用預設窗口
+    // 暴力防護集中在認證「寫」端點;高頻「讀」(session 輪詢)放寬,否則正常使用即被 429
     rateLimit: {
       enabled: true,
       window: 60,
-      max: 100,
+      max: 300,
       customRules: {
         "/sign-in/email": { window: 60, max: 5 },
         "/sign-up/email": { window: 60, max: 5 },
+        "/get-session": { window: 60, max: 2000 },
       },
     },
     plugins: [orgPlugin],
