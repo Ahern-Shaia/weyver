@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver · MES 生產總覽(藍 vs 石墨)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:#e9eaec;color:#1c1c1c;font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:30px 18px 70px;}
+.page{max-width:1180px;margin:0 auto;}
+.page>header{margin-bottom:20px;}
+.page>header .eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6b6b6b;}
+.page>header h1{font-size:23px;font-weight:700;letter-spacing:-.4px;margin-top:7px;}
+.page>header p{color:#565656;font-size:13px;margin-top:7px;max-width:720px;line-height:1.6;}
+.vlabel{display:flex;align-items:baseline;gap:11px;margin:22px 0 9px;}
+.vlabel .tag{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8a8a;}
+.vlabel h2{font-size:15px;font-weight:600;}
+.vlabel .n{font-size:12px;color:#6b6b6b;}
+.frame{border-radius:12px;overflow:hidden;border:1px solid #d5d5d3;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1;}
+
+/* ===== shell ===== */
+.shell{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',sans-serif;}
+.top{display:flex;align-items:center;gap:13px;height:48px;padding:0 15px;background:var(--top-bg);border-bottom:1px solid var(--top-line);}
+.mark{width:25px;height:25px;border-radius:6px;background:var(--mark-bg);color:var(--mark-ink);font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;}
+.bd{font-size:13.5px;font-weight:600;letter-spacing:-.2px;color:var(--top-ink);} .bd small{font-weight:400;color:var(--top-ink3);margin-left:5px;font-size:11.5px;}
+.srch{margin-left:6px;flex:1;max-width:280px;display:flex;align-items:center;gap:7px;height:29px;padding:0 10px;border:1px solid var(--top-field-line);border-radius:6px;background:var(--top-field);color:var(--top-ink3);font-size:12px;}
+.srch svg{width:12px;height:12px;} .srch kbd{margin-left:auto;font-family:'IBM Plex Mono';font-size:10px;border:1px solid var(--top-field-line);border-radius:4px;padding:0 4px;}
+.top .rt{margin-left:auto;display:flex;align-items:center;gap:9px;}
+.av{width:25px;height:25px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;}
+.subnav{display:flex;align-items:center;gap:2px;height:36px;padding:0 11px;background:var(--card);border-bottom:1px solid var(--line);}
+.subnav a{display:flex;align-items:center;gap:6px;height:25px;padding:0 10px;border-radius:6px;font-size:12px;color:var(--ink2);text-decoration:none;}
+.subnav a .md{width:6px;height:6px;border-radius:2px;}
+.subnav a.on{background:var(--brand-tint);color:var(--brand-strong);font-weight:600;}
+.subnav .sp{flex:1;}
+.subnav .ts{font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:5px;}
+.subnav .ts b{color:var(--ink2);font-weight:500;}
+.ok-dot{width:6px;height:6px;border-radius:50%;background:var(--run);}
+
+.body{padding:14px;}
+.strip{display:flex;align-items:center;gap:22px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:11px 16px;margin-bottom:12px;}
+.strip .it{display:flex;flex-direction:column;gap:3px;}
+.strip .k{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
+.strip .v{font-size:13px;font-weight:600;}
+.strip .sp{flex:1;}
+.badge{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:9999px;font-size:11.5px;font-weight:600;}
+.badge i{width:5px;height:5px;border-radius:50%;}
+.badge.run{background:var(--run-t);color:var(--run-d);} .badge.run i{background:var(--run);}
+
+/* panels with caption bar (the vendor DNA) */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.cap{background:var(--brand);color:#fff;font-size:11.5px;font-weight:600;letter-spacing:.02em;padding:7px 13px;display:flex;align-items:center;justify-content:space-between;}
+.cap .r{font-weight:400;opacity:.8;font-size:10.5px;}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;}
+.kpi .in{padding:16px 16px 15px;text-align:center;}
+.kpi .num{font-family:'IBM Plex Mono';font-size:38px;font-weight:600;letter-spacing:-1px;line-height:1;color:var(--ink);}
+.kpi .num small{font-size:16px;color:var(--ink3);font-weight:500;font-family:'IBM Plex Sans';margin-left:1px;}
+.kpi .sub{font-size:11px;color:var(--ink3);margin-top:8px;}
+.kpi .bar{height:4px;border-radius:2px;background:var(--line2);margin-top:11px;overflow:hidden;}
+.kpi .bar i{display:block;height:100%;border-radius:2px;}
+
+.two{display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:12px;}
+
+/* gantt */
+.gantt{padding:12px 14px 14px;}
+.axis{display:flex;margin-left:78px;border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:8px;}
+.axis span{flex:1;font-family:'IBM Plex Mono';font-size:9.5px;color:var(--ink3);}
+.grow{display:flex;align-items:center;gap:0;margin-bottom:6px;}
+.grow .rl{width:78px;flex-shrink:0;font-size:11.5px;color:var(--ink2);padding-right:8px;}
+.track{flex:1;display:flex;height:15px;border-radius:3px;overflow:hidden;gap:1px;}
+.seg{height:100%;}
+.seg.run{background:var(--run);} .seg.stop{background:var(--stop);} .seg.set{background:var(--set);} .seg.idle{background:var(--idle);}
+.legend{display:flex;gap:16px;margin-top:12px;margin-left:78px;font-size:10.5px;color:var(--ink3);}
+.legend span{display:flex;align-items:center;gap:5px;} .legend i{width:9px;height:9px;border-radius:2px;}
+
+/* pareto */
+.pareto{padding:12px 14px;}
+.prow{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.prow:last-child{margin-bottom:0;}
+.prow .pl{width:92px;flex-shrink:0;font-size:11.5px;color:var(--ink2);}
+.pbar{flex:1;height:14px;background:var(--line2);border-radius:3px;overflow:hidden;}
+.pbar i{display:block;height:100%;background:var(--stop);border-radius:3px;}
+.prow .pv{width:20px;text-align:right;font-family:'IBM Plex Mono';font-size:12px;font-weight:600;color:var(--ink);}
+
+/* queue table */
+.q table{width:100%;border-collapse:collapse;}
+.q th{text-align:left;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);padding:8px 14px;background:var(--head);border-bottom:1px solid var(--line);}
+.q th.r,.q td.r{text-align:right;}
+.q td{font-size:12px;padding:9px 14px;border-bottom:1px solid var(--line2);color:var(--ink);}
+.q tr:last-child td{border-bottom:none;}
+.q tbody tr:hover{background:var(--field);}
+.q .code{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink2);}
+.q .n{font-family:'IBM Plex Mono';text-align:right;font-feature-settings:"tnum" 1;}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;}
+.st i{width:5px;height:5px;border-radius:50%;}
+.st.proc{color:var(--brand-strong);} .st.proc i{background:var(--brand);}
+.st.queue{color:var(--ink3);} .st.queue i{background:var(--ink4);}
+.st.done{color:var(--run-d);} .st.done i{background:var(--run);}
+
+/* status colors (identical both) */
+.shell{--run:#2E9E5B;--run-d:#0A7D48;--run-t:#E6F5EC;--stop:#D64541;--set:#E3A008;--idle:#37AEC0;--ink4:#B4BCC6;}
+
+/* ===== BLUE ===== */
+.blue .shell{
+  --bg:#F3F6FA;--card:#FFFFFF;--head:#F7FAFD;--field:#EEF3F9;--line:#E0E7F0;--line2:#EEF2F7;
+  --ink:#15202E;--ink2:#54627A;--ink3:#8996AB;
+  --brand:#1160C9;--brand-strong:#0E4FA8;--brand-tint:#E6EEFB;
+  --top-bg:#0E3E7E;--top-line:#0E3E7E;--top-ink:#EAF1FB;--top-ink3:#9DB4D6;--top-field:#1a4d8f;--top-field-line:#2b5c9c;
+  --mark-bg:#EAF1FB;--mark-ink:#0E3E7E;
+}
+/* ===== CHARCOAL ===== */
+.char .shell{
+  --bg:#F6F6F5;--card:#FFFFFF;--head:#FAFAF9;--field:#F1F1EF;--line:#E7E6E3;--line2:#F0EFEC;
+  --ink:#1C1C1C;--ink2:#5F5F5D;--ink3:#8C8C89;
+  --brand:#313131;--brand-strong:#1C1C1C;--brand-tint:#ECECEA;
+  --top-bg:#282828;--top-line:#282828;--top-ink:#F3F3F1;--top-ink3:#A5A5A2;--top-field:#37373a;--top-field-line:#454548;
+  --mark-bg:#F3F3F1;--mark-ink:#282828;
+}
+@media(max-width:820px){.kpis{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">Weyver 織雲 · Grounded in ERP/MES vendors</div>
+    <h1>MES 生產總覽 —— 藍(品類母語)vs 石墨 #313131</h1>
+    <p>依 Sepasoft / Critical Mfg / SAP Fiori 的真實 MES DNA 重畫:<b>標題面板</b> + <b>OEE% 四宮格</b> + <b>停機 Pareto</b> + <b>產線狀態時間軸</b> + <b>操作員工單佇列</b> + 一體 shell 模組列 + 更新時間戳。同一畫面兩版色,IBM Plex 鎖定。狀態色(運行綠/停機紅/換線琥珀/待機藍)兩版相同。</p>
+  </header>
+  <!-- template rendered twice below via .blue / .char -->
+  <!-- BLUE -->
+  <div class="vlabel"><span class="tag">Version 1</span><h2>品類母語藍</h2><span class="n">最 native / 可信,與 Fiori・Sepasoft 同色系,製造用戶一眼認得。</span></div>
+  <div class="frame blue"><div class="shell">
+    <div class="top"><div class="mark">W</div><div class="bd">Weyver<small>織雲</small></div><div class="srch"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>搜尋工單 · 批號 · 產線<kbd>⌘K</kbd></div><div class="rt"><div class="av">鮮</div></div></div>
+    <div class="subnav"><a><span class="md" style="background:#1160C9"></span>採購</a><a><span class="md" style="background:#C2740B"></span>生產工單</a><a class="on"><span class="md" style="background:#2E9E5B"></span>MES 現場</a><a><span class="md" style="background:#6D45C9"></span>ISO 文件</a><span class="sp"></span><span class="ts">資料更新 <b class="mono">11:36:04</b> · Edge 同步 <span class="ok-dot"></span></span></div>
+    <div class="body">
+      <div class="strip">
+        <div class="it"><span class="k">產品</span><span class="v">凍覆盆子 · FR-RB-500</span></div>
+        <div class="it"><span class="k">產線</span><span class="v">包裝一線</span></div>
+        <div class="it"><span class="k">線況</span><span class="badge run"><i></i>運行中</span></div>
+        <div class="it"><span class="k">班別</span><span class="v mono">早班 08:00–16:00</span></div>
+        <div class="sp"></div>
+        <div class="it"><span class="k">當班批號</span><span class="v mono">BN-1016-A</span></div>
+      </div>
+      <div class="kpis">
+        <div class="panel kpi"><div class="cap">OEE 綜合稼動</div><div class="in"><div class="num mono">54.2<small>%</small></div><div class="sub">本班別 · 目標 65%</div><div class="bar"><i style="width:54%;background:#E3A008"></i></div></div></div>
+        <div class="panel kpi"><div class="cap">可用率 Availability</div><div class="in"><div class="num mono">90.6<small>%</small></div><div class="sub">停機 42 分</div><div class="bar"><i style="width:90%;background:#2E9E5B"></i></div></div></div>
+        <div class="panel kpi"><div class="cap">表現 Performance</div><div class="in"><div class="num mono">75.1<small>%</small></div><div class="sub">節拍 62/分</div><div class="bar"><i style="width:75%;background:#2E9E5B"></i></div></div></div>
+        <div class="panel kpi"><div class="cap">良率 Quality</div><div class="in"><div class="num mono">79.6<small>%</small></div><div class="sub">不良 218 件</div><div class="bar"><i style="width:79%;background:#E3A008"></i></div></div></div>
+      </div>
+      <div class="two">
+        <div class="panel"><div class="cap">產線狀態時間軸 · 本班<span class="r">08:00 – 11:36</span></div><div class="gantt">
+          <div class="axis"><span>08:00</span><span>09:00</span><span>10:00</span><span>11:00</span></div>
+          <div class="grow"><span class="rl">包裝一線</span><div class="track"><span class="seg run" style="flex:14"></span><span class="seg stop" style="flex:1"></span><span class="seg run" style="flex:20"></span><span class="seg set" style="flex:1"></span><span class="seg run" style="flex:16"></span></div></div>
+          <div class="grow"><span class="rl">拆棧機</span><div class="track"><span class="seg run" style="flex:22"></span><span class="seg idle" style="flex:2"></span><span class="seg run" style="flex:28"></span></div></div>
+          <div class="grow"><span class="rl">充填機</span><div class="track"><span class="seg run" style="flex:10"></span><span class="seg set" style="flex:2"></span><span class="seg run" style="flex:14"></span><span class="seg stop" style="flex:2"></span><span class="seg run" style="flex:24"></span></div></div>
+          <div class="grow"><span class="rl">封口機</span><div class="track"><span class="seg run" style="flex:30"></span><span class="seg idle" style="flex:2"></span><span class="seg run" style="flex:20"></span></div></div>
+          <div class="grow"><span class="rl">貼標機</span><div class="track"><span class="seg run" style="flex:18"></span><span class="seg set" style="flex:2"></span><span class="seg run" style="flex:12"></span><span class="seg set" style="flex:2"></span><span class="seg run" style="flex:18"></span></div></div>
+          <div class="grow"><span class="rl">堆棧機</span><div class="track"><span class="seg run" style="flex:12"></span><span class="seg stop" style="flex:1"></span><span class="seg run" style="flex:39"></span></div></div>
+          <div class="legend"><span><i style="background:#2E9E5B"></i>運行</span><span><i style="background:#E3A008"></i>換線</span><span><i style="background:#37AEC0"></i>待機</span><span><i style="background:#D64541"></i>停機</span></div>
+        </div></div>
+        <div class="panel"><div class="cap">停機原因 · 前一班</div><div class="pareto">
+          <div class="prow"><span class="pl">CIP 清洗</span><div class="pbar"><i style="width:100%"></i></div><span class="pv">9</span></div>
+          <div class="prow"><span class="pl">皮帶打滑</span><div class="pbar"><i style="width:67%"></i></div><span class="pv">6</span></div>
+          <div class="prow"><span class="pl">鏈條故障</span><div class="pbar"><i style="width:67%"></i></div><span class="pv">6</span></div>
+          <div class="prow"><span class="pl">待潤滑</span><div class="pbar"><i style="width:67%"></i></div><span class="pv">6</span></div>
+          <div class="prow"><span class="pl">伺服臂異常</span><div class="pbar"><i style="width:56%"></i></div><span class="pv">5</span></div>
+        </div></div>
+      </div>
+      <div class="panel q"><div class="cap">操作員工單佇列</div><table>
+        <thead><tr><th>工單</th><th>品項</th><th>批號</th><th class="r">數量</th><th>站別</th><th>狀態</th></tr></thead>
+        <tbody>
+          <tr><td class="code">WO-1016-01</td><td>凍覆盆子 500g</td><td class="code">BN-1016-A</td><td class="n">25</td><td>充填機</td><td><span class="st proc"><i></i>進行中</span></td></tr>
+          <tr><td class="code">WO-1016-02</td><td>凍藍莓 500g</td><td class="code">BN-1016-B</td><td class="n">25</td><td>充填機</td><td><span class="st queue"><i></i>佇列中</span></td></tr>
+          <tr><td class="code">WO-1016-03</td><td>綜合莓果 1kg</td><td class="code">BN-1016-C</td><td class="n">18</td><td>封口機</td><td><span class="st queue"><i></i>佇列中</span></td></tr>
+          <tr><td class="code">WO-1015-47</td><td>凍草莓 500g</td><td class="code">BN-1015-K</td><td class="n">40</td><td>堆棧機</td><td><span class="st done"><i></i>已完工</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div></div>
+
+  <!-- CHARCOAL -->
+  <div class="vlabel"><span class="tag">Version 2</span><h2>石墨 #313131</h2><span class="n">同一畫面/pattern,品牌換石墨。較有記憶點,狀態與模組色更跳,略不 native。</span></div>
+  <div class="frame char"><div class="shell">
+    <div class="top"><div class="mark">W</div><div class="bd">Weyver<small>織雲</small></div><div class="srch"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>搜尋工單 · 批號 · 產線<kbd>⌘K</kbd></div><div class="rt"><div class="av">鮮</div></div></div>
+    <div class="subnav"><a><span class="md" style="background:#2563EB"></span>採購</a><a><span class="md" style="background:#C2740B"></span>生產工單</a><a class="on"><span class="md" style="background:#2E9E5B"></span>MES 現場</a><a><span class="md" style="background:#6D45C9"></span>ISO 文件</a><span class="sp"></span><span class="ts">資料更新 <b class="mono">11:36:04</b> · Edge 同步 <span class="ok-dot"></span></span></div>
+    <div class="body">
+      <div class="strip">
+        <div class="it"><span class="k">產品</span><span class="v">凍覆盆子 · FR-RB-500</span></div>
+        <div class="it"><span class="k">產線</span><span class="v">包裝一線</span></div>
+        <div class="it"><span class="k">線況</span><span class="badge run"><i></i>運行中</span></div>
+        <div class="it"><span class="k">班別</span><span class="v mono">早班 08:00–16:00</span></div>
+        <div class="sp"></div>
+        <div class="it"><span class="k">當班批號</span><span class="v mono">BN-1016-A</span></div>
+      </div>
+      <div class="kpis">
+        <div class="panel kpi"><div class="cap">OEE 綜合稼動</div><div class="in"><div class="num mono">54.2<small>%</small></div><div class="sub">本班別 · 目標 65%</div><div class="bar"><i style="width:54%;background:#E3A008"></i></div></div></div>
+        <div class="panel kpi"><div class="cap">可用率 Availability</div><div class="in"><div class="num mono">90.6<small>%</small></div><div class="sub">停機 42 分</div><div class="bar"><i style="width:90%;background:#2E9E5B"></i></div></div></div>
+        <div class="panel kpi"><div class="cap">表現 Performance</div><div class="in"><div class="num mono">75.1<small>%</small></div><div class="sub">節拍 62/分</div><div class="bar"><i style="width:75%;background:#2E9E5B"></i></div></div></div>
+        <div class="panel kpi"><div class="cap">良率 Quality</div><div class="in"><div class="num mono">79.6<small>%</small></div><div class="sub">不良 218 件</div><div class="bar"><i style="width:79%;background:#E3A008"></i></div></div></div>
+      </div>
+      <div class="two">
+        <div class="panel"><div class="cap">產線狀態時間軸 · 本班<span class="r">08:00 – 11:36</span></div><div class="gantt">
+          <div class="axis"><span>08:00</span><span>09:00</span><span>10:00</span><span>11:00</span></div>
+          <div class="grow"><span class="rl">包裝一線</span><div class="track"><span class="seg run" style="flex:14"></span><span class="seg stop" style="flex:1"></span><span class="seg run" style="flex:20"></span><span class="seg set" style="flex:1"></span><span class="seg run" style="flex:16"></span></div></div>
+          <div class="grow"><span class="rl">拆棧機</span><div class="track"><span class="seg run" style="flex:22"></span><span class="seg idle" style="flex:2"></span><span class="seg run" style="flex:28"></span></div></div>
+          <div class="grow"><span class="rl">充填機</span><div class="track"><span class="seg run" style="flex:10"></span><span class="seg set" style="flex:2"></span><span class="seg run" style="flex:14"></span><span class="seg stop" style="flex:2"></span><span class="seg run" style="flex:24"></span></div></div>
+          <div class="grow"><span class="rl">封口機</span><div class="track"><span class="seg run" style="flex:30"></span><span class="seg idle" style="flex:2"></span><span class="seg run" style="flex:20"></span></div></div>
+          <div class="grow"><span class="rl">貼標機</span><div class="track"><span class="seg run" style="flex:18"></span><span class="seg set" style="flex:2"></span><span class="seg run" style="flex:12"></span><span class="seg set" style="flex:2"></span><span class="seg run" style="flex:18"></span></div></div>
+          <div class="grow"><span class="rl">堆棧機</span><div class="track"><span class="seg run" style="flex:12"></span><span class="seg stop" style="flex:1"></span><span class="seg run" style="flex:39"></span></div></div>
+          <div class="legend"><span><i style="background:#2E9E5B"></i>運行</span><span><i style="background:#E3A008"></i>換線</span><span><i style="background:#37AEC0"></i>待機</span><span><i style="background:#D64541"></i>停機</span></div>
+        </div></div>
+        <div class="panel"><div class="cap">停機原因 · 前一班</div><div class="pareto">
+          <div class="prow"><span class="pl">CIP 清洗</span><div class="pbar"><i style="width:100%"></i></div><span class="pv">9</span></div>
+          <div class="prow"><span class="pl">皮帶打滑</span><div class="pbar"><i style="width:67%"></i></div><span class="pv">6</span></div>
+          <div class="prow"><span class="pl">鏈條故障</span><div class="pbar"><i style="width:67%"></i></div><span class="pv">6</span></div>
+          <div class="prow"><span class="pl">待潤滑</span><div class="pbar"><i style="width:67%"></i></div><span class="pv">6</span></div>
+          <div class="prow"><span class="pl">伺服臂異常</span><div class="pbar"><i style="width:56%"></i></div><span class="pv">5</span></div>
+        </div></div>
+      </div>
+      <div class="panel q"><div class="cap">操作員工單佇列</div><table>
+        <thead><tr><th>工單</th><th>品項</th><th>批號</th><th class="r">數量</th><th>站別</th><th>狀態</th></tr></thead>
+        <tbody>
+          <tr><td class="code">WO-1016-01</td><td>凍覆盆子 500g</td><td class="code">BN-1016-A</td><td class="n">25</td><td>充填機</td><td><span class="st proc"><i></i>進行中</span></td></tr>
+          <tr><td class="code">WO-1016-02</td><td>凍藍莓 500g</td><td class="code">BN-1016-B</td><td class="n">25</td><td>充填機</td><td><span class="st queue"><i></i>佇列中</span></td></tr>
+          <tr><td class="code">WO-1016-03</td><td>綜合莓果 1kg</td><td class="code">BN-1016-C</td><td class="n">18</td><td>封口機</td><td><span class="st queue"><i></i>佇列中</span></td></tr>
+          <tr><td class="code">WO-1015-47</td><td>凍草莓 500g</td><td class="code">BN-1015-K</td><td class="n">40</td><td>堆棧機</td><td><span class="st done"><i></i>已完工</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div></div>
+
+</div>
+</body>
+</html>

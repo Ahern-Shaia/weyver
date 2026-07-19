@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver 品牌色探索 · 石墨灰 #313131</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:#e9eaec;color:#1c1c1c;
+  font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased;padding:32px 20px 80px;}
+.page{max-width:1000px;margin:0 auto;}
+.page > header{margin-bottom:24px;}
+.page > header .eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6b6b6b;}
+.page > header h1{font-size:25px;font-weight:700;letter-spacing:-.5px;margin-top:8px;}
+.page > header p{color:#565656;font-size:13.5px;margin-top:8px;max-width:660px;line-height:1.6;}
+.page > header .sw{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:6px 12px;background:#fff;border:1px solid #dcdcda;border-radius:8px;}
+.page > header .sw i{width:22px;height:22px;border-radius:5px;background:#313131;}
+.page > header .sw b{font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+.page > header .sw span{font-size:12px;color:#6b6b6b;}
+
+.variant{margin-bottom:26px;}
+.variant .vhead{display:flex;align-items:baseline;gap:12px;margin-bottom:10px;}
+.variant .vhead .tag{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a8a8a;}
+.variant .vhead h2{font-size:16px;font-weight:600;letter-spacing:-.2px;}
+.variant .vhead .note{font-size:12px;color:#6b6b6b;}
+.frame{border-radius:12px;overflow:hidden;border:1px solid #d7d7d5;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+
+/* ═══ shell (vars set per variant) ═══ */
+.shell{background:var(--bg);font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',sans-serif;color:var(--ink);}
+.mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1;}
+
+/* topbar */
+.top{display:flex;align-items:center;gap:14px;height:50px;padding:0 16px;background:var(--top-bg);border-bottom:1px solid var(--top-line);}
+.mark{width:26px;height:26px;border-radius:6px;background:var(--mark-bg);color:var(--mark-ink);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.brand{font-size:14px;font-weight:600;letter-spacing:-.2px;color:var(--top-ink);}
+.brand small{font-weight:400;color:var(--top-ink3);margin-left:5px;font-size:12px;}
+.search{margin-left:6px;flex:1;max-width:300px;display:flex;align-items:center;gap:8px;height:30px;padding:0 11px;border:1px solid var(--top-field-line);border-radius:6px;background:var(--top-field);color:var(--top-ink3);font-size:12.5px;}
+.search svg{width:13px;height:13px;}
+.search kbd{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--top-ink3);border:1px solid var(--top-field-line);border-radius:4px;padding:1px 5px;}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.top .avatar{width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+
+/* module sub-nav (the one-shell signature) */
+.subnav{display:flex;align-items:center;gap:2px;height:38px;padding:0 12px;background:var(--card);border-bottom:1px solid var(--line);}
+.subnav a{display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;font-size:12.5px;color:var(--ink2);text-decoration:none;}
+.subnav a .md{width:6px;height:6px;border-radius:2px;}
+.subnav a.on{background:var(--brand-tint);color:var(--ink);font-weight:600;}
+.subnav .spacer{flex:1;}
+.subnav .ts{font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:5px;}
+.subnav .ts b{color:var(--ink2);font-weight:500;}
+
+/* body */
+.main{padding:18px 18px 22px;}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:16px;}
+.kpi{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:13px 15px;}
+.kpi .l{font-size:11px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;}
+.kpi .v{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;letter-spacing:-.5px;margin-top:8px;line-height:1;font-feature-settings:"tnum" 1;}
+.kpi .v small{font-size:11px;color:var(--ink3);font-weight:500;margin-left:2px;font-family:'IBM Plex Sans',sans-serif;}
+.kpi .d{font-size:11px;margin-top:8px;color:var(--ink3);}
+.kpi .d.up{color:var(--ok);font-weight:600;} .kpi .d.dn{color:var(--err);font-weight:600;}
+
+.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:16px;}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:6px;font-size:12.5px;font-weight:500;border:1px solid transparent;cursor:pointer;}
+.btn svg{width:13px;height:13px;}
+.btn.pri{background:var(--brand);color:#fff;}
+.btn.pri:hover{background:var(--brand-hover);}
+.btn.sec{background:var(--card);color:var(--ink2);border-color:var(--line-strong);}
+.btn.sec:hover{background:var(--field);}
+.btn.gh{background:transparent;color:var(--ink2);} .btn.gh:hover{background:var(--field);}
+.btn.dgr{background:transparent;color:var(--err);border-color:var(--err-line);} .btn.dgr:hover{background:var(--err-tint);}
+.sep{width:1px;height:20px;background:var(--line);margin:0 3px;}
+.bdg{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:9999px;font-size:11.5px;font-weight:500;}
+.bdg i{width:5px;height:5px;border-radius:50%;}
+.bdg.ok{background:var(--ok-t);color:var(--ok);} .bdg.ok i{background:var(--ok);}
+.bdg.wn{background:var(--wn-t);color:var(--wn);} .bdg.wn i{background:var(--wn);}
+.bdg.er{background:var(--er-t);color:var(--er);} .bdg.er i{background:var(--er);}
+.bdg.in{background:var(--in-t);color:var(--in);} .bdg.in i{background:var(--in);}
+
+.tbl{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card);}
+.tbl table{width:100%;border-collapse:collapse;}
+.tbl th{text-align:left;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);padding:9px 14px;background:var(--head);border-bottom:1px solid var(--line);}
+.tbl th.r,.tbl td.r{text-align:right;}
+.tbl td{font-size:12.5px;color:var(--ink);padding:10px 14px;border-bottom:1px solid var(--line2);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tbody tr:hover{background:var(--field);}
+.tbl .code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2);}
+.tbl .num{font-family:'IBM Plex Mono',monospace;text-align:right;font-feature-settings:"tnum" 1;}
+
+/* module hue tokens (shared — colour only from status + module, per research) */
+.shell{
+  --ok:#1E7A46;--ok-t:#E6F1EA;--wn:#B4690E;--wn-t:#F7EEDD;--er:#C0392B;--er-t:#F7E9E7;--er-line:#EAD4D1;--in:#2563EB;--in-t:#E9EFFD;
+  --md-fin:#2563EB;--md-prod:#C2740B;--md-qa:#1E7A46;--md-iso:#6D45C9;
+}
+
+/* ══════ Variant A · Graphite Chrome(石墨 chrome:深頂欄) ══════ */
+.va .shell{
+  --bg:#F6F6F5;--card:#FFFFFF;--head:#FBFBFA;--field:#F1F1EF;
+  --ink:#1C1C1C;--ink2:#5F5F5D;--ink3:#8C8C89;--line:#E7E6E3;--line2:#F0EFEC;--line-strong:#DBDAD6;
+  --brand:#313131;--brand-hover:#454545;--brand-tint:#ECECEA;
+  --top-bg:#282828;--top-line:#282828;--top-ink:#F3F3F1;--top-ink3:#A5A5A2;--top-field:#37373a;--top-field-line:#454548;
+  --mark-bg:#F3F3F1;--mark-ink:#282828;
+}
+
+/* ══════ Variant B · Graphite Ink(全淺底,石墨只作 ink/主行動) ══════ */
+.vb .shell{
+  --bg:#F6F6F5;--card:#FFFFFF;--head:#FBFBFA;--field:#F1F1EF;
+  --ink:#1C1C1C;--ink2:#5F5F5D;--ink3:#8C8C89;--line:#E7E6E3;--line2:#F0EFEC;--line-strong:#DBDAD6;
+  --brand:#313131;--brand-hover:#454545;--brand-tint:#ECECEA;
+  --top-bg:#FFFFFF;--top-line:#E7E6E3;--top-ink:#1C1C1C;--top-ink3:#8C8C89;--top-field:#F1F1EF;--top-field-line:#E2E1DD;
+  --mark-bg:#313131;--mark-ink:#FFFFFF;
+}
+
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">Weyver 織雲 · Brand Colour Exploration</div>
+    <h1>品牌色探索:石墨灰 #313131</h1>
+    <p>近單色石墨基底 + IBM Plex(鎖定)。石墨極中性 → 顏色只從<b>狀態</b>(綠/琥珀/紅)與<b>模組個性</b>(財會藍/生產橘/品保綠/ISO 紫)而來,正對研究要的「統一 token + 模組個性」。兩個變體差在「石墨 chrome 露多少」。同一組 Weyver 切片(頂欄 + 一體 shell 模組列 + KPI + 按鈕/狀態 + 資料表)。</p>
+    <div class="sw"><i></i><b>#313131</b><span>Graphite · brand / ink / 主行動</span></div>
+  </header>
+
+  <!-- Variant A -->
+  <div class="variant va">
+    <div class="vhead"><span class="tag">Variant A</span><h2>Graphite Chrome</h2><span class="note">深石墨頂欄,品牌感前置(對比 Dynamics 深藍頂欄,但石墨更中性、更現代)。</span></div>
+    <div class="frame">
+      <div class="shell">
+        <div class="top">
+          <div class="mark">W</div>
+          <div class="brand">Weyver<small>織雲</small></div>
+          <div class="search"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>全域搜尋單據 · 表單 · 供應商<kbd>⌘K</kbd></div>
+          <div class="right"><div class="avatar">鮮</div></div>
+        </div>
+        <div class="subnav">
+          <a class="on"><span class="md" style="background:var(--md-fin)"></span>採購</a>
+          <a><span class="md" style="background:var(--md-prod)"></span>生產工單</a>
+          <a><span class="md" style="background:var(--md-qa)"></span>品保</a>
+          <a><span class="md" style="background:var(--md-iso)"></span>ISO 文件</a>
+          <span class="spacer"></span>
+          <span class="ts">資料更新 <b class="mono">21:40</b> · 即時同步</span>
+        </div>
+        <div class="main">
+          <div class="kpis">
+            <div class="kpi"><div class="l">本月銷售</div><div class="v">4.82<small>M</small></div><div class="d up">▲ 12.3%</div></div>
+            <div class="kpi"><div class="l">整體 OEE</div><div class="v">87<small>%</small></div><div class="d">3 線運行</div></div>
+            <div class="kpi"><div class="l">待我處理</div><div class="v">8</div><div class="d dn">2 件今日到期</div></div>
+            <div class="kpi"><div class="l">在製工單</div><div class="v">24</div><div class="d">本週 +6</div></div>
+          </div>
+          <div class="row">
+            <button class="btn pri"><svg viewBox="0 0 12 12" fill="none"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>建立記錄</button>
+            <button class="btn sec">篩選</button><button class="btn gh">取消</button><button class="btn dgr">刪除</button>
+            <span class="sep"></span>
+            <span class="bdg ok"><i></i>已核准</span><span class="bdg wn"><i></i>待審核</span><span class="bdg er"><i></i>異常</span><span class="bdg in"><i></i>已收貨</span>
+          </div>
+          <div class="tbl"><table>
+            <thead><tr><th>單號</th><th>供應商</th><th class="r">金額 NT$</th><th>批號</th><th>狀態</th></tr></thead>
+            <tbody>
+              <tr><td class="code">PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td><td class="code">BN-0716-A</td><td><span class="bdg wn"><i></i>待審核</span></td></tr>
+              <tr><td class="code">PO-0715-047</td><td>統鮮實業</td><td class="num">84,200</td><td class="code">BN-0715-C</td><td><span class="bdg ok"><i></i>已核准</span></td></tr>
+              <tr><td class="code">PO-0715-046</td><td>正大食材</td><td class="num">312,000</td><td class="code">BN-0715-B</td><td><span class="bdg in"><i></i>已收貨</span></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variant B -->
+  <div class="variant vb">
+    <div class="vhead"><span class="tag">Variant B</span><h2>Graphite Ink</h2><span class="note">全淺底,石墨只作文字/主行動/active(Linear/Notion 那種克制單色)。更輕、更耐看。</span></div>
+    <div class="frame">
+      <div class="shell">
+        <div class="top">
+          <div class="mark">W</div>
+          <div class="brand">Weyver<small>織雲</small></div>
+          <div class="search"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>全域搜尋單據 · 表單 · 供應商<kbd>⌘K</kbd></div>
+          <div class="right"><div class="avatar">鮮</div></div>
+        </div>
+        <div class="subnav">
+          <a class="on"><span class="md" style="background:var(--md-fin)"></span>採購</a>
+          <a><span class="md" style="background:var(--md-prod)"></span>生產工單</a>
+          <a><span class="md" style="background:var(--md-qa)"></span>品保</a>
+          <a><span class="md" style="background:var(--md-iso)"></span>ISO 文件</a>
+          <span class="spacer"></span>
+          <span class="ts">資料更新 <b class="mono">21:40</b> · 即時同步</span>
+        </div>
+        <div class="main">
+          <div class="kpis">
+            <div class="kpi"><div class="l">本月銷售</div><div class="v">4.82<small>M</small></div><div class="d up">▲ 12.3%</div></div>
+            <div class="kpi"><div class="l">整體 OEE</div><div class="v">87<small>%</small></div><div class="d">3 線運行</div></div>
+            <div class="kpi"><div class="l">待我處理</div><div class="v">8</div><div class="d dn">2 件今日到期</div></div>
+            <div class="kpi"><div class="l">在製工單</div><div class="v">24</div><div class="d">本週 +6</div></div>
+          </div>
+          <div class="row">
+            <button class="btn pri"><svg viewBox="0 0 12 12" fill="none"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>建立記錄</button>
+            <button class="btn sec">篩選</button><button class="btn gh">取消</button><button class="btn dgr">刪除</button>
+            <span class="sep"></span>
+            <span class="bdg ok"><i></i>已核准</span><span class="bdg wn"><i></i>待審核</span><span class="bdg er"><i></i>異常</span><span class="bdg in"><i></i>已收貨</span>
+          </div>
+          <div class="tbl"><table>
+            <thead><tr><th>單號</th><th>供應商</th><th class="r">金額 NT$</th><th>批號</th><th>狀態</th></tr></thead>
+            <tbody>
+              <tr><td class="code">PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td><td class="code">BN-0716-A</td><td><span class="bdg wn"><i></i>待審核</span></td></tr>
+              <tr><td class="code">PO-0715-047</td><td>統鮮實業</td><td class="num">84,200</td><td class="code">BN-0715-C</td><td><span class="bdg ok"><i></i>已核准</span></td></tr>
+              <tr><td class="code">PO-0715-046</td><td>正大食材</td><td class="num">312,000</td><td class="code">BN-0715-B</td><td><span class="bdg in"><i></i>已收貨</span></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
