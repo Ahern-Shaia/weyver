@@ -253,7 +253,7 @@ CREATE TABLE data.t{formId} (
 | **M1** Spike + 前置 | Docker Compose PG16 + **spike S1/S2/S3(10K 表 catalog / 並發 DDL 鎖 / 動態表 RLS)** → § 9-ter | 1-2 週 | ✅ **Gate 通過 2026-07-19**(`apps/api` 骨架 + Testcontainers 移 M2 開頭)|
 | **M2** A1+A2 | `apps/api` NestJS 骨架 + Testcontainers + metadata catalog + 型別 registry + unit tests | 3 週 | ✅ 2026-07-19(ca1d107;22 tests 全過)|
 | **M3** A3 | DDL 服務 + 安全鏈 + provision state + 整合測試 | 2.5 週 | ✅ 2026-07-19(b14c211;34 tests)|
-| **M4** A4+A5 | 記錄 DML + 子表 tx + 整合測試 | 3 週 | ⏳ |
+| **M4** A4+A5 | 記錄 DML + 子表 tx + 整合測試 | 3 週 | ✅ 2026-07-19(f1c41e8;44 tests)|
 | **M5** A6 | 租戶隔離整合 + 隔離測試 gate | 1.5 週 | ⏳ |
 | **M6** A7 | 最小 REST API + e2e + Swagger | 1 週 | ⏳ |
 | **M7** FMEA + 收尾 | §12 FMEA(P0 全清才 SHIPPED)+ SOP + MODULES.md ✅ | 2-3 天 | ⏳ |
