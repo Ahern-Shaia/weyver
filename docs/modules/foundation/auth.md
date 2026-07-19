@@ -1,6 +1,6 @@
 # auth.md — [F-2] 認證 + 租戶 context + 使用者身分 設計文件
 
-> 🚧 **狀態:DRAFT — 待裁定 OQ-AUTH-1..8(2026-07-19)**
+> ✅ **狀態:APPROVED — OQ-AUTH-1..8 全採建議(2026-07-19 裁定)**;AUTH-8 = **場景 A(多 org 隔離切換,一次一家)**;**場景 B(代管母子 + 跨廠合併)非本模組**,僅便宜預留 `tenants.parent_tenant_id`。進 M1。
 >
 > **一句話**|把 dev 期的 `x-dev-tenant` header 換成**真實認證**:使用者登入 → 伺服器驗證的 session/JWT → 從中取**可信的 tenant_id + 使用者身分**,取代 `DevTenantGuard`。**這是 R1 對外上線的硬前提**(form-engine-core / form-designer-ui / grid / formula 皆標「對外 prod 前提 = F-2」)。
 >
@@ -93,7 +93,7 @@
 
 ## 6. A3|對映(org↔tenant · user↔actor)
 
-- **org ↔ tenant**|Weyver `tenants`(bigint,RLS 之 tenant_id)加 `auth_org_id text unique`;**org 建立 hook → 建 tenant + 連結**。RLS / 動態表 tenant_id 續用 bigint,不動。
+- **org ↔ tenant**|Weyver `tenants`(bigint,RLS 之 tenant_id)加 `auth_org_id text unique` + **`parent_tenant_id bigint nullable`(便宜預留巢狀租戶 / 代管母子,MVP 不實作跨租戶讀取,只留欄位)**;**org 建立 hook → 建 tenant + 連結**。RLS / 動態表 tenant_id 續用 bigint,不動。
 - **user ↔ actor**|新 `users`(bigint id, `auth_user_id text unique`, email, name);**首次登入 / 加入 org → upsert users**;`actorId` = users.id(記錄 created_by/updated_by 之來源)。
 - **對映快取**|orgId→tenantId / userId→actorId 熱路徑 → 記憶體 / Redis 快取(變更失效)。
 
@@ -108,7 +108,7 @@
 - **JWT(若啟)**|`verify` algorithms 白名單、拒 `alg:none`、RS256/ES256、驗 exp/iss/aud(AGENTS 🔒-4)。
 - **登入暴力**|`@nestjs/throttler` 嚴限登入 route;帳號鎖定 / 漸進延遲。
 - **CSRF**|cookie-based → CSRF token / SameSite;Better Auth 內建。
-- **secrets**|Better Auth secret / DB creds 走 Infisical,零進碼(AGENTS 🔒-6)。
+- **secrets**|Better Auth secret / DB 憑證走 Infisical,零進碼(AGENTS 🔒-6)。
 - **enumeration**|登入 / 註冊錯誤訊息不洩漏帳號是否存在。
 
 ### 7-bis.2 容量 / 失效
@@ -147,9 +147,9 @@
 
 ---
 
-## 10. 開放問題(OQ-AUTH-N)— 待裁定
+## 10. 開放問題(OQ-AUTH-N)— ✅ 已裁定(2026-07-19,全採建議)
 
-| # | 議題 | 選項 | 建議 |
+| # | 議題 | 選項 | 裁定 |
 |---|---|---|---|
 | **OQ-AUTH-1** | Better Auth 放哪 | A. 掛 apps/api(Fastify handler,同 PG)<br> B. 掛 apps/web(Next)<br> C. 獨立 auth 服務 | **A** — 與 metadata 同庫交易一致、NestJS Guard 直接驗、前端同源代理;獨立服務為未來(Edge/MES 需 stateless 時)|
 | **OQ-AUTH-2** | API 請求驗證 | A. session 驗證(getSession,可撤銷)<br> B. JWT plugin(stateless)<br> C. 兩者 | **A**(MVP)— Better Auth native + 可撤銷;跨服務 / Edge 需要時再加 **B**。兩者皆「伺服器驗證租戶非 client」,滿足 docs/21 原則 |
@@ -158,7 +158,7 @@
 | **OQ-AUTH-5** | nestjs-cls | A. F-2 不改,續顯式傳 tenantId(inTenantTx 已 SET LOCAL)<br> B. F-2 就導入 CLS | **A** — 現行顯式傳 + SET LOCAL 已安全且測試完備;CLS 為 ergonomics,背景工作 / 深巢狀出現時再導(docs/21 之 CLS 仍為方向)。降低 F-2 對已 SHIPPED 引擎的改動面 |
 | **OQ-AUTH-6** | 密碼 hash | A. Argon2id(覆寫 Better Auth 預設)<br> B. 用預設(scrypt)| **A** — AGENTS 🔒-4 明訂 Argon2id |
 | **OQ-AUTH-7** | 測試 / dev guard | A. DevTenantGuard 留 dev/test(prod fail-closed)+ 新增真 auth 整合測 <br> B. 全面換 AuthGuard,所有測試用 auth seed | **A** — 既有 88 測試不受衝擊;auth 專屬測試走真 Better Auth;prod 只認 AuthGuard |
-| **OQ-AUTH-8** | 多 org 使用者 | A. 支援(Better Auth active org 切換,MVP UI 最小)<br> B. MVP 單 org | **A** — Better Auth native;食品集團多廠區為真實場景(docs 集團例外);UI 先最小(下拉切換)|
+| **OQ-AUTH-8** | 多 org 使用者 | A. 支援(Better Auth active org 切換,MVP UI 最小)<br> B. MVP 單 org | **A(限場景 A)** — 一人屬多 org、**一次一家、各家 RLS 完全隔離**(顧問跨廠 / 集團多廠區)。⚠️ **場景 B(代管公司要跨廠合併視角 / 代子廠操作)非本模組** —— 那是巢狀租戶 + 跨租戶讀取(docs/21 outgrow → Cerbos),另立設計;本模組僅**便宜預留 `tenants.parent_tenant_id nullable`**(不實作跨租戶讀取)|
 
 ---
 
@@ -178,4 +178,5 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-19 | v0.2 | OQ-AUTH-1..8 全採建議裁定;AUTH-8 限**場景 A**(多 org 隔離切換);**場景 B 代管母子非本模組**,僅預留 `tenants.parent_tenant_id`;狀態 → APPROVED,進 M1 | Claude Code |
 | 2026-07-19 | v0.1 | 初版 DRAFT — F-2 認證 + 租戶 context + 使用者身分;A1–A6 切分 + OQ-AUTH-1..8;上游 = DevTenantGuard + TenantContext 介面 + docs/21 架構(Better Auth + JWT tenant_id + nestjs-cls);對映 org↔tenant / user↔actor 為整合關鍵;保留 TenantContext 介面 → services 零改 | Claude Code |
