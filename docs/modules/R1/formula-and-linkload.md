@@ -1,6 +1,6 @@
 # formula-and-linkload.md — [P0-3] 公式引擎 + 關聯 Link&Load 設計文件
 
-> ✅ **狀態:APPROVED — OQ-FML-1..10 全採建議(2026-07-19 裁定)**;含 OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,clean-room);OQ-9 多層鏈式 Rollup(+深度上限)、OQ-10 條件式 Rollup 皆 MVP 做。**M1 進行中**
+> 🚧 **狀態:後端引擎 + API 整合完整(M1–M6 後端 ✅);前端 UI 啟用 + Playwright 固化為 SHIPPED 前最後一哩**。OQ-FML-1..10 全採建議裁定;fork Teable `packages/formula`(MIT,clean-room)。FMEA §14 P0 全清(F1–F4)、殘留 F6/F7 為 P1 已知。
 >
 > **一句話**|Ragic 兩大招牌的技術核心:**欄位公式即時重算**(C 模組)+ **關聯 Link&Load / Lookup / Rollup**(D 模組)。兩者共用「依賴圖 + 重算引擎」故合為一個 P0-3 模組。**這是 R1 實作模組**(非 design-ahead)。
 >
@@ -226,7 +226,7 @@ formula_def
 | **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ✅ **後端核心完成**|link 欄儲存(bigint 目標 id + options.targetFormId)已由 form-engine 型別系統落地;`RelationService`.registerRelation(寫 relation_def,idempotent)+ **load 帶入**(讀目標記錄指定欄值,採購單→供應商 帶入 地址/電話);6 整合測(真 PG)· **選記錄 UI(前端)+ M2M junction 續** |
 | **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ✅ **後端核心完成**|`RollupService`(子表聚合 SUM/COUNT/AVERAGE/MIN/MAX + **條件式**(OQ-FML-10)+ **rollupBatch N+1 安全**(一次 whereIn 撈全部子列 app 層分組)+ **讀時算故刪子即反映**(修 Salesforce 痛點))+ `RecordService.listByParents` + `RelationService.lookup`(即時單欄);6 整合測(真 PG)· 多層鏈式由依賴圖串接 · 物化為後續 |
 | **M5** A5 | 前端共享求值即時預覽 + 後端權威重算一致性 | ✅ **共享引擎完成**|apps/web 依賴同一 `@weyver/formula`(parser/求值/依賴圖 by construction 一致,OQ-FML-7=A)+ `computeFormulaPreview` 前端即時預覽 util(拓樸序鏈式 + 循環偵測 + Decimal 精度)+ 5 web 單元測;後端為權威。**渲染進填單 UI(formula 欄唯讀顯示)於 M6 隨設計器啟用** |
-| **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | ⬜ |
+| **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | 🚧 **後端整合 + FMEA ✅**|createForm 自動 defineFormula + getRecord/listRecords 讀時算注入(optional 注入零回歸,88 api tests 綠;3 端到端測)+ §14 FMEA(P0 F1–F4 全清)· **前端設計器啟用 formula 欄 + 唯讀渲染 + Playwright 固化 = SHIPPED 前最後一哩** |
 
 ---
 
@@ -249,13 +249,32 @@ formula_def
 
 ## 13. SOP — 日常操作
 
-> M6 收尾填(建公式 / 排查重算落後 / 慢公式優化 / 循環錯誤處理)。
+- **建公式欄**|設計器選 formula 型別 + 輸入 `{欄名}` 運算式 → createForm/addField 自動 `defineFormula`(parse/依賴/型別/循環)。語法/參照/循環錯於建立期即回。
+- **排查值不對**|`FormulaService.computeRecord(tenantId, formId, values)` 手動重算比對;`formula_def.depends_on` 看依賴、`resultType` 看推斷型別。
+- **循環錯誤**|`FormulaCycleError` 訊息列環的欄名鏈;移除其一依賴即解。
+- **慢查詢**|列表含公式欄且列多 → 見 FMEA F6(N+1;優化為批次 computeWith / 物化)。
+- **回歸守護**|`packages/formula/*.test.ts`(35)+ apps/api `formula*/relation/rollup*.integration.test.ts`(28)三層,改動前後必綠。
 
 ---
 
-## 14. 失效場景反思(FMEA)— 收尾必填(R17)
+## 14. 失效場景反思(FMEA)— 收尾(R17)
 
-> M6 收尾逐路徑填(公式求值 / 依賴重算 / Lookup 來源刪除 / Rollup 大聚合 / 前後端不一致 / 並發重算 / 循環)。P0 未緩解不得上 prod。
+| # | 失效路徑 | 嚴重 | 緩解(狀態)|
+|---|---|---|---|
+| F1 | 使用者公式挾帶任意程式執行 | **P0** | **parse 成 AST 非 `eval`**(ANTLR);欄位參照走 catalog 白名單;值 Decimal/字串強制轉,無 code path。✅ |
+| F2 | 循環依賴 → 無限重算 | **P0** | Tarjan SCC **定義期 reject** + 求值 evaluationOrder 再驗;跨欄環擋。✅ 單元 + 整合測 |
+| F3 | 金額公式以 float 失精度 | **P0** | 全程 `decimal.js`(0.1+0.2=0.3 驗);formula 欄 numeric(38,10)。✅ |
+| F4 | 跨租戶 Lookup/Rollup 洩漏 | **P0** | getRecord / listByParents 綁 tenantId + RLS FORCE 兜底。✅ 繼承引擎防線 |
+| F5 | 除零 / 未知函數 / 型別錯 | P1 | typed `FormulaEvalError`/`FormulaDefinitionError` fail-closed,不靜默。✅ |
+| F6 | 列表逐列 computeRecord → N+1 | P1 | `hasFormula` 短路(非公式表零額外查詢);公式表每列一次 computeRecord。⚠️ **已知**:批次預載 defs / 物化為優化,列大時再做;pilot 頁 ≤200 可忍 |
+| F7 | 被引用欄被刪 → 公式讀時算得壞值(非崩)| P1 | depends_on 存 id(**改名不壞**,已驗);**刪除保護未強制**(OQ-FML-3 治本:破壞性 DDL 前檢查 formula_def 引用)。⚠️ 已知殘留 |
+| F8 | Rollup 刪/改子列值 stale | — | **讀時算(無物化)→ 天生即反映**(修 Salesforce 痛點,已驗 180→150)。✅ 架構免疫 |
+| F9 | 前後端顯示不一致 | P1 | 前後端共用**同一** `@weyver/formula`(by construction 一致);後端為權威。✅ |
+| F10 | Rollup 巨聚合拖垮(大子表)| P2 | 一次 whereIn 撈子列 + app 聚合;超大子表掃描上限 / 物化為後續。⚠️ MVP 可忍 |
+
+**結論**|F1–F4(P0)全數緩解且具測試佐證 → 後端引擎**無 P0 未緩解**。殘留 F6(N+1 優化)/ F7(刪欄保護)為 P1 已知,治本方向明確,pilot 規模可忍。
+
+**⚠️ SHIPPED 前尚缺(前端)**|設計器啟用 formula 欄(palette + 運算式輸入)+ 填單 / grid 唯讀渲染計算值(接 getRecord 已注入 / computeFormulaPreview 即時)+ **Playwright 固化**。後端引擎 + API 整合完整;前端 UI 為最後一哩。
 
 ---
 
@@ -265,6 +284,7 @@ formula_def
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
+| 2026-07-19 | v0.12 | **M6 後端整合 + FMEA**|DdlService/RecordService optional 注入 FormulaService(createForm 自動 defineFormula + 讀時算注入 getRecord/listRecords;hasFormula 短路;88 api tests 零回歸);3 端到端整合測(自動註冊 + 12.5×4=50 + 逐列 50/30);§13 SOP + §14 FMEA(P0 F1–F4 全清、F6 N+1 / F7 刪欄保護 P1 已知)。前端設計器啟用 + 唯讀渲染 + Playwright 固化 = SHIPPED 前最後一哩 | Claude Code |
 | 2026-07-19 | v0.11 | **M5 前後端一致求值(共享引擎)**|apps/web 接同一 `@weyver/formula`(瀏覽器相容:antlr4ts + decimal.js);`formula-preview.ts`(computeFormulaPreview:拓樸序鏈式即時預覽 + 循環偵測,與後端 computeRecord by construction 一致)+ 5 web 單元測(0.1+0.2=0.3 / 鏈式 / IF / 串接 / 循環);web build 綠。formula 欄之填單渲染 + 設計器啟用 = M6 | Claude Code |
 | 2026-07-19 | v0.10 | **M4 後端核心:Lookup + Rollup(N+1 防護)**|`RecordService.listByParents`(一次 whereIn parent_id 撈全部子列)+ `RollupService`(SUM/COUNT/AVERAGE/MIN/MAX + 條件式 rollup + rollupBatch N+1 安全 + 空集不拋)+ `RelationService.lookup`;6 Testcontainers 整合測(子表聚合 / 條件式 130 / 批次多父 / **刪子列即反映 = 讀時算修 Salesforce 刪子不重算痛點**)。多層鏈式由 M2 依賴圖串接;物化 / 前端選記錄 UI 為後續 | Claude Code |
 | 2026-07-19 | v0.9 | **M3 後端核心:Link + Load**|發現 link 欄儲存已由 form-engine 型別系統落地(bigint 目標 id + options.targetFormId);新 `RelationService`(registerRelation 寫 relation_def idempotent + load 帶入讀目標記錄指定欄);6 Testcontainers 整合測(採購單 link 供應商 → 帶入 地址/電話 + 錯誤路徑)。選記錄 UI(前端 P0-3)+ M2M junction 為後續 | Claude Code |
