@@ -10,7 +10,8 @@ export function choicesOf(field: FieldDto): string[] {
 
 /* 送出前值轉換:回傳 undefined = 略過(不送);money 保字串禁 float,數值轉 number */
 export function toSubmitValue(field: FieldDto, value: unknown): unknown {
-  if (isStubType(field.type) || field.type === "autoNumber") return undefined
+  if (isStubType(field.type) || field.type === "autoNumber" || field.type === "formula")
+    return undefined
   switch (field.type) {
     case "checkbox":
       return value === true

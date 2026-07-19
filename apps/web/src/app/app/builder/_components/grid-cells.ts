@@ -14,9 +14,14 @@ export function gridKind(type: CellValueType): GridKind {
   return "text"
 }
 
-/* 網格內可直接編輯:排除 autoNumber / stub / multiSelect(複雜編輯延後,form 填)*/
+/* 網格內可直接編輯:排除 autoNumber / formula(computed 唯讀)/ stub / multiSelect(複雜編輯延後)*/
 export function isGridEditable(field: FieldDto): boolean {
-  return !isStubType(field.type) && field.type !== "autoNumber" && field.type !== "multiSelect"
+  return (
+    !isStubType(field.type) &&
+    field.type !== "autoNumber" &&
+    field.type !== "formula" &&
+    field.type !== "multiSelect"
+  )
 }
 
 /* 編輯用資料表示(Text/Number cell 的 data;顯示用 formatFieldValue)*/

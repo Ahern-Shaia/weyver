@@ -3,12 +3,33 @@
 import { Button } from "@weyver/ui/button"
 import { cn } from "@weyver/ui/lib/utils"
 import { useMemo, useState } from "react"
+import { toText } from "@weyver/formula"
 import { describeEngineError } from "@/lib/engine/client"
 import { isStubType } from "@/lib/engine/field-types"
 import { useCreateRecord, useForm, useForms, useSaveWithLines } from "@/lib/engine/hooks"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { FieldInput } from "./field-input"
 import { toSubmitValue } from "./field-value"
+import { computeFormulaPreview, type FormulaFieldSpec } from "@/lib/engine/formula-preview"
+
+/* 公式欄即時預覽:以填單當前值 client 端算(與後端同引擎);循環 / 錯誤時各欄回 —,不炸整表 */
+function computeHeaderPreview(
+  fields: readonly FieldDto[],
+  values: Record<string, unknown>,
+): Record<string, unknown> {
+  const specs: FormulaFieldSpec[] = fields
+    .filter((f) => f.type === "formula")
+    .map((f) => ({ name: f.name, expr: String(f.options.expression ?? "") }))
+  if (specs.length === 0) return {}
+  try {
+    const computed = computeFormulaPreview(specs, values)
+    const out: Record<string, unknown> = {}
+    for (const [name, v] of Object.entries(computed)) out[name] = toText(v)
+    return out
+  } catch {
+    return {}
+  }
+}
 
 interface LineDraft {
   readonly key: string
@@ -39,6 +60,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
     return <div className="p-6 text-[12px] text-er">載入失敗</div>
   }
   const form = formQuery.data
+  const headerPreview = computeHeaderPreview(form.fields, values)
   const hasChild = childForm !== null
   const childFields = childQuery.data?.fields ?? []
   const pending = createRecord.isPending || saveWithLines.isPending
@@ -157,7 +179,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
               <FieldRow key={field.id} field={field} isLast={index === form.fields.length - 1}>
                 <FieldInput
                   field={field}
-                  value={values[field.name]}
+                  value={field.type === "formula" ? headerPreview[field.name] : values[field.name]}
                   onChange={(v) => set(field.name, v)}
                 />
               </FieldRow>

@@ -17,6 +17,7 @@ interface DraftField {
   required: boolean
   choicesText: string // singleSelect / multiSelect
   prefix: string // autoNumber
+  expressionText: string // formula
 }
 
 let draftSeq = 0
@@ -30,6 +31,7 @@ function newDraftField(type: CellValueType): DraftField {
     required: false,
     choicesText: meta.needsChoices ? "選項一, 選項二" : "",
     prefix: type === "autoNumber" ? "NO-" : "",
+    expressionText: "",
   }
 }
 
@@ -43,6 +45,7 @@ function buildOptions(field: DraftField): Record<string, unknown> {
     return { choices }
   }
   if (meta.needsPrefix) return { prefix: field.prefix }
+  if (meta.needsExpression) return { expression: field.expressionText.trim() }
   return {}
 }
 
@@ -90,6 +93,9 @@ export function NewFormPanel({
       seen.add(n)
       if (fieldTypeMeta(f.type).needsChoices && buildOptions(f).choices instanceof Array) {
         if ((buildOptions(f).choices as string[]).length === 0) return `「${n}」需至少一個選項`
+      }
+      if (fieldTypeMeta(f.type).needsExpression && f.expressionText.trim() === "") {
+        return `「${n}」需輸入公式(如 {單價} * {數量})`
       }
     }
     return null
@@ -210,6 +216,14 @@ export function NewFormPanel({
                           onChange={(e) => patch(f.key, { prefix: e.target.value })}
                           placeholder="編號前綴,如 PO-"
                           className="ml-7 w-40"
+                        />
+                      ) : null}
+                      {meta.needsExpression ? (
+                        <Input
+                          value={f.expressionText}
+                          onChange={(e) => patch(f.key, { expressionText: e.target.value })}
+                          placeholder="公式,如 {單價} * {數量}"
+                          className="ml-7 font-mono"
                         />
                       ) : null}
                     </li>

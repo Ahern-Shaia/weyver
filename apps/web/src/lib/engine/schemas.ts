@@ -27,7 +27,7 @@ export const CELL_VALUE_TYPES = [
 export type CellValueType = (typeof CELL_VALUE_TYPES)[number]
 
 /* stub 型別(引擎 systemManaged / 行為未實作)→ palette 停用、填單唯讀 */
-export const STUB_TYPES: readonly CellValueType[] = ["member", "link", "attachment", "formula"]
+export const STUB_TYPES: readonly CellValueType[] = ["member", "link", "attachment"]
 
 export const fieldDtoSchema = z.object({
   id: z.number().int(),

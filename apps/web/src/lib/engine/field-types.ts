@@ -10,28 +10,31 @@ export interface FieldTypeMeta {
   readonly mark: string
   readonly needsChoices: boolean // singleSelect / multiSelect
   readonly needsPrefix: boolean // autoNumber
+  readonly needsExpression: boolean // formula
 }
 
+const D = { needsChoices: false, needsPrefix: false, needsExpression: false }
+
 const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
-  text: { label: "單行文字", mark: "A", needsChoices: false, needsPrefix: false },
-  longText: { label: "多行文字", mark: "¶", needsChoices: false, needsPrefix: false },
-  email: { label: "Email", mark: "@", needsChoices: false, needsPrefix: false },
-  url: { label: "網址", mark: "↗", needsChoices: false, needsPrefix: false },
-  phone: { label: "電話", mark: "☏", needsChoices: false, needsPrefix: false },
-  number: { label: "數值", mark: "#", needsChoices: false, needsPrefix: false },
-  money: { label: "金額", mark: "$", needsChoices: false, needsPrefix: false },
-  percent: { label: "百分比", mark: "%", needsChoices: false, needsPrefix: false },
-  date: { label: "日期", mark: "◷", needsChoices: false, needsPrefix: false },
-  dateTime: { label: "日期時間", mark: "◷", needsChoices: false, needsPrefix: false },
-  singleSelect: { label: "單選", mark: "▾", needsChoices: true, needsPrefix: false },
-  multiSelect: { label: "多選", mark: "▤", needsChoices: true, needsPrefix: false },
-  checkbox: { label: "勾選", mark: "✓", needsChoices: false, needsPrefix: false },
-  rating: { label: "評分", mark: "★", needsChoices: false, needsPrefix: false },
-  autoNumber: { label: "自動編號", mark: "№", needsChoices: false, needsPrefix: true },
-  member: { label: "成員", mark: "◍", needsChoices: false, needsPrefix: false },
-  link: { label: "關聯", mark: "⛓", needsChoices: false, needsPrefix: false },
-  attachment: { label: "附件", mark: "📎", needsChoices: false, needsPrefix: false },
-  formula: { label: "公式", mark: "fx", needsChoices: false, needsPrefix: false },
+  text: { label: "單行文字", mark: "A", ...D },
+  longText: { label: "多行文字", mark: "¶", ...D },
+  email: { label: "Email", mark: "@", ...D },
+  url: { label: "網址", mark: "↗", ...D },
+  phone: { label: "電話", mark: "☏", ...D },
+  number: { label: "數值", mark: "#", ...D },
+  money: { label: "金額", mark: "$", ...D },
+  percent: { label: "百分比", mark: "%", ...D },
+  date: { label: "日期", mark: "◷", ...D },
+  dateTime: { label: "日期時間", mark: "◷", ...D },
+  singleSelect: { label: "單選", mark: "▾", ...D, needsChoices: true },
+  multiSelect: { label: "多選", mark: "▤", ...D, needsChoices: true },
+  checkbox: { label: "勾選", mark: "✓", ...D },
+  rating: { label: "評分", mark: "★", ...D },
+  autoNumber: { label: "自動編號", mark: "№", ...D, needsPrefix: true },
+  member: { label: "成員", mark: "◍", ...D },
+  link: { label: "關聯", mark: "⛓", ...D },
+  attachment: { label: "附件", mark: "📎", ...D },
+  formula: { label: "公式", mark: "fx", ...D, needsExpression: true },
 }
 
 export function fieldTypeMeta(type: CellValueType): FieldTypeMeta {

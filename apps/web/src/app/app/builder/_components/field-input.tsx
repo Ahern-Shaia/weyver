@@ -29,6 +29,17 @@ export function FieldInput({
     case "autoNumber":
       return <span className="font-mono text-[11.5px] text-ink-4">儲存後自動產生</span>
 
+    case "formula": {
+      // 公式欄唯讀:value 由填單面板以 computeFormulaPreview 即時算出(儲存後後端為權威)
+      const shown = value === null || value === undefined || value === "" ? "—" : String(value)
+      return (
+        <span className="inline-flex items-center gap-1 font-mono text-[12px] text-ink">
+          {shown}
+          <span className="rounded-xs bg-label px-1 text-[9px] text-ink-4">fx</span>
+        </span>
+      )
+    }
+
     case "longText":
       return (
         <textarea

@@ -29,6 +29,7 @@ interface PendingField {
   required: boolean
   choicesText: string
   prefix: string
+  expressionText: string
 }
 
 function pendingOptions(pending: PendingField): Record<string, unknown> {
@@ -42,6 +43,7 @@ function pendingOptions(pending: PendingField): Record<string, unknown> {
     }
   }
   if (meta.needsPrefix) return { prefix: pending.prefix }
+  if (meta.needsExpression) return { expression: pending.expressionText.trim() }
   return {}
 }
 
@@ -81,6 +83,7 @@ export function EditFormPanel({
       required: false,
       choicesText: meta.needsChoices ? "選項一, 選項二" : "",
       prefix: type === "autoNumber" ? "NO-" : "",
+      expressionText: "",
     })
   }
 
@@ -88,6 +91,10 @@ export function EditFormPanel({
     if (pending === null) return
     if (pending.name.trim().length === 0) {
       setError("欄位名稱不可空白")
+      return
+    }
+    if (fieldTypeMeta(pending.type).needsExpression && pending.expressionText.trim() === "") {
+      setError("公式欄需輸入公式(如 {單價} * {數量})")
       return
     }
     addField.mutate(
@@ -280,6 +287,14 @@ function PendingEditor({
           onChange={(e) => onChange({ ...pending, prefix: e.target.value })}
           placeholder="編號前綴,如 PO-"
           className="w-40"
+        />
+      ) : null}
+      {meta.needsExpression ? (
+        <Input
+          value={pending.expressionText}
+          onChange={(e) => onChange({ ...pending, expressionText: e.target.value })}
+          placeholder="公式,如 {單價} * {數量}"
+          className="font-mono"
         />
       ) : null}
     </div>
