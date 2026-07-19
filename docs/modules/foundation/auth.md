@@ -139,7 +139,7 @@
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-AUTH-1..8)| ⏳ |
-| **M1** A1 | Better Auth 掛 api + auth 表 + org plugin + Argon2id | ⬜ |
+| **M1** A1 | Better Auth 掛 api + auth 表 + org plugin + Argon2id | 🚧 **認證引擎 ✅**(`src/auth/auth.ts` createAuth:Better Auth + pg pool + emailAndPassword + **Argon2id**(@node-rs/argon2)+ organization plugin;auth 表由 Better Auth migration 建;4 整合測:表建立 / 註冊→Argon2id / 登入正誤 / 列舉防護)· **NestJS provider + Fastify `/api/auth/*` handler 掛載併 M3(getSession 需之)** |
 | **M2** A3 | users / tenants.auth_org_id + org/user 對映 + upsert hook | ⬜ |
 | **M3** A2 | AuthGuard(getSession → tenantContext)+ 剝 header + 隔離測試 | ⬜ |
 | **M4** A4 | 前端登入 / 登出 / 註冊 + 受保護路由 + active org 切換 + 同源代理 | ⬜ |
@@ -178,5 +178,6 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-19 | v0.3 | **M1 認證引擎落地**|`src/auth/auth.ts`(Better Auth 1.6 + pg pool + emailAndPassword + Argon2id + organization plugin;secret 由呼叫端注入不散落 env);getMigrations 建 auth 表;4 Testcontainers 整合測(表 / 註冊 Argon2id / 登入正誤 / 列舉防護)綠。NestJS provider + Fastify handler 掛載併 M3 | Claude Code |
 | 2026-07-19 | v0.2 | OQ-AUTH-1..8 全採建議裁定;AUTH-8 限**場景 A**(多 org 隔離切換);**場景 B 代管母子非本模組**,僅預留 `tenants.parent_tenant_id`;狀態 → APPROVED,進 M1 | Claude Code |
 | 2026-07-19 | v0.1 | 初版 DRAFT — F-2 認證 + 租戶 context + 使用者身分;A1–A6 切分 + OQ-AUTH-1..8;上游 = DevTenantGuard + TenantContext 介面 + docs/21 架構(Better Auth + JWT tenant_id + nestjs-cls);對映 org↔tenant / user↔actor 為整合關鍵;保留 TenantContext 介面 → services 零改 | Claude Code |
