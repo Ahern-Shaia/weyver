@@ -216,6 +216,59 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .iconrow svg{width:16px;height:16px;}
 .mini-h{font-size:11px;font-weight:600;color:var(--ink2);margin:0 0 6px;}
 
+/* 視圖套件樣本 §16 */
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.view-panel{border:1px solid var(--line);background:var(--card);}
+.view-panel.full{grid-column:1/-1;}
+.view-panel-h{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);background:var(--label);padding:6px 10px;font-size:11px;color:var(--ink2);}
+.view-panel-h b{font-weight:600;color:var(--ink);}
+.view-panel-h .ref{margin-left:auto;font-family:'IBM Plex Mono';font-size:10px;color:var(--ink3);}
+.view-panel-b{padding:10px;}
+/* chart */
+.chart{width:100%;height:150px;display:block;font-family:'IBM Plex Mono';}
+.chart .axis{stroke:var(--line);stroke-width:1;}
+.chart .grid{stroke:var(--cell);stroke-width:1;}
+.chart .bar{fill:var(--primary);}
+.chart .trend{fill:none;stroke:var(--wn);stroke-width:1.5;}
+.chart .tick{fill:var(--ink4);font-size:8px;}
+.chart .value{fill:var(--ink2);font-size:8px;}
+/* calendar */
+.calendar{width:100%;border-collapse:collapse;table-layout:fixed;}
+.calendar th{background:var(--head);border:1px solid var(--cell);font-size:10px;font-weight:600;color:var(--ink3);padding:3px 0;}
+.calendar td{border:1px solid var(--cell);height:44px;vertical-align:top;padding:2px 3px;font-family:'IBM Plex Mono';font-size:9px;color:var(--ink4);}
+.calendar td.off{background:var(--label);color:var(--ink4);opacity:.55;}
+.calendar .event{display:block;margin-top:2px;border:1px solid var(--primary);border-left-width:2px;background:var(--primary-t);color:var(--primary);font-family:'IBM Plex Sans TC';font-size:8.5px;padding:1px 3px;border-radius:1px;line-height:1.3;}
+.calendar .event.warn{border-color:var(--wn);background:var(--wn-t);color:var(--wn);}
+/* board(dnd-kit 看板)*/
+.board{display:flex;gap:8px;}
+.board-col{flex:1;background:var(--bg);border:1px solid var(--line);}
+.board-col h5{margin:0;font-size:10px;font-weight:600;color:var(--ink3);background:var(--head);border-bottom:1px solid var(--line);padding:4px 7px;display:flex;justify-content:space-between;}
+.board-col h5 span{font-family:'IBM Plex Mono';color:var(--ink4);}
+.board-b{padding:6px;display:flex;flex-direction:column;gap:6px;min-height:88px;}
+.board-card{border:1px solid var(--line);background:var(--card);border-left:2px solid var(--primary);padding:5px 6px 5px 7px;font-size:10.5px;color:var(--ink2);position:relative;}
+.board-card .meta{font-family:'IBM Plex Mono';font-size:9px;color:var(--ink4);display:block;margin-top:2px;}
+.board-card .grip{position:absolute;right:5px;top:5px;color:var(--ink4);letter-spacing:1px;font-size:8px;line-height:1;}
+.board-card.dragging{border-color:var(--primary);outline:2px solid var(--primary);outline-offset:-1px;}
+/* map */
+.map{position:relative;height:170px;background:var(--bg);border:1px solid var(--cell);overflow:hidden;}
+.map svg{width:100%;height:100%;display:block;}
+.map .land{fill:var(--label);stroke:var(--cell);stroke-width:1;}
+.map .road{stroke:var(--cell);stroke-width:1;fill:none;}
+.map .pin{fill:var(--primary);}
+.map .pin.warn{fill:var(--wn);}
+.map .badge{position:absolute;left:8px;bottom:8px;background:var(--card);border:1px solid var(--line);font-size:9.5px;color:var(--ink3);padding:2px 6px;font-family:'IBM Plex Mono';}
+/* editor(TipTap 富文本)*/
+.editor{border:1px solid var(--line);}
+.editor-bar{display:flex;gap:2px;border-bottom:1px solid var(--line);background:var(--head);padding:3px 4px;flex-wrap:wrap;}
+.editor-bar button{width:24px;height:22px;border:1px solid transparent;background:transparent;color:var(--ink2);font-size:11px;display:inline-flex;align-items:center;justify-content:center;border-radius:2px;cursor:default;}
+.editor-bar button.on{background:var(--primary-t);border-color:var(--primary);color:var(--primary);}
+.editor-bar .divider{width:1px;background:var(--line);margin:2px 3px;}
+.editor-doc{padding:9px 11px;font-size:11.5px;color:var(--ink2);line-height:1.55;background:var(--card);}
+.editor-doc h4{margin:0 0 5px;font-size:13px;font-weight:600;color:var(--ink);}
+.editor-doc p{margin:0 0 6px;}
+.editor-doc ul{margin:0;padding-left:16px;} .editor-doc li{margin:1px 0;}
+.editor-doc .doc-meta{font-family:'IBM Plex Mono';font-size:9.5px;color:var(--ink4);border-top:1px solid var(--cell);margin-top:8px;padding-top:5px;}
+
 .cap-note{position:fixed;left:14px;bottom:10px;font-size:11px;color:var(--ink4);background:rgba(255,255,255,.9);border:1px solid var(--line);padding:4px 9px;border-radius:3px;}
 </style>
 </head>
@@ -390,11 +443,11 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
         <tr><td class="mono">Glide Data Grid</td><td>S2 網格編輯器(canvas · fx 即時重算)</td><td>已裝 · /app 網格</td></tr>
         <tr><td class="mono">TanStack Table</td><td>S5 列表視圖(排序)</td><td>已裝 · /app 列表</td></tr>
         <tr><td class="mono">RHF + Zod</td><td>S4 表單 / S3 設計器</td><td>已裝 · /app 設計</td></tr>
-        <tr><td class="mono">Apache ECharts</td><td>S18 MES 監控 / S21 儀表板 / F 圖表</td><td>已裝 · 待接畫面</td></tr>
-        <tr><td class="mono">FullCalendar</td><td>S5 日曆視圖</td><td>已裝 · 待接</td></tr>
-        <tr><td class="mono">dnd-kit</td><td>S5 看板 / S3 設計器拖拉</td><td>已裝 · 待接</td></tr>
-        <tr><td class="mono">MapLibre GL</td><td>S5 地圖視圖</td><td>已裝 · 待接</td></tr>
-        <tr><td class="mono">TipTap</td><td>S19 ISO 文件編輯</td><td>已裝 · 待接</td></tr>
+        <tr><td class="mono">Apache ECharts</td><td>S18 MES 監控 / S21 儀表板 / F 圖表</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">FullCalendar</td><td>S5 日曆視圖</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">dnd-kit</td><td>S5 看板 / S3 設計器拖拉</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">MapLibre GL</td><td>S5 地圖視圖</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">TipTap</td><td>S19 ISO 文件編輯</td><td>已裝 · 樣式見 §16</td></tr>
       </tbody></table>
     </div></div>
 
@@ -465,7 +518,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
         <tr><td>建置工具</td><td class="mono">Vite 8(Rolldown;Storybook/Vitest 用,非 Next 打包器)</td></tr>
         <tr><td>部署</td><td class="mono">Coolify self-host</td></tr>
       </tbody></table>
-      <div class="desc" style="margin:12px 0 0">資料/視圖套件(Glide / TanStack Table / ECharts / FullCalendar / dnd-kit / MapLibre / TipTap / RHF+Zod)× surface 對映見 <b style="color:var(--ink2)">§06 元件庫末表</b>。</div>
+      <div class="desc" style="margin:12px 0 0">資料/視圖套件(Glide / TanStack Table / ECharts / FullCalendar / dnd-kit / MapLibre / TipTap / RHF+Zod)× surface 對映見 <b style="color:var(--ink2)">§06 元件庫末表</b>,視覺樣本見 <b style="color:var(--ink2)">§16</b>。</div>
     </div></div>
 
     <!-- 形狀 · 深度 · 間距 -->
@@ -565,8 +618,167 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
       </div>
     </div></div>
 
+    <!-- 視圖套件樣本 -->
+    <div class="sec"><div class="sec-h"><span class="n">16</span>視圖套件樣本(待接 surface 預覽)<span class="r">§1.2 · 皆循全框線 / 方角 / 禁陰影 / 隨主題換色;heavy JS 產品端渲染,此為視覺約束稿</span></div><div class="sec-b">
+      <div class="desc">下列套件已安裝但尚未接畫面。此處以靜態樣本鎖定其在 Weyver 的視覺約束 —— 不套用套件出廠預設樣式,一律改寫成本設計系統(邊框、方角、Mono 數字、扁平主色、無陰影)。</div>
+      <div class="view-grid">
+
+        <!-- ECharts -->
+        <div class="view-panel">
+          <div class="view-panel-h"><b>產線 OEE 趨勢</b>S18 MES 監控 / S21 儀表板<span class="ref">Apache ECharts</span></div>
+          <div class="view-panel-b">
+            <svg class="chart" viewBox="0 0 460 150" role="img" aria-label="產線 OEE 七日趨勢長條圖">
+              <line class="grid" x1="34" y1="16" x2="452" y2="16"/>
+              <line class="grid" x1="34" y1="42" x2="452" y2="42"/>
+              <line class="grid" x1="34" y1="68" x2="452" y2="68"/>
+              <line class="grid" x1="34" y1="94" x2="452" y2="94"/>
+              <line class="axis" x1="34" y1="120" x2="452" y2="120"/>
+              <text class="tick" x="30" y="19" text-anchor="end">100</text>
+              <text class="tick" x="30" y="45" text-anchor="end">75</text>
+              <text class="tick" x="30" y="71" text-anchor="end">50</text>
+              <text class="tick" x="30" y="97" text-anchor="end">25</text>
+              <rect class="bar" x="40"  y="34" width="34" height="86"/>
+              <rect class="bar" x="99"  y="28" width="34" height="92"/>
+              <rect class="bar" x="158" y="37" width="34" height="83"/>
+              <rect class="bar" x="217" y="24" width="34" height="96"/>
+              <rect class="bar" x="276" y="31" width="34" height="89"/>
+              <rect class="bar" x="335" y="22" width="34" height="98"/>
+              <rect class="bar" x="394" y="29" width="34" height="91"/>
+              <line class="trend" stroke-dasharray="4 3" x1="34" y1="31" x2="452" y2="31"/>
+              <text class="value" x="452" y="28" text-anchor="end" style="fill:var(--wn)">目標 85%</text>
+              <text class="value" x="57"  y="30" text-anchor="middle">82</text>
+              <text class="value" x="116" y="24" text-anchor="middle">88</text>
+              <text class="value" x="175" y="33" text-anchor="middle">79</text>
+              <text class="value" x="234" y="20" text-anchor="middle">91</text>
+              <text class="value" x="293" y="27" text-anchor="middle">85</text>
+              <text class="value" x="352" y="18" text-anchor="middle">93</text>
+              <text class="value" x="411" y="25" text-anchor="middle">87</text>
+              <text class="tick" x="57"  y="134" text-anchor="middle">07-13</text>
+              <text class="tick" x="116" y="134" text-anchor="middle">07-14</text>
+              <text class="tick" x="175" y="134" text-anchor="middle">07-15</text>
+              <text class="tick" x="234" y="134" text-anchor="middle">07-16</text>
+              <text class="tick" x="293" y="134" text-anchor="middle">07-17</text>
+              <text class="tick" x="352" y="134" text-anchor="middle">07-18</text>
+              <text class="tick" x="411" y="134" text-anchor="middle">07-19</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- FullCalendar -->
+        <div class="view-panel">
+          <div class="view-panel-h"><b>排程日曆</b>S5 日曆視圖<span class="ref">FullCalendar</span></div>
+          <div class="view-panel-b">
+            <table class="calendar">
+              <thead><tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="off">12</td>
+                  <td>13<span class="event">A 線備料</span></td>
+                  <td>14<span class="event">原料盤點</span></td>
+                  <td>15</td>
+                  <td>16<span class="event">採購收貨 ×3</span></td>
+                  <td>17</td>
+                  <td class="off">18<span class="event warn">保養停機</span></td>
+                </tr>
+                <tr>
+                  <td class="off">19</td>
+                  <td>20<span class="event">A 線充填</span></td>
+                  <td>21</td>
+                  <td>22<span class="event">供應商交貨</span></td>
+                  <td>23</td>
+                  <td>24<span class="event">出貨排程</span></td>
+                  <td class="off">25</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- dnd-kit board -->
+        <div class="view-panel full">
+          <div class="view-panel-h"><b>工單看板</b>S5 看板 / S3 設計器拖拉<span class="ref">dnd-kit</span></div>
+          <div class="view-panel-b">
+            <div class="board">
+              <div class="board-col">
+                <h5>待處理<span>2</span></h5>
+                <div class="board-b">
+                  <div class="board-card">備料 · 冷凍原料 A<span class="grip">⋮⋮</span><span class="meta">WO-2210 · 李文彬</span></div>
+                  <div class="board-card">混合 · 醬料批次<span class="grip">⋮⋮</span><span class="meta">WO-2213 · 陳筱涵</span></div>
+                </div>
+              </div>
+              <div class="board-col">
+                <h5>進行中<span>1</span></h5>
+                <div class="board-b">
+                  <div class="board-card dragging">充填 · A 線<span class="grip">⋮⋮</span><span class="meta">WO-2208 · 王建國 · 拖曳中</span></div>
+                </div>
+              </div>
+              <div class="board-col">
+                <h5>已完成<span>1</span></h5>
+                <div class="board-b">
+                  <div class="board-card">包裝 · 500g×24<span class="grip">⋮⋮</span><span class="meta">WO-2205 · 已交檢</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MapLibre -->
+        <div class="view-panel">
+          <div class="view-panel-h"><b>供應鏈地圖</b>S5 地圖視圖<span class="ref">MapLibre GL</span></div>
+          <div class="view-panel-b">
+            <div class="map">
+              <svg viewBox="0 0 460 170" role="img" aria-label="供應商與配送位置示意地圖">
+                <path class="land" d="M60 30 L180 20 L250 55 L240 120 L150 150 L70 130 L40 80 Z"/>
+                <path class="land" d="M300 70 L400 55 L430 100 L390 145 L310 140 L285 105 Z"/>
+                <path class="road" d="M120 90 L230 88 L300 105 L380 100"/>
+                <path class="road" d="M150 60 L160 130"/>
+                <g><circle class="pin" cx="130" cy="88" r="6"/><path class="pin" d="M130 82 a6 6 0 0 1 6 6 c0 5 -6 12 -6 12 c0 0 -6 -7 -6 -12 a6 6 0 0 1 6 -6 Z"/></g>
+                <g><circle class="pin" cx="228" cy="86" r="6"/></g>
+                <g><circle class="pin" cx="360" cy="100" r="6"/></g>
+                <g><circle class="pin warn" cx="300" cy="106" r="6"/></g>
+              </svg>
+              <span class="badge">供應商 3 · 配送中 1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TipTap editor -->
+        <div class="view-panel full">
+          <div class="view-panel-h"><b>ISO 文件編輯</b>S19 文管 · 富文本<span class="ref">TipTap</span></div>
+          <div class="view-panel-b">
+            <div class="editor">
+              <div class="editor-bar">
+                <button class="on" title="標題">H</button>
+                <button class="on" title="粗體" style="font-weight:700">B</button>
+                <button title="斜體" style="font-style:italic">I</button>
+                <button title="底線" style="text-decoration:underline">U</button>
+                <span class="divider"></span>
+                <button title="項目符號">•</button>
+                <button title="編號清單" style="font-family:'IBM Plex Mono';font-size:9px">1.</button>
+                <span class="divider"></span>
+                <button title="連結">↗</button>
+                <button title="表格" style="font-family:'IBM Plex Mono';font-size:9px">▦</button>
+                <button title="簽核章">✍</button>
+              </div>
+              <div class="editor-doc">
+                <h4>SOP-QA-014 原料驗收作業程序</h4>
+                <p>本程序規範冷凍原料進廠時之驗收方式,確保符合 HACCP 關鍵管制點要求。</p>
+                <ul>
+                  <li>核對送貨單與採購單品項、數量、批號。</li>
+                  <li>量測中心溫度,冷凍品應 ≤ −18°C。</li>
+                  <li>不符者開立 <b>NCR</b> 並隔離,通知品保。</li>
+                </ul>
+                <div class="doc-meta">版本 v2 · 生效日 2026-07-01 · 核准 王淑芬 · 下次審查 2027-07-01</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div></div>
+
     <!-- 反面 -->
-    <div class="sec"><div class="sec-h"><span class="n">16</span>反面 · 一票否決<span class="r">§0 · 出現即不合格</span></div><div class="sec-b">
+    <div class="sec"><div class="sec-h"><span class="n">17</span>反面 · 一票否決<span class="r">§0 · 出現即不合格</span></div><div class="sec-b">
       <div class="col dont" style="border:1px solid var(--line)"><h4 style="background:var(--er);color:#fff;font-size:12px;font-weight:600;padding:7px 12px;margin:0">普通 SaaS 語彙 — 一票否決</h4>
         <ul style="list-style:none;padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 24px">
           <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>大圓角</li>
