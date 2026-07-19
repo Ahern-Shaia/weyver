@@ -255,7 +255,7 @@ CREATE TABLE data.t{formId} (
 | **M3** A3 | DDL 服務 + 安全鏈 + provision state + 整合測試 | 2.5 週 | ✅ 2026-07-19(b14c211;34 tests)|
 | **M4** A4+A5 | 記錄 DML + 子表 tx + 整合測試 | 3 週 | ✅ 2026-07-19(f1c41e8;44 tests)|
 | **M5** A6 | 租戶隔離整合 + 隔離測試 gate | 1.5 週 | ✅ 2026-07-19(b01ba2b;50 tests,BOLA killer 過)|
-| **M6** A7 | 最小 REST API + e2e + Swagger | 1 週 | ⏳ |
+| **M6** A7 | 最小 REST API + e2e(Swagger → P0-5 zod-openapi,deviation)| 1 週 | ✅ 2026-07-19(e48cdac;59 tests + live smoke)|
 | **M7** FMEA + 收尾 | §12 FMEA(P0 全清才 SHIPPED)+ SOP + MODULES.md ✅ | 2-3 天 | ⏳ |
 
 **M1 spike 為 Gate**:catalog 壓測或 RLS 動態表任一不過 → 回 M0 修設計(fallback = schema-per-tenant 選配提前,或表數 quota 收緊),不硬闖。
