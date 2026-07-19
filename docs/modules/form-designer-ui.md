@@ -122,7 +122,7 @@
 | 里程碑 | 內容 | 預估 | 狀態 |
 |---|---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-FDU-1..6)| — | ⏳ |
-| **M1** A1 | API client + hooks + 代理 + dev tenant + Vitest | ~3 天 | ⏳ |
+| **M1** A1 | API client + hooks + 代理 + dev tenant + Vitest | ~3 天 | ✅ 2026-07-19(7 tests + 代理 live smoke)|
 | **M2** A2+A3 | 表單清單 + 設計器雙模式(+ 後端 position API 若採 B)| ~1.5 週 | ⏳ |
 | **M3** A4 | 填單動態渲染 + 記錄檢視 | ~1 週 | ⏳ |
 | **M4** A5 | 子表建立 + lines 填單 | ~4 天 | ⏳ |
