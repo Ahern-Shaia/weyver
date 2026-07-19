@@ -1,18 +1,18 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
 import { engineFetch } from "./client"
 import {
-  formDtoSchema,
-  formSummarySchema,
-  listResponseSchema,
-  recordRowSchema,
   type AddFieldInput,
   type CreateFormInput,
   type FormDto,
   type ListResponse,
   type RecordRow,
+  formDtoSchema,
+  formSummarySchema,
+  listResponseSchema,
+  recordRowSchema,
 } from "./schemas"
 
 const voidSchema = z.undefined().or(z.unknown().transform(() => undefined))
@@ -45,6 +45,22 @@ export function useRecords(formId: number | null) {
     queryFn: () =>
       engineFetch<ListResponse>(`/forms/${formId}/records?limit=50`, listResponseSchema),
     enabled: formId !== null,
+  })
+}
+
+/* 網格用:cursor 分頁(一頁 200 = list 端點上限 + 載更多;OQ-GEI-2=A)*/
+export function useInfiniteRecords(formId: number, pageSize = 200) {
+  return useInfiniteQuery({
+    queryKey: [...formKeys.records(formId), "grid"],
+    queryFn: ({ pageParam }) =>
+      engineFetch<ListResponse>(
+        `/forms/${formId}/records?limit=${pageSize}${
+          pageParam === undefined ? "" : `&cursor=${pageParam}`
+        }`,
+        listResponseSchema,
+      ),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
   })
 }
 

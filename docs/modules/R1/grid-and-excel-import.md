@@ -130,9 +130,9 @@
 
 | 里程碑 | 內容 | 預估 | 狀態 |
 |---|---|---|---|
-| **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-GEI-1..7)| — | ⏳ |
+| **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-GEI-1..7)| — | ✅ 2026-07-19 |
 | **M1** A1 | bulk 建立 API + hooks + 整合測試 | ~3 天 | ✅ 2026-07-19(fa05d65;api 64 tests + live smoke;rollback+rowIndex)|
-| **M2** A2 | Glide 網格接引擎(讀 + cell edit + 新增列)| ~1.5 週 | ⏳ |
+| **M2** A2 | Glide 網格接引擎(讀 + cell edit + 新增列)| ~1.5 週 | ✅ 2026-07-19(RecordGridPanel「網格」模式;cursor 分頁 200/頁 + 載更多;cell edit → updateRecord 樂觀鎖;必填表停用新增列;MCP 實測 v1→v2 持久化 + 補 Glide `#portal` 掛載點)|
 | **M3** A3+A4 | Excel 解析 + 型別推斷 + 預覽校正 + 建表灌資料 | ~2 週 | ⏳ |
 | **M4** A5 + 收尾 | Playwright 固化 + FMEA + SHIPPED | ~4 天 | ⏳ |
 
@@ -143,7 +143,7 @@
 | # | 議題 | 裁定 | 落地影響 |
 |---|---|---|---|
 | **OQ-GEI-1** | 網格唯讀/可編輯 | **A 可編輯** | A2 cell edit → updateRecord(樂觀鎖 409 提示);stub/autoNumber 唯讀 |
-| **OQ-GEI-2** | 資料載入 | **A 一次一頁(500)+ 載更多** | 完整 lazy 無限捲列 P1-I scale backlog |
+| **OQ-GEI-2** | 資料載入 | **A 一次一頁 + 載更多** | 落地頁大小取 list 端點上限 200(非 500);完整 lazy 無限捲列 P1-I scale backlog |
 | **OQ-GEI-3** | Excel 解析在哪 | **A 前端 SheetJS** | 原檔不上傳;`xlsx` 套件裝於 web;大檔限大小 |
 | **OQ-GEI-4** | 匯入目標 | **A 只做 Excel→新表單** | 匯入到既有表(欄位對映)列 P1-I |
 | **OQ-GEI-5** | 推斷積極度 | **A 保守 + 預覽可改** | §4.4 heuristic;信心不足 fallback text |
@@ -164,3 +164,4 @@
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A5 切分 + OQ-GEI-1..7;上游 = form-engine-core v1.0 + form-designer-ui v1.0 + packages/ui GridSheet | Claude Code |
 | 2026-07-19 | v0.2 | OQ-GEI-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1(bulk API) | Claude Code |
+| 2026-07-19 | v0.3 | M1 ✅(bulk API)· M2 ✅(Glide 網格接引擎:讀/編輯/新增列 + `#portal`);頁大小校正 500→200(list 上限) | Claude Code |

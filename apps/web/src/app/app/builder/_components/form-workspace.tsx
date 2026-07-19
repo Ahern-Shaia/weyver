@@ -4,11 +4,13 @@ import { Segmented } from "@weyver/ui/segmented"
 import { useState } from "react"
 import { EditFormPanel } from "./edit-form-panel"
 import { RecordFormPanel } from "./record-form-panel"
+import { RecordGridPanel } from "./record-grid-panel"
 import { RecordsListPanel } from "./records-list-panel"
 
 const MODES = [
   { label: "設計", value: "design" },
   { label: "填單", value: "fill" },
+  { label: "網格", value: "grid" },
   { label: "資料", value: "records" },
 ] as const
 
@@ -29,6 +31,7 @@ export function FormWorkspace({
       <div className="flex min-h-0 flex-1 flex-col">
         {mode === "design" ? <EditFormPanel formId={formId} onAddSubtable={onAddSubtable} /> : null}
         {mode === "fill" ? <RecordFormPanel formId={formId} /> : null}
+        {mode === "grid" ? <RecordGridPanel formId={formId} /> : null}
         {mode === "records" ? <RecordsListPanel formId={formId} /> : null}
       </div>
     </div>

@@ -38,6 +38,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         <Providers>{children}</Providers>
+        {/* Glide Data Grid overlay editor 掛載點(須為 body 末子節點)*/}
+        <div id="portal" />
       </body>
     </html>
   )
