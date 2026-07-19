@@ -22,7 +22,7 @@
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
 | **表單引擎動態 schema 核心** | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清)| [R1/form-engine-core.md](R1/form-engine-core.md) |
-| **表單設計器 + 填單 接引擎 API** | P0-1·UI | 🚧 **APPROVED,M1 完成**(API client 層;收 Gate P0-1 UI 路徑)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
+| **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | Grid 主檢視 + Excel 建表 onboarding | P0-2 | ⬜ Glide Data Grid 接引擎 API + xlsx 匯入(Ragic 招牌)| 待建 |
 | 公式引擎 + Link&Load | P0-3 | ⬜ fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延)| 待建 |
 | 三層權限 + 通知(通訊平台）+ Ops | P0-4 | ⬜ | 待建 |
@@ -65,6 +65,8 @@
 
 ## 下一步候選(依 docs/13 dependency)
 
-1. **F-2 Auth**|form-engine-core 對外上線硬前提;FMEA 三項殘留治本
-2. **form-designer-ui M2**|表單清單 + 設計器雙模式接 API(收 Gate P0-1 UI 路徑)
-3. **P0-2 Grid + Excel 建表**|Ragic 招牌 onboarding;需 form-designer 先通
+> **✅ Gate P0-1 全數達成**(form-engine-core + form-designer-ui 皆 SHIPPED):瀏覽器可建表/加欄/填單/子表/檢視,引擎生成真實資料表 + RLS 隔離。
+
+1. **P0-2 Grid 主檢視 + Excel 建表**|Glide Data Grid 接引擎 API(接掉 mockup 的 grid/list 示意視圖)+ xlsx 匯入建表(Ragic 招牌 onboarding)
+2. **F-2 Auth**|Better Auth + JWT + nestjs-cls;form-engine-core / form-designer-ui 對外上線硬前提(治 dev tenant header 殘留)
+3. **P0-3 公式引擎 + Link&Load**|fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延決策)

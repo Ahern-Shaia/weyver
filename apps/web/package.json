@@ -10,6 +10,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
@@ -32,14 +33,17 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@weyver/config": "workspace:*",
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.5.4",
     "happy-dom": "^20.11.0",
+    "pg": "^8.22.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.3",
     "vitest": "^4.1.10"

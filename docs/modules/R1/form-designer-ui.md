@@ -1,6 +1,7 @@
 # form-designer-ui.md — [P0-1·UI] 表單設計器 + 填單 接引擎 API 設計文件
 
-> ✅ **狀態:APPROVED — OQ-FDU-1..6 全採建議(2026-07-19 裁定),進 M1**
+> 🚢 **狀態:SHIPPED v1.0(2026-07-19)— M0–M5 全完成;§12 FMEA P0 全清;Playwright golden path 固化進 CI。**
+> ✅ **Gate P0-1 全數達成**:後端(form-engine-core)+ UI(本模組)—— 使用者可在瀏覽器建表/加欄/填單/子表/檢視,引擎生成真實資料表。對外上 prod 前提同 form-engine-core(F-2 + §12.7 可靠性 checklist)。
 >
 > 收掉 **Gate P0-1 的 UI 路徑**:「使用者可在 UI 上建一張採購單表單(含 header + line items + 欄位型別),自動生成 DB schema,可存資料」。後端路徑已由 `form-engine-core` v1.0 達成(live smoke:API 建表→DDL→存記錄);本模組把 S3 設計器與 S4 填單從 mockup 接上真 API —— **「自己建自己填」在瀏覽器裡真正跑起來**(docs/24 心智模型)。
 >
@@ -126,7 +127,7 @@
 | **M2** A2+A3 | 表單清單 + 設計器雙模式(+ 後端 position API 若採 B)| ~1.5 週 | ✅ 2026-07-19(cbfe93f;含後端 position API;MCP 走通建表→加欄→發布,真實 PG 驗證)|
 | **M3** A4 | 填單動態渲染 + 記錄檢視 | ~1 週 | ✅ 2026-07-19(1ed47ac;MCP 走通填單→autoNumber→檢視;修 pg DATE parser bug)|
 | **M4** A5 | 子表建立 + lines 填單 | ~4 天 | ✅ 2026-07-19(c727b16;MCP 走通 header+2 lines→saveWithLines,DB parent_id/line_no 驗證)|
-| **M5** A6 + 收尾 | Playwright spec 固化 + FMEA + SHIPPED(**= Gate P0-1 全數達成**)| ~3 天 | ⏳ |
+| **M5** A6 + 收尾 | Playwright spec 固化 + FMEA + SHIPPED(**= Gate P0-1 全數達成**)| ~3 天 | ✅ 2026-07-19(golden path e2e 綠;FMEA P0 全清;SHIPPED v1.0)|
 
 ---
 
@@ -143,9 +144,69 @@
 
 ---
 
-## 11. SOP / 12. FMEA
+## 11. SOP — 日常操作
 
-> M5 收尾時填(照 form-engine-core 模式)。
+### 11.1 本機啟動 + e2e
+
+1. `docker compose up -d postgres`(引擎 + e2e 皆需)
+2. api:`cd apps/api && pnpm db:migrate && PORT=3001 pnpm dev`;web:`pnpm --filter @weyver/web dev`(:3000)
+3. 開 `http://localhost:3000/app/builder`(dev 租戶 = localStorage `weyver.devTenant`,預設 1)
+4. e2e 固化:`pnpm --filter @weyver/web test:e2e`(playwright 自起 api+web,global-setup 跑 migrate + 種租戶;本機已跑 server 則沿用)
+
+### 11.2 失敗模式排查
+
+| 症狀 | 含意 | 處置 |
+|---|---|---|
+| 清單「無法連線引擎」 | api 未起 / 代理失效 | 確認 :3001 health;Next rewrites `/api/engine/*`(next.config)|
+| 「已被其他人修改」(409)| 樂觀鎖:記錄版本過期 | 重新載入再送;非故障 |
+| 儲存 422 | 後端型別 / 必填驗證 | 依信封 message 修欄位值(前端只擋粗錯,後端權威)|
+| 表單狀態 failed | 引擎建表失敗 | 見 api ddl_audit;該表不可編輯/填 |
+| e2e 撞名失敗 | dev DB 殘留同名表單 | spec 用時間戳後綴避免;必要時清 dev DB |
+
+---
+
+## 12. 失效場景反思(FMEA)— ✅ 已填(2026-07-19,M5)
+
+> 嚴重度 P0/P1/P2 同 form-engine-core §12。本模組為**前端接線**,無獨立資料寫入路徑(全經引擎 API,後端 FMEA 已守);故 UI FMEA 聚焦「錯誤呈現、狀態一致、輸入邊界」。**P0 全 ✅。**
+
+### 12.1 資料寫入路徑
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| U1 | 跨租戶 / 注入 | 全走引擎 API(後端 RLS + identifier 白名單 + 參數綁定);前端無直連 DB | ✅(繼承 form-engine-core P0)| P0 |
+| U2 | money 前端誤轉 float | toSubmitValue 保十進位字串(單元測);後端 numeric 再驗 | ✅ | P0 |
+| U3 | 樂觀鎖衝突 | saveWithLines / update 409 → 友善「重新載入」訊息 | ✅ | P1 |
+| U4 | 送出未知欄 / 型別錯 | 後端 422 信封 → 映射顯示;前端 name-keyed 只送 metadata 欄 | ✅ | P1 |
+| U5 | 子表部分行失敗 | 後端單一 tx 全 rollback;前端顯示錯不留半筆(header 未建)| ✅ | P0 |
+
+### 12.2 狀態 / 呈現一致
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| U6 | mutation 後清單 / 明細不同步 | TanStack Query invalidate 對應 key(form/records)| ✅ | P1 |
+| U7 | pending / failed 表單被填 | provisionState 章顯示;failed 提示不可編輯;palette 於非 ready 停用 | ✅ | P1 |
+| U8 | 錯誤洩 stack / DB 原文 | 只顯示信封 message(後端已不回 stack)| ✅ | P1 |
+| U9 | date 顯示位移時區 | **M3 已修**(pg DATE type parser → 純字串 + 回歸測試)| ✅ | P1 |
+| U10 | 改型別出現非法目標 | 前端只列白名單(鏡射後端 type-conversions),後端再擋 | ✅ | P2 |
+
+### 12.3 已知殘留(§12.7 backlog)
+
+| # | 項目 | 狀態 | Sev |
+|---|---|---|---|
+| U11 | dev 租戶 header 可偽造 | ⚠️ dev-only(= form-engine-core T2);**F-2 換 JWT 治本** | P1 |
+| U12 | 記錄檢視無分頁 UI(僅取前 50)| ⚠️ MVP;P0-2 grid 視圖接完整分頁 | P2 |
+| U13 | 多子表單一 document | ⚠️ 目前取首個 child(ERP 單據常態一明細表);多子表留後續 | P2 |
+| U14 | 無 rename 欄位 / 改 required | ⚠️ 後端無此 API;需要時另立(建新欄搬資料為現行路徑)| P2 |
+| U15 | 元件級 render 測試 | ⚠️ 快層測 field-value 純函式;render 測需 @vitejs/plugin-react,e2e 已覆蓋 golden path | P2 |
+
+> **檢查點:P0 全 ✅(U1/U2/U5)→ 可標 SHIPPED。** 殘留全 P1/P2 有歸屬;對外上線前提同 form-engine-core(F-2 + 可靠性 checklist)。
+
+### 12.4 部署順序
+
+| # | 場景 | 緩解 |
+|---|---|---|
+| D1 | web 先於 api 起 | 清單顯「無法連線引擎」error state,不 crash;api 起後刷新即恢復 |
+| D2 | 代理 origin 錯 | `ENGINE_API_ORIGIN` 可調;prod 由 reverse proxy 同源 |
 
 ---
 
@@ -155,3 +216,4 @@
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A6 切分 + OQ-FDU-1..6;上游 = form-engine-core v1.0 API + `/app` mockup + docs/14 v2.1 / docs/24 | Claude Code |
 | 2026-07-19 | v0.2 | OQ-FDU-1..6 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 | Claude Code |
+| 2026-07-19 | v1.0 | **M1–M5 全 SHIPPED**(M1 API client 9fe7d29 / M2 設計器雙模式+position API cbfe93f / M3 填單+記錄檢視+pg DATE 修 1ed47ac / M4 子表 saveWithLines c727b16 / M5 Playwright golden path 固化)；web 18 + api 60 單元/整合 + e2e golden path;§11 SOP + §12 FMEA(P0 全 ✅);狀態 APPROVED → **SHIPPED v1.0**。**Gate P0-1 全數達成**(後端 + UI 兩條路徑)| Claude Code |
