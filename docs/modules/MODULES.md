@@ -24,7 +24,7 @@
 | **表單引擎動態 schema 核心** | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清)| [R1/form-engine-core.md](R1/form-engine-core.md) |
 | **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | Grid 主檢視 + Excel 建表 onboarding | P0-2 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M4;Glide 網格改格 + xlsx 推斷建表 bulk 灌資料;e2e 固化 + FMEA P0 全清)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
-| 公式引擎 + Link&Load | P0-3 | 🚧 **後端引擎完整(M1–M6 後端)**|parser(fork Teable MIT)+ 求值/函數/型別推斷 + 依賴圖(Tarjan SCC)+ Link&Load + Rollup(N+1)+ 讀時算注入;63 tests;FMEA P0 全清。**前端設計器啟用 + 固化 = SHIPPED 前最後一哩** | [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
+| 公式引擎 + Link&Load | P0-3 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M6;fork Teable MIT parser + Tarjan SCC 依賴圖 + Link&Load + Rollup N+1 + 讀時算注入 + 設計器啟用 + 即時預覽 + e2e 固化;66 tests;FMEA P0 全清)| [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | 三層權限 + 通知(通訊平台）+ Ops | P0-4 | ⬜ | 待建 |
 | 每表單自動 API + Public Form + webhook | P0-5 | ⬜(zod-openapi;M6 deviation 於此落地)| 待建 |
 | Ragic A–I 補齊(BI/報表/樞紐/mobile PWA/電子簽章基本/i18n/系統管理）| P1-I | ⬜ | 待建 |
@@ -69,5 +69,5 @@
 > **✅ Gate P0-1 + P0-2 達成**(form-engine-core + form-designer-ui + grid-and-excel-import 皆 SHIPPED):瀏覽器可建表/加欄/填單/子表/檢視 + Excel-like 網格改格 + xlsx 推斷建表灌資料,引擎生成真實資料表 + RLS 隔離。
 
 1. **F-2 Auth**|Better Auth + JWT + nestjs-cls;三模組對外上線硬前提(治 dev tenant header 殘留)
-2. **P0-3 公式引擎 + Link&Load**|fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延決策)
-3. **P1-I Ragic A–I 補齊**|BI/報表/樞紐/mobile PWA/電子簽章基本/i18n/系統管理
+2. **P0-4 三層權限 + 通知 + Ops**|三層權限(表單/欄位/記錄)+ 通訊平台通知 + 監控
+3. **P0-5 每表單自動 API + Public Form + webhook**;**P1-I Ragic A–I 補齊**(BI/報表/樞紐/mobile PWA/i18n)

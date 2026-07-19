@@ -1,6 +1,6 @@
 # formula-and-linkload.md — [P0-3] 公式引擎 + 關聯 Link&Load 設計文件
 
-> 🚧 **狀態:後端引擎 + API 整合完整(M1–M6 後端 ✅);前端 UI 啟用 + Playwright 固化為 SHIPPED 前最後一哩**。OQ-FML-1..10 全採建議裁定;fork Teable `packages/formula`(MIT,clean-room)。FMEA §14 P0 全清(F1–F4)、殘留 F6/F7 為 P1 已知。
+> ✅ **狀態:SHIPPED v1.0(2026-07-19)— M0–M6 全數達成**。fork Teable `packages/formula`(MIT,clean-room);Tarjan SCC 依賴圖 + 讀時算 + Link&Load + Rollup(N+1);前端設計器啟用 formula 欄 + 即時預覽 + e2e 固化。FMEA §14 P0 F1–F4 全清、殘留 F6(N+1)/F7(刪欄保護)P1 已知。⚠️ 對外上 prod 前提同引擎(F-2 auth)。
 >
 > **一句話**|Ragic 兩大招牌的技術核心:**欄位公式即時重算**(C 模組)+ **關聯 Link&Load / Lookup / Rollup**(D 模組)。兩者共用「依賴圖 + 重算引擎」故合為一個 P0-3 模組。**這是 R1 實作模組**(非 design-ahead)。
 >
@@ -226,7 +226,7 @@ formula_def
 | **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ✅ **後端核心完成**|link 欄儲存(bigint 目標 id + options.targetFormId)已由 form-engine 型別系統落地;`RelationService`.registerRelation(寫 relation_def,idempotent)+ **load 帶入**(讀目標記錄指定欄值,採購單→供應商 帶入 地址/電話);6 整合測(真 PG)· **選記錄 UI(前端)+ M2M junction 續** |
 | **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ✅ **後端核心完成**|`RollupService`(子表聚合 SUM/COUNT/AVERAGE/MIN/MAX + **條件式**(OQ-FML-10)+ **rollupBatch N+1 安全**(一次 whereIn 撈全部子列 app 層分組)+ **讀時算故刪子即反映**(修 Salesforce 痛點))+ `RecordService.listByParents` + `RelationService.lookup`(即時單欄);6 整合測(真 PG)· 多層鏈式由依賴圖串接 · 物化為後續 |
 | **M5** A5 | 前端共享求值即時預覽 + 後端權威重算一致性 | ✅ **共享引擎完成**|apps/web 依賴同一 `@weyver/formula`(parser/求值/依賴圖 by construction 一致,OQ-FML-7=A)+ `computeFormulaPreview` 前端即時預覽 util(拓樸序鏈式 + 循環偵測 + Decimal 精度)+ 5 web 單元測;後端為權威。**渲染進填單 UI(formula 欄唯讀顯示)於 M6 隨設計器啟用** |
-| **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | 🚧 **後端整合 + FMEA ✅**|createForm 自動 defineFormula + getRecord/listRecords 讀時算注入(optional 注入零回歸,88 api tests 綠;3 端到端測)+ §14 FMEA(P0 F1–F4 全清)· **前端設計器啟用 formula 欄 + 唯讀渲染 + Playwright 固化 = SHIPPED 前最後一哩** |
+| **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | ✅ **SHIPPED**|後端 createForm 自動 defineFormula + 讀時算注入(88 api tests 零回歸)+ 前端設計器啟用 formula 欄(palette + 運算式)+ 填單即時預覽(computeFormulaPreview)+ grid 唯讀 + `e2e/formula.spec.ts` 固化(建欄→預覽 50→存→資料檢視)+ §14 FMEA(P0 全清)|
 
 ---
 
@@ -284,6 +284,7 @@ formula_def
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
+| 2026-07-19 | v1.0 | **M6 前端 + SHIPPED**|設計器啟用 formula 欄(palette + options.expression)+ 填單 computeFormulaPreview 即時預覽(client 同引擎;數量 4→5 即 50→62.5)+ grid/資料唯讀顯示後端注入值;`e2e/formula.spec.ts` 固化;MCP 實走驗證。**狀態 → SHIPPED v1.0**(M0–M6 全達成;對外 prod 前提 F-2 auth)| Claude Code |
 | 2026-07-19 | v0.12 | **M6 後端整合 + FMEA**|DdlService/RecordService optional 注入 FormulaService(createForm 自動 defineFormula + 讀時算注入 getRecord/listRecords;hasFormula 短路;88 api tests 零回歸);3 端到端整合測(自動註冊 + 12.5×4=50 + 逐列 50/30);§13 SOP + §14 FMEA(P0 F1–F4 全清、F6 N+1 / F7 刪欄保護 P1 已知)。前端設計器啟用 + 唯讀渲染 + Playwright 固化 = SHIPPED 前最後一哩 | Claude Code |
 | 2026-07-19 | v0.11 | **M5 前後端一致求值(共享引擎)**|apps/web 接同一 `@weyver/formula`(瀏覽器相容:antlr4ts + decimal.js);`formula-preview.ts`(computeFormulaPreview:拓樸序鏈式即時預覽 + 循環偵測,與後端 computeRecord by construction 一致)+ 5 web 單元測(0.1+0.2=0.3 / 鏈式 / IF / 串接 / 循環);web build 綠。formula 欄之填單渲染 + 設計器啟用 = M6 | Claude Code |
 | 2026-07-19 | v0.10 | **M4 後端核心:Lookup + Rollup(N+1 防護)**|`RecordService.listByParents`(一次 whereIn parent_id 撈全部子列)+ `RollupService`(SUM/COUNT/AVERAGE/MIN/MAX + 條件式 rollup + rollupBatch N+1 安全 + 空集不拋)+ `RelationService.lookup`;6 Testcontainers 整合測(子表聚合 / 條件式 130 / 批次多父 / **刪子列即反映 = 讀時算修 Salesforce 刪子不重算痛點**)。多層鏈式由 M2 依賴圖串接;物化 / 前端選記錄 UI 為後續 | Claude Code |
