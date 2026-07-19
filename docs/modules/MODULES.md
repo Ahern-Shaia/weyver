@@ -4,4 +4,4 @@
 
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
-| 表單引擎動態 schema 核心 | P0-1 | 🚧 **M0 DRAFT — 待裁定 OQ-FEC-1..7** | [form-engine-core.md](form-engine-core.md) |
+| 表單引擎動態 schema 核心 | P0-1 | 🏗 **APPROVED — M1 spike 進行中**(OQ-FEC-1..7 已裁定)| [form-engine-core.md](form-engine-core.md) |

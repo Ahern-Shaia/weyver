@@ -1,6 +1,6 @@
 # form-engine-core.md — [P0-1] 表單引擎動態 schema 核心 設計文件
 
-> 🚧 **狀態:DRAFT — 待裁定 OQ-FEC-1..7(2026-07-19)**
+> ✅ **狀態:APPROVED — OQ-FEC-1..7 全採建議(2026-07-19 裁定),進 M1 spike**
 >
 > Weyver 的 substrate 命門:Tier-2 動態真實表引擎(metadata catalog + runtime DDL 安全鏈 + 欄位型別系統 + 記錄 DML + 租戶隔離)。docs/13 標明的**最大 risk gate(Gate P0-1)**,blocks 90% 下游模組;設計依據 docs/15 v2(兩層資料模型)+ docs/16(三家 OSS 實證)+ docs/21(多租戶)+ docs/22(威脅模型 #1 = 動態 identifier 注入)。
 >
@@ -262,17 +262,17 @@ CREATE TABLE data.t{formId} (
 
 ---
 
-## 10. 開放問題(OQ-FEC-N)— 待裁定
+## 10. 開放問題(OQ-FEC-N)— ✅ 已裁定(2026-07-19,全採建議)
 
-| # | 訴求 | 議題 | 選項 | 建議 |
-|---|:-:|---|---|---|
-| **OQ-FEC-1** | ③① | Tier-2 物理命名策略? | A. **系統生成 opaque**(`t{formId}` / `f{fieldId}`,顯示名只存 metadata;rename = 改 metadata 零 DDL) <br> B. 語意 slug(`po_orders.supplier_name`,可讀但 rename 觸發 DDL + 注入面擴大) | **A** — Baserow/Teable 共同做法;identifier 注入面直接消失(無使用者字元)、rename 免鎖表。DBA 可讀性用 view 或 comment 補 |
-| **OQ-FEC-2** | ③ | 動態表本已 per(租戶×表單),還要 `tenant_id` 欄 + RLS 嗎? | A. **要**:每表帶 `tenant_id` + RLS FORCE(統一防線與查詢路徑) <br> B. 不要:表級歸屬即隔離,省欄位(app 層擋) | **A** — 鐵則 3 字面要求;防「拿到別租戶 formId 就能查」的 BOLA;成本僅一欄一 policy,且未來如併表(共享大表)不需改防線 |
-| **OQ-FEC-3** | ① | 型別 MVP 子集? | A. **§5.1 之 ~15 型別**(含 4 個 stub),其餘 P1-I 補 <br> B. 30+ 一次做齊 | **A** — 覆蓋鮮勇常用表單 90%+;registry 架構讓補型別 = 加 entry,後補無重構成本 |
-| **OQ-FEC-4** | ①② | 改欄位型別策略? | A. **保守白名單**:安全轉換(text→longText、int→numeric 等)允許,有損轉換拒絕(提示建新欄搬資料) <br> B. 寬鬆 `ALTER ... USING` 盡量轉 <br> C. shadow column + backfill | **A** — MVP 資料安全優先;B 的靜默截斷 / 轉換失敗難解釋;C 工程大,留 scale 階段 |
-| **OQ-FEC-5** | ①② | 記錄刪除策略? | A. **soft delete**(`deleted_at`,查詢預設過濾;回收桶 UI 後補) <br> B. hard delete + audit log 留痕 | **A** — Ragic 有回收桶(parity);ERP 溯源要求;儲存成本可後續清理 job 處理 |
-| **OQ-FEC-6** | ③ | DDL 執行模型? | A. **請求內同步** + per-form advisory lock + statement_timeout <br> B. 佇列化(BullMQ)全 serialize | **A** — MVP 表單建立是低頻互動操作,同步 UX 直接;lock + timeout 已擋並發風暴;B 留 scale(spike 若見鎖問題則升 B) |
-| **OQ-FEC-7** | ①③ | Teable MIT packages 現在 fork 嗎? | A. **P0-1 純借鏡自研**(雙軸 + visitor pattern 照概念,不搬 code);P0-3 公式時再評估 fork `packages/formula` <br> B. 現在就 fork `packages/core` 型別模型 | **A** — P0-1 型別 registry 自研量可控(~2 週);fork 需逐檔驗 MIT header + 與 Teable backend 解耦成本不明;把 fork 決策推遲到收益最大處(公式引擎,省數月) |
+| # | 議題 | 裁定 | 落地影響 |
+|---|---|---|---|
+| **OQ-FEC-1** | Tier-2 物理命名 | **A 系統生成 opaque** | physical = `t{formId}` / `f{fieldId}`;顯示名只存 metadata,rename 零 DDL;regex 斷言為雙保險而非主防線 |
+| **OQ-FEC-2** | 動態表 tenant_id + RLS | **A 要** | § 6.3 標準結構含 `tenant_id`;建表 DDL 同步掛 RLS FORCE policy;隔離測試為 CI 硬 gate |
+| **OQ-FEC-3** | 型別 MVP 子集 | **A ~15 型別** | § 5.1 清單為 M2 實作範圍(含 link / attachment / formula / member 4 stub);其餘 P1-I 加 registry entry |
+| **OQ-FEC-4** | 改欄位型別 | **A 保守白名單** | A3 實作安全轉換對照表;有損轉換回 422 + 指引「建新欄搬資料」 |
+| **OQ-FEC-5** | 刪除策略 | **A soft delete** | 標準結構含 `deleted_at`;DML 預設過濾;回收桶 UI 後補(P1-I);清理 job 留 Ops |
+| **OQ-FEC-6** | DDL 執行模型 | **A 同步 + advisory lock** | per-form `pg_advisory_xact_lock` + statement_timeout;spike S2 驗證;若見鎖風暴升 BullMQ(介面不變) |
+| **OQ-FEC-7** | fork Teable 時點 | **A P0-1 純借鏡自研** | 雙軸 + visitor 照概念自寫;P0-3 公式引擎時逐檔驗 MIT 再議 fork;clean-room log 自 M2 起記錄 |
 
 ---
 
@@ -293,3 +293,4 @@ CREATE TABLE data.t{formId} (
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A7 切分 + OQ-FEC-1..7;綜合 docs/15 v2 / docs/16 / docs/21 / docs/22 成 buildable spec | Claude Code |
+| 2026-07-19 | v0.2 | OQ-FEC-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1 spike(OrbStack 本機容器環境就緒)| Claude Code |
