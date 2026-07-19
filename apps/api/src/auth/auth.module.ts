@@ -24,8 +24,16 @@ import { TenantGuard } from "./tenant.guard.js"
       provide: AUTH,
       useFactory: (pool: pg.Pool, config: ConfigService, identity: IdentityService): Auth =>
         createAuth(pool, config.getOrThrow<string>("BETTER_AUTH_SECRET"), {
-          onOrganizationCreated: (input): Promise<void> =>
-            identity.ensureTenantForOrg(input).then(() => undefined),
+          baseURL: config.getOrThrow<string>("BETTER_AUTH_URL"),
+          trustedOrigins: config
+            .getOrThrow<string>("BETTER_AUTH_TRUSTED_ORIGINS")
+            .split(",")
+            .map((origin) => origin.trim())
+            .filter(Boolean),
+          hooks: {
+            onOrganizationCreated: (input): Promise<void> =>
+              identity.ensureTenantForOrg(input).then(() => undefined),
+          },
         }),
       inject: [PG_POOL, ConfigService, IdentityService],
     },

@@ -2,6 +2,7 @@ import "reflect-metadata"
 import { NestFactory } from "@nestjs/core"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { AppModule } from "./app.module.js"
+import { configureApp } from "./app-setup.js"
 import { envSchema } from "./config/env.js"
 
 /* OpenAPI 文件:@nestjs/swagger 依賴 emitDecoratorMetadata(tsx/esbuild 不支援,
@@ -10,6 +11,7 @@ import { envSchema } from "./config/env.js"
 async function bootstrap(): Promise<void> {
   const env = envSchema.parse(process.env)
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter())
+  await configureApp(app)
   await app.listen({ port: env.PORT, host: "0.0.0.0" })
   console.log(`api listening on :${env.PORT}`)
 }

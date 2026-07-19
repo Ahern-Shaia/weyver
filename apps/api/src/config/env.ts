@@ -14,6 +14,12 @@ export const envSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     // Better Auth 簽章 secret(F-2);prod 必填(見 superRefine),dev/test 回退佔位 secret
     BETTER_AUTH_SECRET: z.string().min(32).optional(),
+    // Better Auth 對外 baseURL(消 origin 推導警告 + callback 正確);dev 預設本機
+    BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+    // CSRF / origin 白名單(逗號分隔);dev 含 web 開發站與 api 本機
+    BETTER_AUTH_TRUSTED_ORIGINS: z
+      .string()
+      .default("http://localhost:3000,http://localhost:3002,http://localhost:3001"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.BETTER_AUTH_SECRET) {

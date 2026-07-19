@@ -12,12 +12,18 @@ export interface AuthProvisioningHooks {
   }) => Promise<void>
 }
 
+export interface AuthOptions {
+  readonly baseURL?: string
+  readonly trustedOrigins?: readonly string[]
+  readonly hooks?: AuthProvisioningHooks
+}
+
 /* F-2|Better Auth 認證權威(掛 apps/api,同 Weyver PG,OQ-AUTH-1)。
    密碼 Argon2id(@node-rs/argon2 預設即 Argon2id;覆寫 Better Auth 預設 scrypt — AGENTS 🔒-4)。
    organization plugin = 多租戶 org(對映 Weyver tenants,M2);org 建立 hook → 建 tenant(M3)。
    session 驗證見 AuthGuard(M3)。secret 由呼叫端(NestJS ConfigService)注入,不散落 process.env。 */
-export function createAuth(pool: Pool, secret: string, hooks?: AuthProvisioningHooks) {
-  const onOrgCreated = hooks?.onOrganizationCreated
+export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
+  const onOrgCreated = options?.hooks?.onOrganizationCreated
   const orgPlugin = onOrgCreated
     ? organization({
         organizationHooks: {
@@ -31,12 +37,26 @@ export function createAuth(pool: Pool, secret: string, hooks?: AuthProvisioningH
   return betterAuth({
     database: pool,
     secret,
+    ...(options?.baseURL === undefined ? {} : { baseURL: options.baseURL }),
+    ...(options?.trustedOrigins === undefined
+      ? {}
+      : { trustedOrigins: [...options.trustedOrigins] }),
     emailAndPassword: {
       enabled: true,
       password: {
         hash: (password: string): Promise<string> => hash(password),
         verify: (data: { hash: string; password: string }): Promise<boolean> =>
           verify(data.hash, data.password),
+      },
+    },
+    // 登入 / 註冊暴力防護(AGENTS 可靠鐵則);其餘端點沿用預設窗口
+    rateLimit: {
+      enabled: true,
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 5 },
+        "/sign-up/email": { window: 60, max: 5 },
       },
     },
     plugins: [orgPlugin],
