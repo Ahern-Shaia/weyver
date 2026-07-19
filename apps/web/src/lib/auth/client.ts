@@ -1,4 +1,4 @@
-import { organizationClient } from "better-auth/client/plugins"
+import { organizationClient, twoFactorClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
 
 /* Better Auth 前端 client;baseURL 取瀏覽器實際 origin + /api/auth(經 Next rewrite 同源代理到 api)。
@@ -9,8 +9,15 @@ const baseURL =
 
 export const authClient = createAuthClient({
   baseURL,
-  plugins: [organizationClient()],
+  plugins: [organizationClient(), twoFactorClient()],
 })
 
-export const { signIn, signUp, signOut, useSession, organization, useActiveOrganization } =
-  authClient
+export const {
+  signIn,
+  signUp,
+  signOut,
+  useSession,
+  organization,
+  useActiveOrganization,
+  twoFactor,
+} = authClient

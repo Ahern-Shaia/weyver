@@ -26,11 +26,17 @@ export default function LoginPage(): React.ReactNode {
       setError("帳號或密碼錯誤")
       return
     }
+    // 已啟用 2FA:密碼步通過但未發完整 session → 導二步驗證(F-4 MFA)
+    if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+      router.push("/login/2fa")
+      return
+    }
     // 新 session 之 activeOrganizationId 為空 → 設回使用者第一個 org(確保 tenant 可解析)
     const list = await organization.list()
     const first = list.data?.[0]
     if (first) await organization.setActive({ organizationId: first.id })
-    router.push("/app/builder")
+    // 全頁導向:讓 Better Auth reactive store 以新 session 重新 hydrate(active org 立即反映)
+    window.location.href = "/app/builder"
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@weyver/ui/button"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ReactNode, useEffect } from "react"
 import {
@@ -56,6 +57,9 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
           </div>
           <div className="flex items-center gap-2.5 text-[12px] text-ink-3">
             <span className="hidden sm:inline">{session.user.email}</span>
+            <Link href="/app/settings/security" className="text-ink-2 hover:text-primary">
+              安全
+            </Link>
             <Button variant="default" onClick={() => void onLogout()}>
               登出
             </Button>
