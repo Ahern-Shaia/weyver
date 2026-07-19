@@ -1,6 +1,6 @@
 # formula-and-linkload.md — [P0-3] 公式引擎 + 關聯 Link&Load 設計文件
 
-> 🚧 **狀態:DRAFT — 待裁定 OQ-FML-1..8(2026-07-19)**
+> ✅ **狀態:APPROVED — OQ-FML-1..8 全採建議(2026-07-19 裁定)**;含 OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,clean-room),進 M1
 >
 > **一句話**|Ragic 兩大招牌的技術核心:**欄位公式即時重算**(C 模組)+ **關聯 Link&Load / Lookup / Rollup**(D 模組)。兩者共用「依賴圖 + 重算引擎」故合為一個 P0-3 模組。**這是 R1 實作模組**(非 design-ahead)。
 >
@@ -209,9 +209,9 @@ formula_def
 
 ---
 
-## 12. 開放問題(OQ-FML-N)— 待裁定
+## 12. 開放問題(OQ-FML-N)— ✅ 已裁定(2026-07-19,全採建議)
 
-| # | 議題 | 選項 | 建議 |
+| # | 議題 | 選項 | 裁定(全採建議)|
 |---|---|---|---|
 | **OQ-FML-1**(承 OQ-FEC-7)| 公式 parser 來源 | A. fork Teable `packages/formula`(MIT,ANTLR `Formula.g4`)+ clean-room 逐檔驗 <br> B. 自研 ANTLR 文法 <br> C. formula.js / 他庫 | **A** — docs/16 已驗 MIT 可 fork,省數月且授權乾淨;逐檔驗標頭 + attribution + clean-room log(AGENTS 鐵則 5);自研為 fallback |
 | **OQ-FML-2** | 求值策略 | A. 混合(簡單讀時算 + 重 Rollup 物化)<br> B. 全物化 <br> C. 全讀時算 | **A** — Teable pattern;讀時算省儲存、物化省重讀,依 A2 準則分流;避免 Baserow 全物化寫放大 / NocoDB 全讀時算讀放大兩極 |
@@ -241,3 +241,4 @@ formula_def
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
+| 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
