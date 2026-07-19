@@ -1,0 +1,21 @@
+{
+  "name": "@weyver/spike-p01-dynamic-schema",
+  "version": "0.0.0",
+  "private": true,
+  "description": "P0-1 M1 spike: catalog stress / concurrent DDL / dynamic-table RLS (throwaway validation code, not production)",
+  "type": "module",
+  "scripts": {
+    "s1": "tsx src/s1-catalog-stress.ts",
+    "s2": "tsx src/s2-concurrent-ddl.ts",
+    "s3": "tsx src/s3-rls.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.10",
+    "knex": "^3.1.0",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

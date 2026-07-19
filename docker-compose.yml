@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: weyver-pg
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: weyver
+      POSTGRES_PASSWORD: weyver_dev
+      POSTGRES_DB: weyver
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weyver -d weyver"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
