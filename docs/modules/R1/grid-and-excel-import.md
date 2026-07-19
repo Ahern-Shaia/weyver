@@ -133,7 +133,7 @@
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-GEI-1..7)| — | ✅ 2026-07-19 |
 | **M1** A1 | bulk 建立 API + hooks + 整合測試 | ~3 天 | ✅ 2026-07-19(fa05d65;api 64 tests + live smoke;rollback+rowIndex)|
 | **M2** A2 | Glide 網格接引擎(讀 + cell edit + 新增列)| ~1.5 週 | ✅ 2026-07-19(RecordGridPanel「網格」模式;cursor 分頁 200/頁 + 載更多;cell edit → updateRecord 樂觀鎖;必填表停用新增列;MCP 實測 v1→v2 持久化 + 補 Glide `#portal` 掛載點)|
-| **M3** A3+A4 | Excel 解析 + 型別推斷 + 預覽校正 + 建表灌資料 | ~2 週 | ⏳ |
+| **M3** A3+A4 | Excel 解析 + 型別推斷 + 預覽校正 + 建表灌資料 | ~2 週 | ✅ 2026-07-19(ef24075;SheetJS CDN 0.20.3 前端解析 + 推斷 heuristic 9 單元測 + ExcelImportPanel 預覽校正 + createForm→bulk;MCP 實測 8 列真檔 6 型別全對灌入 PG;面板動態 import)|
 | **M4** A5 + 收尾 | Playwright 固化 + FMEA + SHIPPED | ~4 天 | ⏳ |
 
 ---
@@ -165,3 +165,4 @@
 | 2026-07-19 | v0.1 | 初版 DRAFT — A1–A5 切分 + OQ-GEI-1..7;上游 = form-engine-core v1.0 + form-designer-ui v1.0 + packages/ui GridSheet | Claude Code |
 | 2026-07-19 | v0.2 | OQ-GEI-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1(bulk API) | Claude Code |
 | 2026-07-19 | v0.3 | M1 ✅(bulk API)· M2 ✅(Glide 網格接引擎:讀/編輯/新增列 + `#portal`);頁大小校正 500→200(list 上限) | Claude Code |
+| 2026-07-19 | v0.4 | M3 ✅(Excel→建表:SheetJS 前端解析 + 型別推斷 + 預覽校正 + bulk 灌資料;面板動態 import);dep SheetJS 官方 CDN 0.20.3 | Claude Code |
