@@ -24,6 +24,7 @@ import {
 } from "../specs/form-specs.js"
 import {
   alterFieldTypeBodySchema,
+  moveFieldBodySchema,
   toFieldDto,
   toFormDto,
   type FieldDto,
@@ -96,6 +97,18 @@ export class FormsController {
     body: z.infer<typeof alterFieldTypeBodySchema>,
   ): Promise<void> {
     await this.ddl.alterFieldType(tenant.tenantId, formId, fieldId, body.type, body.options)
+  }
+
+  @Patch(":formId/fields/:fieldId/position")
+  @HttpCode(204)
+  async moveField(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(moveFieldBodySchema))
+    body: z.infer<typeof moveFieldBodySchema>,
+  ): Promise<void> {
+    await this.ddl.moveField(tenant.tenantId, formId, fieldId, body.direction)
   }
 
   @Delete(":formId/fields/:fieldId")

@@ -2,7 +2,12 @@ import { Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { ddlAudits } from "../../db/schema.js"
-import { FormNotPendingError, FormNotReadyError, InvalidTypeConversionError } from "../errors.js"
+import {
+  FieldNotFoundError,
+  FormNotPendingError,
+  FormNotReadyError,
+  InvalidTypeConversionError,
+} from "../errors.js"
 import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
 import { isSafeConversion } from "../field-types/type-conversions.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
@@ -86,6 +91,28 @@ export class DdlService {
     await this.metadata.updateFieldType(tenantId, fieldId, newType, target.dbFieldType, options)
     await this.metadata.bumpVersion(tenantId, formId)
     await this.audit(tenantId, formId, "alterFieldType", { fieldId, from, to: newType }, "", "ok")
+  }
+
+  /* 欄位換位(上/下移):metadata-only,交換相鄰 live 欄之 position(OQ-FDU-3=B)*/
+  async moveField(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    direction: "up" | "down",
+  ): Promise<void> {
+    const { fields } = await this.readyForm(tenantId, formId)
+    const index = fields.findIndex((f) => f.id === fieldId)
+    if (index < 0) throw new FieldNotFoundError(fieldId)
+    const swapIndex = direction === "up" ? index - 1 : index + 1
+    const current = fields[index]
+    const neighbor = fields[swapIndex]
+    if (current === undefined || neighbor === undefined) return // 邊界 no-op
+    await this.metadata.setFieldPositions(tenantId, [
+      { fieldId: current.id, position: neighbor.position },
+      { fieldId: neighbor.id, position: current.position },
+    ])
+    await this.metadata.bumpVersion(tenantId, formId)
+    await this.audit(tenantId, formId, "moveField", { fieldId, direction }, "", "ok")
   }
 
   /* 欄位下架 = metadata soft-delete;物理欄保留(資料不毀,清理 job 之後收)*/

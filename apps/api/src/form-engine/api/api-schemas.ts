@@ -17,6 +17,10 @@ export const alterFieldTypeBodySchema = z.object({
   options: z.record(z.string(), z.unknown()).default({}),
 })
 
+export const moveFieldBodySchema = z.object({
+  direction: z.enum(["up", "down"]),
+})
+
 export const saveWithLinesBodySchema = z.object({
   childFormId: z.number().int().positive(),
   header: z.object({

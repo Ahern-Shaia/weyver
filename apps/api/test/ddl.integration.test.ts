@@ -233,6 +233,33 @@ describe("A3 DDL service on real PG", () => {
     )
   })
 
+  it("moveField swaps adjacent positions (metadata-only) and no-ops at boundary", async () => {
+    const { form, fields } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: "排序表",
+        fields: [
+          { name: "甲", type: "text" },
+          { name: "乙", type: "text" },
+          { name: "丙", type: "text" },
+        ],
+      }),
+    )
+    const [a, b] = fields
+    if (a === undefined || b === undefined) throw new Error("fields missing")
+
+    await ddl.moveField(tenantA, form.id, b.id, "up")
+    const afterUp = await metadata.getForm(tenantA, form.id)
+    expect(afterUp.fields.map((f) => f.name)).toEqual(["乙", "甲", "丙"])
+    expect(afterUp.form.version).toBe(2)
+
+    // 邊界 no-op:第一個往上不變
+    const firstId = afterUp.fields[0]?.id ?? 0
+    await ddl.moveField(tenantA, form.id, firstId, "up")
+    const afterBoundary = await metadata.getForm(tenantA, form.id)
+    expect(afterBoundary.fields.map((f) => f.name)).toEqual(["乙", "甲", "丙"])
+  })
+
   it("dropField soft-deletes metadata but keeps the physical column", async () => {
     const { form, fields } = await ddl.createForm(
       tenantA,

@@ -123,6 +123,21 @@ export class MetadataService {
       .where(and(eq(fieldDefs.tenantId, tenantId), eq(fieldDefs.id, fieldId)))
   }
 
+  /* metadata-only 換位(OQ-FDU-3=B):同 tx 交換兩欄 position;無 DDL、無 rewrite */
+  async setFieldPositions(
+    tenantId: number,
+    updates: readonly { fieldId: number; position: number }[],
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      for (const { fieldId, position } of updates) {
+        await tx
+          .update(fieldDefs)
+          .set({ position })
+          .where(and(eq(fieldDefs.tenantId, tenantId), eq(fieldDefs.id, fieldId)))
+      }
+    })
+  }
+
   async softDeleteField(tenantId: number, fieldId: number): Promise<void> {
     const updated = await this.db
       .update(fieldDefs)

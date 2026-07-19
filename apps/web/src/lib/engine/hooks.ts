@@ -94,6 +94,18 @@ export function useDropField(formId: number) {
   })
 }
 
+export function useMoveField(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { fieldId: number; direction: "up" | "down" }) =>
+      engineFetch(`/forms/${formId}/fields/${input.fieldId}/position`, voidSchema, {
+        method: "PATCH",
+        body: { direction: input.direction },
+      }),
+    onSuccess: () => invalidate([formKeys.detail(formId)]),
+  })
+}
+
 export function useCreateRecord(formId: number) {
   const invalidate = useInvalidate()
   return useMutation({
