@@ -23,7 +23,7 @@
 |---|---|---|---|
 | **表單引擎動態 schema 核心** | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清)| [R1/form-engine-core.md](R1/form-engine-core.md) |
 | **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
-| Grid 主檢視 + Excel 建表 onboarding | P0-2 | 🚧 **M0 DRAFT — 待裁定 OQ-GEI-1..7**(Glide 接引擎 + xlsx→表單)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
+| Grid 主檢視 + Excel 建表 onboarding | P0-2 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M4;Glide 網格改格 + xlsx 推斷建表 bulk 灌資料;e2e 固化 + FMEA P0 全清)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
 | 公式引擎 + Link&Load | P0-3 | ⬜ fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延)| 待建 |
 | 三層權限 + 通知(通訊平台）+ Ops | P0-4 | ⬜ | 待建 |
 | 每表單自動 API + Public Form + webhook | P0-5 | ⬜(zod-openapi;M6 deviation 於此落地)| 待建 |
@@ -65,8 +65,8 @@
 
 ## 下一步候選(依 docs/13 dependency)
 
-> **✅ Gate P0-1 全數達成**(form-engine-core + form-designer-ui 皆 SHIPPED):瀏覽器可建表/加欄/填單/子表/檢視,引擎生成真實資料表 + RLS 隔離。
+> **✅ Gate P0-1 + P0-2 達成**(form-engine-core + form-designer-ui + grid-and-excel-import 皆 SHIPPED):瀏覽器可建表/加欄/填單/子表/檢視 + Excel-like 網格改格 + xlsx 推斷建表灌資料,引擎生成真實資料表 + RLS 隔離。
 
-1. **P0-2 Grid 主檢視 + Excel 建表**|Glide Data Grid 接引擎 API(接掉 mockup 的 grid/list 示意視圖)+ xlsx 匯入建表(Ragic 招牌 onboarding)
-2. **F-2 Auth**|Better Auth + JWT + nestjs-cls;form-engine-core / form-designer-ui 對外上線硬前提(治 dev tenant header 殘留)
-3. **P0-3 公式引擎 + Link&Load**|fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延決策)
+1. **F-2 Auth**|Better Auth + JWT + nestjs-cls;三模組對外上線硬前提(治 dev tenant header 殘留)
+2. **P0-3 公式引擎 + Link&Load**|fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延決策)
+3. **P1-I Ragic A–I 補齊**|BI/報表/樞紐/mobile PWA/電子簽章基本/i18n/系統管理

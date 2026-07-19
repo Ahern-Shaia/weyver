@@ -1,6 +1,6 @@
 # grid-and-excel-import.md — [P0-2] 網格主檢視 + Excel 建表 onboarding 設計文件
 
-> ✅ **狀態:APPROVED — OQ-GEI-1..7 全採建議(2026-07-19 裁定),進 M1**
+> ✅ **狀態:SHIPPED v1.0(2026-07-19)— M0–M4 全數達成;OQ-GEI-1..7 全採建議裁定**
 >
 > P0-2 兩大招牌:**(1) Excel-like 網格主檢視**(Glide canvas,可直接改格 —— Ragic 用戶最熟悉的操作面)+ **(2) 用既有 Excel 建表 onboarding**(上傳 xlsx → 推斷欄位 → 生成表單 + 灌入資料),docs/10 標「Ragic 差異化 onboarding 神器」。上游 = form-engine-core v1.0(引擎 API)+ form-designer-ui v1.0(client 層 / builder)+ packages/ui `GridSheet`(Glide 封裝已備)。
 >
@@ -134,7 +134,7 @@
 | **M1** A1 | bulk 建立 API + hooks + 整合測試 | ~3 天 | ✅ 2026-07-19(fa05d65;api 64 tests + live smoke;rollback+rowIndex)|
 | **M2** A2 | Glide 網格接引擎(讀 + cell edit + 新增列)| ~1.5 週 | ✅ 2026-07-19(RecordGridPanel「網格」模式;cursor 分頁 200/頁 + 載更多;cell edit → updateRecord 樂觀鎖;必填表停用新增列;MCP 實測 v1→v2 持久化 + 補 Glide `#portal` 掛載點)|
 | **M3** A3+A4 | Excel 解析 + 型別推斷 + 預覽校正 + 建表灌資料 | ~2 週 | ✅ 2026-07-19(ef24075;SheetJS CDN 0.20.3 前端解析 + 推斷 heuristic 9 單元測 + ExcelImportPanel 預覽校正 + createForm→bulk;MCP 實測 8 列真檔 6 型別全對灌入 PG;面板動態 import)|
-| **M4** A5 + 收尾 | Playwright 固化 + FMEA + SHIPPED | ~4 天 | ⏳ |
+| **M4** A5 + 收尾 | Playwright 固化 + FMEA + SHIPPED | ~4 天 | ✅ 2026-07-19(`e2e/grid-import.spec.ts` 固化:匯入→推斷預覽→建表→網格 canvas 改格→「資料」DOM 驗證落庫;bulk 原子性/rollback/上限/租戶整合測試已於 M1;§12 FMEA;SHIPPED v1.0)|
 
 ---
 
@@ -152,9 +152,28 @@
 
 ---
 
-## 11. SOP / 12. FMEA
+## 11. SOP(維運)
 
-> M4 收尾時填(照 form-engine-core / form-designer-ui 模式)。
+- **匯入除錯**:bulk 失敗回 `BulkRowError{rowIndex,reason}`(422),對照預覽列即定位;推斷誤判於預覽改型別重送。
+- **回歸守護**:`e2e/grid-import.spec.ts`(匯入→網格改格→資料驗證)+ `records.integration.test.ts`(bulk 原子性/上限/租戶)+ `excel-import.test.ts`(推斷 heuristic)三層,改動 GEI 前後必綠。
+- **依賴**:SheetJS 鎖 CDN `xlsx-0.20.3`(Apache-2.0);升版時逐檔 review + 重跑 e2e。
+
+## 12. FMEA(上線前失效反思;P0 未緩解不得上 prod)
+
+| # | 失效路徑 | 嚴重 | 緩解(狀態)|
+|---|---|---|---|
+| F1 | 匯入欄名挾帶 SQL identifier 注入 | **P0** | 欄名僅為 metadata;物理 identifier 由引擎 generated column(`'f'||id`)產生、不拼接使用者字串;建欄走 identifier regex 白名單(引擎鐵則 1)。✅ 繼承引擎防線 |
+| F2 | bulk 部分失敗留髒資料 | **P0** | 單一 `inTenantTx`,任一列敗整批 rollback + 回失敗列 index。✅ M1 整合測試 |
+| F3 | 跨租戶 bulk 灌入他人表 | **P0** | `resolveForm` tenant-scoped + RLS FORCE;租戶 B 拒。✅ M1 整合測試斷言 |
+| F4 | 金額以 float 落庫失精度 | **P0** | `toImportValue` money 去符號後保十進位字串;引擎欄為 `numeric`(禁 float)。✅ 單元測 + MCP 實測(12.5→"12.5000")|
+| F5 | 大檔/多列凍 UI 或 DoS | P1 | 前端解析(不佔後端);解析與 bulk 皆 ≤5000 列上限,超出截斷並提示。✅ |
+| F6 | 型別誤判寫壞值 | P1 | 保守推斷(信心邊界 fallback text)+ 預覽可覆寫;最終仍過引擎 `validateValues`,誤判至多 422 不落壞值。✅ 9 單元測涵蓋各型別 |
+| F7 | 網格改格與他人並發衝突 | P1 | `expectedVersion` 樂觀鎖,衝突回 409 → 提示重載。✅ M2 |
+| F8 | Glide overlay 無 `#portal` → 編輯靜默失敗 | P1 | layout 掛 `<div id="portal">`;e2e 固化含 canvas 改格→落庫驗證守回歸。✅ 已修 + 固化 |
+| F9 | singleSelect 匯入值不在 choices | P2 | choices 由該欄 distinct 生成通常涵蓋;越界值引擎拒(422)。可接受 |
+| F10 | SheetJS 供應鏈風險 | P1 | 取官方 CDN 維護版(Apache-2.0);`ignore-scripts` 無 install script。✅ |
+
+**結論**|F1–F4(P0)全數緩解且具測試佐證,無 P0 未緩解項 → 可上 prod。
 
 ---
 
@@ -166,3 +185,4 @@
 | 2026-07-19 | v0.2 | OQ-GEI-1..7 全採建議裁定;狀態 DRAFT → APPROVED;進 M1(bulk API) | Claude Code |
 | 2026-07-19 | v0.3 | M1 ✅(bulk API)· M2 ✅(Glide 網格接引擎:讀/編輯/新增列 + `#portal`);頁大小校正 500→200(list 上限) | Claude Code |
 | 2026-07-19 | v0.4 | M3 ✅(Excel→建表:SheetJS 前端解析 + 型別推斷 + 預覽校正 + bulk 灌資料;面板動態 import);dep SheetJS 官方 CDN 0.20.3 | Claude Code |
+| 2026-07-19 | v1.0 | **M4 ✅ → SHIPPED**;Playwright 固化 `grid-import.spec.ts`(overlay `.fill()` 穩定改格)+ §11 SOP + §12 FMEA(F1–F4 P0 全緩解)| Claude Code |
