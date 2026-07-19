@@ -183,6 +183,39 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .lib th{background:var(--head);text-align:left;font-size:10.5px;font-weight:600;color:var(--ink2);padding:5px 10px;border:1px solid var(--cell);}
 .lib td{font-size:11px;padding:5px 10px;border:1px solid var(--cell);} .lib td.mono{font-family:'IBM Plex Mono';color:var(--ink2);}
 
+/* ── §09+ 技術棧 / 視覺規範 ── */
+.spec-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.radius-demo{display:flex;gap:16px;align-items:flex-end;}
+.radius-demo .r{text-align:center;}
+.radius-demo .r i{display:block;width:48px;height:32px;background:var(--primary-t);border:1px solid var(--primary);}
+.radius-demo .r span{font-family:'IBM Plex Mono';font-size:10px;color:var(--ink3);margin-top:5px;display:block;}
+.radius-demo .r.no i{border-style:dashed;border-color:var(--er);background:var(--er-t);border-radius:9999px!important;}
+.shadow-demo{display:flex;gap:20px;align-items:center;}
+.shadow-demo .box{width:70px;height:44px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink3);}
+.shadow-demo .box.yes{border:1px solid var(--line);}
+.shadow-demo .box.no{box-shadow:0 4px 14px rgba(0,0,0,.28);position:relative;}
+.shadow-demo .box.no::after{content:'✕';position:absolute;top:-8px;right:-8px;color:var(--er);font-weight:700;}
+.spacing-demo{display:flex;gap:14px;align-items:flex-end;}
+.spacing-demo .s{text-align:center;} .spacing-demo .s i{display:block;background:var(--primary);margin:0 auto;} .spacing-demo .s span{font-family:'IBM Plex Mono';font-size:10px;color:var(--ink3);margin-top:4px;display:block;}
+.density{border:1px solid var(--line);}
+.density .row{display:flex;align-items:center;border-bottom:1px solid var(--line2);padding:0 12px;font-size:11.5px;color:var(--ink2);}
+.density .row:last-child{border-bottom:none;}
+.density .row b{font-family:'IBM Plex Mono';margin-left:auto;color:var(--ink3);font-weight:500;font-size:11px;}
+.a11y-pairs{display:flex;gap:8px;flex-wrap:wrap;}
+.a11y-pairs .p{width:88px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:11px;}
+.a11y-pairs .p small{font-family:'IBM Plex Mono';font-size:9.5px;opacity:.85;}
+.focus-demo{display:inline-flex;align-items:center;height:27px;padding:0 10px;border:1px solid var(--primary);border-radius:2px;background:var(--card);font-size:12px;color:var(--ink);outline:2px solid var(--primary);outline-offset:1px;}
+.state-box{border:1px solid var(--line);background:var(--card);padding:20px;text-align:center;color:var(--ink3);font-size:12px;}
+.state-box b{display:block;color:var(--ink2);font-size:13px;font-weight:600;margin-bottom:4px;}
+.skel{border:1px solid var(--line);background:var(--card);padding:12px;}
+.skel i{display:block;height:11px;background:var(--head);border:1px solid var(--line2);margin-bottom:7px;}
+.err-box{border:1px solid var(--er-line);background:var(--er-t);padding:10px 12px;font-size:12px;color:var(--er);}
+.err-box b{font-weight:600;} .err-box a{color:var(--er);}
+.iconrow{display:flex;gap:8px;flex-wrap:wrap;}
+.iconrow span{width:30px;height:30px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink2);}
+.iconrow svg{width:16px;height:16px;}
+.mini-h{font-size:11px;font-weight:600;color:var(--ink2);margin:0 0 6px;}
+
 .cap-note{position:fixed;left:14px;bottom:10px;font-size:11px;color:var(--ink4);background:rgba(255,255,255,.9);border:1px solid var(--line);padding:4px 9px;border-radius:3px;}
 </style>
 </head>
@@ -200,8 +233,8 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
   <div class="wrap">
     <div class="lead">
-      <h1>Weyver 織雲 — 品牌識別</h1>
-      <p>docs/26 品牌識別手冊 + docs/14 v2.1 全部元件 之視覺化;本頁本身照 docs/14 嚴謹企業級規則(全框線 / 方角 / 禁陰影 / IBM Plex / 12.5px 密度)。右上切換三配色主題,標誌 / 分段條 / 元件即時換色 —— 展示「一套系統、三配色可切換」。§06 為完整元件庫(對照 docs/14 §5,實作於 packages/ui)。</p>
+      <h1>Weyver 織雲 — 品牌識別 + 前端視覺技術棧(開發前 review)</h1>
+      <p>單頁涵蓋 <b style="color:var(--ink2)">docs/26 品牌</b>(§01–08、§16)+ <b style="color:var(--ink2)">docs/14 前端設計規則與技術棧</b>全部視覺與技術決策(§06 元件庫、§09 技術棧、§10–15 視覺規範),供**開發前一次 review**。本頁本身照 docs/14 v2.1(全框線 / 方角 / 禁陰影 / IBM Plex / 12.5px 密度);右上切換三配色主題,全站即時換色。</p>
     </div>
 
     <!-- 品牌故事 -->
@@ -400,8 +433,157 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
       </table>
     </div></div>
 
+    <!-- 技術棧全景 -->
+    <div class="sec"><div class="sec-h"><span class="n">09</span>技術棧全景<span class="r">docs/14 §1 · 全 OSS · 版本以 monorepo package.json 為準</span></div><div class="sec-b">
+      <div class="spec-grid">
+        <div>
+          <div class="mini-h">核心(§1.1)</div>
+          <table class="lib"><tbody>
+            <tr><td style="width:130px">語言</td><td class="mono">TypeScript 7(fallback 5.x)</td></tr>
+            <tr><td>框架</td><td class="mono">Next.js 15(App Router)· React 19</td></tr>
+            <tr><td>樣式</td><td class="mono">Tailwind CSS 4 + CSS vars(3-layer token)</td></tr>
+            <tr><td>元件基礎</td><td class="mono">shadcn/ui + Radix(視覺全覆寫,只取 a11y)</td></tr>
+            <tr><td>Monorepo</td><td class="mono">Turborepo 2 · pnpm 10</td></tr>
+          </tbody></table>
+        </div>
+        <div>
+          <div class="mini-h">狀態 / 資料流(§1.3)</div>
+          <table class="lib"><tbody>
+            <tr><td style="width:130px">Server state</td><td class="mono">TanStack Query v5</td></tr>
+            <tr><td>Client state</td><td class="mono">Zustand</td></tr>
+            <tr><td>URL state</td><td class="mono">Next router + nuqs</td></tr>
+            <tr><td>Form state</td><td class="mono">React Hook Form + Zod</td></tr>
+            <tr><td>API / i18n</td><td class="mono">tRPC · next-intl(zh-TW + en)</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+      <div class="mini-h" style="margin-top:14px">品質 / 建置(§1.5)</div>
+      <table class="lib" style="max-width:720px"><tbody>
+        <tr><td style="width:150px">Lint / format</td><td class="mono">ESLint(型別感知)+ Biome(格式)</td></tr>
+        <tr><td>測試</td><td class="mono">Vitest 4 · Playwright(+ MCP 探索)</td></tr>
+        <tr><td>元件文件</td><td class="mono">Storybook 10(@storybook/react-vite)</td></tr>
+        <tr><td>建置工具</td><td class="mono">Vite 8(Rolldown;Storybook/Vitest 用,非 Next 打包器)</td></tr>
+        <tr><td>部署</td><td class="mono">Coolify self-host</td></tr>
+      </tbody></table>
+      <div class="desc" style="margin:12px 0 0">資料/視圖套件(Glide / TanStack Table / ECharts / FullCalendar / dnd-kit / MapLibre / TipTap / RHF+Zod)× surface 對映見 <b style="color:var(--ink2)">§06 元件庫末表</b>。</div>
+    </div></div>
+
+    <!-- 形狀 · 深度 · 間距 -->
+    <div class="sec"><div class="sec-h"><span class="n">10</span>形狀 · 深度 · 間距<span class="r">§2.4</span></div><div class="sec-b">
+      <div class="spec-grid">
+        <div>
+          <div class="mini-h">圓角(方角 2–3px · 禁 pill / 禁 &gt;4px)</div>
+          <div class="radius-demo">
+            <div class="r"><i style="border-radius:2px"></i><span>2px 輸入/按鈕/章</span></div>
+            <div class="r"><i style="border-radius:3px"></i><span>3px 標記/面板</span></div>
+            <div class="r no"><i></i><span>禁 pill 9999px</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="mini-h">深度 = 框線(禁陰影)</div>
+          <div class="shadow-demo">
+            <div class="box yes">框線 ✓</div>
+            <div class="box no">陰影 禁</div>
+          </div>
+        </div>
+      </div>
+      <div class="mini-h" style="margin-top:14px">間距節奏(4 / 8)</div>
+      <div class="spacing-demo">
+        <div class="s"><i style="width:4px;height:28px"></i><span>4</span></div>
+        <div class="s"><i style="width:8px;height:28px"></i><span>8</span></div>
+        <div class="s"><i style="width:12px;height:28px"></i><span>12</span></div>
+        <div class="s"><i style="width:16px;height:28px"></i><span>16</span></div>
+        <div class="s"><i style="width:24px;height:28px"></i><span>24</span></div>
+      </div>
+    </div></div>
+
+    <!-- 尺寸節奏(密度) -->
+    <div class="sec"><div class="sec-h"><span class="n">11</span>尺寸節奏(密度)<span class="r">§2.6 · 密度優先,留白是手段非風格</span></div><div class="sec-b">
+      <div class="density" style="max-width:560px">
+        <div class="row" style="height:42px">topbar<b>42px</b></div>
+        <div class="row" style="height:40px">工具列 toolbar<b>40px</b></div>
+        <div class="row" style="height:32px">欄位列 field row<b>32px</b></div>
+        <div class="row" style="height:28px">表格列 table row<b>~28px</b></div>
+        <div class="row" style="height:27px">按鈕 / 輸入<b>26–28px</b></div>
+        <div class="row" style="height:26px">狀態列 statusbar<b>26px</b></div>
+      </div>
+      <div class="desc" style="margin:10px 0 0">內文 12.5px 基準;閱讀型長文 ≥14px;數字一律 Mono + tabular。</div>
+    </div></div>
+
+    <!-- 動效 -->
+    <div class="sec"><div class="sec-h"><span class="n">12</span>動效(近乎無)<span class="r">§3.15 · 資料變更以時間戳表達,不以動畫</span></div><div class="sec-b">
+      <div class="dd">
+        <div class="col do"><h4>允許</h4><ul>
+          <li>hover / active 之 background · border 過渡 ≤120ms</li>
+          <li>panel 開合 ≤150ms</li>
+          <li>尊重 prefers-reduced-motion</li>
+        </ul></div>
+        <div class="col dont"><h4>禁止</h4><ul>
+          <li>入場動畫 / stagger / parallax</li>
+          <li>彈跳 / spring / 裝飾性 motion</li>
+          <li>animating width/height/top/left</li>
+        </ul></div>
+      </div>
+    </div></div>
+
+    <!-- 無障礙 -->
+    <div class="sec"><div class="sec-h"><span class="n">13</span>無障礙 a11y<span class="r">§3.14 · AA 4.5:1 · 鍵盤全可達 · 雙編碼</span></div><div class="sec-b">
+      <div class="mini-h">主色白字對比(三主題皆 ≥7:1)</div>
+      <div class="a11y-pairs">
+        <div class="p" style="background:#1E4E79">深藍<small>7.4:1</small></div>
+        <div class="p" style="background:#0C5F73">深海青<small>7.0:1</small></div>
+        <div class="p" style="background:#313131">石墨<small>13:1</small></div>
+        <div class="p" style="background:#14181D">ink<small>16:1</small></div>
+      </div>
+      <div class="spec-grid" style="margin-top:14px">
+        <div><div class="mini-h">Focus = 2px 主色 outline</div><span class="focus-demo">聚焦中的欄位</span></div>
+        <div><div class="mini-h">狀態雙編碼(色 + 文字,不單靠色)</div><div class="chips"><span class="chip ok">已核准</span><span class="chip er">退回</span></div></div>
+      </div>
+      <div class="desc" style="margin:12px 0 0">內文對比 ≥ AA 4.5:1;鍵盤全可達;表格語意化(th scope / aria-sort);尊重減少動效。</div>
+    </div></div>
+
+    <!-- 狀態設計 -->
+    <div class="sec"><div class="sec-h"><span class="n">14</span>狀態設計(每 surface 皆設計)<span class="r">§3.13</span></div><div class="sec-b">
+      <div class="spec-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div><div class="mini-h">空狀態</div><div class="state-box"><b>尚無採購單</b>從上方「新增」建立第一筆,或匯入 Excel。</div></div>
+        <div><div class="mini-h">載入(skeleton,方角無 shimmer)</div><div class="skel"><i style="width:60%"></i><i style="width:90%"></i><i style="width:75%"></i><i style="width:40%"></i></div></div>
+        <div><div class="mini-h">錯誤(含原因 + 復原)</div><div class="err-box"><b>借貸不平衡</b>借 128,400 / 貸 128,000,差 400。<a href="#fix">檢查明細</a></div></div>
+      </div>
+    </div></div>
+
+    <!-- 圖示 -->
+    <div class="sec"><div class="sec-h"><span class="n">15</span>圖示<span class="r">§1.4 · Lucide outline · stroke ~1.5 · 功能性 · 無 emoji</span></div><div class="sec-b">
+      <div class="iconrow">
+        <span title="search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span title="plus"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span title="check"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span title="file"><svg viewBox="0 0 24 24" fill="none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <span title="bell"><svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span title="filter"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span title="download"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span title="edit"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+    </div></div>
+
+    <!-- 反面 -->
+    <div class="sec"><div class="sec-h"><span class="n">16</span>反面 · 一票否決<span class="r">§0 · 出現即不合格</span></div><div class="sec-b">
+      <div class="col dont" style="border:1px solid var(--line)"><h4 style="background:var(--er);color:#fff;font-size:12px;font-weight:600;padding:7px 12px;margin:0">普通 SaaS 語彙 — 一票否決</h4>
+        <ul style="list-style:none;padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 24px">
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>大圓角</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>軟陰影 / 飄浮卡片</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>pill 徽章</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>大留白行銷排版</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>in-app 漸層 hero</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>裝飾動效</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>儀表板當首頁</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>emoji / 彩色 icon 塊</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>每系統一個模組 tab</li>
+        </ul>
+      </div>
+    </div></div>
+
   </div>
-  <div class="cap-note">docs/26 品牌識別視覺稿 · 本頁照 docs/14 v2.1 · 右上切三配色主題 · IBM Plex</div>
+  <div class="cap-note">docs/26 品牌 + docs/14 全視覺技術棧 · 本頁照 v2.1 · 右上切三配色 · IBM Plex</div>
 
 <script>
 document.querySelectorAll('.themes button').forEach(btn=>btn.addEventListener('click',()=>{
