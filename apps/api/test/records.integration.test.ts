@@ -6,6 +6,8 @@ import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import {
+  BulkRowError,
+  BulkTooLargeError,
   FieldValueError,
   InvalidFilterError,
   RecordNotFoundError,
@@ -100,6 +102,53 @@ describe("A4 record DML on real PG", () => {
 
     const second = await records.createRecord(tenantA, poFormId, { 供應商: "正大食材" }, ACTOR)
     expect(second.values.單號).toBe("PO-0002")
+  })
+
+  it("createManyRecords: bulk inserts atomically with per-row autoNumber", async () => {
+    const before = await records.listRecords(tenantA, poFormId, q({ limit: 200 }))
+    const result = await records.createManyRecords(
+      tenantA,
+      poFormId,
+      [{ 供應商: "批次A" }, { 供應商: "批次B" }, { 供應商: "批次C" }],
+      ACTOR,
+    )
+    expect(result.created).toBe(3)
+    const after = await records.listRecords(tenantA, poFormId, q({ limit: 200 }))
+    expect(after.records.length).toBe(before.records.length + 3)
+    // 每列取到不同 autoNumber
+    const bulkNos = after.records
+      .filter((r) => ["批次A", "批次B", "批次C"].includes(r.values.供應商 as string))
+      .map((r) => r.values.單號)
+    expect(new Set(bulkNos).size).toBe(3)
+  })
+
+  it("createManyRecords: any bad row rolls back the whole batch (BulkRowError with index)", async () => {
+    const before = await records.listRecords(tenantA, poFormId, q({ limit: 200 }))
+    const error = await records
+      .createManyRecords(
+        tenantA,
+        poFormId,
+        [{ 供應商: "好1" }, { 供應商: "好2" }, { 金額: 3.5 }], // 第 2 列(index 2)缺必填供應商 + float 金額
+        ACTOR,
+      )
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(BulkRowError)
+    expect((error as BulkRowError).rowIndex).toBe(2)
+    const after = await records.listRecords(tenantA, poFormId, q({ limit: 200 }))
+    expect(after.records.length).toBe(before.records.length) // 全 rollback,前兩列也沒進
+  })
+
+  it("createManyRecords: rejects over-limit batches", async () => {
+    const rows = Array.from({ length: 5001 }, () => ({ 供應商: "x" }))
+    await expect(records.createManyRecords(tenantA, poFormId, rows, ACTOR)).rejects.toThrow(
+      BulkTooLargeError,
+    )
+  })
+
+  it("createManyRecords: tenant B cannot bulk into A's form", async () => {
+    await expect(
+      records.createManyRecords(tenantB, poFormId, [{ 供應商: "x" }], ACTOR),
+    ).rejects.toThrow()
   })
 
   it("rejects bad writes: required / unknown / systemManaged / bad enum / float money", async () => {

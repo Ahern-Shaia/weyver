@@ -68,6 +68,22 @@ export class InvalidFilterError extends DomainError {
   }
 }
 
+/* bulk 匯入:某列失敗 → 整批 rollback,回失敗列 index(0-based)+ 原因 */
+export class BulkRowError extends DomainError {
+  constructor(
+    readonly rowIndex: number,
+    readonly reason: string,
+  ) {
+    super(`row ${rowIndex}: ${reason}`)
+  }
+}
+
+export class BulkTooLargeError extends DomainError {
+  constructor(limit: number) {
+    super(`too many rows in one request; max ${limit}`)
+  }
+}
+
 export class InvalidTypeConversionError extends DomainError {
   constructor(from: string, to: string) {
     super(

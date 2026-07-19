@@ -20,6 +20,7 @@ import { RecordService } from "../records/record.service.js"
 import { listQuerySchema } from "../records/record-specs.js"
 import type { RecordRow } from "../records/record-specs.js"
 import {
+  bulkRecordsBodySchema,
   createRecordBodySchema,
   saveWithLinesBodySchema,
   updateRecordBodySchema,
@@ -73,6 +74,23 @@ export class RecordsController {
     body: z.infer<typeof createRecordBodySchema>,
   ): Promise<RecordRow> {
     return this.records.createRecord(tenant.tenantId, formId, body.values, tenant.actorId)
+  }
+
+  /* bulk 匯入(Excel onboarding;單一 tx,任一列敗整批 rollback)*/
+  @Post("bulk")
+  @HttpCode(200)
+  async bulk(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(bulkRecordsBodySchema))
+    body: z.infer<typeof bulkRecordsBodySchema>,
+  ): Promise<{ created: number }> {
+    return this.records.createManyRecords(
+      tenant.tenantId,
+      formId,
+      body.rows.map((r) => r.values),
+      tenant.actorId,
+    )
   }
 
   @Get(":recordId")

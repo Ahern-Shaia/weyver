@@ -118,6 +118,35 @@ export function useCreateRecord(formId: number) {
   })
 }
 
+export function useUpdateRecord(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      recordId: number
+      expectedVersion: number
+      values: Record<string, unknown>
+    }): Promise<RecordRow> =>
+      engineFetch(`/forms/${formId}/records/${input.recordId}`, recordRowSchema, {
+        method: "PATCH",
+        body: { expectedVersion: input.expectedVersion, values: input.values },
+      }),
+    onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
+/* bulk 匯入(Excel onboarding);單一 tx,任一列敗整批 rollback(P0-2 A1)*/
+export function useBulkCreate(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (rows: Record<string, unknown>[]): Promise<{ created: number }> =>
+      engineFetch(`/forms/${formId}/records/bulk`, z.object({ created: z.number().int() }), {
+        method: "POST",
+        body: { rows: rows.map((values) => ({ values })) },
+      }),
+    onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
 export function useSaveWithLines(parentFormId: number) {
   const invalidate = useInvalidate()
   return useMutation({

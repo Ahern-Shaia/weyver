@@ -3,6 +3,9 @@ import type { Knex } from "knex"
 import { z } from "zod"
 import { APP_KNEX } from "../../db/db.module.js"
 import {
+  BulkRowError,
+  BulkTooLargeError,
+  DomainError,
   FieldValueError,
   FormNotReadyError,
   InvalidFilterError,
@@ -33,6 +36,8 @@ interface ResolvedForm {
   readonly fields: readonly ResolvedField[]
   readonly isSubtable: boolean
 }
+
+const BULK_MAX_ROWS = 5000
 
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`)
@@ -70,6 +75,30 @@ export class RecordService {
     return this.inTenantTx(tenantId, (trx) =>
       this.insertOne(trx, tenantId, resolved, values, actorId, null, null),
     )
+  }
+
+  /* A1(P0-2)|bulk 建立:單一 tx 逐列 insert;任一列失敗 → 整批 rollback + 回失敗列 index。
+     autoNumber 每列取號;繼承 validateValues(型別/必填/systemManaged)+ 參數綁定 + RLS。 */
+  async createManyRecords(
+    tenantId: number,
+    formId: number,
+    rows: readonly RecordValues[],
+    actorId: number,
+  ): Promise<{ created: number }> {
+    if (rows.length > BULK_MAX_ROWS) throw new BulkTooLargeError(BULK_MAX_ROWS)
+    if (rows.length === 0) return { created: 0 }
+    const resolved = await this.resolveForm(tenantId, formId)
+    return this.inTenantTx(tenantId, async (trx) => {
+      for (const [index, values] of rows.entries()) {
+        try {
+          await this.insertOne(trx, tenantId, resolved, values, actorId, null, null)
+        } catch (error) {
+          if (error instanceof DomainError) throw new BulkRowError(index, error.message)
+          throw error
+        }
+      }
+      return { created: rows.length }
+    })
   }
 
   async getRecord(tenantId: number, formId: number, recordId: number): Promise<RecordRow> {

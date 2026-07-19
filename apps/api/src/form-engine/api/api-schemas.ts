@@ -21,6 +21,10 @@ export const moveFieldBodySchema = z.object({
   direction: z.enum(["up", "down"]),
 })
 
+export const bulkRecordsBodySchema = z.object({
+  rows: z.array(z.object({ values: z.record(z.string(), z.unknown()) })).max(5000),
+})
+
 export const saveWithLinesBodySchema = z.object({
   childFormId: z.number().int().positive(),
   header: z.object({

@@ -9,6 +9,8 @@ import {
 import type { FastifyReply } from "fastify"
 import { ZodError } from "zod"
 import {
+  BulkRowError,
+  BulkTooLargeError,
   DomainError,
   FieldNotFoundError,
   FieldValueError,
@@ -53,9 +55,13 @@ function mapDomainError(error: DomainError): { status: number; code: string } {
     error instanceof FieldValueError ||
     error instanceof UnknownFieldError ||
     error instanceof SystemManagedFieldError ||
-    error instanceof InvalidFilterError
+    error instanceof InvalidFilterError ||
+    error instanceof BulkRowError
   ) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "INVALID_FIELD_INPUT" }
+  }
+  if (error instanceof BulkTooLargeError) {
+    return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "BULK_TOO_LARGE" }
   }
   return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "DOMAIN_ERROR" }
 }
