@@ -23,7 +23,7 @@
 |---|---|---|---|
 | **表單引擎動態 schema 核心** | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清)| [R1/form-engine-core.md](R1/form-engine-core.md) |
 | **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
-| Grid 主檢視 + Excel 建表 onboarding | P0-2 | ⬜ Glide Data Grid 接引擎 API + xlsx 匯入(Ragic 招牌)| 待建 |
+| Grid 主檢視 + Excel 建表 onboarding | P0-2 | 🚧 **M0 DRAFT — 待裁定 OQ-GEI-1..7**(Glide 接引擎 + xlsx→表單)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
 | 公式引擎 + Link&Load | P0-3 | ⬜ fork Teable MIT `packages/formula` 評估(OQ-FEC-7 遞延)| 待建 |
 | 三層權限 + 通知(通訊平台）+ Ops | P0-4 | ⬜ | 待建 |
 | 每表單自動 API + Public Form + webhook | P0-5 | ⬜(zod-openapi;M6 deviation 於此落地)| 待建 |
