@@ -112,6 +112,23 @@ export class RecordService {
     })
   }
 
+  /* 子表批次取數(Rollup 之 N+1 防護):一次 whereIn parent_id 撈全部子列,呼叫端在 app 層分組聚合。 */
+  async listByParents(
+    tenantId: number,
+    childFormId: number,
+    parentIds: readonly number[],
+  ): Promise<RecordRow[]> {
+    if (parentIds.length === 0) return []
+    const resolved = await this.resolveForm(tenantId, childFormId)
+    return this.inTenantTx(tenantId, async (trx) => {
+      const rows = (await this.baseQuery(trx, tenantId, resolved)
+        .whereIn(`${resolved.table}.parent_id`, [...parentIds])
+        .orderBy(`${resolved.table}.parent_id`, "asc")
+        .orderBy(`${resolved.table}.line_no`, "asc")) as Record<string, unknown>[]
+      return rows.map((row) => this.toRecord(resolved, row))
+    })
+  }
+
   async listRecords(
     tenantId: number,
     formId: number,

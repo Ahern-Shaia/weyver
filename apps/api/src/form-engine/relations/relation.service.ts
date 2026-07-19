@@ -74,4 +74,18 @@ export class RelationService {
     }
     return out
   }
+
+  /* Lookup:即時從關聯記錄拉「單一欄」現值(唯讀語意;與 Load 快照區分,見 OQ-FML-4)。 */
+  async lookup(
+    tenantId: number,
+    formId: number,
+    linkFieldName: string,
+    linkedRecordId: number,
+    targetFieldName: string,
+  ): Promise<unknown> {
+    const loaded = await this.load(tenantId, formId, linkFieldName, linkedRecordId, [
+      targetFieldName,
+    ])
+    return loaded[targetFieldName]
+  }
 }
