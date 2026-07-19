@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
 import { APP_FILTER } from "@nestjs/core"
+import { AuthModule } from "./auth/auth.module.js"
 import { validateEnv } from "./config/env.js"
 import { DbModule } from "./db/db.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
@@ -11,6 +12,7 @@ import { DomainExceptionFilter } from "./http/domain-exception.filter.js"
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     DbModule,
+    AuthModule,
     FormEngineModule,
     HealthModule,
   ],

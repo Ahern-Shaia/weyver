@@ -1,8 +1,14 @@
+import { Global, Module } from "@nestjs/common"
+import { ConfigModule } from "@nestjs/config"
+import { Test } from "@nestjs/testing"
 import { getMigrations } from "better-auth/db/migration"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { AUTH, AuthModule } from "../src/auth/auth.module.js"
 import { type Auth, createAuth } from "../src/auth/auth.js"
+import { validateEnv } from "../src/config/env.js"
+import { PG_POOL } from "../src/db/db.module.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -60,5 +66,27 @@ describe("Better Auth 接入(F-2 M1)", () => {
     await expect(
       auth.api.signInEmail({ body: { email: "ghost@weyver.test", password: "whatever" } }),
     ).rejects.toThrow()
+  })
+
+  it("NestJS DI:AUTH token 由 AuthModule 解析出可用引擎(接 config secret + 真實 pool)", async () => {
+    @Global()
+    @Module({ providers: [{ provide: PG_POOL, useValue: pool }], exports: [PG_POOL] })
+    class FakePgModule {}
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, validate: validateEnv }),
+        FakePgModule,
+        AuthModule,
+      ],
+    }).compile()
+
+    const wired = moduleRef.get<Auth>(AUTH)
+    // DI 提供的實例即真實 Better Auth:登入先前註冊之帳號成功(證 secret + pool 皆正確接入)
+    const ok = await wired.api.signInEmail({
+      body: { email: "a@weyver.test", password: "s3cret-passw0rd" },
+    })
+    expect(ok.user.email).toBe("a@weyver.test")
+    await moduleRef.close()
   })
 })

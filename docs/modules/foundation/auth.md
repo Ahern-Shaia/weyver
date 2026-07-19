@@ -1,6 +1,6 @@
 # auth.md — [F-2] 認證 + 租戶 context + 使用者身分 設計文件
 
-> ✅ **狀態:APPROVED — OQ-AUTH-1..8 全採建議(2026-07-19 裁定)**;AUTH-8 = **場景 A(多 org 隔離切換,一次一家)**;**場景 B(代管母子 + 跨廠合併)非本模組**,僅便宜預留 `tenants.parent_tenant_id`。進 M1。
+> ✅ **狀態:APPROVED — OQ-AUTH-1..8 全採建議(2026-07-19 裁定)**;AUTH-8 = **場景 A(多 org 隔離切換,一次一家)**;**場景 B(代管母子 + 跨廠合併)非本模組**,僅便宜預留 `tenants.parent_tenant_id`。**M1 ✅(認證引擎 + NestJS DI 接入);續 M2(org↔tenant / user↔actor 對映)。**
 >
 > **一句話**|把 dev 期的 `x-dev-tenant` header 換成**真實認證**:使用者登入 → 伺服器驗證的 session/JWT → 從中取**可信的 tenant_id + 使用者身分**,取代 `DevTenantGuard`。**這是 R1 對外上線的硬前提**(form-engine-core / form-designer-ui / grid / formula 皆標「對外 prod 前提 = F-2」)。
 >
@@ -164,7 +164,7 @@
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-AUTH-1..8)| ⏳ |
-| **M1** A1 | Better Auth 掛 api + auth 表 + org plugin + Argon2id | 🚧 **認證引擎 ✅**(`src/auth/auth.ts` createAuth:Better Auth + pg pool + emailAndPassword + **Argon2id**(@node-rs/argon2)+ organization plugin;auth 表由 Better Auth migration 建;4 整合測:表建立 / 註冊→Argon2id / 登入正誤 / 列舉防護)· **NestJS provider + Fastify `/api/auth/*` handler 掛載併 M3(getSession 需之)** |
+| **M1** A1 | Better Auth 掛 api + auth 表 + org plugin + Argon2id | ✅ **DONE**|(a)認證引擎 `src/auth/auth.ts` createAuth(Better Auth + pg pool + emailAndPassword + **Argon2id**(@node-rs/argon2)+ organization plugin;auth 表由 Better Auth migration 建)·(b)**NestJS DI 接入** `src/auth/auth.module.ts`(@Global,`AUTH` Symbol token via useFactory:注入特權 `PG_POOL`〔auth 表為 Tier-1 系統表非租戶 RLS〕+ `ConfigService` secret;註冊進 AppModule)·(c)`BETTER_AUTH_SECRET` 入 env schema(**prod fail-fast**,dev 回退明確佔位)· 測:4 整合(表 / 註冊→Argon2id / 登入正誤 / 列舉防護)+ 1 DI 解析(AUTH 接真實 pool 可登入)+ 4 env 單元;全 api e2e(9)boot AppModule 綠 · **Fastify `/api/auth/*` handler 掛載併 M3(getSession 需之)** |
 | **M2** A3 | users / tenants.auth_org_id + org/user 對映 + upsert hook | ⬜ |
 | **M3** A2 | AuthGuard(getSession → tenantContext)+ 剝 header + 隔離測試 | ⬜ |
 | **M4** A4 | 前端登入 / 登出 / 註冊 + 受保護路由 + active org 切換 + 同源代理 | ⬜ |
@@ -207,6 +207,7 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-19 | v0.5 | **M1 完成:Better Auth DI 接入 NestJS**|`src/auth/auth.module.ts`(@Global,`AUTH` Symbol token via useFactory 注入 PG_POOL + ConfigService secret,export;註冊 AppModule)· `BETTER_AUTH_SECRET` 入 env schema(superRefine prod fail-fast + dev-only 佔位回退)· 加 1 DI 解析整合測 + 4 env 單元測;type-check/lint/auth 整合(5)/api e2e(9)全綠。M1 → ✅;Fastify handler 掛載 + AuthGuard 續 M3 | Claude Code |
 | 2026-07-19 | v0.4 | **§6-bis 登入分層 + 帳號治理(企業級核心決策)**|反思「管理員用個人 LINE 登入,離職後租戶失控」→ 決策:登入=便利層、治理錨點須公司可控+可回收;現場人員可 LINE、管理員/owner 走公司身分;社群登入不得為 sole owner(OQ-AUTH-9);帳號連結模型;offboarding SOP(§11);釐清 LINE Login vs 個人/群組通知(Notify 已 EOL)| Claude Code |
 | 2026-07-19 | v0.3 | **M1 認證引擎落地**|`src/auth/auth.ts`(Better Auth 1.6 + pg pool + emailAndPassword + Argon2id + organization plugin;secret 由呼叫端注入不散落 env);getMigrations 建 auth 表;4 Testcontainers 整合測(表 / 註冊 Argon2id / 登入正誤 / 列舉防護)綠。NestJS provider + Fastify handler 掛載併 M3 | Claude Code |
 | 2026-07-19 | v0.2 | OQ-AUTH-1..8 全採建議裁定;AUTH-8 限**場景 A**(多 org 隔離切換);**場景 B 代管母子非本模組**,僅預留 `tenants.parent_tenant_id`;狀態 → APPROVED,進 M1 | Claude Code |

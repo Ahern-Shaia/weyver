@@ -12,7 +12,7 @@
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
 | Monorepo + NestJS + PG 骨架 | F-1 | ✅ 隨 form-engine-core M2 落地(`apps/api`)| —(見 R1/form-engine-core §9-bis)|
-| **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | ✅ **M0 APPROVED — OQ-AUTH-1..8 全採建議**(進 M1;保留 TenantContext 介面 → services 零改;AUTH-8=場景 A 多 org 隔離,場景 B 代管母子僅預留 parent_tenant_id;三層 RBAC 屬 P0-4)| [foundation/auth.md](foundation/auth.md) |
+| **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | 🚧 **M1 ✅**(認證引擎 + NestJS DI 接入:`AUTH` token 注入 PG_POOL + config secret,BETTER_AUTH_SECRET prod fail-fast;§6-bis 登入分層 + 帳號治理決策)· **續 M2 對映**(保留 TenantContext 介面 → services 零改;AUTH-8=場景 A 多 org 隔離,場景 B 代管母子僅預留 parent_tenant_id;三層 RBAC 屬 P0-4)| [foundation/auth.md](foundation/auth.md) |
 | UI shell + design tokens + deploy | F-3 | ✅ 前端 v2.1(`packages/ui` + `/app`)| —(見 docs/14)|
 
 ---
