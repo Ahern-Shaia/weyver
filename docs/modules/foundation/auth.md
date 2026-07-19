@@ -18,6 +18,7 @@
 ### 1.1 目標
 
 1. **使用者可註冊 / 登入 / 登出**(email+password MVP);密碼 **Argon2id**;session httpOnly cookie(token 不進 localStorage,AGENTS 🔒-4)。
+   - **登入方式按角色分層**(§6-bis 治理決策):現場人員可 email+密碼 / 可選 LINE 便利登入;**管理員 / owner 走公司可控身分**(公司 email / 企業階段 SSO)—— 個人社群登入用在企業級治理會出事(見 §6-bis)。
 2. **組織(= 租戶)**:使用者屬於 organization(Better Auth org);org 對映 Weyver `tenants`(bigint);多 org 使用者可切換 active org。
 3. **API 每請求取可信租戶**:`AuthGuard` 由**伺服器驗證的 session**取 activeOrganizationId → 解析 `tenantId` + `actorId` → `request.tenantContext`(**同現有介面,services 不改**),取代 `DevTenantGuard`。
 4. **租戶不可偽造**:tenantId **只出自伺服器驗證的 session**,剝除 client 送的租戶 header;驗證「路由候選 == session 租戶」(docs/21 §4:經典跨租戶洩漏破口)。
@@ -99,6 +100,30 @@
 
 ---
 
+## 6-bis. 登入方式分層 + 帳號治理(企業級核心決策)
+
+> **問題(反思)**|個人社群登入(如 LINE)綁的是「**那個人**」的帳號,公司管不到 —— **管理員離職,無法收回其個人 LINE**。純便利登入用在企業級治理會出事:①擁有權孤兒(唯一 owner 離職 → 租戶卡死)②公司無法控管(不能強制改密 / 稽核;HR 停用不連動)③無自動 deprovision。
+
+**原則|登入方式 = 便利層;租戶治理錨點必須公司可控 + 可回收。**
+
+### 登入方式(按角色分層)
+| 角色 | 登入方式 | 理由 |
+|---|---|---|
+| 現場人員(低權限)| email+密碼 / **可選 LINE 登入**(便利)| 免記密碼、掃碼即進;離職移除成員即失效,零治理風險 |
+| 管理員 / org owner | **公司可控身分**:公司 email+密碼(org 管)/(企業階段)公司 SSO | 公司能強制改密 / 稽核 / 停用;不綁個人社群帳號 |
+
+### 帳號治理鐵則(F-2 決策)
+1. **租戶屬公司非登入者**|org owner **可被平台回收**(客服 break-glass 重指派)→ 杜絕「唯一 owner 離職 → 租戶卡死」。
+2. **社群登入不得為唯一 owner**|建 org 時至少一個公司-email 管理員;政策擋個人社群帳號當 sole owner。
+3. **帳號連結模型**|Weyver user 主身分 = 公司 email;LINE/Google = 額外**連結**的便利登入。**移除成員 → 所有連結登入一起失去此租戶存取**(offboarding 一刀切,見 §11)。
+4. **SSO 為企業正解(後續)**|真企業客戶走公司 SSO(Entra/Okta/Google Workspace)→ IdP deprovision 連動所有存取自動失效。F-2 MVP 不啟(§1.3),但架構(帳號連結 + owner 可回收)已為其鋪路。
+
+### LINE 三產品別混(釐清)
+- **LINE Login**(OIDC)= 認證**個人身分**;**Messaging API 個人**(1:1 推好友)/ **群組**(bot 在群)= **通知投遞**。Login ↔ 個人通知共 userId(需同 provider linked)可順帶綁定;**群組通知與登入解耦**(org 層設定 bot + 群 id)。
+- ⚠️ **LINE Notify 已 2025-03 EOL** → 個人 / 群組通知皆走 Messaging API(docs/04 H 之「Notify」待修)。
+
+---
+
 ## 7-bis. 企業級 cross-cutting 檢核(安全關鍵)
 
 ### 7-bis.1 安全模型(本模組即認證主戰場)
@@ -159,12 +184,16 @@
 | **OQ-AUTH-6** | 密碼 hash | A. Argon2id(覆寫 Better Auth 預設)<br> B. 用預設(scrypt)| **A** — AGENTS 🔒-4 明訂 Argon2id |
 | **OQ-AUTH-7** | 測試 / dev guard | A. DevTenantGuard 留 dev/test(prod fail-closed)+ 新增真 auth 整合測 <br> B. 全面換 AuthGuard,所有測試用 auth seed | **A** — 既有 88 測試不受衝擊;auth 專屬測試走真 Better Auth;prod 只認 AuthGuard |
 | **OQ-AUTH-8** | 多 org 使用者 | A. 支援(Better Auth active org 切換,MVP UI 最小)<br> B. MVP 單 org | **A(限場景 A)** — 一人屬多 org、**一次一家、各家 RLS 完全隔離**(顧問跨廠 / 集團多廠區)。⚠️ **場景 B(代管公司要跨廠合併視角 / 代子廠操作)非本模組** —— 那是巢狀租戶 + 跨租戶讀取(docs/21 outgrow → Cerbos),另立設計;本模組僅**便宜預留 `tenants.parent_tenant_id nullable`**(不實作跨租戶讀取)|
+| **OQ-AUTH-9**(治理反思後裁定)| 社群 / LINE 登入政策 | A. 按角色分層 + 不得為唯一 owner + 帳號連結模型 <br> B. 全租戶統一 email+密碼 | **A**(2026-07-19 裁定)— 現場人員可 LINE 便利登入、管理層走公司可控身分;**社群登入不得為 sole owner**;offboarding 移除成員即連結登入全失效;SSO 為企業正解(見 §6-bis)|
 
 ---
 
 ## 11. SOP — 日常操作
 
-> M5 收尾填(建租戶/邀成員 / 排查登入失敗 / session 撤銷 / 對映修復)。
+- **建租戶 / 邀成員**|org 建立 → 建 tenant + 連結(§6);邀成員走 Better Auth invitation。
+- **offboarding(離職,§6-bis)**|① org 移除成員 ② 撤銷其所有 session ③ 若為 owner → 先轉移擁有權(或平台 break-glass 重指派)④ 其連結登入(LINE/Google)自動失去此租戶存取。
+- **排查**|登入失敗(密碼 / 帳號未驗)· session 過期 → 重登 · 對映缺失(org 無對應 tenant)→ 修 upsert · 疑跨租戶 → 查 AuthGuard 是否剝 client header + activeOrg 來源。
+> 其餘 M5 收尾補(rate-limit 觀測 / secret 輪替)。
 
 ---
 
@@ -178,6 +207,7 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-19 | v0.4 | **§6-bis 登入分層 + 帳號治理(企業級核心決策)**|反思「管理員用個人 LINE 登入,離職後租戶失控」→ 決策:登入=便利層、治理錨點須公司可控+可回收;現場人員可 LINE、管理員/owner 走公司身分;社群登入不得為 sole owner(OQ-AUTH-9);帳號連結模型;offboarding SOP(§11);釐清 LINE Login vs 個人/群組通知(Notify 已 EOL)| Claude Code |
 | 2026-07-19 | v0.3 | **M1 認證引擎落地**|`src/auth/auth.ts`(Better Auth 1.6 + pg pool + emailAndPassword + Argon2id + organization plugin;secret 由呼叫端注入不散落 env);getMigrations 建 auth 表;4 Testcontainers 整合測(表 / 註冊 Argon2id / 登入正誤 / 列舉防護)綠。NestJS provider + Fastify handler 掛載併 M3 | Claude Code |
 | 2026-07-19 | v0.2 | OQ-AUTH-1..8 全採建議裁定;AUTH-8 限**場景 A**(多 org 隔離切換);**場景 B 代管母子非本模組**,僅預留 `tenants.parent_tenant_id`;狀態 → APPROVED,進 M1 | Claude Code |
 | 2026-07-19 | v0.1 | 初版 DRAFT — F-2 認證 + 租戶 context + 使用者身分;A1–A6 切分 + OQ-AUTH-1..8;上游 = DevTenantGuard + TenantContext 介面 + docs/21 架構(Better Auth + JWT tenant_id + nestjs-cls);對映 org↔tenant / user↔actor 為整合關鍵;保留 TenantContext 介面 → services 零改 | Claude Code |
