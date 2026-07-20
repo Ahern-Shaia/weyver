@@ -2,10 +2,13 @@ import { sql } from "drizzle-orm"
 import {
   bigint,
   boolean,
+  check,
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -154,5 +157,94 @@ export const formulaDefs = pgTable(
   (t) => [
     uniqueIndex("formula_def_field_uq").on(t.fieldId),
     index("formula_def_form_idx").on(t.formId),
+  ],
+)
+
+/* P0-4a authz(Tier-1 系統表,租戶內授權;非 RLS,以 tenant_id 欄 + app 層 scope,由特權 DRIZZLE 車道讀寫)。
+   授權只能收窄同租戶可見範圍,永不放寬跨租戶(RLS 仍為最後防線)。docs/modules/R1/authz.md。 */
+
+/* 角色 / 部門樹(OQ-1=C:parent_id 樹狀;權限沿樹向下繼承,有效權限=自身角色 ∪ 祖先) */
+export const roles = pgTable(
+  "roles",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    // NULL = 根;RESTRICT:有子節點不得刪(避免孤兒)。同租戶 parent 由 app 層驗(§5.1)
+    parentId: bigint("parent_id", { mode: "number" }).references((): AnyPgColumn => roles.id, {
+      onDelete: "restrict",
+    }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    isSystem: boolean("is_system").notNull().default(false),
+    depth: smallint("depth").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("roles_tenant_key_uq").on(t.tenantId, t.key),
+    index("roles_tenant_idx").on(t.tenantId),
+    index("roles_parent_idx").on(t.parentId),
+    // 禁自我 parent;跨層 cycle 由 app 層防(recursive CTE visited set,§5.1)
+    check("roles_no_self_parent", sql`parent_id IS NULL OR parent_id <> id`),
+  ],
+)
+
+/* 使用者 ↔ 角色(多對多;有效權限取聯集)*/
+export const roleMembers = pgTable(
+  "role_members",
+  {
+    roleId: bigint("role_id", { mode: "number" })
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    actorId: bigint("actor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // 冗餘 tenant_id 便於 scope 查詢(與 role.tenant_id 一致,app 層保證)
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roleId, t.actorId] }),
+    index("role_members_actor_idx").on(t.tenantId, t.actorId),
+  ],
+)
+
+/* 表單級權限(角色 × 表單 → 級別;缺列 = none,deny-by-default,OQ-4=A)*/
+export const formPermissions = pgTable(
+  "form_permissions",
+  {
+    roleId: bigint("role_id", { mode: "number" })
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references(() => formDefs.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roleId, t.formId] }),
+    index("form_permissions_form_idx").on(t.formId),
+    check("form_permissions_level", sql`level IN ('none','read','write','manage')`),
+  ],
+)
+
+/* 欄位級權限(角色 × 欄位 → 可見性;缺列 = 繼承表單級;與表單級取交集,較嚴者勝)*/
+export const fieldPermissions = pgTable(
+  "field_permissions",
+  {
+    roleId: bigint("role_id", { mode: "number" })
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    fieldId: bigint("field_id", { mode: "number" })
+      .notNull()
+      .references(() => fieldDefs.id, { onDelete: "cascade" }),
+    visibility: text("visibility").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roleId, t.fieldId] }),
+    index("field_permissions_field_idx").on(t.fieldId),
+    check("field_permissions_visibility", sql`visibility IN ('hidden','read','write')`),
   ],
 )

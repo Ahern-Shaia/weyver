@@ -1,0 +1,243 @@
+import { Inject, Injectable } from "@nestjs/common"
+import { and, eq, inArray, sql } from "drizzle-orm"
+import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
+import { fieldPermissions, formPermissions, roleMembers, roles } from "../db/schema.js"
+import type { FieldVisibility, FormLevel } from "./authz-model.js"
+import { depthForParent, RoleCycleError, wouldCreateCycle } from "./authz-tree.js"
+
+/* P0-4a authz Tier-1 資料存取(特權 DRIZZLE 車道,如 IdentityService)。
+   授權表非 RLS;每查詢以 tenant_id 綁定 + app 層 scope。docs/modules/R1/authz.md §4/§7。 */
+
+export interface RoleRow {
+  readonly id: number
+  readonly tenantId: number
+  readonly parentId: number | null
+  readonly key: string
+  readonly name: string
+  readonly isSystem: boolean
+  readonly depth: number
+}
+
+export interface FormPermissionRow {
+  readonly roleId: number
+  readonly formId: number
+  readonly level: FormLevel
+}
+
+export interface FieldPermissionRow {
+  readonly roleId: number
+  readonly fieldId: number
+  readonly visibility: FieldVisibility
+}
+
+/* 系統角色(每租戶建立時種入)。'admin' 具全租戶 manage 語意(於 PermissionService 特判,OQ-5);
+   editor/viewer 為便利起點,實際權限由 admin 於矩陣指派(deny-by-default,未指派=none)。 */
+const SYSTEM_ROLES: ReadonlyArray<{ key: string; name: string }> = [
+  { key: "admin", name: "管理員" },
+  { key: "editor", name: "編輯者" },
+  { key: "viewer", name: "檢視者" },
+]
+
+export const ADMIN_ROLE_KEY = "admin"
+
+@Injectable()
+export class AuthzRepository {
+  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+
+  /* 租戶建立 → 種入系統角色(idempotent;並發下 unique(tenant_id,key) 兜底)。 */
+  async seedSystemRoles(tenantId: number): Promise<void> {
+    await this.db
+      .insert(roles)
+      .values(
+        SYSTEM_ROLES.map((r) => ({
+          tenantId,
+          key: r.key,
+          name: r.name,
+          isSystem: true,
+          depth: 0,
+        })),
+      )
+      .onConflictDoNothing({ target: [roles.tenantId, roles.key] })
+  }
+
+  async listRoles(tenantId: number): Promise<RoleRow[]> {
+    const rows = await this.db.select().from(roles).where(eq(roles.tenantId, tenantId))
+    return rows.map(toRoleRow)
+  }
+
+  async getRole(tenantId: number, roleId: number): Promise<RoleRow | null> {
+    const rows = await this.db
+      .select()
+      .from(roles)
+      .where(and(eq(roles.tenantId, tenantId), eq(roles.id, roleId)))
+      .limit(1)
+    const row = rows[0]
+    return row ? toRoleRow(row) : null
+  }
+
+  /* 建角色。新角色無既存子節點 → 不可能成環;只驗 parent 同租戶 + 深度上限。 */
+  async createRole(input: {
+    readonly tenantId: number
+    readonly key: string
+    readonly name: string
+    readonly parentId: number | null
+  }): Promise<RoleRow> {
+    let depth = 0
+    if (input.parentId !== null) {
+      const parent = await this.getRole(input.tenantId, input.parentId)
+      if (!parent) throw new RoleParentError(input.parentId)
+      depth = depthForParent(parent.depth)
+    }
+    const inserted = await this.db
+      .insert(roles)
+      .values({
+        tenantId: input.tenantId,
+        key: input.key,
+        name: input.name,
+        parentId: input.parentId,
+        isSystem: false,
+        depth,
+      })
+      .returning()
+    const row = inserted[0]
+    if (!row) throw new Error("createRole: insert returned no row")
+    return toRoleRow(row)
+  }
+
+  /* 改 parent(reparent)。防環:新 parent 的祖先鏈不得含本角色;重算深度。 */
+  async setRoleParent(tenantId: number, roleId: number, newParentId: number | null): Promise<void> {
+    const parentOfMap = await this.loadParentMap(tenantId)
+    if (wouldCreateCycle(roleId, newParentId, (id) => parentOfMap.get(id) ?? null)) {
+      throw new RoleCycleError(roleId)
+    }
+    const parentDepth =
+      newParentId === null ? null : ((await this.getRole(tenantId, newParentId))?.depth ?? null)
+    if (newParentId !== null && parentDepth === null) throw new RoleParentError(newParentId)
+    await this.db
+      .update(roles)
+      .set({ parentId: newParentId, depth: depthForParent(parentDepth) })
+      .where(and(eq(roles.tenantId, tenantId), eq(roles.id, roleId)))
+  }
+
+  async assignMember(tenantId: number, roleId: number, actorId: number): Promise<void> {
+    await this.db
+      .insert(roleMembers)
+      .values({ tenantId, roleId, actorId })
+      .onConflictDoNothing({ target: [roleMembers.roleId, roleMembers.actorId] })
+  }
+
+  async removeMember(roleId: number, actorId: number): Promise<void> {
+    await this.db
+      .delete(roleMembers)
+      .where(and(eq(roleMembers.roleId, roleId), eq(roleMembers.actorId, actorId)))
+  }
+
+  async setFormPermission(roleId: number, formId: number, level: FormLevel): Promise<void> {
+    await this.db
+      .insert(formPermissions)
+      .values({ roleId, formId, level })
+      .onConflictDoUpdate({
+        target: [formPermissions.roleId, formPermissions.formId],
+        set: { level },
+      })
+  }
+
+  async setFieldPermission(
+    roleId: number,
+    fieldId: number,
+    visibility: FieldVisibility,
+  ): Promise<void> {
+    await this.db
+      .insert(fieldPermissions)
+      .values({ roleId, fieldId, visibility })
+      .onConflictDoUpdate({
+        target: [fieldPermissions.roleId, fieldPermissions.fieldId],
+        set: { visibility },
+      })
+  }
+
+  /* actor 的角色閉包(直接角色 + 所有祖先),單一 recursive CTE。
+     UNION(非 UNION ALL)去重 + 遇環自然終止(visited);tenant scope 綁在 anchor。 */
+  async resolveActorRoleIds(tenantId: number, actorId: number): Promise<number[]> {
+    const res = await this.db.execute<{ id: string }>(sql`
+      WITH RECURSIVE actor_roles AS (
+        SELECT r.id, r.parent_id
+        FROM ${roleMembers} rm
+        JOIN ${roles} r ON r.id = rm.role_id
+        WHERE rm.tenant_id = ${tenantId} AND rm.actor_id = ${actorId}
+        UNION
+        SELECT p.id, p.parent_id
+        FROM ${roles} p
+        JOIN actor_roles ar ON p.id = ar.parent_id
+      )
+      SELECT id FROM actor_roles
+    `)
+    return res.rows.map((r) => Number(r.id))
+  }
+
+  async loadFormPermissions(roleIds: readonly number[]): Promise<FormPermissionRow[]> {
+    if (roleIds.length === 0) return []
+    const rows = await this.db
+      .select()
+      .from(formPermissions)
+      .where(inArray(formPermissions.roleId, [...roleIds]))
+    return rows.map((r) => ({ roleId: r.roleId, formId: r.formId, level: r.level as FormLevel }))
+  }
+
+  async loadFieldPermissions(roleIds: readonly number[]): Promise<FieldPermissionRow[]> {
+    if (roleIds.length === 0) return []
+    const rows = await this.db
+      .select()
+      .from(fieldPermissions)
+      .where(inArray(fieldPermissions.roleId, [...roleIds]))
+    return rows.map((r) => ({
+      roleId: r.roleId,
+      fieldId: r.fieldId,
+      visibility: r.visibility as FieldVisibility,
+    }))
+  }
+
+  async isAdminActor(tenantId: number, actorId: number): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roles.id })
+      .from(roleMembers)
+      .innerJoin(roles, eq(roles.id, roleMembers.roleId))
+      .where(
+        and(
+          eq(roleMembers.tenantId, tenantId),
+          eq(roleMembers.actorId, actorId),
+          eq(roles.isSystem, true),
+          eq(roles.key, ADMIN_ROLE_KEY),
+        ),
+      )
+      .limit(1)
+    return rows.length > 0
+  }
+
+  private async loadParentMap(tenantId: number): Promise<Map<number, number | null>> {
+    const rows = await this.db
+      .select({ id: roles.id, parentId: roles.parentId })
+      .from(roles)
+      .where(eq(roles.tenantId, tenantId))
+    return new Map(rows.map((r) => [r.id, r.parentId]))
+  }
+}
+
+export class RoleParentError extends Error {
+  constructor(readonly parentId: number) {
+    super(`parent role ${parentId} not found in tenant`)
+    this.name = "RoleParentError"
+  }
+}
+
+function toRoleRow(row: typeof roles.$inferSelect): RoleRow {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    parentId: row.parentId,
+    key: row.key,
+    name: row.name,
+    isSystem: row.isSystem,
+    depth: row.depth,
+  }
+}

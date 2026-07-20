@@ -1,6 +1,8 @@
 import { Global, Module } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import type pg from "pg"
+import { AuthzModule } from "../authz/authz.module.js"
+import { AuthzRepository } from "../authz/authz.repository.js"
 import { DevTenantGuard } from "../http/dev-tenant.guard.js"
 import { PG_POOL } from "../db/db.module.js"
 import { AuthGuard } from "./auth-guard.js"
@@ -15,6 +17,7 @@ import { TenantGuard } from "./tenant.guard.js"
    secret 由 ConfigService 注入(env schema 已驗;prod fail-fast),不散落 process.env。 */
 @Global()
 @Module({
+  imports: [AuthzModule],
   providers: [
     IdentityService,
     DevTenantGuard,
@@ -22,7 +25,12 @@ import { TenantGuard } from "./tenant.guard.js"
     TenantGuard,
     {
       provide: AUTH,
-      useFactory: (pool: pg.Pool, config: ConfigService, identity: IdentityService): Auth =>
+      useFactory: (
+        pool: pg.Pool,
+        config: ConfigService,
+        identity: IdentityService,
+        authz: AuthzRepository,
+      ): Auth =>
         createAuth(pool, config.getOrThrow<string>("BETTER_AUTH_SECRET"), {
           baseURL: config.getOrThrow<string>("BETTER_AUTH_URL"),
           trustedOrigins: config
@@ -31,11 +39,15 @@ import { TenantGuard } from "./tenant.guard.js"
             .map((origin) => origin.trim())
             .filter(Boolean),
           hooks: {
-            onOrganizationCreated: (input): Promise<void> =>
-              identity.ensureTenantForOrg(input).then(() => undefined),
+            // org 建立 → 建 tenant(idempotent)→ 種入系統角色(admin/editor/viewer,idempotent)。
+            // owner→admin 指派於 AuthGuard 解析 session 時依 Better Auth org 角色對映(OQ-5,M3)。
+            onOrganizationCreated: async (input): Promise<void> => {
+              const tenantId = await identity.ensureTenantForOrg(input)
+              await authz.seedSystemRoles(tenantId)
+            },
           },
         }),
-      inject: [PG_POOL, ConfigService, IdentityService],
+      inject: [PG_POOL, ConfigService, IdentityService, AuthzRepository],
     },
   ],
   exports: [AUTH, IdentityService, TenantGuard, AuthGuard, DevTenantGuard],

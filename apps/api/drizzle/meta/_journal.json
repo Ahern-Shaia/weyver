@@ -43,6 +43,13 @@
       "when": 1784471747631,
       "tag": "0005_smooth_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784564536526,
+      "tag": "0006_authz_permissions",
+      "breakpoints": true
     }
   ]
 }
