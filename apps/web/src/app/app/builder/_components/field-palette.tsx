@@ -12,9 +12,11 @@ export function FieldPalette({
   disabled?: boolean
 }) {
   return (
-    <div className="w-[168px] shrink-0 overflow-y-auto border-r border-line bg-card p-2">
-      <div className="px-1 pb-1.5 text-[10.5px] font-semibold text-ink-3">欄位型別(點擊加入)</div>
-      <div className="flex flex-col gap-1">
+    <div className="w-[178px] shrink-0 overflow-y-auto border-r border-line bg-card p-2.5">
+      <div className="px-1.5 pb-2 text-[10px] font-semibold tracking-wide text-ink-4">
+        欄位型別 · 點擊加入
+      </div>
+      <div className="flex flex-col gap-0.5">
         {BUILDABLE_TYPES.map((type) => {
           const meta = fieldTypeMeta(type)
           return (
@@ -24,11 +26,13 @@ export function FieldPalette({
               disabled={disabled}
               onClick={() => onPick(type)}
               className={cn(
-                "flex items-center gap-2 rounded-xs border border-line bg-card px-2 py-1 text-left text-[11.5px] text-ink-2",
-                disabled ? "cursor-not-allowed opacity-50" : "hover:bg-head",
+                "group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[12px] text-ink-2 transition-colors duration-150",
+                disabled
+                  ? "cursor-not-allowed opacity-45"
+                  : "cursor-pointer hover:bg-primary-t hover:text-primary",
               )}
             >
-              <span className="inline-flex h-4 w-5 items-center justify-center rounded-xs bg-label font-mono text-[9.5px] font-semibold text-ink-3">
+              <span className="inline-flex size-6 items-center justify-center rounded-md bg-label font-mono text-[10px] font-semibold text-ink-3 transition-colors duration-150 group-hover:bg-primary group-hover:text-white">
                 {meta.mark}
               </span>
               {meta.label}

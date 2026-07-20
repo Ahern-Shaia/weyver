@@ -70,7 +70,7 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
   await page.getByRole("button", { name: new RegExp(formName) }).click()
   await page.getByRole("tab", { name: "填單" }).click()
   await page.getByRole("textbox").first().fill("正大食材")
-  await page.getByRole("button", { name: "＋ 加一行" }).click()
+  await page.getByRole("button", { name: "加一行" }).click()
   const lineRow = page.locator("tbody tr").first()
   await lineRow.getByRole("textbox").nth(0).fill("冷凍雞腿")
   await lineRow.getByRole("textbox").nth(1).fill("10")

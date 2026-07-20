@@ -2,6 +2,7 @@
 
 import { Button } from "@weyver/ui/button"
 import { cn } from "@weyver/ui/lib/utils"
+import { Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toText } from "@weyver/formula"
 import { describeEngineError } from "@/lib/engine/client"
@@ -150,7 +151,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
     <div className="flex-1 overflow-y-auto bg-surface py-4">
       <div className="mx-auto max-w-[880px] px-5">
         <div className="mb-3 flex items-center gap-2">
-          <span className="text-[13px] font-semibold">新增{form.name}</span>
+          <span className="text-[15px] font-semibold text-ink">新增{form.name}</span>
           <div className="ml-auto flex gap-1.5">
             <Button onClick={reset}>清除</Button>
             <Button variant="primary" onClick={submit} disabled={pending}>
@@ -160,21 +161,22 @@ export function RecordFormPanel({ formId }: { formId: number }) {
         </div>
 
         {savedNo !== null ? (
-          <div className="mb-3 border border-ok-line bg-ok-t px-3 py-2 text-[12px] text-ok">
+          <div className="mb-3 rounded-md border border-ok-line bg-ok-t px-3 py-2 text-[12px] text-ok">
             已儲存:<b className="font-mono">{savedNo}</b>(可於「資料」檢視)
           </div>
         ) : null}
         {error !== null ? (
-          <div className="mb-3 border border-er-line bg-er-t px-3 py-2 text-[12px] text-er">
+          <div className="mb-3 rounded-md border border-er-line bg-er-t px-3 py-2 text-[12px] text-er">
             {error}
           </div>
         ) : null}
 
-        <section className="border border-line bg-card">
-          <header className="bg-primary px-3 py-1.5 text-[12px] font-semibold text-white">
+        <section className="overflow-hidden rounded-md border border-line bg-card shadow-xs">
+          <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+            <span className="size-1.5 rounded-full bg-primary" />
             填寫
           </header>
-          <div className="grid grid-cols-[128px_1fr]">
+          <div className="grid grid-cols-[136px_1fr]">
             {form.fields.map((field, index) => (
               <FieldRow key={field.id} field={field} isLast={index === form.fields.length - 1}>
                 <FieldInput
@@ -188,16 +190,15 @@ export function RecordFormPanel({ formId }: { formId: number }) {
         </section>
 
         {hasChild ? (
-          <section className="mt-3 border border-line bg-card">
-            <header className="flex items-center bg-primary px-3 py-1.5 text-[12px] font-semibold text-white">
-              {childForm?.name}(明細)
-              <button
-                type="button"
-                onClick={addLine}
-                className="ml-auto rounded-xs border border-white/40 px-1.5 py-0.5 text-[10.5px]"
-              >
-                ＋ 加一行
-              </button>
+          <section className="mt-3 overflow-hidden rounded-md border border-line bg-card shadow-xs">
+            <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+              <span className="size-1.5 rounded-full bg-primary" />
+              {childForm?.name}
+              <span className="font-normal text-ink-4">明細</span>
+              <Button variant="subtle" size="sm" onClick={addLine} className="ml-auto">
+                <Plus />
+                加一行
+              </Button>
             </header>
             {childFields.length === 0 ? (
               <div className="p-4 text-center text-[11.5px] text-ink-4">子表載入中…</div>
@@ -227,12 +228,15 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                   </thead>
                   <tbody>
                     {lines.map((line, index) => (
-                      <tr key={line.key}>
-                        <td className="border-b border-cell px-2 py-1 font-mono text-ink-4">
+                      <tr key={line.key} className="group transition-colors duration-150 hover:bg-head/60">
+                        <td className="border-b border-line-2 px-2 py-1 font-mono text-ink-4">
                           {index + 1}
                         </td>
                         {childFields.map((field) => (
-                          <td key={field.id} className="border-b border-l border-cell px-1.5 py-1">
+                          <td
+                            key={field.id}
+                            className="border-b border-l border-line-2 px-1.5 py-1"
+                          >
                             <FieldInput
                               field={field}
                               value={line.values[field.name]}
@@ -240,9 +244,15 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                             />
                           </td>
                         ))}
-                        <td className="border-b border-l border-cell px-1.5 py-1 text-center">
-                          <Button variant="danger" onClick={() => removeLine(line.key)}>
-                            刪
+                        <td className="border-b border-l border-line-2 px-1.5 py-1 text-center">
+                          <Button
+                            variant="subtle"
+                            size="icon"
+                            onClick={() => removeLine(line.key)}
+                            title="刪除此行"
+                            className="opacity-0 hover:bg-er-t hover:text-er focus:opacity-100 group-hover:opacity-100"
+                          >
+                            <Trash2 />
                           </Button>
                         </td>
                       </tr>

@@ -4,6 +4,7 @@ import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
 import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
 import { cn } from "@weyver/ui/lib/utils"
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { conversionTargets, fieldTypeMeta, isStubType } from "@/lib/engine/field-types"
@@ -115,14 +116,14 @@ export function EditFormPanel({
     <div className="flex h-full min-h-0">
       <FieldPalette onPick={startAdd} disabled={form.provisionState !== "ready"} />
 
-      <div className="min-w-0 flex-1 overflow-y-auto bg-surface p-4">
-        <div className="mx-auto max-w-[720px]">
-          <div className="mb-3 flex items-baseline gap-2 border border-b-0 border-line bg-card px-4 py-3">
-            <h1 className="text-base font-semibold tracking-tight">{form.name}</h1>
+      <div className="min-w-0 flex-1 overflow-y-auto bg-surface p-5">
+        <div className="mx-auto max-w-[760px]">
+          <div className="mb-3 flex items-center gap-2.5">
+            <h1 className="text-[17px] font-semibold tracking-tight text-ink">{form.name}</h1>
             <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>
               {form.provisionState}
             </StatusChip>
-            <span className="ml-auto font-mono text-[11px] text-ink-3">
+            <span className="ml-auto font-mono text-[11px] text-ink-4">
               v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
             </span>
             {form.parentFormId === null ? (
@@ -131,7 +132,7 @@ export function EditFormPanel({
           </div>
 
           {error !== null ? (
-            <div className="mb-3 border border-er-line bg-er-t px-3 py-2 text-[12px] text-er">
+            <div className="mb-3 rounded-md border border-er-line bg-er-t px-3 py-2 text-[12px] text-er">
               {error}
             </div>
           ) : null}
@@ -146,9 +147,11 @@ export function EditFormPanel({
             />
           ) : null}
 
-          <section className="border border-line bg-card">
-            <header className="bg-primary px-3 py-1.5 text-[12px] font-semibold text-white">
+          <section className="overflow-hidden rounded-md border border-line bg-card shadow-xs">
+            <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+              <span className="size-1.5 rounded-full bg-primary" />
               欄位
+              <span className="ml-auto font-normal text-[10.5px] text-ink-4">滑到列可調整</span>
             </header>
             <ul>
               {fields.map((field, index) => (
@@ -191,25 +194,30 @@ function FieldRow({
   const meta = fieldTypeMeta(field.type)
   const targets = conversionTargets(field.type)
   return (
-    <li className={cn("flex items-center gap-2 px-2.5 py-2", !isLast && "border-b border-cell")}>
-      <span className="inline-flex h-4 w-5 shrink-0 items-center justify-center rounded-xs bg-label font-mono text-[9.5px] font-semibold text-ink-3">
+    <li
+      className={cn(
+        "group flex items-center gap-2.5 px-3.5 py-2 transition-colors duration-150 hover:bg-head/70",
+        !isLast && "border-b border-line-2",
+      )}
+    >
+      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm bg-label font-mono text-[9.5px] font-semibold text-ink-3">
         {meta.mark}
       </span>
-      <span className="flex-1 text-[12px] text-ink">
+      <span className="flex-1 text-[12.5px] text-ink">
         {field.required ? <span className="mr-0.5 font-semibold text-er">*</span> : null}
         {field.name}
         {isStubType(field.type) ? (
           <span className="ml-1 text-[10px] text-ink-4">(即將推出)</span>
         ) : null}
       </span>
-      <span className="w-16 shrink-0 text-[10.5px] text-ink-3">{meta.label}</span>
+      <span className="w-16 shrink-0 text-right text-[10.5px] text-ink-4">{meta.label}</span>
       {targets.length > 0 ? (
         <select
           value=""
           onChange={(e) => {
             if (e.target.value !== "") onAlterType(e.target.value as CellValueType)
           }}
-          className="h-[27px] shrink-0 rounded-xs border border-line bg-card px-1 text-[11px]"
+          className="h-7 shrink-0 rounded-sm border border-line bg-card px-1.5 text-[11px] text-ink-2 opacity-0 transition-opacity duration-150 focus:opacity-100 group-hover:opacity-100"
           aria-label={`改 ${field.name} 型別`}
         >
           <option value="">改型別…</option>
@@ -220,15 +228,27 @@ function FieldRow({
           ))}
         </select>
       ) : null}
-      <div className="flex shrink-0 gap-1">
-        <Button onClick={() => onMove("up")} disabled={isFirst}>
-          ↑
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+        <Button variant="subtle" size="icon" onClick={() => onMove("up")} disabled={isFirst} title="上移">
+          <ChevronUp />
         </Button>
-        <Button onClick={() => onMove("down")} disabled={isLast}>
-          ↓
+        <Button
+          variant="subtle"
+          size="icon"
+          onClick={() => onMove("down")}
+          disabled={isLast}
+          title="下移"
+        >
+          <ChevronDown />
         </Button>
-        <Button variant="danger" onClick={onDrop}>
-          下架
+        <Button
+          variant="subtle"
+          size="icon"
+          onClick={onDrop}
+          title="下架欄位"
+          className="hover:bg-er-t hover:text-er"
+        >
+          <Trash2 />
         </Button>
       </div>
     </li>
@@ -250,9 +270,9 @@ function PendingEditor({
 }) {
   const meta = fieldTypeMeta(pending.type)
   return (
-    <div className="mb-3 flex flex-col gap-2 border border-primary bg-primary-t p-3">
+    <div className="mb-3 flex flex-col gap-2 rounded-md border border-primary/50 bg-primary-t p-3.5 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-ink-2">加入{meta.label}欄位</span>
+        <span className="text-[12px] font-semibold text-primary">加入{meta.label}欄位</span>
         <div className="ml-auto flex gap-1.5">
           <Button onClick={onCancel}>取消</Button>
           <Button variant="primary" onClick={onConfirm} disabled={busy}>
