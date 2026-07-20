@@ -187,7 +187,7 @@ resolveForActor(tenantId, actorId):
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(用戶定 OQ-AUTHZ-1..6)| ⏳ |
 | **M1** A1 資料模型 + 種子 + repository + unit | 4 Tier-1 表(role tree)+ migration 0006 + AuthzRepository(種子/建樹/reparent 防環/成員/權限 upsert/recursive-CTE 閉包/isAdmin)+ 種子接 org hook;14 unit + 7 integration(真 PG)綠 | ✅ |
-| **M2** A2 PermissionService + CLS 快取 + unit | | ⏳ |
+| **M2** A2 PermissionService + 快取 + unit | PermissionService.resolveForActor(admin 特判 / 角色閉包聚合 / deny-all)+ buildEffectivePermissions 純聚合(聯集/欄位繼承+收斂交集)+ EffectivePermissions(form/field 判定 + list 過濾);8 unit 綠。**快取**改採 request-attached(對齊現有 TenantContext 掛 req 模式;nestjs-cls 未於 codebase 落地 → per-request 由 M3 Guard 解析一次掛 req,cross-request/CLS 待基建) | ✅ |
 | **M3** A3 PermissionGuard + list 過濾 + 接 controllers + 整合測 | | ⏳ |
 | **M4** A4 欄位級遮罩/寫白名單 + 回應 DTO + 整合測 | | ⏳ |
 | **M5** A5 管理 API + UI + e2e 固化 | | ⏳ |

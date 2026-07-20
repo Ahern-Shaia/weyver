@@ -1,12 +1,11 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { and, eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { AuthzRepository } from "../src/authz/authz.repository.js"
+import { AuthzRepository, type RoleRow } from "../src/authz/authz.repository.js"
 import { RoleCycleError } from "../src/authz/authz-tree.js"
 import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
-import { fieldDefs, formDefs, roles, tenants, users } from "../src/db/schema.js"
+import { fieldDefs, formDefs, tenants, users } from "../src/db/schema.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -20,16 +19,26 @@ let actorB: number
 let formA: number
 let fieldA: number
 
+function need<T>(value: T | undefined | null, msg: string): T {
+  if (value === undefined || value === null) throw new Error(msg)
+  return value
+}
+
+async function roleByKey(tenantId: number, key: string): Promise<RoleRow> {
+  const found = (await repo.listRoles(tenantId)).find((r) => r.key === key)
+  return need(found, `role ${key} not found in tenant ${tenantId}`)
+}
+
 async function insertTenant(name: string, org: string): Promise<number> {
   const r = await db.insert(tenants).values({ name, authOrgId: org }).returning({ id: tenants.id })
-  return r[0]!.id
+  return need(r[0], "insert tenant").id
 }
 async function insertUser(authUserId: string): Promise<number> {
   const r = await db
     .insert(users)
     .values({ authUserId, email: `${authUserId}@t.test`, name: authUserId })
     .returning({ id: users.id })
-  return r[0]!.id
+  return need(r[0], "insert user").id
 }
 
 beforeAll(async () => {
@@ -48,7 +57,7 @@ beforeAll(async () => {
     .insert(formDefs)
     .values({ tenantId: tenantA, name: "採購單" })
     .returning({ id: formDefs.id })
-  formA = f[0]!.id
+  formA = need(f[0], "insert form").id
   const fd = await db
     .insert(fieldDefs)
     .values({
@@ -60,7 +69,7 @@ beforeAll(async () => {
       position: 0,
     })
     .returning({ id: fieldDefs.id })
-  fieldA = fd[0]!.id
+  fieldA = need(fd[0], "insert field").id
 }, 120_000)
 
 afterAll(async () => {
@@ -72,44 +81,62 @@ describe("AuthzRepository — 種子 / role tree / 權限(P0-4a M1)", () => {
   it("seedSystemRoles 冪等:跑兩次仍恰 3 系統角色", async () => {
     await repo.seedSystemRoles(tenantA)
     await repo.seedSystemRoles(tenantA)
-    const rs = await repo.listRoles(tenantA)
-    const system = rs.filter((r) => r.isSystem)
+    const system = (await repo.listRoles(tenantA)).filter((r) => r.isSystem)
     expect(system.map((r) => r.key).sort()).toEqual(["admin", "editor", "viewer"])
   })
 
   it("isAdminActor:指派 admin 前 false,指派後 true", async () => {
-    const admin = (await repo.listRoles(tenantA)).find((r) => r.key === "admin")!
+    const admin = await roleByKey(tenantA, "admin")
     expect(await repo.isAdminActor(tenantA, actorA)).toBe(false)
     await repo.assignMember(tenantA, admin.id, actorA)
     expect(await repo.isAdminActor(tenantA, actorA)).toBe(true)
   })
 
   it("role tree:祖先閉包解析(專員→主管→部)", async () => {
-    const dept = await repo.createRole({ tenantId: tenantA, key: "buy_dept", name: "採購部", parentId: null })
-    const lead = await repo.createRole({ tenantId: tenantA, key: "buy_lead", name: "採購主管", parentId: dept.id })
-    const staff = await repo.createRole({ tenantId: tenantA, key: "buy_staff", name: "採購專員", parentId: lead.id })
+    const dept = await repo.createRole({
+      tenantId: tenantA,
+      key: "buy_dept",
+      name: "採購部",
+      parentId: null,
+    })
+    const lead = await repo.createRole({
+      tenantId: tenantA,
+      key: "buy_lead",
+      name: "採購主管",
+      parentId: dept.id,
+    })
+    const staff = await repo.createRole({
+      tenantId: tenantA,
+      key: "buy_staff",
+      name: "採購專員",
+      parentId: lead.id,
+    })
     expect(staff.depth).toBe(2)
 
     await repo.assignMember(tenantA, staff.id, actorB)
     const closure = await repo.resolveActorRoleIds(tenantA, actorB)
-    expect(closure.sort((a, b) => a - b)).toEqual([dept.id, lead.id, staff.id].sort((a, b) => a - b))
+    expect(closure.sort((a, b) => a - b)).toEqual(
+      [dept.id, lead.id, staff.id].sort((a, b) => a - b),
+    )
   })
 
   it("form/field 權限 upsert + load(改寫覆蓋)", async () => {
-    const lead = (await repo.listRoles(tenantA)).find((r) => r.key === "buy_lead")!
+    const lead = await roleByKey(tenantA, "buy_lead")
     await repo.setFormPermission(lead.id, formA, "read")
     await repo.setFormPermission(lead.id, formA, "write") // upsert 覆蓋
     await repo.setFieldPermission(lead.id, fieldA, "hidden")
 
-    const fp = await repo.loadFormPermissions([lead.id])
-    expect(fp).toEqual([{ roleId: lead.id, formId: formA, level: "write" }])
-    const fdp = await repo.loadFieldPermissions([lead.id])
-    expect(fdp).toEqual([{ roleId: lead.id, fieldId: fieldA, visibility: "hidden" }])
+    expect(await repo.loadFormPermissions([lead.id])).toEqual([
+      { roleId: lead.id, formId: formA, level: "write" },
+    ])
+    expect(await repo.loadFieldPermissions([lead.id])).toEqual([
+      { roleId: lead.id, fieldId: fieldA, visibility: "hidden" },
+    ])
   })
 
   it("跨租戶:B 種子獨立,A 的角色不入 B 的解析", async () => {
     await repo.seedSystemRoles(tenantB)
-    const adminB = (await repo.listRoles(tenantB)).find((r) => r.key === "admin")!
+    const adminB = await roleByKey(tenantB, "admin")
     await repo.assignMember(tenantB, adminB.id, actorB)
     const closureB = await repo.resolveActorRoleIds(tenantB, actorB)
     // B 的解析只含 B 的 admin,不含 A 指派給 actorB 的採購專員鏈
@@ -119,13 +146,15 @@ describe("AuthzRepository — 種子 / role tree / 權限(P0-4a M1)", () => {
   })
 
   it("reparent 防環:把祖先掛到後代之下 → RoleCycleError", async () => {
-    const dept = (await repo.listRoles(tenantA)).find((r) => r.key === "buy_dept")!
-    const staff = (await repo.listRoles(tenantA)).find((r) => r.key === "buy_staff")!
-    await expect(repo.setRoleParent(tenantA, dept.id, staff.id)).rejects.toBeInstanceOf(RoleCycleError)
+    const dept = await roleByKey(tenantA, "buy_dept")
+    const staff = await roleByKey(tenantA, "buy_staff")
+    await expect(repo.setRoleParent(tenantA, dept.id, staff.id)).rejects.toBeInstanceOf(
+      RoleCycleError,
+    )
   })
 
   it("createRole:跨租戶 parent 被拒(parent 不在本租戶)", async () => {
-    const deptA = (await repo.listRoles(tenantA)).find((r) => r.key === "buy_dept")!
+    const deptA = await roleByKey(tenantA, "buy_dept")
     await expect(
       repo.createRole({ tenantId: tenantB, key: "x", name: "x", parentId: deptA.id }),
     ).rejects.toThrow()
