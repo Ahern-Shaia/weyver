@@ -144,6 +144,27 @@ export class AuthzRepository {
       .where(and(eq(roleMembers.roleId, roleId), eq(roleMembers.actorId, actorId)))
   }
 
+  /* 刪角色(僅該租戶)。系統角色 / 有子節點(FK RESTRICT)之防護在 service 層先驗。 */
+  async deleteRole(tenantId: number, roleId: number): Promise<void> {
+    await this.db.delete(roles).where(and(eq(roles.tenantId, tenantId), eq(roles.id, roleId)))
+  }
+
+  async listRoleMembers(tenantId: number, roleId: number): Promise<number[]> {
+    const rows = await this.db
+      .select({ actorId: roleMembers.actorId })
+      .from(roleMembers)
+      .where(and(eq(roleMembers.tenantId, tenantId), eq(roleMembers.roleId, roleId)))
+    return rows.map((r) => r.actorId)
+  }
+
+  async countChildren(tenantId: number, roleId: number): Promise<number> {
+    const rows = await this.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.tenantId, tenantId), eq(roles.parentId, roleId)))
+    return rows.length
+  }
+
   async setFormPermission(roleId: number, formId: number, level: FormLevel): Promise<void> {
     await this.db
       .insert(formPermissions)
