@@ -14,7 +14,8 @@ import {
 } from "@nestjs/common"
 import { z } from "zod"
 import { TenantGuard } from "../../auth/tenant.guard.js"
-import { RequiresFormLevel } from "../../authz/authz-http.js"
+import type { EffectivePermissions } from "../../authz/authz-effective.js"
+import { Permissions, RequiresFormLevel } from "../../authz/authz-http.js"
 import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
@@ -48,6 +49,7 @@ export class RecordsController {
   @Get()
   async list(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Query(new ZodValidationPipe(simpleListQuerySchema))
     query: z.infer<typeof simpleListQuerySchema>,
@@ -56,6 +58,7 @@ export class RecordsController {
       tenant.tenantId,
       formId,
       listQuerySchema.parse({ cursor: query.cursor, limit: query.limit }),
+      permissions,
     )
   }
 
@@ -64,20 +67,28 @@ export class RecordsController {
   @RequiresFormLevel("read") // POST 但語意為讀(搜尋),故要求 read 而非 write
   async query(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(listQuerySchema)) body: z.infer<typeof listQuerySchema>,
   ): Promise<ListResponse> {
-    return this.records.listRecords(tenant.tenantId, formId, body)
+    return this.records.listRecords(tenant.tenantId, formId, body, permissions)
   }
 
   @Post()
   async create(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(createRecordBodySchema))
     body: z.infer<typeof createRecordBodySchema>,
   ): Promise<RecordRow> {
-    return this.records.createRecord(tenant.tenantId, formId, body.values, tenant.actorId)
+    return this.records.createRecord(
+      tenant.tenantId,
+      formId,
+      body.values,
+      tenant.actorId,
+      permissions,
+    )
   }
 
   /* bulk 匯入(Excel onboarding;單一 tx,任一列敗整批 rollback)*/
@@ -85,6 +96,7 @@ export class RecordsController {
   @HttpCode(200)
   async bulk(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(bulkRecordsBodySchema))
     body: z.infer<typeof bulkRecordsBodySchema>,
@@ -94,21 +106,24 @@ export class RecordsController {
       formId,
       body.rows.map((r) => r.values),
       tenant.actorId,
+      permissions,
     )
   }
 
   @Get(":recordId")
   async get(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Param("recordId", ParseIntPipe) recordId: number,
   ): Promise<RecordRow> {
-    return this.records.getRecord(tenant.tenantId, formId, recordId)
+    return this.records.getRecord(tenant.tenantId, formId, recordId, permissions)
   }
 
   @Patch(":recordId")
   async update(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Param("recordId", ParseIntPipe) recordId: number,
     @Body(new ZodValidationPipe(updateRecordBodySchema))
@@ -121,6 +136,7 @@ export class RecordsController {
       body.expectedVersion,
       body.values,
       tenant.actorId,
+      permissions,
     )
   }
 
@@ -139,6 +155,7 @@ export class RecordsController {
   @HttpCode(200)
   async saveWithLines(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(saveWithLinesBodySchema))
     body: z.infer<typeof saveWithLinesBodySchema>,
@@ -150,6 +167,7 @@ export class RecordsController {
       body.header,
       body.lines,
       tenant.actorId,
+      permissions,
     )
   }
 }

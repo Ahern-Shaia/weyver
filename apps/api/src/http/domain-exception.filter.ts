@@ -12,6 +12,7 @@ import {
   BulkRowError,
   BulkTooLargeError,
   DomainError,
+  FieldForbiddenError,
   FieldNotFoundError,
   FieldValueError,
   FormNotFoundError,
@@ -43,6 +44,9 @@ function mapDomainError(error: DomainError): { status: number; code: string } {
   }
   if (error instanceof VersionConflictError) {
     return { status: HttpStatus.CONFLICT, code: "VERSION_CONFLICT" }
+  }
+  if (error instanceof FieldForbiddenError) {
+    return { status: HttpStatus.FORBIDDEN, code: "FORBIDDEN" }
   }
   if (error instanceof FormNotPendingError || error instanceof FormNotReadyError) {
     return { status: HttpStatus.CONFLICT, code: "FORM_STATE_CONFLICT" }

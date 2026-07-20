@@ -11,6 +11,12 @@ import {
 } from "./authz-model.js"
 import type { FieldPermissionRow, FormPermissionRow } from "./authz.repository.js"
 
+/* 欄位級授權策略(RecordService M4 依此遮罩讀 / 白名單寫;EffectivePermissions 結構相容)。
+   解耦:form-engine 只依賴此窄介面,不綁整個 EffectivePermissions。 */
+export interface FieldAccessPolicy {
+  fieldVisibility(fieldId: number, formId: number): FieldVisibility
+}
+
 /* 一名 actor 對某租戶的有效權限(deny-by-default)。由角色閉包的原始權限列聚合而成(純函數 build)。
    admin 系統角色 → 全租戶 manage(OQ-5 特判,不查每表)。docs/modules/R1/authz.md §5.1。 */
 export class EffectivePermissions {

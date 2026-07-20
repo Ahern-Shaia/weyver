@@ -50,6 +50,13 @@ export class SystemManagedFieldError extends DomainError {
   }
 }
 
+/* P0-4a M4|欄位級授權:寫入無 write 權的欄(擋每角色動態 mass-assignment)→ 映射 403 */
+export class FieldForbiddenError extends DomainError {
+  constructor(name: string) {
+    super(`field ${name} is not writable by this role`)
+  }
+}
+
 export class RequiredFieldError extends DomainError {
   constructor(name: string) {
     super(`field ${name} is required`)

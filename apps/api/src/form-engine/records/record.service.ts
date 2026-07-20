@@ -4,10 +4,12 @@ import type { Knex } from "knex"
 import { z } from "zod"
 import { APP_KNEX } from "../../db/db.module.js"
 import { FormulaService } from "../formula/formula.service.js"
+import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
 import {
   BulkRowError,
   BulkTooLargeError,
   DomainError,
+  FieldForbiddenError,
   FieldValueError,
   FormNotReadyError,
   InvalidFilterError,
@@ -96,13 +98,16 @@ export class RecordService {
     formId: number,
     values: RecordValues,
     actorId: number,
+    policy?: FieldAccessPolicy,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
+    this.assertWritable(resolved, formId, values, policy)
     const record = await this.inTenantTx(tenantId, (trx) =>
       this.insertOne(trx, tenantId, resolved, values, actorId, null, null),
     )
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
-    return injected ?? record
+    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
+    return masked ?? injected ?? record
   }
 
   /* A1(P0-2)|bulk 建立:單一 tx 逐列 insert;任一列失敗 → 整批 rollback + 回失敗列 index。
@@ -112,6 +117,7 @@ export class RecordService {
     formId: number,
     rows: readonly RecordValues[],
     actorId: number,
+    policy?: FieldAccessPolicy,
   ): Promise<{ created: number }> {
     if (rows.length > BULK_MAX_ROWS) throw new BulkTooLargeError(BULK_MAX_ROWS)
     if (rows.length === 0) return { created: 0 }
@@ -119,6 +125,7 @@ export class RecordService {
     return this.inTenantTx(tenantId, async (trx) => {
       for (const [index, values] of rows.entries()) {
         try {
+          this.assertWritable(resolved, formId, values, policy)
           await this.insertOne(trx, tenantId, resolved, values, actorId, null, null)
         } catch (error) {
           if (error instanceof DomainError) throw new BulkRowError(index, error.message)
@@ -129,7 +136,12 @@ export class RecordService {
     })
   }
 
-  async getRecord(tenantId: number, formId: number, recordId: number): Promise<RecordRow> {
+  async getRecord(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    policy?: FieldAccessPolicy,
+  ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
     const record = await this.inTenantTx(tenantId, async (trx) => {
       const row = await this.baseQuery(trx, tenantId, resolved)
@@ -139,7 +151,8 @@ export class RecordService {
       return this.toRecord(resolved, row as Record<string, unknown>)
     })
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
-    return injected ?? record
+    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
+    return masked ?? injected ?? record
   }
 
   /* 子表批次取數(Rollup 之 N+1 防護):一次 whereIn parent_id 撈全部子列,呼叫端在 app 層分組聚合。 */
@@ -163,6 +176,7 @@ export class RecordService {
     tenantId: number,
     formId: number,
     query: ListQuery,
+    policy?: FieldAccessPolicy,
   ): Promise<{ records: RecordRow[]; nextCursor: number | null }> {
     const resolved = await this.resolveForm(tenantId, formId)
     const result = await this.inTenantTx(tenantId, async (trx) => {
@@ -189,8 +203,11 @@ export class RecordService {
       const last = records[records.length - 1]
       return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
     })
-    const records = await this.withFormulas(tenantId, formId, resolved, result.records)
-    return { records, nextCursor: result.nextCursor }
+    const computed = await this.withFormulas(tenantId, formId, resolved, result.records)
+    return {
+      records: this.maskRead(resolved, formId, computed, policy),
+      nextCursor: result.nextCursor,
+    }
   }
 
   async updateRecord(
@@ -200,12 +217,14 @@ export class RecordService {
     expectedVersion: number,
     values: RecordValues,
     actorId: number,
+    policy?: FieldAccessPolicy,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
+    this.assertWritable(resolved, formId, values, policy)
     await this.inTenantTx(tenantId, async (trx) => {
       await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
     })
-    return this.getRecord(tenantId, formId, recordId)
+    return this.getRecord(tenantId, formId, recordId, policy)
   }
 
   async softDeleteRecord(
@@ -239,9 +258,14 @@ export class RecordService {
     },
     lines: readonly LineInput[],
     actorId: number,
+    policy?: FieldAccessPolicy,
   ): Promise<{ header: RecordRow; lines: RecordRow[] }> {
     const parent = await this.resolveForm(tenantId, parentFormId)
     const child = await this.resolveForm(tenantId, childFormId)
+
+    // 欄位級寫白名單:header 依 parentForm、每 line 依 childForm 各自檢查
+    this.assertWritable(parent, parentFormId, header.values, policy)
+    for (const line of lines) this.assertWritable(child, childFormId, line.values, policy)
 
     const headerId = await this.inTenantTx(tenantId, async (trx) => {
       let id: number
@@ -299,12 +323,13 @@ export class RecordService {
       return id
     })
 
-    const headerRecord = await this.getRecord(tenantId, parentFormId, headerId)
-    const lineRecords = await this.listRecords(tenantId, childFormId, {
-      filters: [],
-      sort: [],
-      limit: 200,
-    })
+    const headerRecord = await this.getRecord(tenantId, parentFormId, headerId, policy)
+    const lineRecords = await this.listRecords(
+      tenantId,
+      childFormId,
+      { filters: [], sort: [], limit: 200 },
+      policy,
+    )
     return {
       header: headerRecord,
       lines: lineRecords.records
@@ -550,6 +575,44 @@ export class RecordService {
         row.parent_id === undefined || row.parent_id === null ? null : Number(row.parent_id),
       lineNo: row.line_no === undefined || row.line_no === null ? null : Number(row.line_no),
       values,
+    }
+  }
+
+  /* P0-4a M4|欄位級讀遮罩:移除該角色不可見(hidden)欄 → 回應不含其值(後端不回,非前端隱藏)。
+     policy 缺省(既有 service 呼叫 / dev 未帶)= 不遮罩。 */
+  private maskRead(
+    resolved: ResolvedForm,
+    formId: number,
+    records: readonly RecordRow[],
+    policy?: FieldAccessPolicy,
+  ): RecordRow[] {
+    if (policy === undefined) return [...records]
+    const hidden = resolved.fields
+      .filter((f) => policy.fieldVisibility(f.row.id, formId) === "hidden")
+      .map((f) => f.row.name)
+    if (hidden.length === 0) return [...records]
+    return records.map((record) => {
+      const values = { ...record.values }
+      for (const name of hidden) delete values[name]
+      return { ...record, values }
+    })
+  }
+
+  /* P0-4a M4|欄位級寫白名單:提供的欄若非 write 權 → FieldForbiddenError(擋每角色動態 mass-assignment)。
+     未知欄不在此攔(交 validateValues 處理);policy 缺省 = 不檢查。 */
+  private assertWritable(
+    resolved: ResolvedForm,
+    formId: number,
+    values: RecordValues,
+    policy?: FieldAccessPolicy,
+  ): void {
+    if (policy === undefined) return
+    for (const name of Object.keys(values)) {
+      const field = resolved.byName.get(name)
+      if (field === undefined) continue
+      if (policy.fieldVisibility(field.row.id, formId) !== "write") {
+        throw new FieldForbiddenError(name)
+      }
     }
   }
 }
