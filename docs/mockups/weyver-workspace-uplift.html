@@ -63,11 +63,11 @@
   .btn.sm{height:27px;padding:0 9px;font-size:11.5px}
   .ib{width:30px;height:30px;border-radius:6px;border:0;background:none;color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:pointer}
   .ib svg{width:15px;height:15px}.ib:hover{background:var(--head);color:var(--ink)}
-  .stamp{font-size:10.5px;font-weight:600;border-radius:3px;border:1px solid;padding:2px 7px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-  .stamp .d{width:5px;height:5px;border-radius:50%}
-  .stamp.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t)}.stamp.wn .d{background:var(--wn)}
-  .stamp.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t)}.stamp.ok .d{background:var(--ok)}
-  .stamp.er{color:var(--er);border-color:var(--er-line);background:var(--er-t)}.stamp.er .d{background:var(--er)}
+  /* 帶框方角章(= shadcn Badge variant=outline):框 + 底 + 彩字;狀態靠字+框+色,不加裝飾圓點 */
+  .stamp{font-size:10.5px;font-weight:600;border-radius:3px;border:1px solid;padding:2px 7px;display:inline-flex;align-items:center;white-space:nowrap}
+  .stamp.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t)}
+  .stamp.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t)}
+  .stamp.er{color:var(--er);border-color:var(--er-line);background:var(--er-t)}
   .sav{width:22px;height:22px;border-radius:5px;border:1px solid var(--line);background:var(--head);font-size:10.5px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--ink3);flex:none}
 
   /* top strip */
@@ -302,24 +302,24 @@
       <div class="sp"><a title="搜尋"><svg><use href="#i-search"/></svg></a><a title="通知"><svg><use href="#i-bell"/></svg><span class="bdg">3</span></a><div class="ava">美</div></div>
     </div>
     <div class="stage">
-      <div class="wbtop"><span class="crumb">採購 · 進銷存 › <b>採購單</b></span><span class="stamp ok" style="margin-left:2px"><span class="d"></span>已發布 · 引擎生成</span>
+      <div class="wbtop"><span class="crumb">採購 · 進銷存 › <b>採購單</b></span><span class="stamp ok" style="margin-left:2px">已發布 · 引擎生成</span>
         <div class="r"><button class="btn sm"><svg><use href="#i-grid2"/></svg>網格</button><button class="btn sm"><svg><use href="#i-edit"/></svg>修改設計</button></div></div>
       <div class="wb">
         <div class="wl">
           <div class="wlh"><div class="cmd"><svg><use href="#i-search"/></svg>篩選 248 筆</div><button class="ib"><svg><use href="#i-filter"/></svg></button></div>
           <div class="wseg"><button class="on"><svg><use href="#i-rows"/></svg>列表</button><button><svg><use href="#i-single"/></svg>單筆</button></div>
           <div class="wrows">
-            <div class="wr on"><div class="a"><span class="no">PO-0716-001</span><span class="amt">128,400</span></div><div class="b"><span class="sav">鑫</span>鑫豐農產品<span class="stamp wn" style="margin-left:auto"><span class="d"></span>待審</span></div></div>
-            <div class="wr"><div class="a"><span class="no">PO-0715-047</span><span class="amt">84,200</span></div><div class="b"><span class="sav">凍</span>凍豐食品<span class="stamp ok" style="margin-left:auto"><span class="d"></span>核准</span></div></div>
-            <div class="wr"><div class="a"><span class="no">PO-0715-046</span><span class="amt">312,000</span></div><div class="b"><span class="sav">正</span>正大食材<span class="stamp ok" style="margin-left:auto"><span class="d"></span>核准</span></div></div>
-            <div class="wr"><div class="a"><span class="no">PO-0715-045</span><span class="amt">56,800</span></div><div class="b"><span class="sav">永</span>永豐冷鏈<span class="stamp ok" style="margin-left:auto"><span class="d"></span>核准</span></div></div>
-            <div class="wr"><div class="a"><span class="no">PO-0715-044</span><span class="amt">100,800</span></div><div class="b"><span class="sav">鑫</span>鑫豐農產品<span class="stamp er" style="margin-left:auto"><span class="d"></span>退回</span></div></div>
-            <div class="wr"><div class="a"><span class="no">PO-0715-041</span><span class="amt">45,600</span></div><div class="b"><span class="sav">凍</span>凍豐食品<span class="stamp ok" style="margin-left:auto"><span class="d"></span>核准</span></div></div>
+            <div class="wr on"><div class="a"><span class="no">PO-0716-001</span><span class="amt">128,400</span></div><div class="b"><span class="sav">鑫</span>鑫豐農產品<span class="stamp wn" style="margin-left:auto">待審</span></div></div>
+            <div class="wr"><div class="a"><span class="no">PO-0715-047</span><span class="amt">84,200</span></div><div class="b"><span class="sav">凍</span>凍豐食品<span class="stamp ok" style="margin-left:auto">核准</span></div></div>
+            <div class="wr"><div class="a"><span class="no">PO-0715-046</span><span class="amt">312,000</span></div><div class="b"><span class="sav">正</span>正大食材<span class="stamp ok" style="margin-left:auto">核准</span></div></div>
+            <div class="wr"><div class="a"><span class="no">PO-0715-045</span><span class="amt">56,800</span></div><div class="b"><span class="sav">永</span>永豐冷鏈<span class="stamp ok" style="margin-left:auto">核准</span></div></div>
+            <div class="wr"><div class="a"><span class="no">PO-0715-044</span><span class="amt">100,800</span></div><div class="b"><span class="sav">鑫</span>鑫豐農產品<span class="stamp er" style="margin-left:auto">退回</span></div></div>
+            <div class="wr"><div class="a"><span class="no">PO-0715-041</span><span class="amt">45,600</span></div><div class="b"><span class="sav">凍</span>凍豐食品<span class="stamp ok" style="margin-left:auto">核准</span></div></div>
           </div>
           <div class="wlf"><span>共 <b>248</b></span><span>本月 <b>32</b></span></div>
         </div>
         <div class="wd">
-          <div class="wdh"><h3>採購單</h3><span class="no">PO-0716-001</span><span class="stamp wn"><span class="d"></span>待審核</span>
+          <div class="wdh"><h3>採購單</h3><span class="no">PO-0716-001</span><span class="stamp wn">待審核</span>
             <div class="step"><button><svg><use href="#i-up"/></svg></button><span class="n">3 / 248</span><button><svg><use href="#i-down"/></svg></button></div>
             <div class="r"><button class="btn sm"><svg><use href="#i-plus"/></svg>新增</button><button class="btn p sm"><svg><use href="#i-check"/></svg>核准並過帳</button></div></div>
           <div class="wdb">
