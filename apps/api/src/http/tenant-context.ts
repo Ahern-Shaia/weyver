@@ -5,6 +5,9 @@ import type { FastifyRequest } from "fastify"
 export interface TenantContext {
   readonly tenantId: number
   readonly actorId: number
+  /* dev 流程(DevTenantGuard)標記為超級管理員 → PermissionGuard 授予全權,保 dev 建表/填單體驗不斷。
+     prod 一律 undefined,授權走真實 role 解析(P0-4a)。 */
+  readonly isSuperAdmin?: boolean
 }
 
 export type RequestWithTenant = FastifyRequest & { tenantContext?: TenantContext }

@@ -126,6 +126,18 @@ export class AuthzRepository {
       .onConflictDoNothing({ target: [roleMembers.roleId, roleMembers.actorId] })
   }
 
+  /* 指派 actor 進系統角色(key)。owner→admin 對映(OQ-5)用;idempotent。 */
+  async assignActorToSystemRole(tenantId: number, key: string, actorId: number): Promise<void> {
+    const rows = await this.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.tenantId, tenantId), eq(roles.isSystem, true), eq(roles.key, key)))
+      .limit(1)
+    const role = rows[0]
+    if (!role) throw new Error(`system role ${key} not seeded for tenant ${tenantId}`)
+    await this.assignMember(tenantId, role.id, actorId)
+  }
+
   async removeMember(roleId: number, actorId: number): Promise<void> {
     await this.db
       .delete(roleMembers)

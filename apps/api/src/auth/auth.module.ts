@@ -39,11 +39,12 @@ import { TenantGuard } from "./tenant.guard.js"
             .map((origin) => origin.trim())
             .filter(Boolean),
           hooks: {
-            // org 建立 → 建 tenant(idempotent)→ 種入系統角色(admin/editor/viewer,idempotent)。
-            // owner→admin 指派於 AuthGuard 解析 session 時依 Better Auth org 角色對映(OQ-5,M3)。
+            // org 建立 → 建 tenant(idempotent)→ 種入系統角色 → owner 對映 tenant admin(OQ-5)。全 idempotent。
             onOrganizationCreated: async (input): Promise<void> => {
               const tenantId = await identity.ensureTenantForOrg(input)
               await authz.seedSystemRoles(tenantId)
+              const ownerActorId = await identity.upsertUser(input.owner)
+              await authz.assignActorToSystemRole(tenantId, "admin", ownerActorId)
             },
           },
         }),

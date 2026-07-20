@@ -11,7 +11,10 @@ export class IdentityService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
   /* org 建立 → 建 tenant + 連結;已連結則回既有 tenantId(不重命名既有租戶)。並發下以 unique(auth_org_id) 兜底。 */
-  async ensureTenantForOrg(input: { readonly authOrgId: string; readonly name: string }): Promise<number> {
+  async ensureTenantForOrg(input: {
+    readonly authOrgId: string
+    readonly name: string
+  }): Promise<number> {
     const existing = await this.db
       .select({ id: tenants.id })
       .from(tenants)

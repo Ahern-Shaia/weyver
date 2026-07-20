@@ -37,6 +37,8 @@ export class DevTenantGuard implements CanActivate {
     request.tenantContext = {
       tenantId,
       actorId: Number.isSafeInteger(actorId) && actorId > 0 ? actorId : 1,
+      // dev 略過三層權限(建表/填單體驗);真正 authz 執法由 Testcontainers 整合測驗證
+      isSuperAdmin: true,
     }
     return true
   }

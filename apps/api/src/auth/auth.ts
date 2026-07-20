@@ -9,6 +9,12 @@ export interface AuthProvisioningHooks {
   readonly onOrganizationCreated?: (input: {
     readonly authOrgId: string
     readonly name: string
+    // 建立者 = org owner;用於 owner→tenant admin 對映(OQ-AUTHZ-5)
+    readonly owner: {
+      readonly authUserId: string
+      readonly email: string
+      readonly name: string | null
+    }
   }) => Promise<void>
 }
 
@@ -27,8 +33,12 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
   const orgPlugin = onOrgCreated
     ? organization({
         organizationHooks: {
-          afterCreateOrganization: async ({ organization: org }): Promise<void> => {
-            await onOrgCreated({ authOrgId: org.id, name: org.name })
+          afterCreateOrganization: async ({ organization: org, user }): Promise<void> => {
+            await onOrgCreated({
+              authOrgId: org.id,
+              name: org.name,
+              owner: { authUserId: user.id, email: user.email, name: user.name ?? null },
+            })
           },
         },
       })

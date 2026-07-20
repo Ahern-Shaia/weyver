@@ -14,6 +14,8 @@ import {
 } from "@nestjs/common"
 import { z } from "zod"
 import { TenantGuard } from "../../auth/tenant.guard.js"
+import { RequiresFormLevel } from "../../authz/authz-http.js"
+import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
@@ -39,7 +41,7 @@ interface ListResponse {
 
 /* 薄 controller:記錄 CRUD + 複合查詢 + 子表單據;values 形狀由 RecordService 依 metadata 驗證 */
 @Controller("api/forms/:formId/records")
-@UseGuards(TenantGuard)
+@UseGuards(TenantGuard, PermissionGuard)
 export class RecordsController {
   constructor(@Inject(RecordService) private readonly records: RecordService) {}
 
@@ -59,6 +61,7 @@ export class RecordsController {
 
   @Post("query")
   @HttpCode(200)
+  @RequiresFormLevel("read") // POST 但語意為讀(搜尋),故要求 read 而非 write
   async query(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
