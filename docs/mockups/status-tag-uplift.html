@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>狀態章 — 還能 uplift 嗎</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --font:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --surface:#f6f7f9;--card:#fff;--head:#f1f3f5;
+    --ink:#16191f;--ink2:#3d4753;--ink3:#697585;--ink4:#9aa4b1;
+    --line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;--accent:#22568a;
+    --ok:#1a7a43;--ok-line:#c4e0ce;--ok-t:#eaf4ee;
+    --wn:#96590a;--wn-line:#e7d3ad;--wn-t:#f8f1e2;
+    --er:#b3261e;--er-line:#e9c9c6;--er-t:#f9ecea;
+    --nt:#5a6472;--nt-line:#d6dbe0;--nt-t:#eef0f2;
+  }
+  body{margin:0;background:#e9ebef;color:var(--ink);font-family:var(--font);font-size:12.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:960px;margin:0 auto;padding:40px 24px 80px}
+  h1{font-size:21px;font-weight:700;letter-spacing:-.01em;margin:0 0 6px}
+  .lede{color:#697585;font-size:13px;margin:0 0 4px}
+  .lede b{color:#3d4753}
+  .rule{margin:14px 0 26px;font-size:12px;color:var(--ink3);border-left:2px solid var(--accent);padding:2px 0 2px 12px}
+  .grid{background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  thead th{background:var(--head);text-align:left;font-weight:600;color:var(--ink3);padding:9px 14px;border-bottom:1px solid var(--cell);font-size:11px;white-space:nowrap}
+  thead th .sub{display:block;font-weight:400;color:var(--ink4);font-size:10px;margin-top:2px}
+  tbody td{padding:0 14px;height:40px;border-bottom:1px solid var(--line2);vertical-align:middle}
+  tbody td.no{font-family:var(--mono);color:var(--accent);font-weight:500}
+  tbody tr:hover{background:#eaf1f8}
+  tbody tr:last-child td{border-bottom:0}
+  /* A 現況:統一帶框方角章(全等重)*/
+  .st{font-size:10.5px;font-weight:600;border-radius:3px;border:1px solid;padding:2px 8px;display:inline-flex;white-space:nowrap}
+  .st.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t)}
+  .st.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t)}
+  .st.er{color:var(--er);border-color:var(--er-line);background:var(--er-t)}
+  .st.nt{color:var(--nt);border-color:var(--nt-line);background:var(--nt-t)}
+  /* C 純文字+色(極克制)*/
+  .tx{font-size:11.5px;font-weight:600}
+  .tx.wn{color:var(--wn)}.tx.ok{color:var(--ok)}.tx.er{color:var(--er)}.tx.nt{color:var(--ink4);font-weight:500}
+  .caps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 30px;font-size:11.5px;color:var(--ink3)}
+  .caps > div{border:1px solid var(--line);border-radius:6px;padding:9px 11px;background:var(--card)}
+  .caps b{color:var(--ink2)}
+  .caps .rc{color:var(--ok);font-weight:600}
+  .foot{margin-top:50px;color:#9aa4b1;font-size:11px;text-align:center;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>狀態章 — 還能 uplift 嗎?</h1>
+  <p class="lede"><b>能,但不是加裝飾(那是 vibe)。</b>真 uplift = <b>資訊設計</b>:狀態不是全等重——「待審核 / 退回」是<b>要你處理的</b>,「已核准」是<b>已了結該退背景的</b>。同一批記錄,三種狀態欄處理對照:</p>
+  <p class="rule">全部 grounded 在 <b>shadcn Badge</b>:A/B 用 <code>variant=outline</code>(帶框方角章)、B 的已了結用中性色(等於 <code>variant=secondary/muted</code>)、C 是純文字。無圓點、無 pill、無漸層。</p>
+
+  <div class="grid">
+    <table>
+      <thead><tr>
+        <th style="width:150px">單號</th>
+        <th style="width:200px">A · 現況<span class="sub">統一帶框章,全等重</span></th>
+        <th style="width:200px">B · 狀態層級（推薦）<span class="sub">已了結灰掉,要處理的留色</span></th>
+        <th>C · 純文字+色<span class="sub">極克制,最高密度</span></th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="no">PO-0716-001</td>
+          <td><span class="st wn">待審核</span></td>
+          <td><span class="st wn">待審核</span></td>
+          <td><span class="tx wn">待審核</span></td></tr>
+        <tr><td class="no">PO-0715-047</td>
+          <td><span class="st ok">已核准</span></td>
+          <td><span class="st nt">已核准</span></td>
+          <td><span class="tx nt">已核准</span></td></tr>
+        <tr><td class="no">PO-0715-046</td>
+          <td><span class="st ok">已核准</span></td>
+          <td><span class="st nt">已核准</span></td>
+          <td><span class="tx nt">已核准</span></td></tr>
+        <tr><td class="no">PO-0715-045</td>
+          <td><span class="st er">退回</span></td>
+          <td><span class="st er">退回</span></td>
+          <td><span class="tx er">退回</span></td></tr>
+        <tr><td class="no">PO-0715-044</td>
+          <td><span class="st ok">已核准</span></td>
+          <td><span class="st nt">已核准</span></td>
+          <td><span class="tx nt">已核准</span></td></tr>
+        <tr><td class="no">PO-0715-041</td>
+          <td><span class="st wn">待審核</span></td>
+          <td><span class="st wn">待審核</span></td>
+          <td><span class="tx wn">待審核</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="caps">
+    <div><b>A 現況</b><br>四個「已核准」的綠章跟「待審核」搶一樣的注意力——掃一眼分不出「哪個要我處理」。已經合規、sober,但資訊上是平的。</div>
+    <div><b class="rc">B 推薦</b><br>已了結 → 中性灰章(退背景);待審核琥/退回紅 → 一眼跳出來。<b>把注意力導向該處理的</b> = premium 資料工具(Linear/Height 都這樣)。仍是帶框方角章,零裝飾。</div>
+    <div><b>C 純文字</b><br>連框都省,最高密度。適合欄位極多、狀態次要的密表;但少了「章」的邊界感,重要狀態較不跳。</div>
+  </div>
+
+  <p class="lede" style="max-width:800px"><b>結論</b>:tag 的 uplift 不在外觀在<b>語意層級</b>。建議 <b>B</b>:狀態章 = shadcn Badge outline,但「已了結/中性」狀態用中性色退到背景,「要行動」狀態留語意色——這是有 rationale 的資訊設計,不是 vibe。C 留給極密的次要表。</p>
+
+  <div class="foot">Weyver 織雲 · 狀態章 uplift 對照 · shadcn Badge + docs/14 v3 · 無點/無 pill/無漸層</div>
+</div>
+</body>
+</html>

@@ -37,7 +37,7 @@ export const PO_RECORDS: readonly PoRecord[] = [
     amount: "84,200",
     batch: "BN-0715-C",
     due: "07/20",
-    status: { tone: "ok", label: "已核准" },
+    status: { tone: "neutral", label: "已核准" },
   },
   {
     id: "3",
@@ -61,7 +61,7 @@ export const PO_RECORDS: readonly PoRecord[] = [
     amount: "56,800",
     batch: "BN-0715-K",
     due: "07/18",
-    status: { tone: "ok", label: "已核准" },
+    status: { tone: "neutral", label: "已核准" },
   },
   {
     id: "5",
@@ -97,7 +97,7 @@ export const PO_RECORDS: readonly PoRecord[] = [
     amount: "48,000",
     batch: "BN-0714-B",
     due: "07/16",
-    status: { tone: "ok", label: "已核准" },
+    status: { tone: "neutral", label: "已核准" },
   },
 ]
 
