@@ -45,17 +45,17 @@
   --color-nt-line: #d6dbe0;
   --color-nt-t: #eef0f2;
 
-  /* ── 形狀(柔和圓角;仍非 pill)────────────────────────── */
-  --radius-xs: 3px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  /* ── 形狀(容器/控件 4–6px 柔角:非線框、非 pill;狀態章 3px)──── */
+  --radius-xs: 3px; /* 狀態章 / inline */
+  --radius-sm: 4px; /* 控件 / 按鈕 / 輸入 */
+  --radius-md: 6px; /* 容器 / 卡片 / 面板(上限)*/
+  --radius-lg: 8px; /* 少見大面板 */
 
-  /* ── 層次(極淡;resting 幾乎無感,overlay 才明顯)──────── */
-  --shadow-xs: 0 1px 1px rgba(20, 24, 29, 0.04);
-  --shadow-sm: 0 1px 2px rgba(20, 24, 29, 0.06), 0 1px 3px rgba(20, 24, 29, 0.04);
-  --shadow-md: 0 2px 6px rgba(20, 24, 29, 0.07), 0 4px 14px rgba(20, 24, 29, 0.06);
-  --shadow-lg: 0 8px 30px rgba(20, 24, 29, 0.14);
+  /* ── 層次:僅供 OVERLAY 分層(下拉/popover/modal/選單)——
+     resting 卡片/表格一律「框線深度」不上陰影(docs/14 v3 有據鬆綁)。──── */
+  --shadow-overlay: 0 4px 14px rgba(20, 24, 29, 0.1), 0 2px 6px rgba(20, 24, 29, 0.07);
+  --shadow-md: 0 4px 14px rgba(20, 24, 29, 0.1), 0 2px 6px rgba(20, 24, 29, 0.07);
+  --shadow-lg: 0 10px 34px rgba(20, 24, 29, 0.15);
 
   /* ── 字型(IBM Plex 鎖定;變數由 next/font 注入)────────── */
   --font-sans: var(--font-plex-sans), "IBM Plex Sans TC", "Noto Sans TC", "PingFang TC", system-ui,

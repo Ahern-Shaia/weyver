@@ -138,7 +138,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
       <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-line bg-card px-3">
         <Link
           href="/app/builder"
-          className="mr-1.5 flex size-8 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-white shadow-xs"
+          className="mr-1.5 flex size-8 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-white"
           title="Weyver 織雲"
         >
           W

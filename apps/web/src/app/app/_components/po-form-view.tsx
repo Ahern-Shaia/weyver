@@ -30,7 +30,7 @@ export function PoFormView() {
   return (
     <div className="flex-1 overflow-y-auto py-4 pb-8">
       <div className="mx-auto flex max-w-[880px] flex-col gap-3 px-5">
-        <div className="flex items-baseline gap-3 rounded-md border border-line bg-card px-4 py-3.5 shadow-xs">
+        <div className="flex items-baseline gap-3 rounded-md border border-line bg-card px-4 py-3.5">
           <h1 className="text-lg font-semibold tracking-tight">採購單</h1>
           <span className="font-mono text-[15px] font-semibold text-primary">PO-0716-001</span>
           <StatusChip tone="warn">待審核</StatusChip>

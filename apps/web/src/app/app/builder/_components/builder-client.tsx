@@ -71,7 +71,7 @@ export function BuilderClient() {
           ) : (
             <div className="flex h-full items-center justify-center bg-surface p-8">
               <div className="max-w-[380px] text-center">
-                <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-lg border border-line bg-card text-ink-4 shadow-xs">
+                <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-md border border-line bg-card text-ink-4">
                   <Table2 size={26} strokeWidth={1.5} />
                 </div>
                 <h2 className="text-[15px] font-semibold text-ink">選擇或建立表單</h2>

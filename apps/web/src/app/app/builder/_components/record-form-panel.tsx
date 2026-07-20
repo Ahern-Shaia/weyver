@@ -171,7 +171,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
           </div>
         ) : null}
 
-        <section className="overflow-hidden rounded-md border border-line bg-card shadow-xs">
+        <section className="overflow-hidden rounded-md border border-line bg-card">
           <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
             <span className="size-1.5 rounded-full bg-primary" />
             填寫
@@ -190,7 +190,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
         </section>
 
         {hasChild ? (
-          <section className="mt-3 overflow-hidden rounded-md border border-line bg-card shadow-xs">
+          <section className="mt-3 overflow-hidden rounded-md border border-line bg-card">
             <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
               <span className="size-1.5 rounded-full bg-primary" />
               {childForm?.name}

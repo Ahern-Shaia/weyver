@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weyver builder 互動方向 mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --surface:#f6f7f9; --card:#fff; --head:#f1f3f5; --label:#f4f6f8;
+    --ink:#16191f; --ink-2:#3d4753; --ink-3:#697585; --ink-4:#9aa4b1;
+    --line:#e3e6ea; --line-2:#eef0f3; --cell:#e7eaee;
+    --primary:#22568a; --primary-d:#1a476f; --primary-t:#eaf1f8;
+    --ok:#1a7a43; --ok-line:#c4e0ce; --ok-t:#eaf4ee;
+    --wn:#96590a; --wn-line:#e7d3ad; --wn-t:#f8f1e2;
+    --fx:#0b6b5d;
+    --sh-xs:0 1px 1px rgba(20,24,29,.04);
+    --sh-sm:0 1px 2px rgba(20,24,29,.06),0 1px 3px rgba(20,24,29,.04);
+    --sh-md:0 2px 6px rgba(20,24,29,.07),0 4px 14px rgba(20,24,29,.06);
+    --font:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eceef1;color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:1180px;margin:0 auto;padding:36px 24px 80px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0 0 6px}
+  .lede{color:var(--ink-3);font-size:13.5px;max-width:760px;margin:0 0 4px}
+  .decision{margin:16px 0 30px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--sh-xs)}
+  .decision b{color:var(--primary)}
+  .screen{margin:34px 0}
+  .cap{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+  .cap .tag{flex:none;font-size:11px;font-weight:700;color:#fff;background:var(--primary);border-radius:5px;padding:3px 8px;letter-spacing:.03em}
+  .cap .tag.b{background:var(--fx)}
+  .cap h2{font-size:15.5px;font-weight:600;margin:0}
+  .cap p{margin:0;color:var(--ink-3);font-size:12.5px}
+  .proscons{display:flex;gap:14px;margin:10px 0 0;font-size:12px;color:var(--ink-3);flex-wrap:wrap}
+  .proscons span{display:inline-flex;gap:6px;align-items:baseline}
+  .proscons .p::before{content:"＋";color:var(--ok);font-weight:700}
+  .proscons .c::before{content:"－";color:var(--wn);font-weight:700}
+
+  /* ── app window frame ── */
+  .app{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:var(--sh-md);height:520px;display:flex;flex-direction:column}
+  .topbar{height:46px;flex:none;display:flex;align-items:center;gap:6px;padding:0 12px;background:var(--card);border-bottom:1px solid var(--line)}
+  .brand{width:30px;height:30px;border-radius:7px;background:var(--primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-xs);margin-right:6px}
+  .nav{display:flex;gap:2px}
+  .nav a{display:flex;align-items:center;gap:6px;height:31px;padding:0 10px;border-radius:7px;font-size:12.5px;color:var(--ink-3);text-decoration:none}
+  .nav a.on{background:var(--primary-t);color:var(--primary);font-weight:600}
+  .nav a i{width:14px;height:14px;display:inline-block;opacity:.85}
+  .tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--ink-3);font-size:12px}
+  .dot-org{color:var(--ink-2);font-weight:500}
+  .iconbtn{width:30px;height:30px;border-radius:7px;border:0;background:none;color:var(--ink-3);display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .iconbtn:hover{background:var(--head);color:var(--ink)}
+
+  .body{flex:1;min-height:0;display:flex}
+  .rail{width:198px;flex:none;border-right:1px solid var(--line);background:var(--card);overflow:hidden;display:flex;flex-direction:column}
+  .rail-h{display:flex;align-items:center;gap:6px;padding:10px 12px 8px;font-size:12px;font-weight:600;color:var(--ink-2)}
+  .rail-h .mini{margin-left:auto;display:flex;gap:5px}
+  .btn{height:26px;padding:0 9px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);border-radius:6px;font-size:11.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit}
+  .btn:hover{background:var(--head);color:var(--ink)}
+  .btn.p{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:var(--sh-xs)}
+  .btn.p:hover{background:var(--primary-d)}
+  .btn.sub{border-color:transparent;background:none;color:var(--ink-3)}
+  .btn.sub:hover{background:var(--head);color:var(--ink)}
+  .rail ul{list-style:none;margin:0;padding:4px 6px;overflow:auto;flex:1}
+  .rail li{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+  .rail li .d{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+  .rail li.on{background:var(--primary-t);color:var(--primary);font-weight:600}
+  .rail li .sub{margin-left:auto;font-size:10px;color:var(--ink-4)}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+  .mtool{height:44px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--card)}
+  .mtool .ttl{font-size:14px;font-weight:600}
+  .mtool .no{font-family:var(--mono);color:var(--primary);font-weight:600;font-size:13px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--card)}
+  .seg button{border:0;background:none;padding:5px 11px;font-size:12px;color:var(--ink-3);cursor:pointer;font-family:inherit;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button.on{background:var(--primary);color:#fff;font-weight:600}
+  .mtool .r{margin-left:auto;display:flex;gap:7px;align-items:center}
+  .chip{font-size:10px;font-weight:700;border-radius:5px;padding:3px 7px}
+  .chip.wn{color:var(--wn);border:1px solid var(--wn-line);background:var(--wn-t)}
+  .chip.ok{color:var(--ok);border:1px solid var(--ok-line);background:var(--ok-t)}
+
+  .content{flex:1;min-height:0;overflow:auto;background:var(--surface)}
+
+  /* ── data grid (sheet) ── */
+  .sheet{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card)}
+  .sheet thead th{position:sticky;top:0;background:var(--head);text-align:left;font-weight:600;color:var(--ink-2);padding:8px 12px;border-bottom:1px solid var(--cell);white-space:nowrap;font-size:11.5px}
+  .sheet thead th.num,.sheet td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  .sheet tbody td{padding:8px 12px;border-bottom:1px solid var(--line-2);color:var(--ink);white-space:nowrap}
+  .sheet tbody tr:hover{background:var(--head)}
+  .sheet tbody tr td:first-child{color:var(--ink-4);font-family:var(--mono);width:34px}
+  .colh{display:inline-flex;align-items:center;gap:6px}
+  .colh .fx{color:var(--fx)}
+  .colh .caret{margin-left:4px;color:var(--ink-4);cursor:pointer;font-size:11px}
+
+  /* ── design mode ── */
+  .modebar{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--wn-t);border-bottom:1px solid var(--wn-line);color:var(--wn);font-size:12.5px;font-weight:600}
+  .modebar .d{width:7px;height:7px;border-radius:50%;background:var(--wn)}
+  .modebar .hint{font-weight:400;color:#8a6a2a}
+  .modebar .r{margin-left:auto}
+  .design-wrap{display:flex;height:100%}
+  .palette{width:172px;flex:none;border-right:1px solid var(--line);background:var(--card);padding:10px;overflow:auto}
+  .palette .h{font-size:10px;font-weight:600;color:var(--ink-4);padding:2px 6px 8px}
+  .palette button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;border-radius:7px;padding:6px 8px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit;text-align:left}
+  .palette button:hover{background:var(--primary-t);color:var(--primary)}
+  .palette button .m{width:22px;height:22px;border-radius:6px;background:var(--label);color:var(--ink-3);font-family:var(--mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+  .palette button:hover .m{background:var(--primary);color:#fff}
+  .dcanvas{flex:1;min-width:0;overflow:auto;padding:18px 20px;background:var(--surface)}
+  .card{max-width:640px;border:1px solid var(--line);border-radius:8px;background:var(--card);box-shadow:var(--sh-xs);overflow:hidden}
+  .card .sh{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--head);font-size:11.5px;font-weight:600;color:var(--ink-2)}
+  .card .sh .pd{width:6px;height:6px;border-radius:50%;background:var(--primary)}
+  .card .sh .hint{margin-left:auto;font-weight:400;font-size:10.5px;color:var(--ink-4)}
+  .frow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line-2)}
+  .frow:last-child{border-bottom:0}
+  .frow .m{width:20px;height:20px;border-radius:5px;background:var(--label);color:var(--ink-3);font-family:var(--mono);font-size:9.5px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+  .frow .nm{flex:1;font-size:12.5px}
+  .frow .req{color:#b3261e;font-weight:700;margin-right:2px}
+  .frow .ty{width:64px;text-align:right;font-size:10.5px;color:var(--ink-4)}
+  .frow .acts{display:flex;gap:2px;opacity:.55}
+  .frow .acts .ib{width:26px;height:26px;border-radius:6px;border:0;background:none;color:var(--ink-3);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .frow:hover{background:var(--head)}
+  .frow:hover .acts{opacity:1}
+
+  /* ── inline column popover (B) ── */
+  .pop{position:absolute;top:38px;left:0;z-index:5;width:190px;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:var(--sh-md);padding:5px;font-size:12.5px}
+  .pop .g{padding:5px 6px 3px;font-size:10px;color:var(--ink-4);font-weight:600}
+  .pop a{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;color:var(--ink-2);text-decoration:none;cursor:pointer}
+  .pop a:hover{background:var(--head);color:var(--ink)}
+  .pop a.dz{color:#b3261e}
+  .pop a.dz:hover{background:var(--wn-t)}
+  .pop hr{border:0;border-top:1px solid var(--line-2);margin:4px 2px}
+  .relwrap{position:relative;display:inline-block}
+
+  .foot{margin-top:56px;color:var(--ink-4);font-size:11.5px;text-align:center;border-top:1px solid var(--line);padding-top:16px}
+  svg{display:block}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Weyver builder — 互動方向 mockup</h1>
+  <p class="lede">供 review:Ragic 客戶的心智是「先看資料、偶爾改設計」。以下三個畫面對照 <b>data-first 主檢視</b>(共同前提)與設計如何進入的兩條路。用 v3.0 精緻風格,盡量貼近成品。</p>
+  <div class="decision">
+    要決定的一件事:<b>打開表單先看到什麼、改結構怎麼進</b>。<br>
+    現況(要改掉):打開落在「設計」平權 tab = design-first,對 Ragic 遷移客戶主從顛倒。<br>
+    共同修正:<b>data-first</b> — 打開表單先看資料。差別只在「改結構」是 <b>A 進一個明確模式</b> 還是 <b>B 就地 inline 改</b>。
+  </div>
+
+  <!-- ══════════ SCREEN 0 ══════════ -->
+  <div class="screen">
+    <div class="cap"><span class="tag">共同前提</span><div><h2>data-first 主檢視 — 打開表單先看到「資料」</h2><p>列表/網格是預設落點;右上「修改設計」是刻意入口(呼應 DDL 後果)。A、B 都以此為起點。</p></div></div>
+    <div class="app">
+      <div class="topbar">
+        <div class="brand">W</div>
+        <nav class="nav">
+          <a class="on"><i>▦</i>我的表單</a><a><i>▤</i>記錄檢視</a><a><i>◎</i>帳號安全</a>
+        </nav>
+        <div class="tb-right"><span class="dot-org">鮮勇食品</span><button class="iconbtn">◐</button><button class="iconbtn">⇥</button></div>
+      </div>
+      <div class="body">
+        <div class="rail">
+          <div class="rail-h">我的表單<span class="mini"><button class="btn sub">匯入</button><button class="btn p">＋新增</button></span></div>
+          <ul>
+            <li class="on"><span class="d"></span>採購單</li>
+            <li><span class="d"></span>供應商評鑑</li>
+            <li><span class="d"></span>採購明細<span class="sub">子表</span></li>
+            <li><span class="d"></span>進貨清單</li>
+            <li><span class="d"></span>庫存異動</li>
+            <li><span class="d"></span>品檢紀錄</li>
+          </ul>
+        </div>
+        <div class="main">
+          <div class="mtool">
+            <span class="ttl">採購單</span><span class="chip ok">248 筆</span>
+            <div class="r">
+              <div class="seg"><button class="on">列表</button><button>網格</button><button>單筆</button></div>
+              <button class="btn p">＋ 新增記錄</button>
+              <button class="btn">⚙ 修改設計</button>
+            </div>
+          </div>
+          <div class="content">
+            <table class="sheet">
+              <thead><tr><th>#</th><th>單號</th><th>供應商</th><th class="num">金額</th><th>交期</th><th>狀態</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td><td>07-22</td><td><span class="chip wn">待審核</span></td></tr>
+                <tr><td>2</td><td>PO-0715-047</td><td>凍豐食品</td><td class="num">84,200</td><td>07-20</td><td><span class="chip ok">已核准</span></td></tr>
+                <tr><td>3</td><td>PO-0715-046</td><td>正大食材</td><td class="num">312,000</td><td>07-19</td><td><span class="chip ok">已核准</span></td></tr>
+                <tr><td>4</td><td>PO-0715-045</td><td>永豐冷鏈</td><td class="num">56,800</td><td>07-18</td><td><span class="chip ok">已核准</span></td></tr>
+                <tr><td>5</td><td>PO-0715-044</td><td>鑫豐農產品</td><td class="num">100,800</td><td>07-18</td><td><span class="chip wn">退回</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="proscons"><span class="p">打開即見資料,貼 Ragic 客戶心智</span><span class="p">改結構是刻意入口,不誤觸</span></div>
+  </div>
+
+  <!-- ══════════ SCREEN A ══════════ -->
+  <div class="screen">
+    <div class="cap"><span class="tag">方案 A</span><div><h2>設計是「刻意模式」(忠於 Ragic)</h2><p>點「修改設計」→ 進入設計模式:頂部帶警示條(改的是結構不是資料)、左側欄位型別、可拖拉/改型別/下架。完成即回資料。</p></div></div>
+    <div class="app">
+      <div class="topbar">
+        <div class="brand">W</div>
+        <nav class="nav"><a class="on"><i>▦</i>我的表單</a><a><i>▤</i>記錄檢視</a><a><i>◎</i>帳號安全</a></nav>
+        <div class="tb-right"><span class="dot-org">鮮勇食品</span><button class="iconbtn">◐</button><button class="iconbtn">⇥</button></div>
+      </div>
+      <div class="body">
+        <div class="rail">
+          <div class="rail-h">我的表單<span class="mini"><button class="btn sub">匯入</button><button class="btn p">＋新增</button></span></div>
+          <ul><li class="on"><span class="d"></span>採購單</li><li><span class="d"></span>供應商評鑑</li><li><span class="d"></span>採購明細<span class="sub">子表</span></li><li><span class="d"></span>進貨清單</li><li><span class="d"></span>庫存異動</li></ul>
+        </div>
+        <div class="main">
+          <div class="modebar"><span class="d"></span>設計模式 · 修改欄位結構<span class="hint">— 這裡改的是表單結構,不是資料;下架欄位會移除該欄所有資料</span><span class="r"><button class="btn p">完成設計</button></span></div>
+          <div class="content" style="background:var(--surface)">
+            <div class="design-wrap">
+              <div class="palette">
+                <div class="h">欄位型別 · 點擊加入</div>
+                <button><span class="m">A</span>單行文字</button>
+                <button><span class="m">¶</span>多行文字</button>
+                <button><span class="m">#</span>數值</button>
+                <button><span class="m">$</span>金額</button>
+                <button><span class="m">◷</span>日期</button>
+                <button><span class="m">▾</span>單選</button>
+                <button><span class="m">☑</span>勾選</button>
+                <button><span class="m">⚡</span>自動編號</button>
+                <button><span class="m">fx</span>公式</button>
+              </div>
+              <div class="dcanvas">
+                <div class="card">
+                  <div class="sh"><span class="pd"></span>欄位<span class="hint">滑到列可調整</span></div>
+                  <div class="frow"><span class="m">⚡</span><span class="nm">單號</span><span class="ty">自動編號</span><span class="acts"><button class="ib">↑</button><button class="ib">↓</button><button class="ib">🗑</button></span></div>
+                  <div class="frow"><span class="m">A</span><span class="nm"><span class="req">*</span>供應商</span><span class="ty">單行文字</span><span class="acts"><button class="ib">↑</button><button class="ib">↓</button><button class="ib">🗑</button></span></div>
+                  <div class="frow"><span class="m">$</span><span class="nm">金額</span><span class="ty">金額</span><span class="acts"><button class="ib">↑</button><button class="ib">↓</button><button class="ib">🗑</button></span></div>
+                  <div class="frow"><span class="m">◷</span><span class="nm">交期</span><span class="ty">日期</span><span class="acts"><button class="ib">↑</button><button class="ib">↓</button><button class="ib">🗑</button></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="proscons"><span class="p">最像 Ragic「修改設計」,遷移客戶零學習</span><span class="p">明確模式邊界 = DDL 後果有分寸</span><span class="c">改幾個欄要進出模式,較不即時</span></div>
+  </div>
+
+  <!-- ══════════ SCREEN B ══════════ -->
+  <div class="screen">
+    <div class="cap"><span class="tag b">方案 B</span><div><h2>Inline 就地改結構(現代 Airtable/Notion 味)</h2><p>不離開資料檢視:點欄位標題的 caret → 就地 popover 改名/改型別/下架/插欄。無模式切換,最即時。</p></div></div>
+    <div class="app">
+      <div class="topbar">
+        <div class="brand">W</div>
+        <nav class="nav"><a class="on"><i>▦</i>我的表單</a><a><i>▤</i>記錄檢視</a><a><i>◎</i>帳號安全</a></nav>
+        <div class="tb-right"><span class="dot-org">鮮勇食品</span><button class="iconbtn">◐</button><button class="iconbtn">⇥</button></div>
+      </div>
+      <div class="body">
+        <div class="rail">
+          <div class="rail-h">我的表單<span class="mini"><button class="btn sub">匯入</button><button class="btn p">＋新增</button></span></div>
+          <ul><li class="on"><span class="d"></span>採購單</li><li><span class="d"></span>供應商評鑑</li><li><span class="d"></span>採購明細<span class="sub">子表</span></li><li><span class="d"></span>進貨清單</li><li><span class="d"></span>庫存異動</li></ul>
+        </div>
+        <div class="main">
+          <div class="mtool">
+            <span class="ttl">採購單</span><span class="chip ok">248 筆</span>
+            <div class="r"><div class="seg"><button class="on">列表</button><button>網格</button><button>單筆</button></div><button class="btn p">＋ 新增記錄</button><button class="btn sub">＋ 欄位</button></div>
+          </div>
+          <div class="content" style="position:relative">
+            <table class="sheet">
+              <thead><tr>
+                <th>#</th><th>單號</th>
+                <th><span class="relwrap"><span class="colh">供應商 <span class="caret">▾</span></span>
+                  <div class="pop">
+                    <div class="g">供應商 · 單行文字</div>
+                    <a>✎ 重新命名</a>
+                    <a>⇄ 改型別…</a>
+                    <a>▸ 插入右方欄位</a>
+                    <a>⚑ 設為必填</a>
+                    <hr/>
+                    <a class="dz">🗑 下架欄位</a>
+                  </div></span></th>
+                <th class="num">金額</th><th>交期</th><th>狀態</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1</td><td>PO-0716-001</td><td>鑫豐農產品</td><td class="num">128,400</td><td>07-22</td><td><span class="chip wn">待審核</span></td></tr>
+                <tr><td>2</td><td>PO-0715-047</td><td>凍豐食品</td><td class="num">84,200</td><td>07-20</td><td><span class="chip ok">已核准</span></td></tr>
+                <tr><td>3</td><td>PO-0715-046</td><td>正大食材</td><td class="num">312,000</td><td>07-19</td><td><span class="chip ok">已核准</span></td></tr>
+                <tr><td>4</td><td>PO-0715-045</td><td>永豐冷鏈</td><td class="num">56,800</td><td>07-18</td><td><span class="chip ok">已核准</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="proscons"><span class="p">最即時,改一欄不出資料脈絡</span><span class="p">現代工具主流手感</span><span class="c">改結構(DDL)和改資料同介面,誤觸風險要靠確認擋</span><span class="c">離 Ragic 手感較遠</span></div>
+  </div>
+
+  <div class="foot">Weyver 織雲 · builder 互動方向 mockup(靜態,供 review)· tokens v3.0 · 決策後才動 code</div>
+</div>
+</body>
+</html>

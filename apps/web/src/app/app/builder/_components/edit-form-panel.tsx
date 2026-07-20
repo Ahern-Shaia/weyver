@@ -147,7 +147,7 @@ export function EditFormPanel({
             />
           ) : null}
 
-          <section className="overflow-hidden rounded-md border border-line bg-card shadow-xs">
+          <section className="overflow-hidden rounded-md border border-line bg-card">
             <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
               <span className="size-1.5 rounded-full bg-primary" />
               欄位
@@ -270,7 +270,7 @@ function PendingEditor({
 }) {
   const meta = fieldTypeMeta(pending.type)
   return (
-    <div className="mb-3 flex flex-col gap-2 rounded-md border border-primary/50 bg-primary-t p-3.5 shadow-sm">
+    <div className="mb-3 flex flex-col gap-2 rounded-md border border-primary/50 bg-primary-t p-3.5">
       <div className="flex items-center gap-2">
         <span className="text-[12px] font-semibold text-primary">加入{meta.label}欄位</span>
         <div className="ml-auto flex gap-1.5">
