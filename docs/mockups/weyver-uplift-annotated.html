@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weyver — UI uplift pass 2(帶競品標註)</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --font:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --surface:#f6f7f9;--card:#fff;--head:#f1f3f5;--label:#f4f6f8;
+    --ink:#16191f;--ink2:#3d4753;--ink3:#697585;--ink4:#9aa4b1;
+    --line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;--accent:#22568a;--accent-t:#e9f0f7;
+    --ok:#1a7a43;--ok-line:#c4e0ce;--ok-t:#eaf4ee;
+    --wn:#96590a;--wn-line:#e7d3ad;--wn-t:#f8f1e2;
+    --er:#b3261e;--er-line:#e9c9c6;--er-t:#f9ecea;
+    --nt:#5a6472;--nt-line:#d6dbe0;--nt-t:#eef0f2;--fx:#0b6b5d;
+  }
+  body{margin:0;background:#e9ebef;color:var(--ink);font-family:var(--font);font-size:12.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:1180px;margin:0 auto;padding:38px 22px 90px}
+  h1{font-size:21px;font-weight:700;letter-spacing:-.01em;margin:0 0 6px}
+  .lede{color:#697585;font-size:13px;max-width:880px;margin:0 0 22px}.lede b{color:#3d4753}
+  svg{display:block;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;fill:none}
+  .fill{fill:currentColor;stroke:none}
+  .m{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--accent);color:#fff;font-size:9px;font-weight:700;font-family:var(--mono);vertical-align:middle;margin:0 2px}
+
+  .app{border:1px solid #d9dde2;border-radius:10px;overflow:hidden;height:498px;display:flex;background:var(--surface)}
+  .nav{width:54px;flex:none;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:3px}
+  .nav .brand{width:31px;height:31px;border-radius:7px;background:var(--accent);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin-bottom:9px}
+  .nav a{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;position:relative}
+  .nav a svg{width:18px;height:18px}.nav a:hover{background:var(--head);color:var(--ink)}
+  .nav a.on{background:var(--accent-t);color:var(--accent)}
+  .nav a .bdg{position:absolute;top:5px;right:4px;min-width:13px;height:13px;border-radius:7px;background:var(--er);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
+  .nav .sp{margin-top:auto;display:flex;flex-direction:column;gap:3px;align-items:center}
+  .nav .ava{width:29px;height:29px;border-radius:50%;background:var(--label);border:1px solid var(--line);color:var(--ink2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .stage{flex:1;min-width:0;display:flex;flex-direction:column}
+  .top{height:47px;flex:none;display:flex;align-items:center;gap:11px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .ws{font-size:13px;font-weight:600}
+  .cmd{flex:1;max-width:400px;height:32px;display:flex;align-items:center;gap:9px;padding:0 11px;background:var(--surface);border:1px solid var(--line);border-radius:7px;color:var(--ink4);font-size:12px}
+  .cmd svg{width:14px;height:14px}.cmd .k{margin-left:auto;font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:3px;padding:1px 5px;background:var(--card)}
+  .top .r{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .hd{flex:none;padding:13px 18px 0}
+  .hd .t{display:flex;align-items:center;gap:10px}
+  .hd h3{margin:0;font-size:16px;font-weight:600}
+  .cnt{font-size:11px;color:var(--ink3);border:1px solid var(--line);border-radius:3px;padding:2px 7px;font-variant-numeric:tabular-nums}
+  .hd .r{margin-left:auto;display:flex;gap:7px;align-items:center}
+  .btn{height:30px;padding:0 11px;border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+  .btn svg{width:14px;height:14px}.btn:hover{background:var(--head)}
+  .btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.g{border-color:transparent;background:none;color:var(--ink3)}.btn.g:hover{background:var(--head)}
+  .hd2{display:flex;align-items:center;gap:9px;margin-top:12px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--card)}
+  .seg button{border:0;border-right:1px solid var(--line);background:none;padding:5px 11px;font-size:12px;color:var(--ink3);cursor:pointer;font-family:inherit}
+  .seg button:last-child{border-right:0}.seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .kbd{margin-left:auto;font-size:11px;color:var(--ink4);display:flex;gap:6px;align-items:center}
+  .kbd kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--card);color:var(--ink3)}
+  .content{flex:1;min-height:0;overflow:auto;padding:12px 18px 16px}
+  .grid{background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  thead th{background:var(--head);text-align:left;font-weight:600;color:var(--ink3);padding:8px 13px;border-bottom:1px solid var(--cell);font-size:11px;white-space:nowrap}
+  thead th.num{text-align:right}
+  th .colh{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+  th .colh svg{width:12px;height:12px;color:var(--ink4)}
+  tbody td{padding:0 13px;height:37px;border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle}
+  tbody td.idx{color:var(--ink4);font-family:var(--mono);width:30px}
+  tbody td.no{font-family:var(--mono);color:var(--accent);font-weight:500}
+  tbody td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);font-weight:500}
+  tbody td.num .dec{color:var(--ink4);font-weight:400}
+  tbody tr:hover{background:var(--accent-t)}
+  tbody tr.sel{background:var(--accent-t);box-shadow:inset 2px 0 0 var(--accent)}
+  tbody tr:last-child td{border-bottom:0}
+  .sup{display:inline-flex;align-items:center;gap:8px}
+  .sup .av{width:21px;height:21px;border-radius:4px;border:1px solid var(--line);background:var(--label);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--ink3)}
+  .batch{font-family:var(--mono);font-size:11px;color:var(--ink2);display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:3px;padding:1px 6px;background:var(--label);cursor:pointer}
+  .batch svg{width:11px;height:11px;color:var(--fx)}
+  .stamp{font-size:10.5px;font-weight:600;border-radius:3px;border:1px solid;padding:2px 7px;display:inline-flex;white-space:nowrap}
+  .stamp.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t)}
+  .stamp.er{color:var(--er);border-color:var(--er-line);background:var(--er-t)}
+  .stamp.nt{color:var(--nt);border-color:var(--nt-line);background:var(--nt-t)}
+  .rowa{display:flex;gap:2px;justify-content:flex-end;opacity:0}
+  tr:hover .rowa,tr.sel .rowa{opacity:1}
+  .rowa .ib{width:25px;height:25px;border-radius:5px;border:0;background:none;color:var(--ink3);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .rowa .ib svg{width:14px;height:14px}.rowa .ib:hover{background:var(--card);color:var(--accent);border:1px solid var(--line)}
+  .sb{height:26px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-top:1px solid var(--line);background:var(--card);font-size:11px;color:var(--ink3)}
+  .sb b{font-family:var(--mono);color:var(--ink2);font-weight:500}
+  .sb .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:5px;display:inline-block}
+  .sb .r{margin-left:auto;display:flex;gap:16px}
+
+  /* legend */
+  .leg{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .leg table{font-size:12px}
+  .leg th{background:var(--head);text-align:left;font-weight:600;color:var(--ink3);padding:8px 12px;border-bottom:1px solid var(--cell);font-size:11px}
+  .leg td{padding:9px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+  .leg tr:last-child td{border-bottom:0}
+  .leg .n{width:26px}.leg .el{width:150px;font-weight:600;color:var(--ink)}
+  .leg .ref{width:230px;color:var(--ink2)}.leg .ref code{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+  .leg .up{color:var(--ink2)}.leg .up b{color:var(--ok)}
+  .foot{margin-top:44px;color:#9aa4b1;font-size:11px;text-align:center;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="12" x2="9.01" y2="12"/><line x1="12" y1="12" x2="12.01" y2="12"/><line x1="15" y1="12" x2="15.01" y2="12"/></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><path d="M3 20V10l5 3V10l5 3V6l5 3v11z"/><line x1="3" y1="20" x2="21" y2="20"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.8v5.2c0 4.4-3 7.4-7 8.9-4-1.5-7-4.5-7-8.9V5.8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6.2 8v5l-3.6 1.8v-6.8z"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><line x1="7" y1="4" x2="7" y2="20"/><polyline points="4 8 7 5 10 8"/><line x1="14" y1="8" x2="20" y2="8"/><line x1="14" y1="13" x2="18" y2="13"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5-4-4L4 16z"/><line x1="13.5" y1="6.5" x2="17.5" y2="10.5"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6"/><line x1="20" y1="4" x2="12" y2="12"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle class="fill" cx="5" cy="12" r="1.6"/><circle class="fill" cx="12" cy="12" r="1.6"/><circle class="fill" cx="19" cy="12" r="1.6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-rows" viewBox="0 0 24 24"><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><circle class="fill" cx="4.5" cy="6" r="1.2"/><circle class="fill" cx="4.5" cy="12" r="1.2"/><circle class="fill" cx="4.5" cy="18" r="1.2"/></symbol>
+  <symbol id="i-single" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.5"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15l6-6"/><path d="M10.5 6.5l1-1a3.5 3.5 0 0 1 5 5l-1 1"/><path d="M13.5 17.5l-1 1a3.5 3.5 0 0 1-5-5l1-1"/></symbol>
+</defs></svg>
+
+<div class="page">
+  <h1>Weyver — UI uplift pass 2(帶競品標註)</h1>
+  <p class="lede">再一輪 uplift,每個工藝都<b>標到參考競品</b>(對 <code>docs/research/ui-screenshots</code> + <code>ui-design-analysis.md</code>)。新增:數字排版 <span class="m">4</span>、欄頭選單 <span class="m">5</span>、批號追溯 <span class="m">6</span>、鍵盤 triage <span class="m">8</span>。全守 docs/14 v3(帶框章/狀態層級/無點/shadcn Badge)。</p>
+
+  <div class="app">
+    <div class="nav">
+      <div class="brand">W</div>
+      <a class="on"><svg><use href="#i-table"/></svg><span class="bdg">12</span></a>
+      <a><svg><use href="#i-calc"/></svg></a>
+      <a><svg><use href="#i-factory"/></svg></a>
+      <a><svg><use href="#i-shield"/></svg></a>
+      <div class="sp"><a><svg><use href="#i-search"/></svg></a><a><svg><use href="#i-bell"/></svg><span class="bdg">3</span></a><div class="ava">美</div></div>
+    </div>
+    <div class="stage">
+      <div class="top"><div class="ws">鮮勇食品 · 採購</div>
+        <div class="cmd"><svg><use href="#i-search"/></svg>搜尋或執行動作…<span class="k">⌘K</span></div>
+        <div class="r"><div class="ava" style="width:27px;height:27px;border-radius:50%;background:var(--label);border:1px solid var(--line);color:var(--ink2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">美</div></div></div>
+      <div class="hd"><div class="t"><h3>採購單</h3><span class="cnt">248 筆</span>
+        <div class="r"><button class="btn"><svg><use href="#i-edit"/></svg>修改設計</button><button class="btn p"><svg><use href="#i-plus"/></svg>新增記錄</button></div></div>
+        <div class="hd2"><div class="seg"><button class="on">列表</button><button>單筆</button></div>
+          <button class="btn g"><svg><use href="#i-filter"/></svg>篩選</button>
+          <div class="kbd"><span>逐筆審</span><kbd>↑</kbd><kbd>↓</kbd>選<kbd>↵</kbd>開</div></div></div>
+      <div class="content"><div class="grid"><table>
+        <thead><tr>
+          <th class="idx">#</th><th>單號</th><th>供應商</th>
+          <th><span class="colh">批號 <svg><use href="#i-sort"/></svg></span></th>
+          <th class="num"><span class="colh">金額 <svg><use href="#i-chev"/></svg></span></th>
+          <th>交期</th><th>狀態</th><th style="width:56px"></th>
+        </tr></thead>
+        <tbody>
+          <tr class="sel"><td class="idx">1</td><td class="no">PO-0716-001</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td><span class="batch"><svg><use href="#i-link"/></svg>BN-0716-A</span></td><td class="num">128,400<span class="dec">.00</span></td><td>07-22</td><td><span class="stamp wn">待審核</span></td><td><div class="rowa"><button class="ib"><svg><use href="#i-open"/></svg></button><button class="ib"><svg><use href="#i-dots"/></svg></button></div></td></tr>
+          <tr><td class="idx">2</td><td class="no">PO-0715-047</td><td><span class="sup"><span class="av">統</span>統鮮實業</span></td><td><span class="batch"><svg><use href="#i-link"/></svg>BN-0715-C</span></td><td class="num">84,200<span class="dec">.00</span></td><td>07-20</td><td><span class="stamp nt">已核准</span></td><td><div class="rowa"><button class="ib"><svg><use href="#i-open"/></svg></button><button class="ib"><svg><use href="#i-dots"/></svg></button></div></td></tr>
+          <tr><td class="idx">3</td><td class="no">PO-0715-046</td><td><span class="sup"><span class="av">正</span>正大食材</span></td><td><span class="batch"><svg><use href="#i-link"/></svg>BN-0715-B</span></td><td class="num">312,000<span class="dec">.00</span></td><td>07-19</td><td><span class="stamp nt">已收貨</span></td><td><div class="rowa"><button class="ib"><svg><use href="#i-open"/></svg></button><button class="ib"><svg><use href="#i-dots"/></svg></button></div></td></tr>
+          <tr><td class="idx">4</td><td class="no">PO-0715-045</td><td><span class="sup"><span class="av">永</span>永豐冷鏈</span></td><td><span class="batch"><svg><use href="#i-link"/></svg>BN-0715-K</span></td><td class="num">56,800<span class="dec">.00</span></td><td>07-18</td><td><span class="stamp nt">已核准</span></td><td><div class="rowa"><button class="ib"><svg><use href="#i-open"/></svg></button><button class="ib"><svg><use href="#i-dots"/></svg></button></div></td></tr>
+          <tr><td class="idx">5</td><td class="no">PO-0715-044</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td><span class="batch"><svg><use href="#i-link"/></svg>BN-0715-A</span></td><td class="num">100,800<span class="dec">.00</span></td><td>07-18</td><td><span class="stamp er">退回</span></td><td><div class="rowa"><button class="ib"><svg><use href="#i-open"/></svg></button><button class="ib"><svg><use href="#i-dots"/></svg></button></div></td></tr>
+        </tbody>
+      </table></div></div>
+      <div class="sb"><span><span class="dot"></span>已連線 · 即時同步</span><span>更新 <b>14:03:21</b></span><span class="r"><span>租戶 <b>hsienyung</b></span><span>Weyver <b>R1</b></span></span></div>
+    </div>
+  </div>
+
+  <div class="leg">
+    <table>
+      <thead><tr><th class="n">#</th><th class="el">元素</th><th class="ref">參考競品(做對的點)</th><th class="up">Weyver 向上(超越/整合)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="m">1</span></td><td class="el">業務域 icon-nav<br>+ 一體 shell</td><td class="ref"><b>Ragic</b> sheets 分組(`ragic-detail/`)· <b>SAP Fiori</b> Launchpad「每任務一入口」(`sap-s4hana/`)</td><td class="up"><b>唯一 Signature(§270)</b>:採購/財會/生產/ISO 同一 shell、切換像切分頁——台灣 SMB 空白點(客戶現開 5 個系統)。Fiori 用 tile,我用 <span class="m">2</span> 取代</td></tr>
+        <tr><td><span class="m">2</span></td><td class="el">⌘K 命令列</td><td class="ref"><b>Linear</b> command-first(`linear/`)· <b>SAP Fiori</b> 搜尋代 tile 陣列</td><td class="up">全域 ⌘K 搜表單/記錄/動作,最多 2 層導覽(§250)<b>取代 ERP 4–5 層點擊</b></td></tr>
+        <tr><td><span class="m">3</span></td><td class="el">狀態層級<br>(帶框方角章)</td><td class="ref"><b>Linear / Height</b> done 灰掉 · <b>Dynamics 365</b> 現代狀態(`dynamics365/`)</td><td class="up"><b>已了結退中性、要行動留色</b>——注意力導向待辦;shadcn Badge outline,<b>無裝飾圓點</b></td></tr>
+        <tr><td><span class="m">4</span></td><td class="el">數字排版<br>(tabular · 小數退淡)</td><td class="ref"><b>Stripe Dashboard</b> 財務數字(`stripe-dashboard/`)· <b>Dynamics 365</b> 帳齡表右對齊(`finance-04`)</td><td class="up">IBM Plex Mono <b>tabular-nums</b> 強制右對齊、小數 <span style="color:var(--ink4)">.00</span> 退淡看量級(§251);勝 Ragic「數字不對齊」</td></tr>
+        <tr><td><span class="m">5</span></td><td class="el">欄頭排序/篩選選單</td><td class="ref"><b>Airtable</b> field header menu(`airtable/`)· <b>NocoDB</b> 欄位管理(`nocodb/`)</td><td class="up">欄頭 hover 出排序/篩選/群組;<b>tab 加 icon+文字雙辨識</b>(Airtable 只 icon)</td></tr>
+        <tr><td><span class="m">6</span></td><td class="el">批號可追溯 chip<br>(食品 pilot)</td><td class="ref"><b>Sepasoft</b> track-trace(`sepasoft/`)· <b>AVEVA</b> 電子批次記錄 EBR(`aveva-mes/`)</td><td class="up">批號 mono chip → 點開追溯(進貨/工單/品檢);<b>整合同一系統,不需 MES middleware</b></td></tr>
+        <tr><td><span class="m">7</span></td><td class="el">供應商<br>單色帶框字首</td><td class="ref">反面:通用 SaaS 彩色頭像 = 裝飾</td><td class="up"><b>色只編碼語意</b>,實體識別用單色帶框字首(非彩頭像),避免 vibe</td></tr>
+        <tr><td><span class="m">8</span></td><td class="el">鍵盤 triage<br>+ hover 動作</td><td class="ref"><b>Linear / Superhuman</b> 鍵盤逐筆(`linear/`)</td><td class="up"><kbd style="font-family:var(--mono)">↑↓</kbd> 選 <kbd style="font-family:var(--mono)">↵</kbd> 開,動作 hover 才顯——<b>審核流可鍵盤快篩</b>,冷靜不擁擠</td></tr>
+        <tr><td><span class="m">9</span></td><td class="el">狀態列信任訊號</td><td class="ref"><b>Qualio</b> 文件版本/審核可視(`qualio/`)· 傳統 ERP 底部狀態列</td><td class="up">已連線/更新到秒/租戶/版本;工作台再加 <b>GL 借貸平衡斷言</b>(Dynamics `finance-04` 對帳)= 差異化 + 信任</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="foot">Weyver 織雲 · UI uplift pass 2(帶競品標註,靜態供 review)· 每項對得到 docs/research 截圖 + ui-design-analysis · docs/14 v3 · shadcn</div>
+</div>
+</body>
+</html>
