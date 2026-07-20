@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weyver — 破壞性重構探索</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --font:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --ok:#1a7a43; --ok-line:#c4e0ce; --ok-t:#eaf4ee;
+    --wn:#96590a; --wn-line:#e7d3ad; --wn-t:#f8f1e2;
+    --er:#b3261e; --er-line:#e9c9c6; --er-t:#f9ecea;
+  }
+  body{margin:0;background:#e9ebef;color:#16191f;font-family:var(--font);font-size:12.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:1240px;margin:0 auto;padding:38px 24px 90px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.012em;margin:0 0 6px}
+  .lede{color:#697585;font-size:13px;max-width:860px;margin:0 0 22px}
+  .cap{margin:34px 0 12px}
+  .cap .row{display:flex;align-items:baseline;gap:10px}
+  .cap .tag{font-size:11px;font-weight:700;color:#fff;border-radius:4px;padding:3px 9px}
+  .cap h2{font-size:16px;font-weight:600;margin:0}
+  .cap .thesis{margin:5px 0 0;color:#3d4753;font-size:12.5px}
+  .cap .why{margin:3px 0 0;color:#697585;font-size:12px}
+  svg{display:block;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;fill:none}
+  .fill{fill:currentColor;stroke:none}
+
+  /* ===== shared layout, driven by semantic vars ===== */
+  .app{border:1px solid #d9dde2;border-radius:10px;overflow:hidden;height:540px;display:flex;flex-direction:column;
+    --canvas:#f6f7f9;--card:#fff;--ink:#16191f;--ink2:#3d4753;--ink3:#697585;--ink4:#9aa4b1;--line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;--head:#f1f3f5;
+    --rctl:6px;--rcard:8px;--sh-over:0 6px 20px rgba(10,14,20,.16)}
+  .top{height:50px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--chrome);border-bottom:1px solid var(--chromeln);color:var(--chromeink)}
+  .brand{width:30px;height:30px;border-radius:7px;background:var(--accent);color:var(--accentink);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .wm{font-size:13px;font-weight:600;color:var(--chromeink2);letter-spacing:-.01em}
+  .wm span{color:var(--chromeink);font-weight:400}
+  .cmd{margin-left:16px;flex:1;max-width:400px;height:34px;display:flex;align-items:center;gap:9px;padding:0 12px;background:var(--cmdbg);border:1px solid var(--cmdln);border-radius:8px;color:var(--chromeink);font-size:12.5px;cursor:text}
+  .cmd svg{width:15px;height:15px}
+  .cmd .k{margin-left:auto;font-family:var(--mono);font-size:10.5px;border:1px solid var(--cmdln);border-radius:4px;padding:1px 6px}
+  .topr{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .ib{width:32px;height:32px;border-radius:7px;border:0;background:none;color:var(--chromeink);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s}
+  .ib svg{width:17px;height:17px}
+  .ib:hover{background:var(--chromehover);color:var(--chromeink2)}
+  .ava{width:27px;height:27px;border-radius:50%;background:var(--accent);color:var(--accentink);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .body{flex:1;min-height:0;display:flex}
+  .rail{width:218px;flex:none;background:var(--railbg);border-right:1px solid var(--chromeln);display:flex;flex-direction:column;color:var(--chromeink)}
+  .rgrp{padding:12px 12px 4px}
+  .rgrp .h{font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--chromeink);opacity:.7;padding:0 8px 7px;text-transform:uppercase}
+  .rnav{display:flex;flex-direction:column;gap:1px;padding:0 8px}
+  .rnav a{display:flex;align-items:center;gap:10px;height:32px;padding:0 9px;border-radius:7px;color:var(--chromeink);text-decoration:none;font-size:13px;cursor:pointer;transition:.1s}
+  .rnav a svg{width:15px;height:15px;opacity:.85}
+  .rnav a:hover{background:var(--chromehover);color:var(--chromeink2)}
+  .rnav a.on{background:var(--navon);color:var(--navonink);font-weight:600}
+  .rnav a.on svg{opacity:1}
+  .rnav a .cnt{margin-left:auto;font-size:10.5px;opacity:.6;font-family:var(--mono)}
+  .rsep{height:1px;background:var(--chromeln);margin:9px 12px}
+  .rlist{overflow:auto;flex:1;padding:0 8px 10px}
+  .rlist a{display:flex;align-items:center;gap:9px;height:30px;padding:0 9px;border-radius:7px;color:var(--chromeink);text-decoration:none;font-size:12.5px;cursor:pointer}
+  .rlist a svg{width:14px;height:14px;opacity:.7}
+  .rlist a:hover{background:var(--chromehover);color:var(--chromeink2)}
+  .rlist a.on{background:var(--navon);color:var(--navonink);font-weight:600}
+  .rlist a .sub{margin-left:auto;font-size:9px;opacity:.6;border:1px solid currentColor;border-radius:3px;padding:0 4px}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--canvas)}
+  .hd{flex:none;padding:16px 22px 0}
+  .hd .t{display:flex;align-items:center;gap:11px}
+  .hd h3{font-size:19px;font-weight:600;letter-spacing:-.015em;margin:0;color:var(--ink)}
+  .hd .sub{font-size:12px;color:var(--ink3)}
+  .cnt{font-size:11px;color:var(--ink3);border:1px solid var(--line);border-radius:4px;padding:2px 7px;font-variant-numeric:tabular-nums}
+  .hd .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .btn{height:32px;padding:0 13px;border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:var(--rctl);font-size:12.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:inherit;transition:.12s}
+  .btn svg{width:14px;height:14px}
+  .btn:hover{background:var(--head);color:var(--ink)}
+  .btn.p{background:var(--accent);border-color:var(--accent);color:var(--accentink)}
+  .btn.p:hover{filter:brightness(.94)}
+  .btn.g{border-color:transparent;background:none;color:var(--ink3)}
+  .btn.g:hover{background:var(--head);color:var(--ink)}
+  .hd2{display:flex;align-items:center;gap:9px;margin-top:14px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--rctl);overflow:hidden;background:var(--card)}
+  .seg button{border:0;border-right:1px solid var(--line);background:none;padding:5px 12px;font-size:12px;color:var(--ink3);cursor:pointer;font-family:inherit;display:inline-flex;gap:6px;align-items:center}
+  .seg button:last-child{border-right:0}
+  .seg button svg{width:13px;height:13px}
+  .seg button.on{background:var(--accent);color:var(--accentink);font-weight:600}
+  .fchip{height:27px;padding:0 11px;border-radius:var(--rctl);border:1px solid var(--line);background:var(--card);font-size:11.5px;color:var(--ink3);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .fchip .d{width:6px;height:6px;border-radius:50%;background:var(--wn)}
+  .fchip.on{background:var(--accentt);border-color:var(--accent);color:var(--accentdk)}
+  .hd2 .r{margin-left:auto;display:flex;gap:5px}
+
+  .content{flex:1;min-height:0;overflow:auto;padding:14px 22px 18px}
+  .grid{background:var(--card);border:1px solid var(--line);border-radius:var(--rcard);overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  thead th{position:sticky;top:0;background:var(--head);text-align:left;font-weight:600;color:var(--ink3);padding:9px 14px;border-bottom:1px solid var(--cell);white-space:nowrap;font-size:11px;letter-spacing:.02em}
+  thead th.num{text-align:right}
+  tbody td{padding:0 14px;height:38px;border-bottom:1px solid var(--line2);color:var(--ink);white-space:nowrap;vertical-align:middle}
+  tbody td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);color:var(--ink2)}
+  tbody td.idx{color:var(--ink4);font-family:var(--mono);width:36px;font-size:11.5px}
+  tbody td.no{font-family:var(--mono);color:var(--accentdk);font-weight:500}
+  tbody tr:hover{background:var(--accentt)}
+  tbody tr:last-child td{border-bottom:0}
+  .sup{display:inline-flex;align-items:center;gap:8px}
+  .sup .av{width:22px;height:22px;border-radius:5px;border:1px solid var(--line);background:var(--head);font-size:10.5px;font-weight:600;display:flex;align-items:center;justify-content:center;color:var(--ink3)}
+  .stamp{font-size:10.5px;font-weight:600;border-radius:3px;border:1px solid;padding:2px 7px;display:inline-flex;align-items:center;gap:5px}
+  .stamp .d{width:5px;height:5px;border-radius:50%}
+  .stamp.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t)} .stamp.wn .d{background:var(--wn)}
+  .stamp.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t)} .stamp.ok .d{background:var(--ok)}
+  .stamp.er{color:var(--er);border-color:var(--er-line);background:var(--er-t)} .stamp.er .d{background:var(--er)}
+  .sb{flex:none;height:27px;display:flex;align-items:center;gap:16px;padding:0 18px;border-top:1px solid var(--line);background:var(--card);font-size:11px;color:var(--ink3)}
+  .sb b{font-family:var(--mono);color:var(--ink2);font-weight:500}
+  .sb .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:5px;display:inline-block}
+  .sb .r{margin-left:auto;display:flex;gap:16px}
+
+  /* ===== V1 深色駕駛艙 ===== */
+  [data-v="1"]{--chrome:#1b1f27;--railbg:#1b1f27;--chromeln:#2c313b;--chromeink:#98a0ad;--chromeink2:#eef0f3;--chromehover:#252b35;--navon:#273443;--navonink:#7fc2e6;
+    --cmdbg:#141821;--cmdln:#2c313b;--accent:#2b7fbf;--accentink:#fff;--accentt:#eef4fa;--accentdk:#22568a}
+  /* ===== V2 精緻明亮(Stripe/Mercury)===== */
+  [data-v="2"]{--chrome:#fff;--railbg:#fcfcfd;--chromeln:#e7e9ec;--chromeink:#5a6472;--chromeink2:#171a21;--chromehover:#f2f4f6;--navon:#eef1f8;--navonink:#22568a;
+    --cmdbg:#f7f8fa;--cmdln:#e3e6ea;--accent:#22568a;--accentink:#fff;--accentt:#eef2f8;--accentdk:#22568a;--canvas:#fbfbfc;--rctl:7px;--rcard:10px}
+  [data-v="2"] .hd h3{font-size:21px}
+  /* ===== V3 工作站(indigo accent / 現代)===== */
+  [data-v="3"]{--chrome:#faf9fd;--railbg:#f6f5fb;--chromeln:#e7e5f0;--chromeink:#5c5876;--chromeink2:#211f38;--chromehover:#efedf7;--navon:#e8e5fa;--navonink:#4f46b8;
+    --cmdbg:#fff;--cmdln:#e7e5f0;--accent:#5145cd;--accentink:#fff;--accentt:#eeecfb;--accentdk:#4f46b8;--canvas:#fbfbfd;--rctl:8px;--rcard:12px}
+
+  .note{margin-top:11px;color:#697585;font-size:12px;display:flex;gap:18px;flex-wrap:wrap}
+  .note b{color:#1a7a43}
+  .foot{margin-top:60px;color:#9aa4b1;font-size:11px;text-align:center;border-top:1px solid #d9dde2;padding-top:16px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></symbol>
+  <symbol id="i-rows" viewBox="0 0 24 24"><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><circle class="fill" cx="4.5" cy="6" r="1.2"/><circle class="fill" cx="4.5" cy="12" r="1.2"/><circle class="fill" cx="4.5" cy="18" r="1.2"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="12" x2="9.01" y2="12"/><line x1="12" y1="12" x2="12.01" y2="12"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="9" y1="16" x2="9.01" y2="16"/><line x1="12" y1="16" x2="12.01" y2="16"/><line x1="15" y1="16" x2="15.01" y2="16"/></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><path d="M3 20V10l5 3V10l5 3V6l5 3v11z"/><line x1="3" y1="20" x2="21" y2="20"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.8v5.2c0 4.4-3 7.4-7 8.9-4-1.5-7-4.5-7-8.9V5.8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6.2 8v5l-3.6 1.8v-6.8z"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><line x1="7" y1="4" x2="7" y2="20"/><polyline points="4 8 7 5 10 8"/><line x1="14" y1="8" x2="20" y2="8"/><line x1="14" y1="13" x2="18" y2="13"/><line x1="14" y1="18" x2="16" y2="18"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5-4-4L4 16z"/><line x1="13.5" y1="6.5" x2="17.5" y2="10.5"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle class="fill" cx="5" cy="12" r="1.6"/><circle class="fill" cx="12" cy="12" r="1.6"/><circle class="fill" cx="19" cy="12" r="1.6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6"/><line x1="20" y1="4" x2="12" y2="12"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></symbol>
+  <symbol id="i-single" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.5"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></symbol>
+</defs></svg>
+
+<div class="page">
+  <h1>Weyver — 破壞性重構探索(3 方向)</h1>
+  <p class="lede">「像內部後台」的病根 = <b style="color:#3d4753">外框(chrome)沒被設計、全平灰、沒有 POV</b>。三版都保持<b style="color:#3d4753">資料區嚴謹</b>(帶框方角章、tabular、真 Lucide、狀態列),差別在<b style="color:#3d4753">外框的設計語言</b>——這才是產品感/企業感的來源。每版有 thesis;選定後落 code + 重寫 docs/14。</p>
+
+  <!-- V1 -->
+  <div class="cap"><div class="row"><span class="tag" style="background:#1b1f27">V1</span><h2>深色駕駛艙</h2></div>
+    <p class="thesis"><b>Thesis</b>:深色 chrome + 亮資料 = 通用「正經 SaaS 產品」訊號(Linear / Vercel / Retool / Datadog / Sigma)。</p>
+    <p class="why"><b>為何解「後台感」</b>:深外框把「應用」和「你的資料」分層,一眼就不是陽春灰底 admin;資料區照樣高密度嚴謹。</p></div>
+  <div class="app" data-v="1">
+    <div class="top"><div class="brand">W</div><div class="wm">Weyver <span>織雲</span></div>
+      <div class="cmd"><svg><use href="#i-search"/></svg>搜尋表單、記錄、動作…<span class="k">⌘K</span></div>
+      <div class="topr"><button class="ib"><svg><use href="#i-bell"/></svg></button><div class="ava">美</div></div></div>
+    <div class="body">
+      <div class="rail">
+        <div class="rgrp"><div class="h">工作區</div><div class="rnav">
+          <a><svg><use href="#i-home"/></svg>總覽</a>
+          <a class="on"><svg><use href="#i-table"/></svg>表單資料<span class="cnt">23</span></a>
+          <a><svg><use href="#i-calc"/></svg>財會計算</a>
+          <a><svg><use href="#i-factory"/></svg>生產現場</a>
+          <a><svg><use href="#i-shield"/></svg>品保 ISO</a>
+        </div></div>
+        <div class="rsep"></div>
+        <div class="rgrp" style="padding-bottom:0"><div class="h">採購 · 表單</div></div>
+        <div class="rlist">
+          <a class="on"><svg><use href="#i-table"/></svg>採購單</a>
+          <a><svg><use href="#i-table"/></svg>供應商評鑑</a>
+          <a><svg><use href="#i-table"/></svg>採購明細<span class="sub">子表</span></a>
+          <a><svg><use href="#i-table"/></svg>進貨清單</a>
+          <a><svg><use href="#i-table"/></svg>庫存異動</a>
+        </div>
+      </div>
+      <div class="main">
+        <div class="hd"><div class="t"><h3>採購單</h3><span class="cnt">248 筆</span>
+          <div class="r"><button class="btn"><svg><use href="#i-edit"/></svg>修改設計</button><button class="btn p"><svg><use href="#i-plus"/></svg>新增記錄</button></div></div>
+          <div class="hd2"><div class="seg"><button class="on"><svg><use href="#i-rows"/></svg>列表</button><button><svg><use href="#i-single"/></svg>單筆</button></div>
+            <span class="fchip on">全部</span><span class="fchip"><span class="d"></span>待審核 · 12</span><span class="fchip">本月</span>
+            <div class="r"><button class="btn g"><svg><use href="#i-filter"/></svg>篩選</button><button class="btn g"><svg><use href="#i-sort"/></svg>排序</button></div></div></div>
+        <div class="content"><div class="grid"><table>
+          <thead><tr><th class="idx">#</th><th>單號</th><th>供應商</th><th class="num">金額</th><th>交期</th><th>狀態</th><th style="width:52px"></th></tr></thead>
+          <tbody>
+            <tr><td class="idx">1</td><td class="no">PO-0716-001</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td class="num">128,400</td><td>07-22</td><td><span class="stamp wn"><span class="d"></span>待審核</span></td><td><button class="ib" style="width:26px;height:26px;color:var(--ink4)"><svg style="width:14px;height:14px"><use href="#i-open"/></svg></button></td></tr>
+            <tr><td class="idx">2</td><td class="no">PO-0715-047</td><td><span class="sup"><span class="av">凍</span>凍豐食品</span></td><td class="num">84,200</td><td>07-20</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">3</td><td class="no">PO-0715-046</td><td><span class="sup"><span class="av">正</span>正大食材</span></td><td class="num">312,000</td><td>07-19</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">4</td><td class="no">PO-0715-045</td><td><span class="sup"><span class="av">永</span>永豐冷鏈</span></td><td class="num">56,800</td><td>07-18</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">5</td><td class="no">PO-0715-044</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td class="num">100,800</td><td>07-18</td><td><span class="stamp er"><span class="d"></span>退回</span></td><td></td></tr>
+          </tbody></table></div></div>
+        <div class="sb"><span><span class="dot"></span>已連線 · 即時同步</span><span>更新 <b>14:03:21</b></span><span class="r"><span>租戶 <b>hsienyung</b></span><span>Weyver <b>R1</b></span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><span>＋ 深外框 = 立刻「產品」不「後台」</span><span>＋ 工作區分組(表單/財會/現場/ISO)= 定位一體</span><span>＋ ⌘K 命令列 = power tool</span></div>
+
+  <!-- V2 -->
+  <div class="cap"><div class="row"><span class="tag" style="background:#22568a">V2</span><h2>精緻明亮(Stripe / Mercury 級)</h2></div>
+    <p class="thesis"><b>Thesis</b>:亮色也能高級——靠<b>字階、間距紀律、克制</b>,不是裝飾。證明「不加深色」也不土。</p>
+    <p class="why"><b>為何解「後台感」</b>:大標題字階 + 乾淨白 + 精準 hairline = 像真設計團隊做的,不是工程師隨手後台。</p></div>
+  <div class="app" data-v="2">
+    <div class="top"><div class="brand">W</div><div class="wm">Weyver <span>織雲</span></div>
+      <div class="cmd"><svg><use href="#i-search"/></svg>搜尋…<span class="k">⌘K</span></div>
+      <div class="topr"><button class="ib"><svg><use href="#i-bell"/></svg></button><div class="ava">美</div></div></div>
+    <div class="body">
+      <div class="rail">
+        <div class="rgrp"><div class="h">工作區</div><div class="rnav">
+          <a><svg><use href="#i-home"/></svg>總覽</a>
+          <a class="on"><svg><use href="#i-table"/></svg>表單資料<span class="cnt">23</span></a>
+          <a><svg><use href="#i-calc"/></svg>財會計算</a>
+          <a><svg><use href="#i-factory"/></svg>生產現場</a>
+          <a><svg><use href="#i-shield"/></svg>品保 ISO</a>
+        </div></div>
+        <div class="rsep"></div>
+        <div class="rgrp" style="padding-bottom:0"><div class="h">採購 · 表單</div></div>
+        <div class="rlist">
+          <a class="on"><svg><use href="#i-table"/></svg>採購單</a>
+          <a><svg><use href="#i-table"/></svg>供應商評鑑</a>
+          <a><svg><use href="#i-table"/></svg>採購明細<span class="sub">子表</span></a>
+          <a><svg><use href="#i-table"/></svg>進貨清單</a>
+          <a><svg><use href="#i-table"/></svg>庫存異動</a>
+        </div>
+      </div>
+      <div class="main">
+        <div class="hd"><div class="t"><h3>採購單</h3><span class="cnt">248 筆</span>
+          <div class="r"><button class="btn"><svg><use href="#i-edit"/></svg>修改設計</button><button class="btn p"><svg><use href="#i-plus"/></svg>新增記錄</button></div></div>
+          <div class="hd2"><div class="seg"><button class="on"><svg><use href="#i-rows"/></svg>列表</button><button><svg><use href="#i-single"/></svg>單筆</button></div>
+            <span class="fchip on">全部</span><span class="fchip"><span class="d"></span>待審核 · 12</span><span class="fchip">本月</span>
+            <div class="r"><button class="btn g"><svg><use href="#i-filter"/></svg>篩選</button><button class="btn g"><svg><use href="#i-sort"/></svg>排序</button></div></div></div>
+        <div class="content"><div class="grid"><table>
+          <thead><tr><th class="idx">#</th><th>單號</th><th>供應商</th><th class="num">金額</th><th>交期</th><th>狀態</th><th style="width:52px"></th></tr></thead>
+          <tbody>
+            <tr><td class="idx">1</td><td class="no">PO-0716-001</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td class="num">128,400</td><td>07-22</td><td><span class="stamp wn"><span class="d"></span>待審核</span></td><td><button class="ib" style="width:26px;height:26px;color:var(--ink4)"><svg style="width:14px;height:14px"><use href="#i-open"/></svg></button></td></tr>
+            <tr><td class="idx">2</td><td class="no">PO-0715-047</td><td><span class="sup"><span class="av">凍</span>凍豐食品</span></td><td class="num">84,200</td><td>07-20</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">3</td><td class="no">PO-0715-046</td><td><span class="sup"><span class="av">正</span>正大食材</span></td><td class="num">312,000</td><td>07-19</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">4</td><td class="no">PO-0715-045</td><td><span class="sup"><span class="av">永</span>永豐冷鏈</span></td><td class="num">56,800</td><td>07-18</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">5</td><td class="no">PO-0715-044</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td class="num">100,800</td><td>07-18</td><td><span class="stamp er"><span class="d"></span>退回</span></td><td></td></tr>
+          </tbody></table></div></div>
+        <div class="sb"><span><span class="dot"></span>已連線 · 即時同步</span><span>更新 <b>14:03:21</b></span><span class="r"><span>租戶 <b>hsienyung</b></span><span>Weyver <b>R1</b></span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><span>＋ 21px 標題字階 + 白 + hairline = 編輯級精緻</span><span>＋ 無深色也不土,靠紀律</span><span>＋ 信任訊號齊(狀態列/時間戳)</span></div>
+
+  <!-- V3 -->
+  <div class="cap"><div class="row"><span class="tag" style="background:#5145cd">V3</span><h2>現代工作站(Notion / Attio / Height 味)</h2></div>
+    <p class="thesis"><b>Thesis</b>:一個<b>鮮明品牌 accent(靛藍)+ 柔和現代面板 + 工作區分組側欄</b>,像協作工作站不是表格 dump。</p>
+    <p class="why"><b>為何解「後台感」</b>:有記憶點的 accent + 現代圓潤 + 側欄組織感 = 讀成「有人設計的現代 app」。(accent 可換回 Weyver 深藍/深海青,僅示範個性)</p></div>
+  <div class="app" data-v="3">
+    <div class="top"><div class="brand">W</div><div class="wm">Weyver <span>織雲</span></div>
+      <div class="cmd"><svg><use href="#i-search"/></svg>搜尋或執行動作…<span class="k">⌘K</span></div>
+      <div class="topr"><button class="ib"><svg><use href="#i-bell"/></svg></button><div class="ava">美</div></div></div>
+    <div class="body">
+      <div class="rail">
+        <div class="rgrp"><div class="h">工作區</div><div class="rnav">
+          <a><svg><use href="#i-home"/></svg>總覽</a>
+          <a class="on"><svg><use href="#i-table"/></svg>表單資料<span class="cnt">23</span></a>
+          <a><svg><use href="#i-calc"/></svg>財會計算</a>
+          <a><svg><use href="#i-factory"/></svg>生產現場</a>
+          <a><svg><use href="#i-shield"/></svg>品保 ISO</a>
+        </div></div>
+        <div class="rsep"></div>
+        <div class="rgrp" style="padding-bottom:0"><div class="h">採購 · 表單</div></div>
+        <div class="rlist">
+          <a class="on"><svg><use href="#i-table"/></svg>採購單</a>
+          <a><svg><use href="#i-table"/></svg>供應商評鑑</a>
+          <a><svg><use href="#i-table"/></svg>採購明細<span class="sub">子表</span></a>
+          <a><svg><use href="#i-table"/></svg>進貨清單</a>
+          <a><svg><use href="#i-table"/></svg>庫存異動</a>
+        </div>
+      </div>
+      <div class="main">
+        <div class="hd"><div class="t"><h3>採購單</h3><span class="cnt">248 筆</span>
+          <div class="r"><button class="btn"><svg><use href="#i-edit"/></svg>修改設計</button><button class="btn p"><svg><use href="#i-plus"/></svg>新增記錄</button></div></div>
+          <div class="hd2"><div class="seg"><button class="on"><svg><use href="#i-rows"/></svg>列表</button><button><svg><use href="#i-single"/></svg>單筆</button></div>
+            <span class="fchip on">全部</span><span class="fchip"><span class="d"></span>待審核 · 12</span><span class="fchip">本月</span>
+            <div class="r"><button class="btn g"><svg><use href="#i-filter"/></svg>篩選</button><button class="btn g"><svg><use href="#i-sort"/></svg>排序</button></div></div></div>
+        <div class="content"><div class="grid"><table>
+          <thead><tr><th class="idx">#</th><th>單號</th><th>供應商</th><th class="num">金額</th><th>交期</th><th>狀態</th><th style="width:52px"></th></tr></thead>
+          <tbody>
+            <tr><td class="idx">1</td><td class="no">PO-0716-001</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td class="num">128,400</td><td>07-22</td><td><span class="stamp wn"><span class="d"></span>待審核</span></td><td><button class="ib" style="width:26px;height:26px;color:var(--ink4)"><svg style="width:14px;height:14px"><use href="#i-open"/></svg></button></td></tr>
+            <tr><td class="idx">2</td><td class="no">PO-0715-047</td><td><span class="sup"><span class="av">凍</span>凍豐食品</span></td><td class="num">84,200</td><td>07-20</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">3</td><td class="no">PO-0715-046</td><td><span class="sup"><span class="av">正</span>正大食材</span></td><td class="num">312,000</td><td>07-19</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">4</td><td class="no">PO-0715-045</td><td><span class="sup"><span class="av">永</span>永豐冷鏈</span></td><td class="num">56,800</td><td>07-18</td><td><span class="stamp ok"><span class="d"></span>已核准</span></td><td></td></tr>
+            <tr><td class="idx">5</td><td class="no">PO-0715-044</td><td><span class="sup"><span class="av">鑫</span>鑫豐農產品</span></td><td class="num">100,800</td><td>07-18</td><td><span class="stamp er"><span class="d"></span>退回</span></td><td></td></tr>
+          </tbody></table></div></div>
+        <div class="sb"><span><span class="dot"></span>已連線 · 即時同步</span><span>更新 <b>14:03:21</b></span><span class="r"><span>租戶 <b>hsienyung</b></span><span>Weyver <b>R1</b></span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><span>＋ 鮮明 accent = 記憶點/品牌</span><span>＋ 現代圓潤 + 側欄組織 = 工作站感</span><span>－ accent 個性強,需拿捏不越界成消費風</span></div>
+
+  <div class="foot">Weyver 織雲 · 破壞性重構探索(靜態,供 review)· 資料區守嚴謹,外框比設計語言 · 選定後落 code + 重寫 docs/14</div>
+</div>
+</body>
+</html>
