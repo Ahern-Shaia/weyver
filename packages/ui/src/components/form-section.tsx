@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react"
 import { cn } from "../lib/utils"
 
-/* docs/14 v2 §3.2|分段:扁平主色實底標題條 + 框線面板(禁陰影) */
+/* tokens v3.0|分段:精緻卡片(圓角 + 淺底 header + primary 小圓點 + 極淡層次),非實心主色條 */
 export interface FormSectionProps {
   readonly title: ReactNode
   readonly hint?: ReactNode
@@ -11,10 +11,13 @@ export interface FormSectionProps {
 
 export function FormSection({ title, hint, children, className }: FormSectionProps): ReactElement {
   return (
-    <section className={cn("border border-line border-b-0 bg-card last:border-b", className)}>
-      <header className="flex items-center bg-primary px-3 py-1.5 text-[12px] font-semibold tracking-[.02em] text-white">
+    <section
+      className={cn("overflow-hidden rounded-md border border-line bg-card shadow-xs", className)}
+    >
+      <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+        <span className="size-1.5 shrink-0 rounded-full bg-primary" />
         {title}
-        {hint ? <span className="ml-auto text-[10.5px] font-normal opacity-80">{hint}</span> : null}
+        {hint ? <span className="ml-auto text-[10.5px] font-normal text-ink-4">{hint}</span> : null}
       </header>
       {children}
     </section>

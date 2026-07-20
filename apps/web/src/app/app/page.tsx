@@ -4,25 +4,13 @@ import { Button } from "@weyver/ui/button"
 import { RecordRail } from "@weyver/ui/record-rail"
 import { Segmented } from "@weyver/ui/segmented"
 import { StatusBar, StatusBarDot } from "@weyver/ui/status-bar"
-import { ThemeSwitcher } from "@weyver/ui/theme-switcher"
 import { RecordNav, Toolbar } from "@weyver/ui/toolbar"
-import { TopBar } from "@weyver/ui/top-bar"
 import { useState } from "react"
 import { RAIL_ITEMS } from "./_components/po-data"
 import { PoDesignerView } from "./_components/po-designer-view"
 import { PoFormView } from "./_components/po-form-view"
 import { PoGridView } from "./_components/po-grid-view"
 import { PoListView } from "./_components/po-list-view"
-
-const TABS = [
-  { id: "purchase", label: "採購" },
-  { id: "sales", label: "銷售" },
-  { id: "inventory", label: "庫存" },
-  { id: "mes", label: "生產現場" },
-  { id: "iso", label: "品保 ISO" },
-  { id: "finance", label: "財會" },
-  { id: "reports", label: "報表" },
-] as const
 
 const VIEWS = [
   { label: "表單", value: "form" },
@@ -32,27 +20,11 @@ const VIEWS = [
 ] as const
 
 export default function AppDemoPage() {
-  const [activeTab, setActiveTab] = useState<string>("purchase")
   const [activeRecord, setActiveRecord] = useState("1")
   const [view, setView] = useState<string>("form")
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <TopBar
-        tabs={TABS}
-        activeTab={activeTab}
-        onTabSelect={setActiveTab}
-        right={
-          <>
-            <ThemeSwitcher />
-            <span className="text-[11.5px] text-ink-2">
-              <b className="font-semibold">鮮勇食品</b> · 陳美玲
-            </span>
-          </>
-        }
-      />
-
-      <div className="flex min-h-0 flex-1">
+    <div className="flex h-full min-h-0 overflow-hidden">
         {view !== "design" ? (
           <RecordRail
             header={
@@ -153,9 +125,6 @@ export default function AppDemoPage() {
             }
           />
         </div>
-      </div>
-      {/* Glide Data Grid overlay editor portal */}
-      <div id="portal" className="fixed top-0 left-0 z-[9999]" />
     </div>
   )
 }
