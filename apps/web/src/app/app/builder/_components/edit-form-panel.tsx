@@ -117,7 +117,7 @@ export function EditFormPanel({
       <FieldPalette onPick={startAdd} disabled={form.provisionState !== "ready"} />
 
       <div className="min-w-0 flex-1 overflow-y-auto bg-surface p-5">
-        <div className="mx-auto max-w-[760px]">
+        <div className="max-w-[760px]">
           <div className="mb-3 flex items-center gap-2.5">
             <h1 className="text-[17px] font-semibold tracking-tight text-ink">{form.name}</h1>
             <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>

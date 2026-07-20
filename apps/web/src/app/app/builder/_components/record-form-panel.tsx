@@ -149,7 +149,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
 
   return (
     <div className="flex-1 overflow-y-auto bg-surface py-4">
-      <div className="mx-auto max-w-[880px] px-5">
+      <div className="max-w-[880px] px-5">
         <div className="mb-3 flex items-center gap-2">
           <span className="text-[15px] font-semibold text-ink">新增{form.name}</span>
           <div className="ml-auto flex gap-1.5">

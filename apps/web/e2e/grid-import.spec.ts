@@ -32,8 +32,8 @@ test("匯入 Excel → 推斷預覽 → 建表 → 網格改格 → 資料驗證
 
   await page.goto("/app/builder")
 
-  // 1) 開匯入面板、選檔(隱藏 input 直接設檔)
-  await page.getByRole("button", { name: "匯入 Excel" }).click()
+  // 1) 開匯入面板、選檔(隱藏 input 直接設檔);表單軌與空狀態各有一顆匯入鈕,取第一顆(軌上)
+  await page.getByRole("button", { name: "匯入 Excel" }).first().click()
   await page.locator('input[type="file"]').setInputFiles(FIXTURE)
 
   // 2) 解析 + 型別推斷預覽出現

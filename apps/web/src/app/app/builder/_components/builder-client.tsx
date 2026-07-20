@@ -1,5 +1,7 @@
 "use client"
 
+import { Button } from "@weyver/ui/button"
+import { Table2 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { parseAsInteger, useQueryState } from "nuqs"
 import { useState } from "react"
@@ -67,12 +69,21 @@ export function BuilderClient() {
           ) : formId !== null ? (
             <FormWorkspace key={formId} formId={formId} onAddSubtable={startSubtable} />
           ) : (
-            <div className="flex h-full items-center justify-center bg-surface">
-              <div className="max-w-[320px] text-center">
-                <p className="text-[13px] font-medium text-ink-2">選擇左側表單開始編輯</p>
-                <p className="mt-1 text-[11.5px] text-ink-4">
-                  或點「+ 新增」建立一張新表單 —— 發布後引擎即生成真實資料表。
+            <div className="flex h-full items-center justify-center bg-surface p-8">
+              <div className="max-w-[380px] text-center">
+                <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-lg border border-line bg-card text-ink-4 shadow-xs">
+                  <Table2 size={26} strokeWidth={1.5} />
+                </div>
+                <h2 className="text-[15px] font-semibold text-ink">選擇或建立表單</h2>
+                <p className="mx-auto mt-1.5 max-w-[300px] text-[12px] leading-relaxed text-ink-3">
+                  從左側點選既有表單開始編輯與填單,或新建一張 —— 發布後引擎即生成真實資料表。
                 </p>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button variant="primary" onClick={startNew}>
+                    ＋ 新增表單
+                  </Button>
+                  <Button onClick={startImport}>匯入 Excel</Button>
+                </div>
               </div>
             </div>
           )}
