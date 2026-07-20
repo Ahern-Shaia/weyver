@@ -21,6 +21,11 @@
     --er:#b3261e;--er-line:#e9c9c6;--er-t:#f9ecea;
     --fx:#0b6b5d;--fx-t:#e8f4f1;--rel:#5b3fa8;--rel-t:#efeaf8;
     --sh-over:0 6px 22px rgba(10,14,20,.14);
+    /* §75 每業務域輕微色彩個性,底色統一(採購藍 / 財會青 / 生產琥 / 品保綠)*/
+    --a-buy:#22568a;--a-buy-t:#e9f0f7;
+    --a-fin:#0b6b5d;--a-fin-t:#e6f2ef;
+    --a-mfg:#9a5e12;--a-mfg-t:#f7efe1;
+    --a-iso:#1a7a43;--a-iso-t:#eaf4ee;
   }
   body{margin:0;background:#e9ebef;color:var(--ink);font-family:var(--font);font-size:12.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
   .page{max-width:1300px;margin:0 auto;padding:38px 20px 90px}
@@ -39,11 +44,12 @@
   .nav{width:56px;flex:none;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:10px 0}
   .nav .brand{width:32px;height:32px;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
   .nav .grp{display:flex;flex-direction:column;gap:3px}
-  .nav a{position:relative;width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;transition:.12s}
+  .nav a{--c:var(--accent);--ct:var(--accent-t);position:relative;width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;transition:.12s}
   .nav a svg{width:19px;height:19px}
+  .nav a.buy{--c:var(--a-buy);--ct:var(--a-buy-t)}.nav a.fin{--c:var(--a-fin);--ct:var(--a-fin-t)}.nav a.mfg{--c:var(--a-mfg);--ct:var(--a-mfg-t)}.nav a.iso{--c:var(--a-iso);--ct:var(--a-iso-t)}
   .nav a:hover{background:var(--head);color:var(--ink)}
-  .nav a.on{background:var(--accent-t);color:var(--accent)}
-  .nav a.on::before{content:"";position:absolute;left:-10px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+  .nav a.on{background:var(--ct);color:var(--c)}
+  .nav a.on::before{content:"";position:absolute;left:-10px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--c)}
   .nav a .bdg{position:absolute;top:6px;right:5px;min-width:14px;height:14px;border-radius:7px;background:var(--er);color:#fff;font-size:8.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
   .nav .sp{margin-top:auto;display:flex;flex-direction:column;gap:3px;align-items:center}
   .nav .ava{width:30px;height:30px;border-radius:50%;background:var(--label);border:1px solid var(--line);color:var(--ink2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -90,14 +96,29 @@
   .qc:hover .go{opacity:1;color:var(--accent)}
   .qc .go svg{width:15px;height:15px}
 
+  /* Signature:一體工作區(§270 唯一記憶點)*/
+  .sig{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 24px;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+  .sig .st{font-size:12px;font-weight:600;color:var(--ink2);margin-right:2px}
+  .sig .dom{font-size:11px;font-weight:600;border-radius:4px;padding:3px 9px;display:inline-flex;align-items:center;gap:5px}
+  .sig .dom .dt{width:6px;height:6px;border-radius:2px}
+  .sig .dom.buy{color:var(--a-buy);background:var(--a-buy-t)}.sig .dom.buy .dt{background:var(--a-buy)}
+  .sig .dom.fin{color:var(--a-fin);background:var(--a-fin-t)}.sig .dom.fin .dt{background:var(--a-fin)}
+  .sig .dom.mfg{color:var(--a-mfg);background:var(--a-mfg-t)}.sig .dom.mfg .dt{background:var(--a-mfg)}
+  .sig .dom.iso{color:var(--a-iso);background:var(--a-iso-t)}.sig .dom.iso .dt{background:var(--a-iso)}
+  .sig .sn{margin-left:auto;font-size:11px;color:var(--ink4)}
+
   .areas{display:flex;flex-direction:column;gap:22px;margin-bottom:22px}
-  .area .ah{font-size:11px;font-weight:600;color:var(--ink3);margin:0 0 9px;display:flex;align-items:center;gap:7px}
-  .area .ah svg{width:14px;height:14px;color:var(--ink4)}
+  .area{--c:var(--accent);--ct:var(--accent-t)}
+  .area.buy{--c:var(--a-buy);--ct:var(--a-buy-t)}.area.fin{--c:var(--a-fin);--ct:var(--a-fin-t)}.area.mfg{--c:var(--a-mfg);--ct:var(--a-mfg-t)}.area.iso{--c:var(--a-iso);--ct:var(--a-iso-t)}
+  .area .ah{font-size:11px;font-weight:600;color:var(--ink2);margin:0 0 9px;display:flex;align-items:center;gap:7px}
+  .area .ah .dt{width:7px;height:7px;border-radius:2px;background:var(--c)}
+  .area .ah svg{width:14px;height:14px;color:var(--c)}
+  .area .ah .tag{font-weight:400;font-size:10px;color:var(--c);margin-left:2px}
   .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .fc{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:12px 13px;cursor:pointer;transition:.12s}
-  .fc:hover{border-color:var(--accent);background:var(--accent-t)}
+  .fc:hover{border-color:var(--c);background:var(--ct)}
   .fc .ic{width:28px;height:28px;border-radius:7px;background:var(--head);color:var(--ink3);display:flex;align-items:center;justify-content:center;margin-bottom:9px}
-  .fc:hover .ic{background:var(--accent);color:#fff}
+  .fc:hover .ic{background:var(--c);color:#fff}
   .fc .ic svg{width:15px;height:15px}
   .fc .nm{font-size:13px;font-weight:600;margin-bottom:2px}
   .fc .mt{font-size:11px;color:var(--ink4);font-family:var(--mono)}
@@ -215,7 +236,7 @@
 
 <div class="page">
   <h1>Weyver 工作區 — 合併 uplift</h1>
-  <p class="lede">骨架 <b>C 主頁(登入後)＋ A 三欄工作台</b> 合併,共用左側 icon-nav。拉高<b>視覺 / 操作 / 心智模型</b>,守 docs/14 v3(帶框章、無 resting 陰影、真 Lucide、信任訊號)。</p>
+  <p class="lede">骨架 <b>C 主頁(登入後)＋ A 三欄工作台</b> 合併,共用左側 icon-nav。守 docs/14 v3(帶框章、無 resting 陰影、真 Lucide、信任訊號)。<b>已折入向上設計研究</b>(`ui-design-analysis.md`):§270 一體工作區 Signature 更中央、§75 每業務域配色(採購藍/財會青/生產琥/品保綠)底色統一。</p>
 
   <!-- 主頁 -->
   <div class="cap"><span class="tag">畫面 1</span><h2>登入後主頁 — 你的工作區</h2><p>今天要做什麼(待辦佇列)+ 依業務分組的表單(採購/財會/現場/ISO 一體)+ 最近。點表單 → 進工作台。</p></div>
@@ -224,10 +245,10 @@
       <div class="brand">W</div>
       <div class="grp">
         <a class="on" title="總覽"><svg><use href="#i-home"/></svg></a>
-        <a title="表單資料"><svg><use href="#i-table"/></svg><span class="bdg">12</span></a>
-        <a title="財會計算"><svg><use href="#i-calc"/></svg></a>
-        <a title="生產現場"><svg><use href="#i-factory"/></svg></a>
-        <a title="品保 ISO"><svg><use href="#i-shield"/></svg></a>
+        <a class="buy" title="表單資料 · 採購/進銷存"><svg><use href="#i-table"/></svg><span class="bdg">12</span></a>
+        <a class="fin" title="財會計算"><svg><use href="#i-calc"/></svg></a>
+        <a class="mfg" title="生產現場 MES"><svg><use href="#i-factory"/></svg></a>
+        <a class="iso" title="品保 ISO"><svg><use href="#i-shield"/></svg></a>
       </div>
       <div class="sp"><a title="搜尋"><svg><use href="#i-search"/></svg></a><a title="通知"><svg><use href="#i-bell"/></svg><span class="bdg">3</span></a><div class="ava">美</div></div>
     </div>
@@ -243,9 +264,17 @@
           <div class="qc ac"><div class="top-r"><div class="ic"><svg><use href="#i-truck"/></svg></div><div class="n">5</div></div><div class="t">今日交期 · 待進貨</div><span class="go"><svg><use href="#i-fwd"/></svg></span></div>
           <div class="qc er"><div class="top-r"><div class="ic"><svg><use href="#i-warn"/></svg></div><div class="n">2</div></div><div class="t">庫存異常 · 需處理</div><span class="go"><svg><use href="#i-fwd"/></svg></span></div>
         </div>
+        <div class="sig">
+          <span class="st">一個工作區,涵蓋全部管理工作</span>
+          <span class="dom buy"><span class="dt"></span>採購·進銷存</span>
+          <span class="dom fin"><span class="dt"></span>財會·計算</span>
+          <span class="dom mfg"><span class="dt"></span>生產 MES</span>
+          <span class="dom iso"><span class="dt"></span>品保 ISO</span>
+          <span class="sn">切換像切分頁,不用再開 5 個系統</span>
+        </div>
         <div class="areas">
-          <div class="area">
-            <div class="ah"><svg><use href="#i-table"/></svg>採購 · 進銷存</div>
+          <div class="area buy">
+            <div class="ah"><span class="dt"></span><svg><use href="#i-table"/></svg>採購 · 進銷存</div>
             <div class="cards">
               <div class="fc"><div class="ic"><svg><use href="#i-table"/></svg></div><div class="nm">採購單</div><div class="mt">248 筆 · <em>12 待審</em></div></div>
               <div class="fc"><div class="ic"><svg><use href="#i-table"/></svg></div><div class="nm">供應商評鑑</div><div class="mt">64 筆</div></div>
@@ -253,8 +282,8 @@
               <div class="fc"><div class="ic"><svg><use href="#i-table"/></svg></div><div class="nm">庫存異動</div><div class="mt">1,204 筆</div></div>
             </div>
           </div>
-          <div class="area">
-            <div class="ah"><svg><use href="#i-calc"/></svg>財會 · 計算層 <span style="color:var(--fx);font-weight:400;font-size:10px;margin-left:2px">Weyver 補「算」</span></div>
+          <div class="area fin">
+            <div class="ah"><span class="dt"></span><svg><use href="#i-calc"/></svg>財會 · 計算層 <span class="tag">Weyver 補「算」</span></div>
             <div class="cards">
               <div class="fc"><div class="ic"><svg><use href="#i-calc"/></svg></div><div class="nm">傳票 · 過帳</div><div class="mt">GL · 借貸平衡</div></div>
               <div class="fc"><div class="ic"><svg><use href="#i-table"/></svg></div><div class="nm">應付帳款</div><div class="mt">帳齡 · 沖帳</div></div>
@@ -272,7 +301,7 @@
       </div></div>
     </div>
   </div>
-  <div class="note"><span>＋ 打開先看「今天要做什麼」= 不像被丟進表格</span><span>＋ 表單依業務分組 + 財會標「Weyver 補算」= 心智模型直說一體平台</span><span>＋ ⌘K / 側欄業務域 = 導覽清楚</span></div>
+  <div class="note"><span>＋ Signature 帶(§270):一體工作區、切換像切分頁 = 台灣 SMB 空白點(客戶現開 5 個系統)</span><span>＋ 每業務域配色(§75 採購藍/財會青/生產琥/品保綠)、底色統一</span><span>＋ 佇列首頁 + ⌘K + 淺導覽(§249/250)</span></div>
 
   <!-- 工作台 -->
   <div class="cap"><span class="tag">畫面 2</span><h2>表單工作台 — 記錄 · 單據 · 脈絡(點採購單後)</h2><p>左清單 · 中單據(data-first,「修改設計」是刻意入口)· 右脈絡欄(計算/關聯/簽核/稽核 常駐)。</p></div>
@@ -281,10 +310,10 @@
       <div class="brand">W</div>
       <div class="grp">
         <a title="總覽"><svg><use href="#i-home"/></svg></a>
-        <a class="on" title="表單資料"><svg><use href="#i-table"/></svg><span class="bdg">12</span></a>
-        <a title="財會計算"><svg><use href="#i-calc"/></svg></a>
-        <a title="生產現場"><svg><use href="#i-factory"/></svg></a>
-        <a title="品保 ISO"><svg><use href="#i-shield"/></svg></a>
+        <a class="on buy" title="表單資料 · 採購/進銷存"><svg><use href="#i-table"/></svg><span class="bdg">12</span></a>
+        <a class="fin" title="財會計算"><svg><use href="#i-calc"/></svg></a>
+        <a class="mfg" title="生產現場 MES"><svg><use href="#i-factory"/></svg></a>
+        <a class="iso" title="品保 ISO"><svg><use href="#i-shield"/></svg></a>
       </div>
       <div class="sp"><a title="搜尋"><svg><use href="#i-search"/></svg></a><a title="通知"><svg><use href="#i-bell"/></svg><span class="bdg">3</span></a><div class="ava">美</div></div>
     </div>
