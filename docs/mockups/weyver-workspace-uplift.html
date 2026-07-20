@@ -32,6 +32,7 @@
   h1{font-size:22px;font-weight:700;letter-spacing:-.012em;margin:0 0 6px}
   .lede{color:#697585;font-size:13px;max-width:920px;margin:0 0 6px}
   .lede b{color:#3d4753}
+  .lede code{font-family:var(--mono);font-size:11.5px;background:var(--head);border-radius:3px;padding:1px 5px;color:var(--ink2)}
   .cap{margin:32px 0 12px;display:flex;align-items:baseline;gap:10px}
   .cap .tag{font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:4px;padding:3px 9px}
   .cap h2{font-size:16px;font-weight:600;margin:0}
@@ -96,29 +97,19 @@
   .qc:hover .go{opacity:1;color:var(--accent)}
   .qc .go svg{width:15px;height:15px}
 
-  /* Signature:一體工作區(§270 唯一記憶點)*/
-  .sig{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 24px;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
-  .sig .st{font-size:12px;font-weight:600;color:var(--ink2);margin-right:2px}
-  .sig .dom{font-size:11px;font-weight:600;border-radius:4px;padding:3px 9px;display:inline-flex;align-items:center;gap:5px}
-  .sig .dom .dt{width:6px;height:6px;border-radius:2px}
-  .sig .dom.buy{color:var(--a-buy);background:var(--a-buy-t)}.sig .dom.buy .dt{background:var(--a-buy)}
-  .sig .dom.fin{color:var(--a-fin);background:var(--a-fin-t)}.sig .dom.fin .dt{background:var(--a-fin)}
-  .sig .dom.mfg{color:var(--a-mfg);background:var(--a-mfg-t)}.sig .dom.mfg .dt{background:var(--a-mfg)}
-  .sig .dom.iso{color:var(--a-iso);background:var(--a-iso-t)}.sig .dom.iso .dt{background:var(--a-iso)}
-  .sig .sn{margin-left:auto;font-size:11px;color:var(--ink4)}
+  /* Signature:一體工作區(§270 唯一記憶點)—— 以文案敘述,不用彩色 chip 裝飾 */
+  .sig{margin:0 0 24px;font-size:12.5px;color:var(--ink3);border-left:2px solid var(--accent);padding:2px 0 2px 11px}
 
   .areas{display:flex;flex-direction:column;gap:22px;margin-bottom:22px}
-  .area{--c:var(--accent);--ct:var(--accent-t)}
-  .area.buy{--c:var(--a-buy);--ct:var(--a-buy-t)}.area.fin{--c:var(--a-fin);--ct:var(--a-fin-t)}.area.mfg{--c:var(--a-mfg);--ct:var(--a-mfg-t)}.area.iso{--c:var(--a-iso);--ct:var(--a-iso-t)}
+  /* §75 每業務域色僅作 icon-nav 作用態之「你在哪個域」wayfinding;home 保持中性單一主色 */
   .area .ah{font-size:11px;font-weight:600;color:var(--ink2);margin:0 0 9px;display:flex;align-items:center;gap:7px}
-  .area .ah .dt{width:7px;height:7px;border-radius:2px;background:var(--c)}
-  .area .ah svg{width:14px;height:14px;color:var(--c)}
-  .area .ah .tag{font-weight:400;font-size:10px;color:var(--c);margin-left:2px}
+  .area .ah svg{width:14px;height:14px;color:var(--ink4)}
+  .area .ah .tag{font-weight:400;font-size:10px;color:var(--ink4);margin-left:2px}
   .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .fc{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:12px 13px;cursor:pointer;transition:.12s}
-  .fc:hover{border-color:var(--c);background:var(--ct)}
+  .fc:hover{border-color:var(--accent);background:var(--accent-t)}
   .fc .ic{width:28px;height:28px;border-radius:7px;background:var(--head);color:var(--ink3);display:flex;align-items:center;justify-content:center;margin-bottom:9px}
-  .fc:hover .ic{background:var(--c);color:#fff}
+  .fc:hover .ic{background:var(--accent);color:#fff}
   .fc .ic svg{width:15px;height:15px}
   .fc .nm{font-size:13px;font-weight:600;margin-bottom:2px}
   .fc .mt{font-size:11px;color:var(--ink4);font-family:var(--mono)}
@@ -236,7 +227,7 @@
 
 <div class="page">
   <h1>Weyver 工作區 — 合併 uplift</h1>
-  <p class="lede">骨架 <b>C 主頁(登入後)＋ A 三欄工作台</b> 合併,共用左側 icon-nav。守 docs/14 v3(帶框章、無 resting 陰影、真 Lucide、信任訊號)。<b>已折入向上設計研究</b>(`ui-design-analysis.md`):§270 一體工作區 Signature 更中央、§75 每業務域配色(採購藍/財會青/生產琥/品保綠)底色統一。</p>
+  <p class="lede">骨架 <b>C 主頁(登入後)＋ A 三欄工作台</b> 合併。<b>對應指定元件庫 shadcn/ui</b>(docs/14 §1.1)—— 非手刻:app shell = <code>sidebar-07</code>(收合成 icon)、三欄工作台 = <code>sidebar-15</code>(左+右)、狀態章 = <b>Badge variant=outline</b>(方角語意色,非彩色 chip)、⌘K = <b>Command</b>、表格 = <b>Table</b>、卡片 = <b>Card</b>、Tabs / Button / DropdownMenu 皆 shadcn,視覺覆寫為 docs/14 token。<b>已去 vibe</b>:拿掉彩色業務域 chip;§75 業務域色只留 icon-nav 作用態的 wayfinding,home 中性單一主色。</p>
 
   <!-- 主頁 -->
   <div class="cap"><span class="tag">畫面 1</span><h2>登入後主頁 — 你的工作區</h2><p>今天要做什麼(待辦佇列)+ 依業務分組的表單(採購/財會/現場/ISO 一體)+ 最近。點表單 → 進工作台。</p></div>
@@ -264,17 +255,10 @@
           <div class="qc ac"><div class="top-r"><div class="ic"><svg><use href="#i-truck"/></svg></div><div class="n">5</div></div><div class="t">今日交期 · 待進貨</div><span class="go"><svg><use href="#i-fwd"/></svg></span></div>
           <div class="qc er"><div class="top-r"><div class="ic"><svg><use href="#i-warn"/></svg></div><div class="n">2</div></div><div class="t">庫存異常 · 需處理</div><span class="go"><svg><use href="#i-fwd"/></svg></span></div>
         </div>
-        <div class="sig">
-          <span class="st">一個工作區,涵蓋全部管理工作</span>
-          <span class="dom buy"><span class="dt"></span>採購·進銷存</span>
-          <span class="dom fin"><span class="dt"></span>財會·計算</span>
-          <span class="dom mfg"><span class="dt"></span>生產 MES</span>
-          <span class="dom iso"><span class="dt"></span>品保 ISO</span>
-          <span class="sn">切換像切分頁,不用再開 5 個系統</span>
-        </div>
+        <p class="sig">採購 · 財會 · 生產 · 品保 —— 同一工作區,切換像切分頁,不用再開 5 個系統。</p>
         <div class="areas">
           <div class="area buy">
-            <div class="ah"><span class="dt"></span><svg><use href="#i-table"/></svg>採購 · 進銷存</div>
+            <div class="ah"><svg><use href="#i-table"/></svg>採購 · 進銷存</div>
             <div class="cards">
               <div class="fc"><div class="ic"><svg><use href="#i-table"/></svg></div><div class="nm">採購單</div><div class="mt">248 筆 · <em>12 待審</em></div></div>
               <div class="fc"><div class="ic"><svg><use href="#i-table"/></svg></div><div class="nm">供應商評鑑</div><div class="mt">64 筆</div></div>
@@ -301,7 +285,7 @@
       </div></div>
     </div>
   </div>
-  <div class="note"><span>＋ Signature 帶(§270):一體工作區、切換像切分頁 = 台灣 SMB 空白點(客戶現開 5 個系統)</span><span>＋ 每業務域配色(§75 採購藍/財會青/生產琥/品保綠)、底色統一</span><span>＋ 佇列首頁 + ⌘K + 淺導覽(§249/250)</span></div>
+  <div class="note"><span>＋ Signature 以文案敘述(§270),不用彩色 chip 裝飾</span><span>＋ 佇列首頁 + ⌘K + 淺導覽(§249/250)= shadcn dashboard-01 + Command</span><span>＋ 業務域色只在左 icon-nav 作用態(wayfinding),home 中性</span></div>
 
   <!-- 工作台 -->
   <div class="cap"><span class="tag">畫面 2</span><h2>表單工作台 — 記錄 · 單據 · 脈絡(點採購單後)</h2><p>左清單 · 中單據(data-first,「修改設計」是刻意入口)· 右脈絡欄(計算/關聯/簽核/稽核 常駐)。</p></div>
