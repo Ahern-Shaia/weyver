@@ -190,8 +190,8 @@ resolveForActor(tenantId, actorId):
 | **M2** A2 PermissionService + 快取 + unit | PermissionService.resolveForActor(admin 特判 / 角色閉包聚合 / deny-all)+ buildEffectivePermissions 純聚合(聯集/欄位繼承+收斂交集)+ EffectivePermissions(form/field 判定 + list 過濾);8 unit 綠。**快取**改採 request-attached(對齊現有 TenantContext 掛 req 模式;nestjs-cls 未於 codebase 落地 → per-request 由 M3 Guard 解析一次掛 req,cross-request/CLS 待基建) | ✅ |
 | **M3** A3 PermissionGuard + list 過濾 + 接 controllers + 整合測 | PermissionGuard(掛 TenantGuard 後,解析掛 req.permissions;:formId 路由依 decorator/方法驗級別;無 formId write/manage 需 admin)+ `@RequiresFormLevel` + `@Permissions`;forms/records controller 接上,設計器路由標 manage、query 標 read、list 過濾 readable;dev isSuperAdmin 全權、prod owner→admin(org hook 對映);7 guard 整合測 + records/formula/tenant/e2e 無回歸 | ✅ |
 | **M4** A4 欄位級遮罩/寫白名單 + 回應 DTO + 整合測 | RecordService 加 optional `policy?: FieldAccessPolicy`:讀 maskRead(移除 hidden 欄,後端不回)+ 寫 assertWritable(非 write 欄→FieldForbiddenError→403);create/update/bulk/getRecord/listRecords/saveWithLines(header+lines 各依表)全接;controller 傳 @Permissions();policy 缺省=不遮罩(向後相容)。5 integration(真 PG:讀遮罩/list 遮罩/寫白名單 403/只寫可寫成功)+ records/e2e 無回歸 | ✅ |
-| **M5** A5 管理 API + UI + e2e 固化 | | ⏳ |
-| **M6** FMEA 收尾(§12)+ doc v1.0 + MODULES.md ✅ | | ⏳ |
+| **M5** A5 管理 API(+ UI)+ 測試 | **後端 API ✅**:AuthzAdminController /api/authz/roles(TenantGuard+AdminGuard)角色 CRUD/reparent/成員/表單×角色/欄位權限/矩陣讀 + AuthzAdminService(跨租戶 404·系統角色不可刪·有子不可刪·cycle/dup 映射)+ AdminGuard;7 integration。**管理 UI ⏳ 獨立前端交付(待做)** | 🚧 |
+| **M6** FMEA 收尾(§12)+ doc | §12 六路徑 FMEA 完成,P0 全 ✅(後端可上 prod);F4 公式×可見性、T/R 殘留列明 | ✅(後端)|
 
 ---
 
@@ -210,9 +210,69 @@ resolveForActor(tenantId, actorId):
 
 ---
 
-## 12. 失效場景反思（FMEA）— M6 收尾填
+## 12. 失效場景反思（FMEA）— M6
 
-> 待 M6。預定逐路徑:PermissionGuard 繞過 / 欄位遮罩漏 / mass-assignment / 多角色聯集誤放行 / 快取污染跨 actor / org 角色對映死鎖 / 種子競態 / **role tree 環致無限迴圈 / 深樹解析爆炸 / 刪父節點孤兒 / 跨租戶 parent**。P0 未清不得 SHIPPED。
+> 逐路徑:失效模式 → 影響 → 嚴重度 → 緩解狀態。P0 未 ✅ 不得 SHIPPED。
+
+### 12.1 PermissionGuard(表單級執法)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| G1 | Guard 未掛某 controller | 該 route 無授權 → 越權 | ✅ forms/records 皆 `@UseGuards(TenantGuard, PermissionGuard)`;新 controller 靠 review + 本表 | P0 |
+| G2 | Guard 早於 TenantGuard(無 context) | 讀不到 tenantContext | ✅ 明確 throw「order after TenantGuard」;array 順序 TenantGuard→PermissionGuard | P0 |
+| G3 | 設計器路由用預設 write 而非 manage | editor(write)可改表結構 | ✅ 全設計器路由標 `@RequiresFormLevel("manage")`;query(POST 讀)標 read | P0 |
+| G4 | 無角色 actor 讀到表 | 洩漏 | ✅ deny-by-default:formLevel 缺=none;list 過濾;整合測斷言 | P0 |
+| G5 | 無 formId 的寫(建表)未擋 | 任意人建表 | ✅ 無 formId + write/manage → 需 isAdmin | P1 |
+
+### 12.2 欄位級(M4 遮罩 / 寫白名單)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| F1 | hidden 欄仍回前端 | 洩漏敏感欄 | ✅ maskRead 後端刪值(非前端隱藏);getRecord/list/create 回應皆遮;整合測 | P0 |
+| F2 | 寫入無 write 權欄(mass-assignment) | 竄改 | ✅ assertWritable 每提供欄查 write,否則 FieldForbiddenError→403 | P0 |
+| F3 | 子表 saveWithLines 只檢 header | line 欄越權 | ✅ header 依 parentForm、每 line 依 childForm 各自 assertWritable | P0 |
+| F4 | formula/rollup 欄含 hidden 來源欄 | 讀時算間接洩隱藏值 | ⚠️ 已知殘留:公式結果欄本身受遮罩,但若公式引用 hidden 欄,結果值間接透露 → **治本**:設計期禁公式引用低於自身可見性之欄(P1-I authz×formula 交叉);目前靠管理員配置紀律 | P1 |
+
+### 12.3 決策解析(M2)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| R1 | 多角色聯集誤放行 | 過度授權 | ✅ 聯集取「較寬鬆」是設計語意(Ragic 同);欄位收斂於表單級(交集較嚴);單元測覆蓋 | P1 |
+| R2 | 每請求解析污染跨 actor | A 讀到 B 權限 | ✅ 每請求 resolveForActor 重算 + 掛該 req.permissions,無跨請求共享狀態 | P0 |
+| R3 | admin 特判被誤用 | 非 admin 得全權 | ✅ isAdminActor 查 is_system && key='admin' 的 role membership;dev isSuperAdmin 僅 dev(prod fail-closed) | P0 |
+
+### 12.4 role tree(OQ-1=C)
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| T1 | 環致無限迴圈 | 解析/建立 hang | ✅ 建/reparent 前 wouldCreateCycle 擋;resolveActorRoleIds 用 UNION(遇環自然終止);closure visited set;單元測環資料仍終止 | P0 |
+| T2 | 深樹解析爆炸 | 效能 / stack | ✅ depthForParent 上限 8;recursive CTE 單查詢非遞迴函數 | P1 |
+| T3 | 刪父節點成孤兒 | FK 破壞 | ✅ parent FK ON DELETE RESTRICT + service countChildren 先擋(409) | P1 |
+| T4 | 跨租戶 parent | 越租戶樹 | ✅ createRole 驗 parent 同租戶(getRole tenant-scoped);setRoleParent 同租戶 parentMap | P0 |
+
+### 12.5 org 對映 / 種子 / admin API
+
+| # | 場景 | 行為 | 狀態 | Sev |
+|---|---|---|---|---|
+| O1 | owner 登入卻無權(死鎖) | 建 org 後自己進不去 | ✅ afterCreateOrganization 種角色 + upsert owner + assign admin(全 idempotent) | P0 |
+| O2 | 種子競態(並發建 org) | 重複角色 | ✅ onConflictDoNothing(tenant,key);unique 兜底 | P1 |
+| O3 | admin API 跨租戶操作他人角色 | 越權改權限 | ✅ 每操作 mustRole(tenant scope)→ 不存在即 404;整合測斷言 | P0 |
+| O4 | 非 admin 觸 admin API | 越權管理 | ✅ AdminGuard 需系統 admin(dev isSuperAdmin);deny 其他 | P0 |
+
+### 12.6 部署順序
+
+| # | 場景 | 風險 | 緩解 |
+|---|---|---|---|
+| D1 | 後端 code 先於 migration 0006 | 缺 4 表 → authz 查詢 500 | migration 必先(R10);Tier-1 表由特權車道建 |
+
+### 12.7 不在本模組 scope
+
+- 記錄級 row filter(owner/部門)→ P1-I(OQ-3=A)。
+- 通知 / Ops → P0-4b/c 獨立模組。
+- **權限管理 UI**(角色/矩陣前端)→ 本模組 M1–M5 為後端;UI 為獨立前端交付(見 §9 / MODULES.md)。
+- F4 公式×可見性交叉 → P1-I。
+
+> **檢查點**:上表 P0 全 ✅。後端可上 prod;完整 SHIPPED 待管理 UI。
 
 ---
 
