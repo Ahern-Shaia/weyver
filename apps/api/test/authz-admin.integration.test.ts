@@ -129,19 +129,19 @@ describe("AuthzAdminService — 權限管理後台(P0-4a M5)", () => {
       "bAdmin",
     )
     // 用 tenantA 操作 B 的角色 → 當作不存在
-    await expect(admin.setFormPermission(tenantA, bAdmin.id, formA, "read")).rejects.toBeInstanceOf(
+    await expect(admin.setFormActions(tenantA, bAdmin.id, formA, ["view"])).rejects.toBeInstanceOf(
       NotFoundException,
     )
   })
 
   it("設表單/欄位權限 + 指派成員 → getRolePermissions 反映", async () => {
     const role = await admin.createRole(tenantA, { key: "viewer2", name: "檢視2", parentId: null })
-    await admin.setFormPermission(tenantA, role.id, formA, "read")
+    await admin.setFormActions(tenantA, role.id, formA, ["view", "export"])
     await admin.setFieldPermission(tenantA, role.id, fieldA, "hidden")
     await admin.assignMember(tenantA, role.id, actorX)
 
     const view = await admin.getRolePermissions(tenantA, role.id)
-    expect(view.forms).toEqual([{ formId: formA, level: "read" }])
+    expect(view.forms).toEqual([{ formId: formA, actions: ["view", "export"] }])
     expect(view.fields).toEqual([{ fieldId: fieldA, visibility: "hidden" }])
     expect(view.memberActorIds).toEqual([actorX])
   })

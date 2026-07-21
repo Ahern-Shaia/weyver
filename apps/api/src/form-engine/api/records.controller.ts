@@ -15,7 +15,7 @@ import {
 import { z } from "zod"
 import { TenantGuard } from "../../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../../authz/authz-effective.js"
-import { Permissions, RequiresFormLevel } from "../../authz/authz-http.js"
+import { Permissions, RequiresFormAction } from "../../authz/authz-http.js"
 import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
@@ -64,7 +64,7 @@ export class RecordsController {
 
   @Post("query")
   @HttpCode(200)
-  @RequiresFormLevel("read") // POST 但語意為讀(搜尋),故要求 read 而非 write
+  @RequiresFormAction("view") // POST 但語意為讀(搜尋),故要求 view 而非 create
   async query(
     @Tenant() tenant: TenantContext,
     @Permissions() permissions: EffectivePermissions,
@@ -153,6 +153,7 @@ export class RecordsController {
   /* 子表單據(header + lines 單一交易,A5) */
   @Post("save-with-lines")
   @HttpCode(200)
+  @RequiresFormAction("edit") // 文件存檔(header+lines diff)語意為編輯,非單純 create
   async saveWithLines(
     @Tenant() tenant: TenantContext,
     @Permissions() permissions: EffectivePermissions,

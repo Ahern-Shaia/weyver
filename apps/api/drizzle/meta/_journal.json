@@ -50,6 +50,13 @@
       "when": 1784564536526,
       "tag": "0006_authz_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784564536527,
+      "tag": "0007_form_permissions_actions",
+      "breakpoints": true
     }
   ]
 }

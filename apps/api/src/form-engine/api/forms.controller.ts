@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common"
 import { TenantGuard } from "../../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../../authz/authz-effective.js"
-import { Permissions, RequiresFormLevel } from "../../authz/authz-http.js"
+import { Permissions, RequiresFormAction } from "../../authz/authz-http.js"
 import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
@@ -46,7 +46,7 @@ export class FormsController {
   ) {}
 
   @Post()
-  @RequiresFormLevel("manage") // 建表 = 設計動作;無 formId → 需租戶管理權(admin)
+  @RequiresFormAction("design") // 建表 = 設計動作;無 formId → 需租戶管理權(admin)
   async createForm(
     @Tenant() tenant: TenantContext,
     @Body(new ZodValidationPipe(createFormSpecSchema)) spec: CreateFormSpec,
@@ -82,7 +82,7 @@ export class FormsController {
 
   @Delete(":formId")
   @HttpCode(204)
-  @RequiresFormLevel("manage")
+  @RequiresFormAction("design")
   async dropForm(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
@@ -91,7 +91,7 @@ export class FormsController {
   }
 
   @Post(":formId/fields")
-  @RequiresFormLevel("manage")
+  @RequiresFormAction("design")
   async addField(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
@@ -102,7 +102,7 @@ export class FormsController {
 
   @Patch(":formId/fields/:fieldId/type")
   @HttpCode(204)
-  @RequiresFormLevel("manage")
+  @RequiresFormAction("design")
   async alterFieldType(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
@@ -115,7 +115,7 @@ export class FormsController {
 
   @Patch(":formId/fields/:fieldId/position")
   @HttpCode(204)
-  @RequiresFormLevel("manage")
+  @RequiresFormAction("design")
   async moveField(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
@@ -128,7 +128,7 @@ export class FormsController {
 
   @Delete(":formId/fields/:fieldId")
   @HttpCode(204)
-  @RequiresFormLevel("manage")
+  @RequiresFormAction("design")
   async dropField(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,

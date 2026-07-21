@@ -19,7 +19,7 @@ import type { TenantContext } from "../http/tenant-context.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
 import { AdminGuard } from "./admin.guard.js"
 import { AuthzAdminService, type RolePermissionsView } from "./authz-admin.service.js"
-import { FIELD_VISIBILITIES, FORM_LEVELS } from "./authz-model.js"
+import { FIELD_VISIBILITIES, FORM_ACTIONS } from "./authz-model.js"
 import type { RoleRow } from "./authz.repository.js"
 
 const roleKeySchema = z.string().regex(/^[a-z][a-z0-9_]{1,62}$/, "key 須小寫字母開頭,限 a-z0-9_")
@@ -30,7 +30,7 @@ const createRoleSchema = z.object({
 })
 const reparentSchema = z.object({ parentId: z.number().int().positive().nullable() })
 const memberSchema = z.object({ actorId: z.number().int().positive() })
-const formLevelSchema = z.object({ level: z.enum(FORM_LEVELS) })
+const formActionsSchema = z.object({ actions: z.array(z.enum(FORM_ACTIONS)) })
 const fieldVisibilitySchema = z.object({ visibility: z.enum(FIELD_VISIBILITIES) })
 
 /* P0-4a M5|權限管理後台 API(admin only)。薄 controller → AuthzAdminService。
@@ -102,13 +102,13 @@ export class AuthzAdminController {
 
   @Put(":roleId/forms/:formId")
   @HttpCode(204)
-  async setFormPermission(
+  async setFormActions(
     @Tenant() tenant: TenantContext,
     @Param("roleId", ParseIntPipe) roleId: number,
     @Param("formId", ParseIntPipe) formId: number,
-    @Body(new ZodValidationPipe(formLevelSchema)) body: z.infer<typeof formLevelSchema>,
+    @Body(new ZodValidationPipe(formActionsSchema)) body: z.infer<typeof formActionsSchema>,
   ): Promise<void> {
-    await this.admin.setFormPermission(tenant.tenantId, roleId, formId, body.level)
+    await this.admin.setFormActions(tenant.tenantId, roleId, formId, body.actions)
   }
 
   @Put(":roleId/fields/:fieldId")

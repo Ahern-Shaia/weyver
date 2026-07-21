@@ -7,8 +7,8 @@ import {
 } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import { buildEffectivePermissions, type EffectivePermissions } from "./authz-effective.js"
-import { type FormLevel, requiredLevelForMethod } from "./authz-model.js"
-import { REQUIRED_FORM_LEVEL, type RequestWithPermissions } from "./authz-http.js"
+import { type FormAction, requiredActionForMethod } from "./authz-model.js"
+import { REQUIRED_FORM_ACTION, type RequestWithPermissions } from "./authz-http.js"
 import { PermissionService } from "./permission.service.js"
 
 /* P0-4a M3|表單級授權守衛。掛在 TenantGuard 之後(需 request.tenantContext)。
@@ -35,18 +35,18 @@ export class PermissionGuard implements CanActivate {
       : await this.permissions.resolveForActor(tenant.tenantId, tenant.actorId)
     request.permissions = effective
 
-    const required: FormLevel =
-      this.reflector.getAllAndOverride<FormLevel | undefined>(REQUIRED_FORM_LEVEL, [
+    const required: FormAction =
+      this.reflector.getAllAndOverride<FormAction | undefined>(REQUIRED_FORM_ACTION, [
         context.getHandler(),
         context.getClass(),
-      ]) ?? requiredLevelForMethod(request.method)
+      ]) ?? requiredActionForMethod(request.method)
 
     const params = request.params as Record<string, string> | undefined
     const formIdRaw = params?.formId
 
     if (formIdRaw !== undefined) {
       const formId = Number(formIdRaw)
-      if (!Number.isSafeInteger(formId) || !hasFormLevel(effective, formId, required)) {
+      if (!Number.isSafeInteger(formId) || !effective.hasAction(formId, required)) {
         throw new ForbiddenException({
           code: "FORBIDDEN",
           message: "insufficient permission for this form",
@@ -55,26 +55,13 @@ export class PermissionGuard implements CanActivate {
       return true
     }
 
-    // 無 formId:讀(list)交給 controller 過濾;寫/管理(建表)需租戶管理權
-    if (required !== "read" && !effective.isAdmin) {
+    // 無 formId:讀(list)交給 controller 過濾;非讀(建表 create/design)需租戶管理權
+    if (required !== "view" && !effective.isAdmin) {
       throw new ForbiddenException({
         code: "FORBIDDEN",
         message: "requires admin to create or manage forms",
       })
     }
     return true
-  }
-}
-
-function hasFormLevel(eff: EffectivePermissions, formId: number, level: FormLevel): boolean {
-  switch (level) {
-    case "read":
-      return eff.canRead(formId)
-    case "write":
-      return eff.canWrite(formId)
-    case "manage":
-      return eff.canManage(formId)
-    case "none":
-      return true
   }
 }

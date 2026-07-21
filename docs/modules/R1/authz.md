@@ -92,13 +92,14 @@ CREATE TABLE role_members (
   PRIMARY KEY (role_id, actor_id)
 );
 
--- 表單級權限(角色 × 表單 → 級別)
+-- 表單級權限(角色 × 表單 → 動作集;M7 由單一 level → actions[])
 CREATE TABLE form_permissions (
   role_id   bigint NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
   form_id   bigint NOT NULL REFERENCES form_def(id) ON DELETE CASCADE,
-  level     text   NOT NULL CHECK (level IN ('none','read','write','manage')),
+  actions   text[] NOT NULL DEFAULT ARRAY[]::text[],  -- view/create/edit/delete/approve/export/design
   PRIMARY KEY (role_id, form_id)
 );
+-- migration 0007:level(none/read/write/manage)→ actions[](更細粒度,OQ-AUTHZ-7=B 動作級)
 
 -- 欄位級權限(角色 × 欄位 → 可見性;缺列 = 繼承表單級)
 CREATE TABLE field_permissions (
@@ -109,16 +110,21 @@ CREATE TABLE field_permissions (
 );
 ```
 
-### 4.2 級別語意(表單級)
+### 4.2 動作語意(表單級,M7 動作集)
 
-| level | 可讀記錄 | 可寫記錄 | 可改表單設計 | 可設權限 |
-|---|:-:|:-:|:-:|:-:|
-| none | ✗ | ✗ | ✗ | ✗ |
-| read | ✓ | ✗ | ✗ | ✗ |
-| write | ✓ | ✓ | ✗ | ✗ |
-| manage | ✓ | ✓ | ✓ | ✓(該表)|
+| 動作 | 意義 | HTTP 對映(Guard 預設) |
+|---|---|---|
+| view | 看記錄 + 表單出現在清單 | GET / query(POST) / list |
+| create | 新增記錄 | POST records / bulk |
+| edit | 修改記錄 | PATCH / save-with-lines |
+| delete | 軟刪記錄 | DELETE record |
+| approve | 簽核核准(前瞻;端點於 workflow 模組落地時 enforce) | — |
+| export | 匯出(前瞻;報表模組) | — |
+| design | 改表單結構(原 manage) | 建表 / 加欄 / 改型別 / 刪欄 |
 
-欄位級**收斂於**表單級:表單 `read` + 欄位 `write` = 實際 `read`(取交集,較嚴者勝)。欄位缺列則繼承表單級。
+- **有效動作 = 角色閉包(自身∪祖先)所有列的動作聯集**(較寬鬆勝)。缺列/空集 = 無動作(deny-by-default)。
+- **admin 系統角色** = 全動作(特判,不查每表);**設權限本身**由 AdminGuard(系統 admin)控,不在 design 內。
+- 欄位級**收斂於表單動作集**(交集,較嚴者勝):表單無 edit/create → 欄位頂多 read;無 view → hidden。欄位缺列則繼承(有 edit→write,僅 view→read)。
 
 ---
 
@@ -192,6 +198,7 @@ resolveForActor(tenantId, actorId):
 | **M4** A4 欄位級遮罩/寫白名單 + 回應 DTO + 整合測 | RecordService 加 optional `policy?: FieldAccessPolicy`:讀 maskRead(移除 hidden 欄,後端不回)+ 寫 assertWritable(非 write 欄→FieldForbiddenError→403);create/update/bulk/getRecord/listRecords/saveWithLines(header+lines 各依表)全接;controller 傳 @Permissions();policy 缺省=不遮罩(向後相容)。5 integration(真 PG:讀遮罩/list 遮罩/寫白名單 403/只寫可寫成功)+ records/e2e 無回歸 | ✅ |
 | **M5** A5 管理 API(+ UI)+ 測試 | **後端 API ✅**:AuthzAdminController /api/authz/roles(TenantGuard+AdminGuard)角色 CRUD/reparent/成員/表單×角色/欄位權限/矩陣讀 + AuthzAdminService(跨租戶 404·系統角色不可刪·有子不可刪·cycle/dup 映射)+ AdminGuard;7 integration。**管理 UI ⏳ 獨立前端交付(待做)** | 🚧 |
 | **M6** FMEA 收尾(§12)+ doc | §12 六路徑 FMEA 完成,P0 全 ✅(後端可上 prod);F4 公式×可見性、T/R 殘留列明 | ✅(後端)|
+| **M7** 動作級模型(OQ-7=B)| `form_permissions.level` → `actions text[]`(view/create/edit/delete/approve/export/design);migration 0007;FormAction 聯集 + 欄位 clamp 依動作集 + Guard 方法→動作 + admin API actions;全套件 163 tests 綠 | ✅(後端)|
 
 ---
 
@@ -207,6 +214,7 @@ resolveForActor(tenantId, actorId):
 | **OQ-AUTHZ-4** | E | 新表**預設可見性** | A. **deny-by-default**(新表僅 admin/建立者可見,需明確授權他人)<br>B. allow-by-default(租戶內預設可見,再逐步收) | **A** — AGENTS 資安鐵則 deny-by-default;安全優先。⚠️ **權衡**:Ragic 習慣偏 allow,遷移期全 deny 可能造成「東西不見了」摩擦 → 緩解:pilot 遷移時由 admin 一鍵「全員 editor」過渡,之後再收。此題影響遷移體驗,想聽你定 |
 | **OQ-AUTHZ-5** | E | Better Auth org 角色對映 | A. org `owner/admin` → 自動 tenant `admin`(全表單 manage);`member` → 依指派<br>B. 完全獨立,org 角色不影響 app 權限 | **A** — 避免「org owner 卻在 app 無權」的死鎖;owner 須有可控回收路徑(對齊 auth.md §6-bis 治理) |
 | **OQ-AUTHZ-6** | E | 權限快取 | A. **per-request CLS**(每請求解析一次)<br>B. Redis 跨請求 + 變更失效 | **A** — 對齊「metadata 快取」為 P1 非 P0;先 per-request 正確簡單,規模到再加 Redis 層(介面預留)|
+| **OQ-AUTHZ-7** | E | 表單存取粒度(2026-07-21 追加)| A. 4 級 none/read/write/manage<br>B. **動作集**(view/create/edit/delete/approve/export/design)| ✅ **B**(用戶採建議「更細度控制哪些權限給什麼角色」)— 4 級把新增/編輯/刪除綁在「寫」,表達不出「可核准不可新增」;M7 遷移 `level`→`actions[]`(migration 0007)。approve/export 前瞻旗標 |
 
 ---
 
@@ -282,3 +290,5 @@ resolveForActor(tenantId, actorId):
 |---|---|---|---|
 | 2026-07-21 | v0.1 | 初版 DRAFT — 拆自 P0-4(通知/Ops 另立);表單級+欄位級 authz;OQ-AUTHZ-1..6 | Claude Code |
 | 2026-07-21 | v0.2 | OQ 全裁定;DRAFT→**APPROVED**;OQ-1=C **role tree 前移**(自 docs/13 P1-I;`parent_id`+recursive CTE 祖先繼承+防環+深度上限);進 M1。**cascade**:docs/13 §「P1-I 記錄級權限」註記 role tree 已前移 P0-4a(記錄級 row filter 仍留 P1-I)| Claude Code |
+| 2026-07-21 | v0.3 | M1–M5 後端 + M6 FMEA SHIPPED(表單級 4 級 + 欄位級 + role tree + owner→admin + 管理 API);~65 tests | Claude Code |
+| 2026-07-21 | v0.4 | **M7 動作級模型**(OQ-AUTHZ-7=B,用戶採建議「更細粒度」)|`form_permissions.level` → `actions text[]`(view/create/edit/delete/approve/export/design);migration 0007;FormAction 聯集 + 欄位 clamp 依動作集 + Guard 方法→動作(POST=create/PATCH=edit/DELETE=delete/query=view/save-with-lines=edit/設計=design)+ admin API actions DTO;全套件 **163 tests 綠**、build 綠。理由:4 級把新增/編輯/刪除綁在「寫」,表達不出「可核准不可新增」等 Ragic/ERP 常見需求。approve/export 為前瞻旗標(端點於後續模組 enforce)| Claude Code |

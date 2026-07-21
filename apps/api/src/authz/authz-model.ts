@@ -1,57 +1,66 @@
-/* P0-4a authz 純邏輯(無 I/O,單元可測):級別序、聯集(多角色/祖先)、交集(欄位收斂於表單)。
-   docs/modules/R1/authz.md §4.2 / §5.1。 */
+/* P0-4a authz 純邏輯(無 I/O,單元可測)。M7:表單存取由單一級別 → 動作集(更細粒度)。
+   欄位級仍為 hidden/read/write,但收斂於表單「動作集」(有無 view/edit)。docs/modules/R1/authz.md §4/§5。 */
 
-export const FORM_LEVELS = ["none", "read", "write", "manage"] as const
-export type FormLevel = (typeof FORM_LEVELS)[number]
+/* 表單動作(每角色 × 每表單授予一組)。view 為基礎;design=可改表單結構(原 4 級之 manage)。
+   approve/export 為前瞻旗標(對應端點於後續 workflow/報表模組落地時 enforce)。 */
+export const FORM_ACTIONS = [
+  "view",
+  "create",
+  "edit",
+  "delete",
+  "approve",
+  "export",
+  "design",
+] as const
+export type FormAction = (typeof FORM_ACTIONS)[number]
 
 export const FIELD_VISIBILITIES = ["hidden", "read", "write"] as const
 export type FieldVisibility = (typeof FIELD_VISIBILITIES)[number]
 
-const FORM_LEVEL_RANK: Record<FormLevel, number> = { none: 0, read: 1, write: 2, manage: 3 }
 const FIELD_VIS_RANK: Record<FieldVisibility, number> = { hidden: 0, read: 1, write: 2 }
 
-/* 多角色 / 祖先繼承 → 取最寬鬆(聯集,較高權勝)*/
-export function maxFormLevel(a: FormLevel, b: FormLevel): FormLevel {
-  return FORM_LEVEL_RANK[a] >= FORM_LEVEL_RANK[b] ? a : b
+export function isFormAction(value: string): value is FormAction {
+  return (FORM_ACTIONS as readonly string[]).includes(value)
 }
 
+/* 多角色 / 祖先繼承 → 動作集聯集(較寬鬆) */
+export function unionActions(a: Iterable<FormAction>, b: Iterable<FormAction>): Set<FormAction> {
+  return new Set<FormAction>([...a, ...b])
+}
+
+/* 欄位級可見性聯集(較寬鬆) */
 export function maxFieldVisibility(a: FieldVisibility, b: FieldVisibility): FieldVisibility {
   return FIELD_VIS_RANK[a] >= FIELD_VIS_RANK[b] ? a : b
 }
 
-/* 表單級 → 該表所有欄位的預設可見性(欄位缺列時繼承)。read/write/manage 映到欄位軸;none 無欄可見 */
-export function formLevelToDefaultFieldVisibility(level: FormLevel): FieldVisibility {
-  switch (level) {
-    case "none":
-      return "hidden"
-    case "read":
-      return "read"
-    case "write":
-    case "manage":
-      return "write"
-  }
+/* 表單動作集 → 該表欄位預設可見性(欄位缺列時繼承):
+   無 view → hidden;有 edit/create → write(可寫);僅 view → read。 */
+export function defaultFieldVisibility(actions: ReadonlySet<FormAction>): FieldVisibility {
+  if (!actions.has("view")) return "hidden"
+  return actions.has("edit") || actions.has("create") ? "write" : "read"
 }
 
-/* 欄位級收斂於表單級(交集,較嚴者勝):
-   表單 read 之下,即使某欄給 write,實際仍只能 read;表單 none 之下一律 hidden。 */
-export function clampFieldToForm(vis: FieldVisibility, form: FormLevel): FieldVisibility {
-  const ceiling = formLevelToDefaultFieldVisibility(form)
+/* 欄位級收斂於表單動作集(交集,較嚴者勝):表單無寫動作 → 欄位頂多 read;無 view → hidden。 */
+export function clampFieldToForm(
+  vis: FieldVisibility,
+  actions: ReadonlySet<FormAction>,
+): FieldVisibility {
+  const ceiling = defaultFieldVisibility(actions)
   return FIELD_VIS_RANK[vis] <= FIELD_VIS_RANK[ceiling] ? vis : ceiling
 }
 
-export function canReadForm(level: FormLevel): boolean {
-  return FORM_LEVEL_RANK[level] >= FORM_LEVEL_RANK.read
-}
-
-export function canWriteForm(level: FormLevel): boolean {
-  return FORM_LEVEL_RANK[level] >= FORM_LEVEL_RANK.write
-}
-
-export function canManageForm(level: FormLevel): boolean {
-  return level === "manage"
-}
-
-/* HTTP 方法 → 該路由所需表單級別(GET=read;寫=write;設計器=manage 由呼叫端指定)*/
-export function requiredLevelForMethod(method: string): FormLevel {
-  return method === "GET" || method === "HEAD" ? "read" : "write"
+/* HTTP 方法 → 該路由所需動作(decorator 未覆寫時的預設)。
+   GET/HEAD=view;POST=create;PATCH=edit;DELETE=delete。設計器/核准/匯出由 decorator 明指。 */
+export function requiredActionForMethod(method: string): FormAction {
+  switch (method) {
+    case "POST":
+      return "create"
+    case "PATCH":
+    case "PUT":
+      return "edit"
+    case "DELETE":
+      return "delete"
+    default:
+      return "view"
+  }
 }

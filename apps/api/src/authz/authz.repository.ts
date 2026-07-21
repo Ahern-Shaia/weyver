@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
 import { fieldPermissions, formPermissions, roleMembers, roles } from "../db/schema.js"
-import type { FieldVisibility, FormLevel } from "./authz-model.js"
+import { type FieldVisibility, type FormAction, isFormAction } from "./authz-model.js"
 import { depthForParent, RoleCycleError, wouldCreateCycle } from "./authz-tree.js"
 
 /* P0-4a authz Tier-1 資料存取(特權 DRIZZLE 車道,如 IdentityService)。
@@ -21,7 +21,7 @@ export interface RoleRow {
 export interface FormPermissionRow {
   readonly roleId: number
   readonly formId: number
-  readonly level: FormLevel
+  readonly actions: readonly FormAction[]
 }
 
 export interface FieldPermissionRow {
@@ -165,13 +165,25 @@ export class AuthzRepository {
     return rows.length
   }
 
-  async setFormPermission(roleId: number, formId: number, level: FormLevel): Promise<void> {
+  /* 設角色對某表單的動作集。空集 = 撤銷授予 → 刪列(等同 deny-by-default)。 */
+  async setFormActions(
+    roleId: number,
+    formId: number,
+    actions: readonly FormAction[],
+  ): Promise<void> {
+    if (actions.length === 0) {
+      await this.db
+        .delete(formPermissions)
+        .where(and(eq(formPermissions.roleId, roleId), eq(formPermissions.formId, formId)))
+      return
+    }
+    const unique = [...new Set(actions)]
     await this.db
       .insert(formPermissions)
-      .values({ roleId, formId, level })
+      .values({ roleId, formId, actions: unique })
       .onConflictDoUpdate({
         target: [formPermissions.roleId, formPermissions.formId],
-        set: { level },
+        set: { actions: unique },
       })
   }
 
@@ -214,7 +226,11 @@ export class AuthzRepository {
       .select()
       .from(formPermissions)
       .where(inArray(formPermissions.roleId, [...roleIds]))
-    return rows.map((r) => ({ roleId: r.roleId, formId: r.formId, level: r.level as FormLevel }))
+    return rows.map((r) => ({
+      roleId: r.roleId,
+      formId: r.formId,
+      actions: r.actions.filter(isFormAction),
+    }))
   }
 
   async loadFieldPermissions(roleIds: readonly number[]): Promise<FieldPermissionRow[]> {

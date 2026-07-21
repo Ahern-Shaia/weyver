@@ -3,7 +3,7 @@ import { Reflector } from "@nestjs/core"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { RequiresFormLevel } from "../src/authz/authz-http.js"
+import { RequiresFormAction } from "../src/authz/authz-http.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { PermissionGuard } from "../src/authz/permission.guard.js"
 import { PermissionService } from "../src/authz/permission.service.js"
@@ -31,7 +31,7 @@ function need<T>(v: T | undefined | null, m: string): T {
 
 /* 帶 @RequiresFormLevel("manage") 的 handler,供測設計器路由的 manage 檢查 */
 class DummyController {
-  @RequiresFormLevel("manage")
+  @RequiresFormAction("design")
   manageRoute(): void {}
 }
 
@@ -91,7 +91,7 @@ beforeAll(async () => {
     name: "讀者",
     parentId: null,
   })
-  await repo.setFormPermission(reader.id, formA, "read")
+  await repo.setFormActions(reader.id, formA, ["view"])
   await repo.assignMember(tenantA, reader.id, actorReader)
 }, 120_000)
 

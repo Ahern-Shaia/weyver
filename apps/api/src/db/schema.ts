@@ -211,7 +211,8 @@ export const roleMembers = pgTable(
   ],
 )
 
-/* 表單級權限(角色 × 表單 → 級別;缺列 = none,deny-by-default,OQ-4=A)*/
+/* 表單級權限(角色 × 表單 → 動作集;缺列/空 = 無動作,deny-by-default,OQ-4=A)。
+   M7:由單一 level → 動作旗標集(view/create/edit/delete/approve/export/design)。 */
 export const formPermissions = pgTable(
   "form_permissions",
   {
@@ -221,12 +222,11 @@ export const formPermissions = pgTable(
     formId: bigint("form_id", { mode: "number" })
       .notNull()
       .references(() => formDefs.id, { onDelete: "cascade" }),
-    level: text("level").notNull(),
+    actions: text("actions").array().notNull().default(sql`ARRAY[]::text[]`),
   },
   (t) => [
     primaryKey({ columns: [t.roleId, t.formId] }),
     index("form_permissions_form_idx").on(t.formId),
-    check("form_permissions_level", sql`level IN ('none','read','write','manage')`),
   ],
 )
 

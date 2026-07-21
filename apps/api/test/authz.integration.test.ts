@@ -120,18 +120,22 @@ describe("AuthzRepository — 種子 / role tree / 權限(P0-4a M1)", () => {
     )
   })
 
-  it("form/field 權限 upsert + load(改寫覆蓋)", async () => {
+  it("form/field 權限 upsert + load(改寫覆蓋;空集撤銷)", async () => {
     const lead = await roleByKey(tenantA, "buy_lead")
-    await repo.setFormPermission(lead.id, formA, "read")
-    await repo.setFormPermission(lead.id, formA, "write") // upsert 覆蓋
+    await repo.setFormActions(lead.id, formA, ["view"])
+    await repo.setFormActions(lead.id, formA, ["view", "create", "edit"]) // upsert 覆蓋
     await repo.setFieldPermission(lead.id, fieldA, "hidden")
 
     expect(await repo.loadFormPermissions([lead.id])).toEqual([
-      { roleId: lead.id, formId: formA, level: "write" },
+      { roleId: lead.id, formId: formA, actions: ["view", "create", "edit"] },
     ])
     expect(await repo.loadFieldPermissions([lead.id])).toEqual([
       { roleId: lead.id, fieldId: fieldA, visibility: "hidden" },
     ])
+
+    // 空集 = 撤銷授予 → 刪列
+    await repo.setFormActions(lead.id, formA, [])
+    expect(await repo.loadFormPermissions([lead.id])).toEqual([])
   })
 
   it("跨租戶:B 種子獨立,A 的角色不入 B 的解析", async () => {

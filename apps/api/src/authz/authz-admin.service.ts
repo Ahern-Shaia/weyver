@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common"
 import { AuthzRepository, RoleParentError, type RoleRow } from "./authz.repository.js"
-import type { FieldVisibility, FormLevel } from "./authz-model.js"
+import type { FieldVisibility, FormAction } from "./authz-model.js"
 import { RoleCycleError, RoleTreeDepthError } from "./authz-tree.js"
 
 /* repo/tree 拋的角色錯 → HTTP。unique(tenant,key) 衝突(pg 23505)→ 409。 */
@@ -27,7 +27,7 @@ function translateRoleError(error: unknown): never {
 }
 
 export interface RolePermissionsView {
-  readonly forms: ReadonlyArray<{ formId: number; level: FormLevel }>
+  readonly forms: ReadonlyArray<{ formId: number; actions: readonly FormAction[] }>
   readonly fields: ReadonlyArray<{ fieldId: number; visibility: FieldVisibility }>
   readonly memberActorIds: readonly number[]
 }
@@ -84,14 +84,14 @@ export class AuthzAdminService {
     await this.repo.removeMember(roleId, actorId)
   }
 
-  async setFormPermission(
+  async setFormActions(
     tenantId: number,
     roleId: number,
     formId: number,
-    level: FormLevel,
+    actions: readonly FormAction[],
   ): Promise<void> {
     await this.mustRole(tenantId, roleId)
-    await this.repo.setFormPermission(roleId, formId, level)
+    await this.repo.setFormActions(roleId, formId, actions)
   }
 
   async setFieldPermission(
@@ -112,7 +112,7 @@ export class AuthzAdminService {
       this.repo.listRoleMembers(tenantId, roleId),
     ])
     return {
-      forms: forms.map((f) => ({ formId: f.formId, level: f.level })),
+      forms: forms.map((f) => ({ formId: f.formId, actions: f.actions })),
       fields: fields.map((f) => ({ fieldId: f.fieldId, visibility: f.visibility })),
       memberActorIds,
     }
