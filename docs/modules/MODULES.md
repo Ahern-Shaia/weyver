@@ -26,7 +26,7 @@
 | **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | Grid 主檢視 + Excel 建表 onboarding | P0-2 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M4;Glide 網格改格 + xlsx 推斷建表 bulk 灌資料;e2e 固化 + FMEA P0 全清)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
 | 公式引擎 + Link&Load | P0-3 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M6;fork Teable MIT parser + Tarjan SCC 依賴圖 + Link&Load + Rollup N+1 + 讀時算注入 + 設計器啟用 + 即時預覽 + e2e 固化;66 tests;FMEA P0 全清)| [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
-| **三層權限(授權層)** | P0-4a | 🚧 **後端 M1–M7 + FMEA SHIPPED(管理 UI 待做)**|表單級 **動作集**(view/create/edit/delete/approve/export/design,M7 由 4 級升級,Guard 執法)+ 欄位級遮罩/寫白名單 + **role tree 部門繼承**〔OQ-1=C〕+ owner→admin 對映 + 權限管理 API;deny-by-default;縱深(RLS 仍為跨租戶最後防線);全套件 163 tests 綠、§12 FMEA P0 全清。**剩:權限管理前端 UI**(獨立前端 commit;mockup 已定動作級矩陣)。記錄級延 P1-I | [R1/authz.md](R1/authz.md) |
+| **三層權限(授權層)** | P0-4a | ✅ **SHIPPED(M1–M7 + FMEA + 管理 UI)**|表單級 **動作集**(view/create/edit/delete/approve/export/design,M7 由 4 級升級,Guard 執法)+ 欄位級遮罩/寫白名單 + **role tree 部門繼承**〔OQ-1=C〕+ owner→admin 對映 + 權限管理 API + **管理 UI `/app/settings/permissions`**(角色樹+動作矩陣+欄位可見性,瀏覽器驗證往返);deny-by-default;縱深(RLS 仍為跨租戶最後防線);後端 163 tests 綠、§12 FMEA P0 全清。記錄級延 P1-I | [R1/authz.md](R1/authz.md) |
 | 通知(通訊平台 LINE/Slack/…)+ 事件推送偏好 | P0-4b | ⬜(拆自 P0-4,與授權無耦合)| 待建 |
 | Ops(觀測 / 健康檢查 / 部署硬化)| P0-4c | ⬜(拆自 P0-4)| 待建 |
 | 每表單自動 API + Public Form + webhook | P0-5 | ⬜(zod-openapi;M6 deviation 於此落地)| 待建 |
