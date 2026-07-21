@@ -27,7 +27,7 @@ function FormCard({
 }): ReactNode {
   return (
     <Link
-      href={`/app/builder?form=${id}`}
+      href={`/app/forms/${id}`}
       className="group rounded-lg border border-line bg-card p-3 transition-colors duration-150 hover:border-primary hover:bg-primary-t"
     >
       <div className="mb-2 flex size-7 items-center justify-center rounded-md bg-head text-ink-3 transition-colors duration-150 group-hover:bg-primary group-hover:text-white">
