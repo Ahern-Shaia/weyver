@@ -19,8 +19,8 @@ import {
 const ENFORCED = process.env.NODE_ENV === "production"
 
 const NAV = [
+  { href: "/app", label: "工作區", icon: LayoutGrid },
   { href: "/app/builder", label: "我的表單", icon: Table2 },
-  { href: "/app", label: "記錄檢視", icon: LayoutGrid },
   { href: "/app/settings/security", label: "帳號安全", icon: ShieldCheck },
 ] as const
 
@@ -137,7 +137,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
     <div className="flex h-screen flex-col overflow-hidden bg-surface">
       <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-line bg-card px-3">
         <Link
-          href="/app/builder"
+          href="/app"
           className="mr-1.5 flex size-8 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-white"
           title="Weyver 織雲"
         >
