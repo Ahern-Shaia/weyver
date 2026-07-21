@@ -1,7 +1,7 @@
 "use client"
 
 import { THEMES, type ThemeId, applyTheme } from "@weyver/ui/theme-switcher"
-import { Check, LayoutGrid, LogOut, Palette, ShieldCheck, Table2 } from "lucide-react"
+import { Check, KeyRound, LayoutGrid, LogOut, Palette, ShieldCheck, Table2 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { type ReactNode, useEffect, useState } from "react"
@@ -21,6 +21,7 @@ const ENFORCED = process.env.NODE_ENV === "production"
 const NAV = [
   { href: "/app", label: "工作區", icon: LayoutGrid },
   { href: "/app/builder", label: "我的表單", icon: Table2 },
+  { href: "/app/settings/permissions", label: "權限", icon: KeyRound },
   { href: "/app/settings/security", label: "帳號安全", icon: ShieldCheck },
 ] as const
 
