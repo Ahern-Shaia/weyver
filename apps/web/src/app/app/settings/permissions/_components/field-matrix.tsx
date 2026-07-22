@@ -49,7 +49,7 @@ export function FieldMatrix({
         欄位可見性收斂於表單動作。<b className="text-ink-2">隱藏</b>
         =後端不回該欄值(非前端隱藏)。缺列繼承表單。
       </p>
-      <div className="overflow-hidden rounded-lg border border-line bg-card">
+      <div className="overflow-hidden rounded-md border border-line bg-card">
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
             <tr className="bg-head">

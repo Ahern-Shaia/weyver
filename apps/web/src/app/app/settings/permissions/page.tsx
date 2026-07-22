@@ -26,7 +26,7 @@ export default function PermissionsPage(): ReactNode {
       />
       <div className="flex min-w-0 flex-1 flex-col bg-surface">
         {isError ? (
-          <div className="m-5 rounded-lg border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
+          <div className="m-5 rounded-md border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
             無法載入角色:{describeEngineError(error)}
           </div>
         ) : effectiveRoleId !== null ? (

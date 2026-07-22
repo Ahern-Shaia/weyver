@@ -28,7 +28,7 @@ function FormCard({
   return (
     <Link
       href={`/app/forms/${id}`}
-      className="group rounded-lg border border-line bg-card p-3 transition-colors duration-150 hover:border-primary hover:bg-primary-t"
+      className="group rounded-md border border-line bg-card p-3 transition-colors duration-150 hover:border-primary hover:bg-primary-t"
     >
       <div className="mb-2 flex size-7 items-center justify-center rounded-md bg-head text-ink-3 transition-colors duration-150 group-hover:bg-primary group-hover:text-white">
         {isSub ? <FileText size={15} strokeWidth={1.9} /> : <Table2 size={15} strokeWidth={1.9} />}
@@ -77,7 +77,7 @@ export default function WorkspaceHome(): ReactNode {
         {isPending ? (
           <div className="text-[12px] text-ink-3">載入表單…</div>
         ) : isError ? (
-          <div className="rounded-lg border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
+          <div className="rounded-md border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
             無法載入表單。請確認引擎服務已啟動。
           </div>
         ) : (
@@ -87,7 +87,7 @@ export default function WorkspaceHome(): ReactNode {
             ))}
             <Link
               href="/app/builder"
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-line px-3 py-3 text-[12.5px] text-ink-3 transition-colors duration-150 hover:border-primary hover:bg-primary-t hover:text-primary"
+              className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-line px-3 py-3 text-[12.5px] text-ink-3 transition-colors duration-150 hover:border-primary hover:bg-primary-t hover:text-primary"
             >
               <Plus size={14} strokeWidth={2} />
               新增表單

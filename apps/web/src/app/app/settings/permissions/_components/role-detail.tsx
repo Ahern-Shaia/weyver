@@ -61,7 +61,7 @@ export function RoleDetail({ role }: { readonly role: Role | null }): ReactNode 
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {isAdmin ? (
-          <div className="rounded-lg border border-line bg-card px-4 py-3 text-[12px] text-ink-3">
+          <div className="rounded-md border border-line bg-card px-4 py-3 text-[12px] text-ink-3">
             管理員角色擁有全部動作與欄位存取,無法也不需逐表設定。請以自訂角色做細粒度授權。
           </div>
         ) : perms.isPending ? (
@@ -85,7 +85,7 @@ function Members({ perms }: { readonly perms: RolePermissions }): ReactNode {
         指派此角色的使用者。owner 於建立公司時自動為管理員。
       </p>
       {perms.memberActorIds.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line px-3 py-4 text-[12px] text-ink-4">
+        <div className="rounded-md border border-dashed border-line px-3 py-4 text-[12px] text-ink-4">
           尚無成員。使用者指派介面(含使用者清單)為後續交付。
         </div>
       ) : (
@@ -93,7 +93,7 @@ function Members({ perms }: { readonly perms: RolePermissions }): ReactNode {
           {perms.memberActorIds.map((id) => (
             <div
               key={id}
-              className="flex items-center gap-3 rounded-lg border border-line bg-card px-3 py-2.5"
+              className="flex items-center gap-3 rounded-md border border-line bg-card px-3 py-2.5"
             >
               <span className="flex size-7 items-center justify-center rounded-full border border-line bg-label text-[11px] font-semibold text-ink-2">
                 <User size={14} strokeWidth={1.9} />

@@ -45,7 +45,7 @@ export function FormMatrix({
         <b className="text-ink-2">deny-by-default</b>
         :未勾=無此動作(全無 → 該角色看不到此表單)。勾任一動作自動含「檢視」。
       </p>
-      <div className="overflow-hidden rounded-lg border border-line bg-card">
+      <div className="overflow-hidden rounded-md border border-line bg-card">
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
             <tr className="bg-head">
@@ -105,7 +105,7 @@ function CheckBox({
   readonly onClick: () => void
 }): ReactNode {
   const base =
-    "inline-flex size-5 items-center justify-center rounded-[4px] border transition-colors disabled:opacity-50"
+    "inline-flex size-5 items-center justify-center rounded-sm border transition-colors disabled:opacity-50"
   const cls = on
     ? amber
       ? "border-wn bg-wn text-white"
