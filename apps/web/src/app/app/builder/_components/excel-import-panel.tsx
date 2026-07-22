@@ -3,6 +3,7 @@
 import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
+import { Select } from "@weyver/ui/select"
 import { useRef, useState } from "react"
 import { describeEngineError, engineFetch } from "@/lib/engine/client"
 import { BUILDABLE_TYPES, fieldTypeMeta } from "@/lib/engine/field-types"
@@ -234,18 +235,18 @@ export function ExcelImportPanel({
                         disabled={d.skip}
                         className="w-40 shrink-0"
                       />
-                      <select
+                      <Select
                         value={d.type}
                         onChange={(e) => patch(d.key, { type: e.target.value as CellValueType })}
                         disabled={d.skip}
-                        className="h-7 shrink-0 rounded-xs border border-line bg-card px-1.5 text-[11.5px] text-ink"
+                        className="h-7 shrink-0"
                       >
                         {IMPORT_TYPES.map((t) => (
                           <option key={t} value={t}>
                             {fieldTypeMeta(t).label}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <label className="flex shrink-0 items-center gap-1 text-[11px] text-ink-2">
                         <input
                           type="checkbox"

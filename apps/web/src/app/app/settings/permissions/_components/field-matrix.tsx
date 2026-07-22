@@ -1,6 +1,7 @@
 "use client"
 
 import { Segmented } from "@weyver/ui/segmented"
+import { Select } from "@weyver/ui/select"
 import { type ReactNode, useMemo, useState } from "react"
 import {
   FIELD_VISIBILITIES,
@@ -36,18 +37,13 @@ export function FieldMatrix({
     <>
       <div className="mb-3 flex items-center gap-2">
         <span className="text-[11.5px] text-ink-3">選表單</span>
-        {/* native select 對齊 project 既有 pattern(field-input baseInputClass:h-27 / rounded-xs) */}
-        <select
-          value={active ?? ""}
-          onChange={(e) => setFormId(Number(e.target.value))}
-          className="h-[27px] rounded-xs border border-line bg-card px-2 text-[12px] text-ink focus:border-primary focus:outline-none"
-        >
+        <Select value={active ?? ""} onChange={(e) => setFormId(Number(e.target.value))}>
           {roots.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <p className="mb-3 border-l-2 border-primary py-0.5 pl-3 text-[11.5px] text-ink-3">
         欄位可見性收斂於表單動作。<b className="text-ink-2">隱藏</b>

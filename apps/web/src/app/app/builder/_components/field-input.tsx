@@ -2,6 +2,7 @@
 
 import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
+import { Select } from "@weyver/ui/select"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { choicesOf } from "./field-value"
@@ -97,10 +98,10 @@ export function FieldInput({
 
     case "singleSelect":
       return (
-        <select
+        <Select
+          className="w-full"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-          className={baseInputClass}
         >
           <option value="">—</option>
           {choicesOf(field).map((choice) => (
@@ -108,7 +109,7 @@ export function FieldInput({
               {choice}
             </option>
           ))}
-        </select>
+        </Select>
       )
 
     case "multiSelect": {

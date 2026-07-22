@@ -2,6 +2,7 @@
 
 import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
+import { Select } from "@weyver/ui/select"
 import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
 import { cn } from "@weyver/ui/lib/utils"
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react"
@@ -212,12 +213,12 @@ function FieldRow({
       </span>
       <span className="w-16 shrink-0 text-right text-[10.5px] text-ink-4">{meta.label}</span>
       {targets.length > 0 ? (
-        <select
+        <Select
           value=""
           onChange={(e) => {
             if (e.target.value !== "") onAlterType(e.target.value as CellValueType)
           }}
-          className="h-7 shrink-0 rounded-sm border border-line bg-card px-1.5 text-[11px] text-ink-2 opacity-0 transition-opacity duration-150 focus:opacity-100 group-hover:opacity-100"
+          className="h-7 shrink-0 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100"
           aria-label={`改 ${field.name} 型別`}
         >
           <option value="">改型別…</option>
@@ -226,10 +227,16 @@ function FieldRow({
               → {fieldTypeMeta(t).label}
             </option>
           ))}
-        </select>
+        </Select>
       ) : null}
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
-        <Button variant="subtle" size="icon" onClick={() => onMove("up")} disabled={isFirst} title="上移">
+        <Button
+          variant="subtle"
+          size="icon"
+          onClick={() => onMove("up")}
+          disabled={isFirst}
+          title="上移"
+        >
           <ChevronUp />
         </Button>
         <Button
