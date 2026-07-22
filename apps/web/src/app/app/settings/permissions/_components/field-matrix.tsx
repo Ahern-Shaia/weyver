@@ -36,10 +36,11 @@ export function FieldMatrix({
     <>
       <div className="mb-3 flex items-center gap-2">
         <span className="text-[11.5px] text-ink-3">選表單</span>
+        {/* native select 對齊 project 既有 pattern(field-input baseInputClass:h-27 / rounded-xs) */}
         <select
           value={active ?? ""}
           onChange={(e) => setFormId(Number(e.target.value))}
-          className="rounded-md border border-line bg-card px-2 py-1 text-[12px] text-ink outline-none focus:border-primary"
+          className="h-[27px] rounded-xs border border-line bg-card px-2 text-[12px] text-ink focus:border-primary focus:outline-none"
         >
           {roots.map((f) => (
             <option key={f.id} value={f.id}>

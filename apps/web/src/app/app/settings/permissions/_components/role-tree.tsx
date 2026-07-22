@@ -1,5 +1,6 @@
 "use client"
 
+import { Input } from "@weyver/ui/input"
 import { FolderTree, Plus, ShieldCheck, User } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { type Role, useCreateRole } from "@/lib/engine/authz"
@@ -53,7 +54,7 @@ export function RoleTree({
       </div>
       {adding ? (
         <div className="border-b border-line-2 p-2">
-          <input
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -61,7 +62,6 @@ export function RoleTree({
               if (e.key === "Escape") setAdding(false)
             }}
             placeholder="角色名稱,Enter 建立"
-            className="w-full rounded-sm border border-line bg-surface px-2 py-1 text-[12px] outline-none focus:border-primary"
           />
         </div>
       ) : null}
