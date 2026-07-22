@@ -12,6 +12,9 @@ export const envSchema = z
     APP_DATABASE_URL: z.string().optional(),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    // dev/test 開關:設 "1" 則即使非 prod 也走真實 session 認證(測 auth-gate 用)。
+    // prod 一律強制認證,不受此旗標影響(見 TenantGuard)。預設關 → dev 免登入(x-dev-tenant)。
+    ENFORCE_AUTH: z.enum(["0", "1"]).default("0"),
     // Better Auth 簽章 secret(F-2);prod 必填(見 superRefine),dev/test 回退佔位 secret
     BETTER_AUTH_SECRET: z.string().min(32).optional(),
     // Better Auth 對外 baseURL(消 origin 推導警告 + callback 正確);dev 預設本機

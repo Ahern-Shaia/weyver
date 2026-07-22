@@ -3,7 +3,8 @@ import { ConfigService } from "@nestjs/config"
 import { DevTenantGuard } from "../http/dev-tenant.guard.js"
 import { AuthGuard } from "./auth-guard.js"
 
-/* 依環境分派租戶解析:production = 真實 session(AuthGuard);dev/test = x-dev-tenant(DevTenantGuard)。
+/* 依環境分派租戶解析:認證強制(AuthGuard,真實 session)vs dev header(DevTenantGuard,x-dev-tenant)。
+   強制條件 = production 一律,或 dev/test 設 ENFORCE_AUTH=1(測 auth-gate 用)。
    prod 路徑不觸 dev header,dev 路徑不觸 session —— 職責與攻擊面清楚隔離(OQ-AUTH-7)。 */
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -14,7 +15,10 @@ export class TenantGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean | Promise<boolean> {
-    return this.config.get<string>("NODE_ENV") === "production"
+    const enforce =
+      this.config.get<string>("NODE_ENV") === "production" ||
+      this.config.get<string>("ENFORCE_AUTH") === "1"
+    return enforce
       ? this.authGuard.canActivate(context)
       : this.devGuard.canActivate(context)
   }
