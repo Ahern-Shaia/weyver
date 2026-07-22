@@ -16,7 +16,10 @@ import {
 /* /app/* 受保護區 + 統一 app shell(精緻資料工具:單一頂欄 = 品牌 + 橫向導覽 + 帳號)。
    強制登入僅 production(對齊後端 TenantGuard dev/prod);登入後自動設 active org。
    導覽收進頂欄 → 左側只留內容自身的清單(如 builder 表單軌),不再雙軌。 */
-const ENFORCED = process.env.NODE_ENV === "production"
+/* 強制登入 = production 一律,或 dev 設 NEXT_PUBLIC_ENFORCE_AUTH=1(測 auth-gate;需與後端 ENFORCE_AUTH=1 同開)。
+   預設關 → dev 免登入(x-dev-tenant),不打斷開發。 */
+const ENFORCED =
+  process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_ENFORCE_AUTH === "1"
 
 const NAV = [
   { href: "/app", label: "工作區", icon: LayoutGrid },
