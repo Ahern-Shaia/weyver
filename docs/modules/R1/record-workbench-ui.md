@@ -1,0 +1,216 @@
+# record-workbench-ui.md — [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page)設計文件
+
+> ✅ **狀態:APPROVED — OQ-RWB-1..7 已裁定（2026-07-24;全採建議);進入 M1（A0 app-shell 密度先做)**
+> **裁定摘要**|1=B nested 路由 · 2=A 復用 Glide · 3=A 首個 singleSelect 為狀態 · 4=B 正+反向關聯 · 5=A inline 編輯 · **6=C 單域 rail+status bar** · 7=A users lookup 端點。
+>
+> 承 form-designer-ui(P0-1 SHIPPED)+ 現有記錄工作台(`/app/forms/[formId]` 已是誠實的 Object Page 雛形)。把整合 mockup(`weyver-integrated-list-to-object.html`)的方向落成可執行收斂:補上**缺的「集合視圖」那一層**(browse/triage 網格),並就地補強 Object Page 的 R1 信號(狀態章 / 金額彙總 / 關聯 rail / 真實使用者名 / inline 編輯)。**只做 R1 後端撐得起的**;mockup 上屬 R2/工作流的(GL 過帳、簽核 stepper、批號追溯)一律不放(不造假)。
+>
+> 作者:Claude Code（草擬）
+> 版本:v0.2（2026-07-24;納入 A0 app-shell 密度、OQ-6 改三選建議翻 C）
+> UI 依據:`docs/mockups/weyver-integrated-list-to-object.html`(集合視圖 ① → Object Page ②)
+
+---
+
+## 1. 目標與範圍
+
+### 1.1 目標
+
+1. **app-shell 密度(入口 + 外殼)**|全域 **status bar**(已連線 / 更新到秒 / 租戶 / 版本)+ 首頁 `/app` 由「表單卡牆」改**工作面**(卡片塞 記錄數 / 更新 / 狀態,或首頁即記錄集合)+ 導覽外殼重量(OQ-6)。**直接解「頁面單薄」之第一印象**(2026-07-24 視覺反思)。
+2. **集合視圖(缺的那一層)**|進入一張表單預設看到**記錄集合**(密集網格 / triage):狀態章、金額 tabular 右對齊、開啟一筆 → 進 Object Page。補上現況「表單卡片 → 直接 Object Page」中間缺的 browse 層。
+3. **Object Page R1 補強**|狀態章進黏頂頭、金額彙總 section(formula)、稽核顯示真實使用者名、記錄清單 rail 加金額/狀態。
+4. **關聯 rail(R1 部分)**|Object Page 右欄加「關聯記錄 · Link&Load」(正向主檔 + 反向被引用);**簽核 / GL 不放**。
+5. **inline 編輯**|Object Page「編輯」由跳設計器改為就地檢視↔編輯切換(填單 UI 已有)。
+6. **誠實對齊**|凡 R2/工作流功能(GL 過帳、簽核、批號追溯)不進 chrome;phase 標記不進產品畫面(對齊 [[feedback_no_dev_phase_in_product_ui]])。
+
+### 1.2 對應訴求
+
+| 子題 | 主要訴求 | 對應點 |
+|---|---|---|
+| 記錄工作台 | Ragic 範式:主畫面=可瀏覽的記錄集合 + 單筆深挖(非 KPI 儀表板) | docs/24 心智模型([[feedback_design_from_mental_model]])· 整合 mockup ①②;競品錨:Fiori Object Page / Airtable-NocoDB 網格 / Attio-Linear master-detail |
+
+### 1.3 不做的事(scope 邊界)
+
+- ❌ **GL 過帳預覽** → R2 計算層(calc-binding-layer P0-6);mockup 有,現況不放。
+- ❌ **簽核 stepper / 核准·退回動作** → 工作流模組(P0-4,未起)。
+- ❌ **批號追溯 chip** → R2 批號追蹤(P0-8)。
+- ⬆️ **導覽外殼(OQ-RWB-6)本模組處理**|全域 status bar 加;nav rail 三選(維持 topbar / **單域 rail+status bar** / 業務域 rail),建議單域 rail —— 拿外殼重量、不放空的業務域 tab。**不做**空的業務域 tab(計算/生產/ISO R1 未起)。
+- ❌ **⌘K 命令列** → nice-to-have,本模組不做(可另立)。
+- ❌ **附件上傳儲存** → attachment 型別 registry 有、儲存後端未備;本模組不做附件 section。
+- ❌ **不重寫既有 Object Page 骨架**(master-detail / 錨點 scroll-spy / label-value / 子表 rollup / 稽核時間軸皆已 SHIPPED,只補強不重做)。
+
+---
+
+## 2. 上游 / 既有現況走查
+
+| 元件 | 現況 | Gap |
+|---|---|---|
+| Object Page | `forms/[formId]/_components/object-page.tsx`:黏頂頭 + 錨點 scroll-spy + 基本資料 label/value + 明細 rollup + 稽核時間軸 | ✅ 骨架約 70% 到位;缺 狀態章 / 金額 section / 關聯 rail / user 名 / inline 編輯 |
+| 記錄清單 rail | `record-list.tsx`(240px:標題 + #id)| 偏薄 → enrich 金額/狀態 |
+| 子表 rollup | `line-items.tsx` + rollup.service P0-3 SHIPPED | ✅ |
+| 記錄 list 端點 | `api/forms/:formId/records`(cursor 分頁,回 values/version/createdBy…)| ✅ 集合視圖資料源就緒 |
+| 網格 | Glide 網格 `record-grid-panel.tsx`(P0-2 SHIPPED)**綁在 builder 填單情境** | 需抽成獨立 per-form 集合視圖(OQ-RWB-2) |
+| 集合視圖路由 | **無** —— `/app`(表單卡片)→ 直接 Object Page | 全新加一層(OQ-RWB-1) |
+| 關聯反向查詢 | relation.service 做**正向** Link&Load(讀時載入 link 欄值);**無**「哪些記錄引用本筆」端點 | 反向關聯需**新後端端點**(tenant-scoped + 權限) |
+| 使用者名解析 | 記錄有 `createdBy`(actor id);**無** users lookup 端點 | 稽核顯示 `actor #id` → 需**小後端** users 名查詢 |
+| 狀態欄概念 | 無「狀態欄」metadata;singleSelect 為一般欄 | 狀態章需判定哪欄是狀態(OQ-RWB-3)|
+| 首頁 `/app` | `app/page.tsx`:greeting + Signature + **表單卡牆**(每卡=圖示+名+「表單」,零資料)| 卡片零資訊、45 張雷同、窄置中欄浪費寬度 → 改工作面 / 塞真資料(A0)|
+| 全域 chrome | topbar 細條;**無 status bar**、無常駐 nav rail | 缺「系統重量」信任訊號 → 加 status bar + 單域 rail(A0/OQ-6)|
+| 導覽 | `app/layout.tsx` topbar 橫向(工作區/我的表單/權限/帳號安全)| 與 mockup rail 不同;OQ-6 三選 |
+
+---
+
+## 3. 剩餘 scope 切分
+
+| 里程碑 | 內容 | 估算 |
+|---|---|---|
+| **A0 app-shell 密度** | 全域 status bar(layout.tsx footer)+ 首頁 `/app` 卡牆改工作面(記錄數/更新/狀態,或首頁記錄集合)+ 導覽 rail(OQ-6)| 0.04 mo |
+| **A1 集合視圖** | per-form 記錄集合視圖(OQ-1 路由 + OQ-2 渲染)+ 狀態章 / 金額 tabular / 開啟一筆 → Object Page;鍵盤 ↑↓↵ triage | 0.06 mo |
+| **A2 Object Page 補強** | 狀態章進黏頂頭(OQ-3)+ 金額彙總 section(formula)+ 稽核 user 名 + rail 加 金額/狀態 | 0.05 mo |
+| **A3 關聯 rail + 反向端點** | 後端 reverse-relations 查詢端點(tenant + 權限)+ Object Page 右欄「關聯記錄」;簽核/GL 不放 | 0.04 mo |
+| **A4 inline 編輯** | Object Page 檢視↔編輯就地切換(接既有填單 UI + PATCH) | 0.03 mo |
+| **A5 後端小端點** | users lookup(id→name,tenant-scoped)+ A3 reverse-relations 端點的 service/repo/測試 | 0.03 mo |
+| **M-FMEA** | §12 逐路徑;P0 全清 | 0.01 mo |
+
+**合計** ≈ **0.26 mo**(R1 UI 收斂;不改 R1 總量結論)。前端與後端(A5 端點)**分開 commit**([[feedback_separate_frontend_backend]])。
+
+---
+
+## 3-bis. A0 app-shell 密度(入口 + 外殼)
+
+> 回應 2026-07-24 視覺反思「頁面單薄」:doc 原只補 Object Page 深度,不含**入口(首頁)與外殼(status bar / nav)**——那正是「薄」的第一印象來源。
+
+- **全域 status bar**|`app/layout.tsx` 底部固定條:`● 已連線 · 更新 hh:mm:ss · 租戶 <slug> · Weyver <版本>`。信任訊號(docs/14),每頁受惠、成本極低、風險最小 → **A0 先做**。
+- **首頁 `/app` 工作面**|卡牆 →(a)卡片塞 記錄數 / 最近更新 / 狀態章(低改動,先做),或(b)首頁預設落一張「常用表單」的集合視圖(較大,依 A1)。對齊 docs/24「記錄工作面非啟動器」;順帶修窄置中欄(用滿寬度)。
+- **導覽 rail(OQ-6)**|見 §10;建議 **C 單域 rail + status bar**,拿外殼重量不造空業務域 tab。
+
+---
+
+## 4. A1 集合視圖
+
+### 4.1 路由與資料流(見 OQ-RWB-1)
+- 建議 B:`/app/forms/[formId]` = **集合視圖**(預設);`/app/forms/[formId]/[recordId]` = **Object Page**(deep-link)。Object Page 仍保留窄清單 rail 供快速換筆。
+- 資料源:`useRecords(formId)`(既有,cursor 分頁);欄由 `form.fields` 動態生成;狀態欄依 OQ-3 判定。
+
+### 4.2 渲染(見 OQ-RWB-2)
+- 建議 A:復用 Glide 網格(P0-2),加「browse 模式」——列可點開(→ Object Page)、狀態欄以顏色/章呈現、金額欄 tabular 右對齊;鍵盤 ↑↓ 選、↵ 開。
+- 若走 B(輕量 HTML table):換得帶框狀態章 / 批號 chip 的精確美學,代價是第二套網格 + 大量記錄需自實作虛擬化。
+
+### 4.3 UI
+- topbar:表單名 + 記錄數 + 修改設計 / 新增記錄;列表·單筆(暫留列表);篩選;鍵盤提示。對照 mockup ①,**不含 ⌘K / 批號 chip**(scope 外)。
+
+---
+
+## 5. A2 Object Page 補強 · A3 關聯 rail · A4 inline 編輯
+
+- **狀態章(A2)**|黏頂頭標題旁加狀態欄值之帶框章(色依狀態層級:已了結中性、待辦著色);狀態欄判定見 OQ-3。
+- **金額彙總 section(A2)**|若表單有 formula 欄(小計/稅/總計語意),渲染 sumbox;無則不顯示(不造假)。
+- **稽核 user 名(A2/A5)**|`actor #id` → 真實姓名,經 users lookup 端點(A5);查無 fallback `#id`。
+- **rail enrich(A2)**|`record-list.tsx` 每列加 金額(money 欄)+ 狀態章。
+- **關聯 rail(A3)**|右欄「關聯記錄 · Link&Load」:正向(link 欄指向的主檔,已有值)+ 反向(`reverse-relations` 端點:哪些記錄引用本筆)。**簽核 / GL 區塊不放。**
+- **inline 編輯(A4)**|header 檢視/編輯切換:編輯模式接既有 field-input 填單 UI + `useUpdateRecord`(PATCH,樂觀鎖 version);設計仍跳 builder。
+
+---
+
+## 7. 資料模型變動
+
+### 7.1 Proto / Schema
+- 無 schema 變更(前端 + 唯讀查詢端點為主)。狀態欄若採 OQ-3=B(表單級指定)才需 `form_def.status_field_id`(小欄,屆時再定)。
+
+### 7.2 新端點(A5,皆唯讀、tenant-scoped、權限守)
+- `GET /api/forms/:formId/records/:recordId/relations` → 反向關聯(引用本筆之記錄摘要)。
+- `GET /api/users/lookup?ids=1,2,3` → actor id → { id, name } (同租戶 users;不回他租戶)。
+
+### 7.3 RLS / Permission
+- 反向關聯查詢:結果經 PermissionGuard / EffectivePermissions 過濾(無權表單之關聯不回);tenant scope 綁定。
+- users lookup:限本租戶 `role_members`/actor 範圍,不洩他租戶使用者。
+
+---
+
+## 7-bis. 企業級 cross-cutting(擇要)
+
+### 7-bis.1 安全
+| 攻擊面 | 緩解 |
+|---|---|
+| 反向關聯洩漏無權表單記錄 | 端點結果過 EffectivePermissions(canRead)+ tenant scope;敏感表關聯不回 |
+| users lookup 跨租戶列舉使用者 | 只回本租戶 users;ids 過濾同租戶;回 { id, name } 不含 email/敏感欄 |
+| 集合視圖大量記錄 over-fetch | 沿用 records 端點 cursor 分頁 + 回應 DTO 只回需要欄 |
+| inline 編輯繞過欄位級遮罩 | 走既有 record.service 寫白名單(P0-4a M4);hidden/唯讀欄不可寫 |
+
+### 7-bis.6 向後兼容
+- 純加法:新路由 + 新唯讀端點;既有 Object Page/records 端點不動。集合視圖為新預設進入點,舊 deep-link 到 Object Page 仍可用(OQ-1 決定)。
+
+---
+
+## 8. 測試策略
+
+| 層級 | 覆蓋 | 位置 |
+|---|---|---|
+| Unit(web)| 狀態欄判定 heuristic / 金額格式化 / 關聯資料整形 | `*.test.ts` |
+| Integration(api,真 PG)| reverse-relations 端點(tenant 隔離 + 權限過濾:無權表單關聯不回)· users lookup(不洩他租戶)| `tests/` |
+| e2e(Playwright)| 集合視圖 → 開啟一筆 → Object Page → inline 編輯存檔 → 稽核顯示;固化進 CI | `apps/web/e2e/workbench.spec.ts` |
+
+---
+
+## 9. 落地順序與里程碑
+
+| 里程碑 | 內容 | 預估 | 狀態 |
+|---|---|---|---|
+| **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-RWB-1..7,全採建議)| 0.02 mo | ✅ |
+| **M1** A0 app-shell 密度 | 全域 status bar + 首頁工作面(卡片塞資料 / 縮寬)+ 導覽 rail(OQ-6);**最便宜、最有感,先做**;**前端 commit** | 0.04 mo | ⏳ |
+| **M2** A5 後端端點 | reverse-relations + users lookup(tenant + 權限 + 整合測);**後端 commit** | 0.03 mo | ⏳ |
+| **M3** A1 集合視圖 | 路由 + 網格 browse + 狀態章 + 開啟;鍵盤 triage | 0.06 mo | ⏳ |
+| **M4** A2 Object Page 補強 | 狀態章 / 金額 section / user 名 / rail enrich | 0.05 mo | ⏳ |
+| **M5** A3 關聯 rail + A4 inline 編輯 | 右欄關聯 + 就地編輯;Playwright 實走 + spec 固化;**前端 commit** | 0.04 mo | ⏳ |
+| **M6** FMEA + doc | §12;doc → v1.0 + MODULES ✅ | 0.02 mo | ⏳ |
+
+---
+
+## 10. 開放問題（OQ-RWB-N）— ✅ 已裁定 2026-07-24（全採建議）
+
+> **裁定**|全數採「建議」欄:1=B · 2=A · 3=A · 4=B · 5=A · **6=C**(修正建議)· 7=A。進入 M1。
+
+| # | 議題 | 選項 | 建議 = 裁定 |
+|---|---|---|---|
+| **OQ-RWB-1** | 集合↔Object 路由 | A. 同路由 `?record=`<br>B. **nested `/forms/[id]` 集合 + `/forms/[id]/[recordId]` object**<br>C. 現況不動,集合另開 `/table` | **B** — 乾淨、可 deep-link、SEO/分享友善;集合為預設進入,點列進 Object Page(仍留清單 rail 換筆) |
+| **OQ-RWB-2** | 集合視圖渲染 | A. **復用 Glide 網格**(可編輯/虛擬化,已 SHIPPED)<br>B. 輕量唯讀 HTML table(triage 美學) | **A** — 避免維護第二套網格 + 大量記錄需虛擬化;代價:帶框狀態章要以 Glide 自訂 cell 近似。⚠️ 若你更要 mockup ① 的精確 triage 美學,選 B(想聽你定) |
+| **OQ-RWB-3** | 狀態欄判定 | A. **慣例:第一個 singleSelect 為狀態**(零設定,可能猜錯)<br>B. 設計器指定狀態欄(`form_def.status_field_id`,小後端)<br>C. 不做狀態章 | **A(R1)** — 零設定先上,多數採購/工單表首個選單即狀態;日後升 B。C 太保守失去信號 |
+| **OQ-RWB-4** | 關聯 rail 範圍 | A. 只正向 link 主檔(零後端)<br>B. **正向 + 反向被引用**(小後端端點)<br>C. 不做關聯 rail | **B** — 反向「本採購單被哪些進貨單引用」是價值所在(Link&Load P0-3 已有正向);簽核/GL 仍不放 |
+| **OQ-RWB-5** | 編輯模式 | A. **Object Page inline 檢視↔編輯**<br>B. 維持跳設計器(現況) | **A** — 就地編輯才是 Object Page 正解;填單 UI + PATCH 已有,低成本 |
+| **OQ-RWB-6** ⭐ | 導覽外殼 | A. 維持 topbar 橫向<br>B. 業務域 icon-rail(表單/計算/生產/ISO;後三 R1 未起=空 tab)<br>C. **單域 rail(只表單)+ 全域 status bar** | **C(修正,原建議 A)** — 「單薄」有一半來自缺外殼重量;C 拿到 rail + status bar 的系統重量,又**不放空的業務域 tab**(不造假)。待 ERP/MES/ISO land 再由 C 擴為 B。B 現在做=為視覺造假 roadmap |
+| **OQ-RWB-7** | user 名解析 | A. **users lookup 端點(id→name)**,前端解析<br>B. 記錄 read join 帶回 name | **A** — 獨立可快取端點,不讓每列 record 膨脹;只回 { id, name } 不洩敏感欄 |
+
+---
+
+## 12. 失效場景反思（FMEA）— M5 收尾填
+
+> pre-mortem 預列;M5 確認。P0 未 ✅ 不得 SHIPPED。
+
+### 12.1 反向關聯 / users lookup 端點
+| # | 場景 | 影響 | 預定緩解 | Sev |
+|---|---|---|---|---|
+| E1 | 反向關聯回無權/敏感表記錄 | 越權 / 敏感外洩 | 結果過 EffectivePermissions(canRead)+ 敏感表隱藏;整合測斷言 | P0 |
+| E2 | users lookup 列舉他租戶使用者 | 跨租戶洩漏 | 只回本租戶 + ids 同租戶過濾;不回 email | P0 |
+| E3 | 反向關聯 N+1 | 效能 | 單查詢 join / dataloader;cursor 上限 | P1 |
+
+### 12.2 集合視圖 / inline 編輯
+| # | 場景 | 影響 | 預定緩解 | Sev |
+|---|---|---|---|---|
+| U1 | 集合視圖顯示無權表單記錄 | 越權 | 沿用 records 端點之權限;無權表單根本進不來(list 三態 P0-4a·uplift) | P0 |
+| U2 | inline 編輯繞過欄位遮罩 | 竄改 hidden/唯讀欄 | 走 record.service 寫白名單(P0-4a M4);前端只渲染可寫欄 | P0 |
+| U3 | 狀態欄猜錯(非狀態的 singleSelect) | 誤導 | OQ-3=A 已知風險;升 B 可治本;先取首個 singleSelect + 可關 | P2 |
+| U4 | 大量記錄集合視圖卡頓 | 體驗 | Glide 虛擬化(OQ-2=A)+ cursor 分頁載更多 | P1 |
+
+### 12.3 不在本模組 scope
+- 簽核 stepper / 核准動作 → 工作流模組。
+- GL 過帳預覽 → R2 calc-binding-layer。
+- 批號追溯 / ⌘K / 附件儲存 / icon-nav 業務域 → 各自後續。
+
+---
+
+## 13. 變更紀錄
+
+| 日期 | 版本 | 變更 | 作者 |
+|---|---|---|---|
+| 2026-07-24 | v0.1 | 初版 DRAFT — 記錄工作台收斂(集合視圖 → Object Page);對照整合 mockup;現況 Object Page ~70% 已誠實建好,補 R1 缺口(集合視圖 / 狀態 / 金額 / 關聯 / user 名 / inline 編輯),R2/工作流不放;OQ-RWB-1..7 待裁定;2 唯讀後端端點 | Claude Code |
+| 2026-07-24 | v0.2 | **納入 A0 app-shell 密度**(回應「頁面單薄」視覺反思):原 doc 只補 Object Page 深度,不含**入口(首頁)+ 外殼(status bar/nav)**——正是「薄」的第一印象。A0 加 全域 status bar + 首頁卡牆改工作面(塞真資料/縮寬)+ 導覽 rail。**OQ-RWB-6 由二選改三選、建議翻為 C(單域 rail + status bar,拿重量不造空 tab)**。§1/§2/§3/§3-bis/§9 同步;合計 0.22→0.26 mo;A0 排 M1(最便宜最有感先做)| Claude Code |
+| 2026-07-24 | v0.3 | **OQ-RWB-1..7 全裁定(全採建議);DRAFT → APPROVED,進 M1**。1=B nested 路由 · 2=A 復用 Glide · 3=A 首 singleSelect 狀態 · 4=B 正+反向關聯 · 5=A inline 編輯 · **6=C 單域 rail+status bar** · 7=A users lookup。M1=A0 app-shell 密度先做(status bar + 首頁工作面)| Claude Code |
