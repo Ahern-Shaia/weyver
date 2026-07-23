@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common"
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
-import { fieldDefs, formDefs } from "../../db/schema.js"
+import { fieldDefs, formDefs, users } from "../../db/schema.js"
 import { FieldNotFoundError, FormNotFoundError } from "../errors.js"
 import { FIELD_TYPE_REGISTRY } from "../field-types/field-type-registry.js"
 import { normalizedOptions, type AddFieldSpec, type CreateFormSpec } from "../specs/form-specs.js"
@@ -20,13 +20,30 @@ export interface FormWithFields {
 export class MetadataService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
-  async createFormDraft(tenantId: number, spec: CreateFormSpec): Promise<FormWithFields> {
+  /* actorId 選用:有則寫 created_by(owner 短路,OQ-ARI-4);系統/種子建表可省。
+     created_by 須為真實 users 列(FK):prod actorId 必為已 upsert 之使用者;dev 之 x-dev-actor 為
+     stub、可能不對應真實使用者 → 查無則存 null(無 owner),避免 FK violation 打斷 dev 建表流程。 */
+  async createFormDraft(
+    tenantId: number,
+    spec: CreateFormSpec,
+    actorId?: number,
+  ): Promise<FormWithFields> {
     return this.db.transaction(async (tx) => {
+      let createdBy: number | null = null
+      if (actorId !== undefined) {
+        const found = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, actorId))
+          .limit(1)
+        createdBy = found[0]?.id ?? null
+      }
       const insertedForms = await tx
         .insert(formDefs)
         .values({
           tenantId,
           name: spec.name,
+          createdBy,
           ...(spec.parentFormId !== undefined ? { parentFormId: spec.parentFormId } : {}),
         })
         .returning()

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common"
 import { AdminGuard } from "./admin.guard.js"
 import { AuthzAdminController } from "./authz-admin.controller.js"
 import { AuthzAdminService } from "./authz-admin.service.js"
+import { AuthzResourceController } from "./authz-resource.controller.js"
 import { AuthzRepository } from "./authz.repository.js"
 import { PermissionGuard } from "./permission.guard.js"
 import { PermissionService } from "./permission.service.js"
@@ -10,7 +11,7 @@ import { PermissionService } from "./permission.service.js"
    只依賴全域 DbModule(DRIZZLE)+ 全域 AuthModule 之 TenantGuard;不 import AuthModule(避免循環 —
    種子由 AuthModule 反向注入本 repo)。consumer(FormEngineModule)import 本模組即可 @UseGuards(PermissionGuard)。 */
 @Module({
-  controllers: [AuthzAdminController],
+  controllers: [AuthzAdminController, AuthzResourceController],
   providers: [AuthzRepository, PermissionService, PermissionGuard, AdminGuard, AuthzAdminService],
   exports: [AuthzRepository, PermissionService, PermissionGuard],
 })

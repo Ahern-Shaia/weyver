@@ -26,6 +26,8 @@ export const tenants = pgTable("tenants", {
   parentTenantId: bigint("parent_tenant_id", { mode: "number" }).references(
     (): AnyPgColumn => tenants.id,
   ),
+  // P0-4a·uplift 資源軸繼承:未分類且無授權之非敏感表 baseline(Salesforce OWD 式;空=deny,admin 可設 view)
+  defaultFormActions: text("default_form_actions").array().notNull().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -55,6 +57,15 @@ export const formDefs = pgTable(
     parentFormId: bigint("parent_form_id", { mode: "number" }).references(
       (): AnyPgColumn => formDefs.id,
     ),
+    // P0-4a·uplift 資源軸繼承:所屬分類(NULL=未分類)。分類刪除 → SET NULL(表回退未分類,不孤兒)
+    categoryId: bigint("category_id", { mode: "number" }).references(
+      (): AnyPgColumn => formCategories.id,
+      { onDelete: "set null" },
+    ),
+    // 敏感表:不吃分類繼承/預設,只認 owner + 明確覆寫(OQ-ARI-5)
+    isSensitive: boolean("is_sensitive").notNull().default(false),
+    // 建立者:owner 短路(得資料動作、design 除外,OQ-ARI-4=B)。既有表遷移為 NULL(無 owner)
+    createdBy: bigint("created_by", { mode: "number" }).references((): AnyPgColumn => users.id),
     version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -246,5 +257,48 @@ export const fieldPermissions = pgTable(
     primaryKey({ columns: [t.roleId, t.fieldId] }),
     index("field_permissions_field_idx").on(t.fieldId),
     check("field_permissions_visibility", sql`visibility IN ('hidden','read','write')`),
+  ],
+)
+
+/* P0-4a·uplift 資源軸繼承(docs/modules/R1/authz-resource-inheritance.md)。
+   表單分類(每租戶;MVP 平面,parent_id 保留未來 category tree,OQ-ARI-1=A)。 */
+export const formCategories = pgTable(
+  "form_categories",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    // MVP 恆 NULL(平面);保留欄以利未來 category tree
+    parentId: bigint("parent_id", { mode: "number" }).references(
+      (): AnyPgColumn => formCategories.id,
+      { onDelete: "restrict" },
+    ),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("form_categories_tenant_name_uq").on(t.tenantId, t.name),
+    index("form_categories_tenant_idx").on(t.tenantId),
+  ],
+)
+
+/* 分類授權(角色 × 分類 → 動作集;繼承層,位於 form_permissions 覆寫層之下)。
+   表單有效權限解析序:owner → form_permissions(覆寫)→ category_permissions(繼承)→ 預設 profile。 */
+export const categoryPermissions = pgTable(
+  "category_permissions",
+  {
+    roleId: bigint("role_id", { mode: "number" })
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    categoryId: bigint("category_id", { mode: "number" })
+      .notNull()
+      .references(() => formCategories.id, { onDelete: "cascade" }),
+    actions: text("actions").array().notNull().default(sql`ARRAY[]::text[]`),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roleId, t.categoryId] }),
+    index("category_permissions_category_idx").on(t.categoryId),
   ],
 )

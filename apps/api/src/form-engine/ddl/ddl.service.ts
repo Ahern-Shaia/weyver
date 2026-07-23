@@ -35,8 +35,12 @@ export class DdlService {
     @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
   ) {}
 
-  async createForm(tenantId: number, spec: CreateFormSpec): Promise<FormWithFields> {
-    const draft = await this.metadata.createFormDraft(tenantId, spec)
+  async createForm(
+    tenantId: number,
+    spec: CreateFormSpec,
+    actorId?: number,
+  ): Promise<FormWithFields> {
+    const draft = await this.metadata.createFormDraft(tenantId, spec, actorId)
     await this.provisionForm(tenantId, draft)
     const loaded = await this.metadata.getForm(tenantId, draft.form.id)
     await this.defineFormulaFields(tenantId, loaded)

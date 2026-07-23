@@ -14,6 +14,9 @@ export const FORM_ACTIONS = [
 ] as const
 export type FormAction = (typeof FORM_ACTIONS)[number]
 
+/* owner 短路授予之動作(OQ-ARI-4=B):全部資料動作,design(改結構)除外 —— 用資料 ≠ 改結構。 */
+export const DATA_ACTIONS: readonly FormAction[] = FORM_ACTIONS.filter((a) => a !== "design")
+
 export const FIELD_VISIBILITIES = ["hidden", "read", "write"] as const
 export type FieldVisibility = (typeof FIELD_VISIBILITIES)[number]
 

@@ -51,24 +51,28 @@ export class FormsController {
     @Tenant() tenant: TenantContext,
     @Body(new ZodValidationPipe(createFormSpecSchema)) spec: CreateFormSpec,
   ): Promise<FormDto> {
-    return toFormDto(await this.ddl.createForm(tenant.tenantId, spec))
+    return toFormDto(await this.ddl.createForm(tenant.tenantId, spec, tenant.actorId))
   }
 
   @Get()
   async listForms(
     @Tenant() tenant: TenantContext,
     @Permissions() permissions: EffectivePermissions,
-  ): Promise<Omit<FormDto, "fields">[]> {
+  ): Promise<Array<Omit<FormDto, "fields"> & { locked: boolean }>> {
     const forms = await this.metadata.listForms(tenant.tenantId)
-    // 表單級授權:只回可讀表單(無權者連存在都不知道)
+    // OQ-ARI-8:可讀 → 完整;非敏感無權 → 鎖定 stub(顯示,不含資料);敏感無權 → 隱藏(不回)
+    const { readable, locked } = permissions.listableForms(forms.map((f) => f.id))
+    const readableSet = new Set(readable)
+    const lockedSet = new Set(locked)
     return forms
-      .filter((form) => permissions.canRead(form.id))
+      .filter((form) => readableSet.has(form.id) || lockedSet.has(form.id))
       .map((form) => ({
         id: form.id,
         name: form.name,
         provisionState: form.provisionState,
         version: form.version,
         parentFormId: form.parentFormId,
+        locked: lockedSet.has(form.id),
       }))
   }
 

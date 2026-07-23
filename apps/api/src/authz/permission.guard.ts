@@ -6,7 +6,7 @@ import {
   Injectable,
 } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
-import { buildEffectivePermissions, type EffectivePermissions } from "./authz-effective.js"
+import { adminPermissions, type EffectivePermissions } from "./authz-effective.js"
 import { type FormAction, requiredActionForMethod } from "./authz-model.js"
 import { REQUIRED_FORM_ACTION, type RequestWithPermissions } from "./authz-http.js"
 import { PermissionService } from "./permission.service.js"
@@ -31,7 +31,7 @@ export class PermissionGuard implements CanActivate {
     }
 
     const effective: EffectivePermissions = tenant.isSuperAdmin
-      ? buildEffectivePermissions(true, [], [])
+      ? adminPermissions()
       : await this.permissions.resolveForActor(tenant.tenantId, tenant.actorId)
     request.permissions = effective
 

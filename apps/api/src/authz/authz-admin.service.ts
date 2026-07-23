@@ -5,7 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common"
-import { AuthzRepository, RoleParentError, type RoleRow } from "./authz.repository.js"
+import {
+  AuthzRepository,
+  type CategoryRow,
+  RoleParentError,
+  type RoleRow,
+} from "./authz.repository.js"
 import type { FieldVisibility, FormAction } from "./authz-model.js"
 import { RoleCycleError, RoleTreeDepthError } from "./authz-tree.js"
 
@@ -28,8 +33,20 @@ function translateRoleError(error: unknown): never {
 
 export interface RolePermissionsView {
   readonly forms: ReadonlyArray<{ formId: number; actions: readonly FormAction[] }>
+  readonly categories: ReadonlyArray<{ categoryId: number; actions: readonly FormAction[] }>
   readonly fields: ReadonlyArray<{ fieldId: number; visibility: FieldVisibility }>
   readonly memberActorIds: readonly number[]
+}
+
+/* 權限矩陣「分類分組」UI 資料源:分類 + 表單(含所屬分類/敏感)。 */
+export interface ResourcesView {
+  readonly categories: readonly CategoryRow[]
+  readonly forms: ReadonlyArray<{
+    id: number
+    name: string
+    categoryId: number | null
+    isSensitive: boolean
+  }>
 }
 
 /* P0-4a M5|權限管理後台服務(admin only,由 AdminGuard 守)。薄 service:驗證 + 編排 repo。
@@ -106,16 +123,98 @@ export class AuthzAdminService {
 
   async getRolePermissions(tenantId: number, roleId: number): Promise<RolePermissionsView> {
     await this.mustRole(tenantId, roleId)
-    const [forms, fields, memberActorIds] = await Promise.all([
+    const [forms, categories, fields, memberActorIds] = await Promise.all([
       this.repo.loadFormPermissions([roleId]),
+      this.repo.loadCategoryPermissions([roleId]),
       this.repo.loadFieldPermissions([roleId]),
       this.repo.listRoleMembers(tenantId, roleId),
     ])
     return {
       forms: forms.map((f) => ({ formId: f.formId, actions: f.actions })),
+      categories: categories.map((c) => ({ categoryId: c.categoryId, actions: c.actions })),
       fields: fields.map((f) => ({ fieldId: f.fieldId, visibility: f.visibility })),
       memberActorIds,
     }
+  }
+
+  // --- P0-4a·uplift 資源軸繼承(分類 / 分類授權 / 預設 profile / 表單旗標)---
+
+  listCategories(tenantId: number): Promise<CategoryRow[]> {
+    return this.repo.listCategories(tenantId)
+  }
+
+  async createCategory(tenantId: number, name: string): Promise<CategoryRow> {
+    try {
+      return await this.repo.createCategory(tenantId, name)
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException({ code: "CATEGORY_NAME_EXISTS", message: "分類名稱已存在" })
+      }
+      throw error
+    }
+  }
+
+  async updateCategory(
+    tenantId: number,
+    categoryId: number,
+    patch: { name?: string; position?: number },
+  ): Promise<void> {
+    await this.mustCategory(tenantId, categoryId)
+    try {
+      await this.repo.updateCategory(tenantId, categoryId, patch)
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException({ code: "CATEGORY_NAME_EXISTS", message: "分類名稱已存在" })
+      }
+      throw error
+    }
+  }
+
+  async deleteCategory(tenantId: number, categoryId: number): Promise<void> {
+    await this.mustCategory(tenantId, categoryId)
+    await this.repo.deleteCategory(tenantId, categoryId)
+  }
+
+  async setCategoryActions(
+    tenantId: number,
+    roleId: number,
+    categoryId: number,
+    actions: readonly FormAction[],
+  ): Promise<void> {
+    await this.mustRole(tenantId, roleId)
+    await this.mustCategory(tenantId, categoryId)
+    await this.repo.setCategoryActions(roleId, categoryId, actions)
+  }
+
+  getDefaultActions(tenantId: number): Promise<FormAction[]> {
+    return this.repo.getTenantDefaultActions(tenantId)
+  }
+
+  setDefaultActions(tenantId: number, actions: readonly FormAction[]): Promise<void> {
+    return this.repo.setTenantDefaultActions(tenantId, actions)
+  }
+
+  async setFormSensitive(tenantId: number, formId: number, isSensitive: boolean): Promise<void> {
+    const ok = await this.repo.setFormSensitive(tenantId, formId, isSensitive)
+    if (!ok) throw new NotFoundException({ code: "FORM_NOT_FOUND", message: `form ${formId}` })
+  }
+
+  async setFormCategory(
+    tenantId: number,
+    formId: number,
+    categoryId: number | null,
+  ): Promise<void> {
+    if (categoryId !== null) await this.mustCategory(tenantId, categoryId)
+    const ok = await this.repo.setFormCategory(tenantId, formId, categoryId)
+    if (!ok) throw new NotFoundException({ code: "FORM_NOT_FOUND", message: `form ${formId}` })
+  }
+
+  async getResources(tenantId: number): Promise<ResourcesView> {
+    const [categories, forms] = await Promise.all([
+      this.repo.listCategories(tenantId),
+      this.repo.listFormResources(tenantId),
+    ])
+    return { categories, forms }
   }
 
   private async mustRole(tenantId: number, roleId: number): Promise<RoleRow> {
@@ -125,4 +224,16 @@ export class AuthzAdminService {
     }
     return role
   }
+
+  private async mustCategory(tenantId: number, categoryId: number): Promise<CategoryRow> {
+    const category = await this.repo.getCategory(tenantId, categoryId)
+    if (category === null) {
+      throw new NotFoundException({ code: "CATEGORY_NOT_FOUND", message: `category ${categoryId}` })
+    }
+    return category
+  }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505"
 }

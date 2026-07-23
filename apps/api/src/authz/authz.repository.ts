@@ -1,7 +1,16 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { and, eq, inArray, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
-import { fieldPermissions, formPermissions, roleMembers, roles } from "../db/schema.js"
+import {
+  categoryPermissions,
+  fieldPermissions,
+  formCategories,
+  formDefs,
+  formPermissions,
+  roleMembers,
+  roles,
+  tenants,
+} from "../db/schema.js"
 import { type FieldVisibility, type FormAction, isFormAction } from "./authz-model.js"
 import { depthForParent, RoleCycleError, wouldCreateCycle } from "./authz-tree.js"
 
@@ -28,6 +37,29 @@ export interface FieldPermissionRow {
   readonly roleId: number
   readonly fieldId: number
   readonly visibility: FieldVisibility
+}
+
+/* P0-4a·uplift 資源軸繼承 */
+export interface CategoryRow {
+  readonly id: number
+  readonly tenantId: number
+  readonly parentId: number | null
+  readonly name: string
+  readonly position: number
+}
+
+export interface CategoryPermissionRow {
+  readonly roleId: number
+  readonly categoryId: number
+  readonly actions: readonly FormAction[]
+}
+
+/* 表單授權 metadata(繼承解析輸入):所屬分類 / 敏感 / 建立者(owner) */
+export interface FormMetaRow {
+  readonly formId: number
+  readonly categoryId: number | null
+  readonly isSensitive: boolean
+  readonly createdBy: number | null
 }
 
 /* 系統角色(每租戶建立時種入)。'admin' 具全租戶 manage 語意(於 PermissionService 特判,OQ-5);
@@ -201,6 +233,180 @@ export class AuthzRepository {
       })
   }
 
+  // --- P0-4a·uplift 資源軸繼承(分類 / 分類授權 / 表單 metadata / 租戶預設 profile)---
+
+  /* 建分類(append 到末尾:position = 現有最大 + 1)。unique(tenant,name) 由 DB 兜底。 */
+  async createCategory(tenantId: number, name: string): Promise<CategoryRow> {
+    const existing = await this.db
+      .select({ position: formCategories.position })
+      .from(formCategories)
+      .where(eq(formCategories.tenantId, tenantId))
+    const nextPos = existing.reduce((max, r) => Math.max(max, r.position + 1), 0)
+    const inserted = await this.db
+      .insert(formCategories)
+      .values({ tenantId, name, position: nextPos })
+      .returning()
+    const row = inserted[0]
+    if (!row) throw new Error("createCategory: insert returned no row")
+    return toCategoryRow(row)
+  }
+
+  async listCategories(tenantId: number): Promise<CategoryRow[]> {
+    const rows = await this.db
+      .select()
+      .from(formCategories)
+      .where(eq(formCategories.tenantId, tenantId))
+      .orderBy(asc(formCategories.position), asc(formCategories.id))
+    return rows.map(toCategoryRow)
+  }
+
+  async getCategory(tenantId: number, categoryId: number): Promise<CategoryRow | null> {
+    const rows = await this.db
+      .select()
+      .from(formCategories)
+      .where(and(eq(formCategories.tenantId, tenantId), eq(formCategories.id, categoryId)))
+      .limit(1)
+    const row = rows[0]
+    return row ? toCategoryRow(row) : null
+  }
+
+  async updateCategory(
+    tenantId: number,
+    categoryId: number,
+    patch: { readonly name?: string; readonly position?: number },
+  ): Promise<void> {
+    const set: { name?: string; position?: number } = {}
+    if (patch.name !== undefined) set.name = patch.name
+    if (patch.position !== undefined) set.position = patch.position
+    if (Object.keys(set).length === 0) return
+    await this.db
+      .update(formCategories)
+      .set(set)
+      .where(and(eq(formCategories.tenantId, tenantId), eq(formCategories.id, categoryId)))
+  }
+
+  /* 刪分類。form_def.category_id ON DELETE SET NULL(表回退未分類);category_permissions CASCADE。 */
+  async deleteCategory(tenantId: number, categoryId: number): Promise<void> {
+    await this.db
+      .delete(formCategories)
+      .where(and(eq(formCategories.tenantId, tenantId), eq(formCategories.id, categoryId)))
+  }
+
+  /* 設角色對某分類的動作集(繼承層)。空集 = 撤銷 → 刪列(deny-by-default)。 */
+  async setCategoryActions(
+    roleId: number,
+    categoryId: number,
+    actions: readonly FormAction[],
+  ): Promise<void> {
+    if (actions.length === 0) {
+      await this.db
+        .delete(categoryPermissions)
+        .where(
+          and(
+            eq(categoryPermissions.roleId, roleId),
+            eq(categoryPermissions.categoryId, categoryId),
+          ),
+        )
+      return
+    }
+    const unique = [...new Set(actions)]
+    await this.db
+      .insert(categoryPermissions)
+      .values({ roleId, categoryId, actions: unique })
+      .onConflictDoUpdate({
+        target: [categoryPermissions.roleId, categoryPermissions.categoryId],
+        set: { actions: unique },
+      })
+  }
+
+  async loadCategoryPermissions(roleIds: readonly number[]): Promise<CategoryPermissionRow[]> {
+    if (roleIds.length === 0) return []
+    const rows = await this.db
+      .select()
+      .from(categoryPermissions)
+      .where(inArray(categoryPermissions.roleId, [...roleIds]))
+    return rows.map((r) => ({
+      roleId: r.roleId,
+      categoryId: r.categoryId,
+      actions: r.actions.filter(isFormAction),
+    }))
+  }
+
+  /* 全租戶表單授權 metadata(繼承解析輸入)。form_def 小且每租戶,單次索引查詢 + per-request 快取。 */
+  async loadFormMeta(tenantId: number): Promise<FormMetaRow[]> {
+    const rows = await this.db
+      .select({
+        formId: formDefs.id,
+        categoryId: formDefs.categoryId,
+        isSensitive: formDefs.isSensitive,
+        createdBy: formDefs.createdBy,
+      })
+      .from(formDefs)
+      .where(and(eq(formDefs.tenantId, tenantId), isNull(formDefs.deletedAt)))
+    return rows
+  }
+
+  async getTenantDefaultActions(tenantId: number): Promise<FormAction[]> {
+    const rows = await this.db
+      .select({ actions: tenants.defaultFormActions })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1)
+    return (rows[0]?.actions ?? []).filter(isFormAction)
+  }
+
+  async setTenantDefaultActions(tenantId: number, actions: readonly FormAction[]): Promise<void> {
+    await this.db
+      .update(tenants)
+      .set({ defaultFormActions: [...new Set(actions)] })
+      .where(eq(tenants.id, tenantId))
+  }
+
+  /* 敏感旗標為 admin-only 動作(OQ-ARI-5)。form_def 為共享 Tier-1;authz 車道直接寫該欄
+     (authz 模組不可依賴 form-engine MetadataService → 會成 DI 循環)。回傳是否有列命中(tenant-scope)。 */
+  async setFormSensitive(tenantId: number, formId: number, isSensitive: boolean): Promise<boolean> {
+    const updated = await this.db
+      .update(formDefs)
+      .set({ isSensitive })
+      .where(
+        and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+      )
+      .returning({ id: formDefs.id })
+    return updated.length > 0
+  }
+
+  /* 表單歸類(NULL=未分類)。分類同租戶驗證於 service 層。回傳是否命中(tenant-scope)。 */
+  async setFormCategory(
+    tenantId: number,
+    formId: number,
+    categoryId: number | null,
+  ): Promise<boolean> {
+    const updated = await this.db
+      .update(formDefs)
+      .set({ categoryId })
+      .where(
+        and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+      )
+      .returning({ id: formDefs.id })
+    return updated.length > 0
+  }
+
+  /* 表單清單 + 授權 metadata(分類/敏感);權限矩陣「分類分組」UI 之資料源。 */
+  async listFormResources(
+    tenantId: number,
+  ): Promise<Array<{ id: number; name: string; categoryId: number | null; isSensitive: boolean }>> {
+    return this.db
+      .select({
+        id: formDefs.id,
+        name: formDefs.name,
+        categoryId: formDefs.categoryId,
+        isSensitive: formDefs.isSensitive,
+      })
+      .from(formDefs)
+      .where(and(eq(formDefs.tenantId, tenantId), isNull(formDefs.deletedAt)))
+      .orderBy(asc(formDefs.id))
+  }
+
   /* actor 的角色閉包(直接角色 + 所有祖先),單一 recursive CTE。
      UNION(非 UNION ALL)去重 + 遇環自然終止(visited);tenant scope 綁在 anchor。 */
   async resolveActorRoleIds(tenantId: number, actorId: number): Promise<number[]> {
@@ -288,5 +494,15 @@ function toRoleRow(row: typeof roles.$inferSelect): RoleRow {
     name: row.name,
     isSystem: row.isSystem,
     depth: row.depth,
+  }
+}
+
+function toCategoryRow(row: typeof formCategories.$inferSelect): CategoryRow {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    parentId: row.parentId,
+    name: row.name,
+    position: row.position,
   }
 }

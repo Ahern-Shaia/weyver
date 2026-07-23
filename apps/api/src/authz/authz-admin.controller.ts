@@ -121,4 +121,16 @@ export class AuthzAdminController {
   ): Promise<void> {
     await this.admin.setFieldPermission(tenant.tenantId, roleId, fieldId, body.visibility)
   }
+
+  /* P0-4a·uplift:角色 × 分類 動作集(繼承層)。 */
+  @Put(":roleId/categories/:categoryId")
+  @HttpCode(204)
+  async setCategoryActions(
+    @Tenant() tenant: TenantContext,
+    @Param("roleId", ParseIntPipe) roleId: number,
+    @Param("categoryId", ParseIntPipe) categoryId: number,
+    @Body(new ZodValidationPipe(formActionsSchema)) body: z.infer<typeof formActionsSchema>,
+  ): Promise<void> {
+    await this.admin.setCategoryActions(tenant.tenantId, roleId, categoryId, body.actions)
+  }
 }
