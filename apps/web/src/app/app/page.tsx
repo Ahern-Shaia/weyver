@@ -1,6 +1,6 @@
 "use client"
 
-import { FileText, Plus, Table2 } from "lucide-react"
+import { FileText, Lock, Plus, Table2 } from "lucide-react"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { useActiveOrganization, useSession } from "@/lib/auth/client"
@@ -20,11 +20,28 @@ function FormCard({
   id,
   name,
   isSub,
+  locked,
 }: {
   readonly id: number
   readonly name: string
   readonly isSub: boolean
+  readonly locked: boolean
 }): ReactNode {
+  // OQ-8:無權(非敏感)表單顯示為鎖定 stub —— 看得到、不可開,提示洽管理員(緩解遷移期「東西不見了」)
+  if (locked) {
+    return (
+      <div
+        title="無存取權,請洽管理員授予"
+        className="cursor-not-allowed rounded-md border border-dashed border-line bg-surface p-3 opacity-70"
+      >
+        <div className="mb-2 flex size-7 items-center justify-center rounded-md bg-head text-ink-4">
+          <Lock size={14} strokeWidth={1.9} />
+        </div>
+        <div className="mb-0.5 truncate text-[13px] font-medium text-ink-3">{name}</div>
+        <div className="font-mono text-[11px] text-ink-4">無存取權</div>
+      </div>
+    )
+  }
   return (
     <Link
       href={`/app/forms/${id}`}
@@ -83,7 +100,13 @@ export default function WorkspaceHome(): ReactNode {
         ) : (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
             {roots.map((f) => (
-              <FormCard key={f.id} id={f.id} name={f.name} isSub={false} />
+              <FormCard
+                key={f.id}
+                id={f.id}
+                name={f.name}
+                isSub={false}
+                locked={f.locked ?? false}
+              />
             ))}
             <Link
               href="/app/builder"

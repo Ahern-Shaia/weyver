@@ -3,6 +3,7 @@
 import { type ReactNode, useState } from "react"
 import { useRoles } from "@/lib/engine/authz"
 import { describeEngineError } from "@/lib/engine/client"
+import { ResourceSettings } from "./_components/resource-settings"
 import { RoleDetail } from "./_components/role-detail"
 import { RoleTree } from "./_components/role-tree"
 
@@ -17,26 +18,29 @@ export default function PermissionsPage(): ReactNode {
   const effectiveRoleId = selected?.id ?? roles?.find((r) => r.key === "admin")?.id ?? null
 
   return (
-    <div className="flex h-full min-h-0">
-      <RoleTree
-        roles={roles ?? []}
-        loading={isPending}
-        selectedId={effectiveRoleId}
-        onSelect={setRoleId}
-      />
-      <div className="flex min-w-0 flex-1 flex-col bg-surface">
-        {isError ? (
-          <div className="m-5 rounded-md border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
-            無法載入角色:{describeEngineError(error)}
-          </div>
-        ) : effectiveRoleId !== null ? (
-          <RoleDetail
-            key={effectiveRoleId}
-            role={roles?.find((r) => r.id === effectiveRoleId) ?? null}
-          />
-        ) : (
-          <div className="p-6 text-[12px] text-ink-3">載入中…</div>
-        )}
+    <div className="flex h-full min-h-0 flex-col">
+      <ResourceSettings />
+      <div className="flex min-h-0 flex-1">
+        <RoleTree
+          roles={roles ?? []}
+          loading={isPending}
+          selectedId={effectiveRoleId}
+          onSelect={setRoleId}
+        />
+        <div className="flex min-w-0 flex-1 flex-col bg-surface">
+          {isError ? (
+            <div className="m-5 rounded-md border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
+              無法載入角色:{describeEngineError(error)}
+            </div>
+          ) : effectiveRoleId !== null ? (
+            <RoleDetail
+              key={effectiveRoleId}
+              role={roles?.find((r) => r.id === effectiveRoleId) ?? null}
+            />
+          ) : (
+            <div className="p-6 text-[12px] text-ink-3">載入中…</div>
+          )}
+        </div>
       </div>
     </div>
   )

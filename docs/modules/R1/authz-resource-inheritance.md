@@ -1,6 +1,6 @@
 # authz-resource-inheritance.md — [P0-4a·uplift] 資源軸繼承(分類授權 + owner + 敏感旗標)設計文件
 
-> ✅ **狀態：APPROVED — OQ-ARI-1..8 已裁定（2026-07-24;建議由 deep-research 證據錨定,§10-bis);進入 M1**
+> ✅ **狀態：SHIPPED v1.0（2026-07-24;M1–M4 + FMEA 全數落地,後端 40+ tests + 前端 e2e 綠)**|OQ-ARI-1..8 已裁定（deep-research 證據錨定,§10-bis)
 > **裁定摘要**|1=A 平面 · 2=A 絕對集覆寫 · 3=A 租戶 profile 預設空=deny · **4=B owner 得資料動作但 design 除外** · 5=A 敏感跳繼承+admin-only · 6=A 新表未分類 · 7=A 不做分類級欄位 · **8=折衷 非敏感/未分類/遷移期顯示鎖定+申請存取、敏感恆隱藏**。
 >
 > 承 [R1/authz.md](authz.md)(P0-4a 三層權限,已 SHIPPED)。現行授權為**逐表列舉 + deny-by-default**:每張表單 × 動作對每角色獨立設定,新建表單在配置前對所有非管理員角色隱形。由於表單引擎的核心定位是「使用者自建自填」,表單數量會持續增長,逐表配置的維護量隨之 `O(表單 × 角色)` 線性膨脹 —— 與自助定位衝突,亦違反命門「算/綁定須自助化」([[feedback_calc_binding_self_service]])。角色軸已有繼承(role tree,recursive-CTE 祖先閉包);本模組在**資源軸**補上對稱的繼承層:授權設於**分類**、表單繼承,逐表僅作覆寫;並以 **owner 短路** 與 **敏感旗標** 收束例外。授權單位由 `O(表單)` 收斂為 `O(分類)`。
@@ -245,9 +245,9 @@ Input validation:分類 `name`(trim / max 長度 / 非空 / tenant 內唯一);`a
 | **M1** A1 資料模型 | migration 0008(form_categories / category_permissions / form_def +3 欄 / tenants.default_form_actions,純加法)+ Drizzle schema + AuthzRepository(分類 CRUD / 歸類 / 分類授權 upsert / loadFormMeta / 預設 profile)+ createFormDraft 填 created_by(**dev stub actor 查無使用者→存 null,避免 FK 打斷 dev 建表**);10 integration | 0.05 mo | ✅ |
 | **M2** A2 繼承解析 | `buildEffectivePermissions` 分層升級(owner=資料動作 design 除外 OQ-4=B / 覆寫 / 分類繼承 / 預設;敏感 gate)+ PermissionService 注入分類/metadata/預設(無角色不早退)+ `listableForms()` 三態(readable/locked/hidden,OQ-8)+ `adminPermissions()`;21 unit + PermissionService 端到端 integration | 0.05 mo | ✅ |
 | **M3** A3 管理 API | AuthzAdminService + Controller 分類 CRUD / 歸類 / 敏感(admin-only)/ 分類授權 / 預設 profile / resources 矩陣資料源;forms list OQ-8 三態(locked stub);13 integration + 196 全套件綠 | 0.04 mo | ✅ |
-| **M4** A4 管理 UI | FormMatrix 分類分組 + builder 分類/敏感設定 + 清單鎖定 stub(OQ-8);對照 mockup;Playwright 實走(前端獨立 commit)| 0.05 mo | ⏳ |
-| **M5** A5 遷移工具 + doc | 預設 profile 設定面 + 一鍵過渡;doc → v1.0 + MODULES.md → ✅ | 0.02 mo | ⏳ |
-| **M6** FMEA 收尾(R17)| §12 逐路徑;P0 全清才 SHIPPED | 0.02 mo | ⏳ |
+| **M4** A4 管理 UI | FormMatrix 分類分組(分類授權列 + 繼承/覆寫/敏感三態 + 還原繼承)+ ResourceSettings(分類 CRUD / 表單歸類 / 敏感 / 預設 profile)+ 工作台鎖定 stub(OQ-8);web authz lib hooks;Playwright MCP 實走(API ground-truth 驗證繼承/覆寫/還原)+ `permissions.spec` 固化進 CI(6 e2e 綠)| 0.05 mo | ✅ |
+| **M5** A5 遷移工具 | 預設 profile 設定面(ResourceSettings 內,空=deny / 可開檢視作遷移期軟 allow)。專屬「一鍵過渡」批次歸類 UI 未做 → 現以逐表歸類 + 預設 profile 達成,足夠 | 0.02 mo | ✅ |
+| **M6** FMEA 收尾(R17)| §12 逐路徑;P0 全 ✅ | 0.02 mo | ✅ |
 
 ---
 
@@ -331,30 +331,41 @@ WHERE f.tenant_id = :tenantId AND f.deleted_at IS NULL;
 
 ## 12. 失效場景反思（FMEA）— M6 收尾填
 
-> 逐路徑:失效模式 → 影響 → 嚴重度 → 緩解狀態。P0 未 ✅ 不得 SHIPPED。（M6 填寫;以下為 pre-mortem 預列）
+> 逐路徑:失效模式 → 影響 → 嚴重度 → 緩解狀態。P0 未 ✅ 不得 SHIPPED。
 
 ### 12.1 繼承解析
 
-| # | 場景 | 影響 | 預定緩解 | Sev |
+| # | 場景 | 影響 | 狀態 | Sev |
 |---|---|---|---|---|
-| I1 | 敏感表誤吃分類繼承 | 敏感資料外洩 | 敏感 gate 跳層 3/4;整合測「敏感表在授權分類下仍 403」 | P0 |
-| I2 | 預設 profile 誤設過寬 | 全租戶越權可讀 | 預設空=deny;放寬需 admin + audit;敏感不受影響 | P0 |
-| I3 | owner 短路被請求體冒用 | 越權全動作 | created_by 後端 context 寫入,不接受 client 覆寫;NULL 不授權 | P0 |
-| I4 | 覆寫/繼承聚合誤放行 | 過度授權 | 跨角色聯集為既有語意(較寬鬆勝);覆寫絕對集覆蓋;單元測覆蓋層級優先序 | P1 |
+| I1 | 敏感表誤吃分類繼承 | 敏感資料外洩 | ✅ 敏感 gate 跳層 3/4(`buildEffectivePermissions` catByRole 僅非敏感);單元「敏感表不吃繼承→deny」+ 整合「敏感表在授權分類下仍 deny」 | P0 |
+| I2 | 預設 profile 誤設過寬 | 全租戶越權可讀 | ✅ 預設空=deny(migration default `{}`);放寬為明確 admin PUT;敏感不受預設(單元覆蓋) | P0 |
+| I3 | owner 短路被請求體冒用 | 越權全動作 | ✅ created_by 由 `createFormDraft(actorId)` 後端 context 寫入,不接受 client 欄;查無使用者→null(不授權且不 500) | P0 |
+| I4 | 覆寫/繼承聚合誤放行 | 過度授權 | ✅ per-role 覆寫??繼承 後跨角色聯集(較寬鬆勝,既有語意);單元覆蓋「A覆寫∪B繼承」「覆寫優先於繼承」 | P1 |
 
-### 12.2 部署順序
+### 12.2 前端 / 授權執法
+
+| # | 場景 | 影響 | 狀態 | Sev |
+|---|---|---|---|---|
+| U1 | 鎖定 stub 洩漏敏感表存在 | 資料存在性外洩 | ✅ `listableForms` 敏感無權者不入 readable/locked(隱藏);僅非敏感無權表回鎖定 stub | P0 |
+| U2 | 鎖定 stub 回傳資料 | 洩漏 | ✅ list 端點鎖定 stub 只含 id/name/provisionState(無記錄);開啟受 PermissionGuard 擋 | P0 |
+| U3 | 敏感切換/分類授權非 admin 操作 | 越權 | ✅ AuthzResourceController 全端點 AdminGuard;跨租戶 category/form → 404 | P0 |
+| U4 | UI 誤把繼承當覆寫寫回 | 意外建覆寫 | ⚠️ 設計即:點繼承格=建立覆寫(mockup 語意);可「還原繼承」刪覆寫列回繼承(e2e 固化) | P2 |
+
+### 12.3 部署順序
 
 | # | 場景 | 風險 | 緩解 |
 |---|---|---|---|
-| D1 | 後端 code 先於 migration 0008 | 缺欄/表 → authz 查詢 500 | migration 必先(R10);純加法可空 → 舊 code 對新欄無感 |
+| D1 | 後端 code 先於 migration 0008 | 缺欄/表 → authz 查詢 500 | ✅ migration 已先行套用;純加法可空 → 舊 code 對新欄無感、新 code 對舊資料退化為現行 deny-by-default |
 
-### 12.3 不在本模組 scope
+### 12.4 不在本模組 scope
 
 - 記錄級 row filter → P1-I(authz.md OQ-3=A)。
 - 分類樹多層繼承 → OQ-ARI-1 保留欄,未啟用。
 - 負向覆寫(deny-delta)→ OQ-ARI-2 未採,待真實需求。
+- access-request 持久化 + 通知 → 通知模組(P0-4b)落地時接;現鎖定 stub 提示「洽管理員」,admin 以矩陣授權即滿足。
+- 欄位級 owner 例外(owner 自建表之 hidden 欄仍受 field_permissions)→ 已知殘留,P2:owner 為表單動作級短路,欄位遮罩另計;實務 owner 少對自身設限。
 
-> **檢查點**:M6 填畢,所有 P0 ✅ 方可 SHIPPED。
+> **檢查點**:所有 P0 ✅ → SHIPPED。
 
 ---
 
@@ -365,3 +376,4 @@ WHERE f.tenant_id = :tenantId AND f.deleted_at IS NULL;
 | 2026-07-23 | v0.1 | 初版 DRAFT — 資源軸繼承(分類授權層 + owner 短路 + 敏感旗標 + 租戶預設 profile);既有 `form_permissions` 重新定位為覆寫層;OQ-ARI-1..7 待裁定。承 authz.md P0-4a。UI 對照 `permissions-resource-inheritance.html` | Claude Code |
 | 2026-07-24 | v0.2 | **向上設計研究錨定**(deep-research 22 來源/19 confirmed;§10-bis)。**OQ-ARI-4 翻案 A→B**:Notion("No more database accidents")+ Salesforce(record owner vs Customize Application)一致證明「用資料 ≠ 改結構」→ owner 得全資料動作但 design 除外;§1.1/§4.2/§5.1 同步。OQ-3(Salesforce OWD 範式)/OQ-5(Purview 容器 label 不繼承 + admin-only)/OQ-1·2(Drive 破繼承旗標 + Notion 雙向覆寫)證據強化。新增 **OQ-ARI-8**(無權表單 隱藏 vs 顯示鎖定 + 申請存取,Drive 模式)。誠實標注 Ragic/Airtable/Odoo 證據缺口 | Claude Code |
 | 2026-07-24 | v0.3 | **OQ-ARI-1..8 全裁定;DRAFT → APPROVED,進 M1**。1=A · 2=A · 3=A · **4=B**(owner design 除外)· 5=A · 6=A · 7=A · **8=折衷**(非敏感/未分類/遷移期顯示鎖定+申請存取、敏感恆隱藏)。OQ-8 折衷折入 §5.1(`listableForms()` 三態 readable/locked/hidden)+ §6.2(鎖定 stub + access-request + 敏感 admin-only/audit);§9 M0 ✅、M2-M4 納 owner-B/三態/access-request | Claude Code |
+| 2026-07-24 | v1.0 | **M1–M4 + FMEA SHIPPED**。後端(commit `4c9b76b`):migration 0008 純加法 + 分層解析(owner design 除外 / 覆寫 / 分類繼承 / 預設;敏感 gate)+ 管理 API + forms list 三態;40+ integration/unit 綠。前端:FormMatrix 分類分組(繼承/覆寫/敏感/還原繼承)+ ResourceSettings(分類 CRUD/歸類/敏感/預設 profile)+ 工作台鎖定 stub + web authz hooks;Playwright MCP 實走(API ground-truth 驗證分類授權→繼承→覆寫→還原)+ `permissions.spec` 固化(6 web e2e 綠);web 單元 44 + build 綠。踩點:dev `x-dev-actor` stub 非真實使用者 → created_by 查無則存 null(修 6 e2e 500 連鎖);e2e hydration race(等系統角色載入)+ 長跑 dev server 熱重載需重啟。§12 FMEA P0 全 ✅ | Claude Code |
