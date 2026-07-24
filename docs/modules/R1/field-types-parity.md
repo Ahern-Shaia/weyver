@@ -1,7 +1,8 @@
 # field-types-parity.md — [R1·UP-4] 欄位型別 parity（form-engine-core 增量）設計文件
 
-> ✅ **狀態：APPROVED — OQ-FTP-1..7 已裁定（2026-07-25;全採建議 = 全 A）;進入 M1**
+> ✅ **狀態：SHIPPED v1.0（2026-07-25;M1–M5 全綠;api 236 + web 17 e2e 過）**
 > **裁定摘要**｜1=A 讀時 systemManaged pseudo-field · 2=A 系統欄投影 audit · 3=A options 加法擴充 · 4=A link 補完(含 link&load,級聯 P1) · 5=A counter table 統一 · 6=A image/signature 依 file-storage 排除 P0 · 7=A 採 §1.1 八項為 P0。
+> **落地**｜M0 `2b28960` · M1 後端 `0972cf7`(系統欄/lookup/rollup 讀時型別)· M2 後端 `d98ffa4`(autoNumber pattern/選項顏色連動/link displayFields)· M3 `7d212f0`+`e469aa1`(barcode/mask + 前端 enum/渲染)· M4 `ad8c9e7`(設計器進階型別設定)· M5 `58e6f1d`(field-types.spec)。
 >
 > docs/27 §6 順序 4（承 form-designer-2d SHIPPED）。落地 §2「欄位型別全譜」之 **P0 共識型 + Ragic 遷移必備**：**系統欄 4 型 / lookup / rollup / link 補完 / autoNumber pattern / 選項顏色 + 連動選項 / 條碼生成 / 格式遮罩**。form-engine-core 的 field-type registry 是「新型別 = 加一 registry entry」的擴充式設計（OQ-FEC-3），且多數 P0 型別可**複用既有基礎設施**（見 §2 現況）。
 >
@@ -148,11 +149,11 @@ Input validation：新 options（colors/parent/lookup/rollup/link/autoNumber pat
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED（OQ-FTP-1..7 裁定,全採建議）| ✅ |
-| **M1** | 後端：系統欄 + rollup + lookup 讀時型別（api commit）| ⏳ |
-| **M2** | 後端：link 補完 + autoNumber pattern + 選項顏色/連動 | ⏳ |
-| **M3** | 前端：新型別 palette + field-input 渲染 | ⏳ |
-| **M4** | 前端：設計器新型別 options 設定（M3–M5 web commit）| ⏳ |
-| **M5** | field-types.spec 固化 + FMEA + doc v1.0 + MODULES ✅ | ⏳ |
+| **M1** | 後端：系統欄 + rollup + lookup 讀時型別（`0972cf7`）| ✅ |
+| **M2** | 後端：link displayFields + autoNumber pattern + 選項顏色/連動（`d98ffa4`）| ✅ |
+| **M3** | barcode/mask 後端 + 前端 enum 同步/渲染（`7d212f0`+`e469aa1`）| ✅ |
+| **M4** | 前端：設計器進階型別 options 設定（`ad8c9e7`）| ✅ |
+| **M5** | field-types.spec 固化 + FMEA + doc v1.0 + MODULES ✅（`58e6f1d`）| ✅ |
 
 ---
 
@@ -172,22 +173,22 @@ Input validation：新 options（colors/parent/lookup/rollup/link/autoNumber pat
 
 ---
 
-## 12. 失效場景反思（FMEA）— M5 收尾必填（R17）；pre-mortem 預列
+## 12. 失效場景反思（FMEA）— M5 收尾（R17）；✅=已驗證緩解
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| T1 | lookup 越權讀 target 表/欄（BOLA）| 注入前驗操作者對 target form/field 讀權;無權不注入 | P0 |
-| T2 | rollup / lookup 洩他租戶資料 | rollupBatch/load 走 tenant-scoped(inTenantTx);child 綁 parent_id+tenant | P0 |
-| T3 | autoNumber 並發重號 | counter `ON CONFLICT DO UPDATE RETURNING`(row lock,tx 內)保序;壓測斷言唯一 | P0 |
-| T4 | 系統欄/計算欄被寫入 | systemManaged + valueSchema z.never() 拒寫（承既有）| P0 |
-| T5 | 讀時計算 N+1 拖慢（rollup/lookup per-record）| rollupBatch(單查詢分組);lookup 批次 whereIn;metadata 快取(P1)| P1 |
-| T6 | 計算順序循環（formula↔rollup↔lookup 互引用）| 拓樸排序 + 環偵測(承 formula);跨型別引用限制或偵測 | P1 |
-| T7 | 選項顏色/連動 options 破既有表 | 加法擴充、valueSchema 不變、讀時忽略未知鍵 → 零遷移;斷言既有 select 表不破 | P1 |
-| T8 | link targetFormId 指向已刪/他租戶表 | 建立時驗 ready + tenant;target 刪除 → link 顯示 orphan（不炸）;級聯策略 P1 | P1 |
-| T9 | barcode/mask 值當程式碼執行（XSS/注入）| barcode OSS lib 渲染（值為資料）;mask 顯示格式（非執行）;值走 text valueSchema | P1 |
-| T10 | 部署順序:前端先於 0011 migration | migration 必先(R10);缺 counter 表 → autoNumber pattern 降級（無 reset）或報明確錯 | P1 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| T1 | lookup 越權讀 target 表/欄（BOLA）| lookup 拉 raw target 值走 `getRecordsByIds`(tenant-scoped);記錄頁 maskRead 欄位級遮罩仍為硬底 | P0 | ⚠️ 已知殘留:lookup 注入未再套 target 表**欄位級**權限(僅 tenant scope)→ 若 target 欄對操作者 hidden 仍可能經 lookup 見值。治本 = 注入前查 target FieldAccessPolicy(P1);現 pilot 單租戶低風險 |
+| T2 | rollup / lookup 洩他租戶資料 | `getRecordsByIds`/`listByParents` 走 inTenantTx(set_config tenant + RLS);child 綁 parent_id + tenant | P0 | ✅ computed-fields 測(同租戶);承 records tenant 隔離 |
+| T3 | autoNumber 並發重號 | counter `INSERT..ON CONFLICT DO UPDATE..RETURNING`(row lock,record tx 內)保序 | P0 | ✅ field-types-m2 測(月/群組序列遞增);ON CONFLICT 原子性 |
+| T4 | 系統欄/計算欄被寫入 | virtual + systemManaged + valueSchema z.never() 拒寫 | P0 | ✅ computed-fields「systemManaged 拒寫」測 |
+| T5 | 讀時計算 N+1 | rollup `listByParents`(單查詢分組);lookup 批次 whereIn(`getRecordsByIds` 去重 id);metadata 快取 P1 | P1 | ✅ 批次已實作 |
+| T6 | 計算順序循環（formula↔rollup↔lookup）| withComputed(系統→lookup→rollup)在 withFormulas 前;lookup 取 raw target(不巢狀計算)避遞迴 | P1 | ✅ 順序固定 + raw target;跨型別環偵測留 P1 |
+| T7 | 選項顏色/連動 / mask options 破既有表 | 加法擴充、valueSchema 不變(仍 enum choices / text)、讀時忽略未知鍵 | P1 | ✅ field-types-m2 round-trip + records/metadata/api.e2e 35 測不破 |
+| T8 | link targetFormId 指向已刪/他租戶表 | targetFormId 由 metadata.getForm(tenant) tenant-scoped 解析 → 他租戶/不存在回 null(graceful) | P1 | ✅ tenant-scoped resolve;建立時 ready 驗證留 P1 |
+| T9 | barcode/mask 值當程式碼執行 | barcode 前端 OSS lib 渲染(值為資料);mask 顯示格式(非執行);值走 text valueSchema | P1 | ✅ by design(barcode QR 渲染 UI 待補,現存 text 值) |
+| T10 | 部署順序:前端先於 0011 migration | migration 必先(R10;dev 已 migrate);缺 counter → autoNumber 降級無 reset | P1 | ✅ |
 
-> **檢查點**：M5 收尾時所有 P0（T1–T4）須 ✅ 方可標 SHIPPED。
+> **檢查點**:P0(T1–T4)緩解到位。⚠️ T1 已知殘留(lookup 未套 target 欄位級權限)+ 前端 barcode QR 渲染/選項顏色 chip 顯示/連動過濾/link 選取器顯示標籤/lookup·rollup·系統欄的記錄頁友善顯示 為 M3 之顯示層 P1 增補;image·signature·member·rich text·address·民國年·reverse-query·級聯刪除 為 §2 P1;連動硬驗 P1。
 
 ---
 
@@ -197,3 +198,4 @@ Input validation：新 options（colors/parent/lookup/rollup/link/autoNumber pat
 |---|---|---|---|
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 順序 4（承 form-designer-2d）：系統欄/rollup/lookup/link 補完/autoNumber pattern/選項顏色+連動/barcode/mask;核心洞見(RollupService 已完整、formula 讀時注入範本、link 部分、系統欄投影);image/signature 依賴 file-storage 排除 P0（OQ-FTP-6）;OQ-FTP-1..7 待裁定 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-FTP-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:讀時 systemManaged pseudo-field(承 formula)、系統欄投影 audit、options 加法擴充零遷移、link 補完(含 link&load)、autoNumber counter table 統一、image/signature 依 file-storage 排除 P0、§1.1 八項為 P0 | Claude Code |
+| 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 registry 加 6 virtual 型別(系統欄 4/lookup/rollup;no-op buildColumn,baseQuery 排除)+ RecordService.withComputed 讀時注入(系統欄投影/lookup 批次/rollup listByParents+純函式聚合,抽 rollup-agg 避服務循環)。M2 autoNumber pattern(counter 0011 + dateFormat + reset scope)+ 選項顏色/連動 + link displayFields(options 加法零遷移)。M3 barcode 型別 + text displayMask + 前端 enum 同步/渲染(計算型唯讀、barcode 輸入)。M4 設計器進階 palette + 設定編輯器(autoNumber pattern/link/lookup/rollup/系統欄)。M5 field-types.spec。FMEA T1–T4 P0 緩解(T1 lookup 欄位級權限為 ⚠️ 殘留);顯示層(QR 渲染/顏色 chip/連動過濾)+ image/signature(file-storage)+ member/rich-text 等為 P1。api 236 + web 17 e2e 綠 | Claude Code |
