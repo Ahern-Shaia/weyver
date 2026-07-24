@@ -31,6 +31,8 @@ export const CELL_VALUE_TYPES = [
   "updatedBy",
   "lookup",
   "rollup",
+  // R1·UP-4 M3 條碼生成(text 儲存,前端渲染 QR/Code128;零 DB 差異)
+  "barcode",
 ] as const
 
 export type CellValueType = (typeof CELL_VALUE_TYPES)[number]
@@ -111,7 +113,8 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
   text: def({
     cellValueType: "text",
     dbFieldType: "text",
-    optionsSchema: emptyOptions,
+    // R1·UP-4 M3 格式遮罩:displayMask 為前端顯示格式化(儲存原值);加法、既有表零遷移
+    optionsSchema: z.object({ displayMask: z.string().max(60).optional() }).strict(),
     buildColumn: (t, col) => void t.text(col),
     valueSchema: () => z.string().max(1000).regex(NO_CONTROL_RE),
     filterOperators: TEXTUAL,
@@ -382,6 +385,15 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     filterOperators: [],
     systemManaged: true,
     virtual: true,
+  }),
+  barcode: def({
+    cellValueType: "barcode",
+    dbFieldType: "text",
+    optionsSchema: z.object({ symbology: z.enum(["qr", "code128"]).default("qr") }).strict(),
+    buildColumn: (t, col) => void t.text(col),
+    valueSchema: () => z.string().max(500).regex(NO_CONTROL_RE),
+    filterOperators: TEXTUAL,
+    systemManaged: false,
   }),
 }
 
