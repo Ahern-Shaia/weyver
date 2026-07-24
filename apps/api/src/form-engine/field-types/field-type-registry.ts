@@ -24,6 +24,13 @@ export const CELL_VALUE_TYPES = [
   "link",
   "attachment",
   "formula",
+  // R1·UP-4 讀時計算 virtual 型別(無物理欄,systemManaged;值讀時注入)
+  "createdAt",
+  "createdBy",
+  "updatedAt",
+  "updatedBy",
+  "lookup",
+  "rollup",
 ] as const
 
 export type CellValueType = (typeof CELL_VALUE_TYPES)[number]
@@ -78,6 +85,9 @@ export interface FieldTypeDefinition {
   readonly filterOperators: readonly FilterOperator[]
   /** 系統維護欄(autoNumber / formula):拒絕使用者寫入 */
   readonly systemManaged: boolean
+  /** R1·UP-4 虛擬欄:無物理欄(buildColumn no-op),值於讀取時注入(系統欄/lookup/rollup)。
+      baseQuery 不 select、DDL 不建欄;預設 false。 */
+  readonly virtual?: boolean
 }
 
 const choicesSchema = z
@@ -279,6 +289,79 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     valueSchema: () => z.never(),
     filterOperators: ORDERED,
     systemManaged: true,
+  }),
+  // ── R1·UP-4 虛擬欄(無物理欄;值讀時注入。filterOperators [] = 無欄不可篩/排)──
+  createdAt: def({
+    cellValueType: "createdAt",
+    dbFieldType: "timestamptz",
+    optionsSchema: emptyOptions,
+    buildColumn: () => undefined,
+    valueSchema: () => z.never(),
+    filterOperators: [],
+    systemManaged: true,
+    virtual: true,
+  }),
+  createdBy: def({
+    cellValueType: "createdBy",
+    dbFieldType: "bigint",
+    optionsSchema: emptyOptions,
+    buildColumn: () => undefined,
+    valueSchema: () => z.never(),
+    filterOperators: [],
+    systemManaged: true,
+    virtual: true,
+  }),
+  updatedAt: def({
+    cellValueType: "updatedAt",
+    dbFieldType: "timestamptz",
+    optionsSchema: emptyOptions,
+    buildColumn: () => undefined,
+    valueSchema: () => z.never(),
+    filterOperators: [],
+    systemManaged: true,
+    virtual: true,
+  }),
+  updatedBy: def({
+    cellValueType: "updatedBy",
+    dbFieldType: "bigint",
+    optionsSchema: emptyOptions,
+    buildColumn: () => undefined,
+    valueSchema: () => z.never(),
+    filterOperators: [],
+    systemManaged: true,
+    virtual: true,
+  }),
+  lookup: def({
+    cellValueType: "lookup",
+    dbFieldType: "text",
+    optionsSchema: z
+      .object({
+        linkFieldName: z.string().min(1).max(100),
+        targetFieldName: z.string().min(1).max(100),
+      })
+      .strict(),
+    buildColumn: () => undefined,
+    valueSchema: () => z.never(),
+    filterOperators: [],
+    systemManaged: true,
+    virtual: true,
+  }),
+  rollup: def({
+    cellValueType: "rollup",
+    dbFieldType: "numeric",
+    optionsSchema: z
+      .object({
+        childFormId: z.number().int().positive(),
+        childFieldName: z.string().min(1).max(100),
+        fn: z.enum(["SUM", "COUNT", "AVERAGE", "MIN", "MAX"]),
+        condition: z.object({ field: z.string().max(100), equals: z.unknown() }).optional(),
+      })
+      .strict(),
+    buildColumn: () => undefined,
+    valueSchema: () => z.never(),
+    filterOperators: [],
+    systemManaged: true,
+    virtual: true,
   }),
 }
 

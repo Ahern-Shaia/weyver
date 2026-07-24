@@ -22,6 +22,7 @@ import {
 import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
 import { defaultNeedsUserName, resolveDefaultValue } from "../layout/default-value.js"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
+import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import {
   MetadataService,
@@ -34,6 +35,36 @@ interface ResolvedField {
   readonly row: FieldDefRow
   readonly column: string
   readonly type: CellValueType
+  readonly virtual: boolean
+}
+
+const SYSTEM_FIELD_TYPES: ReadonlySet<CellValueType> = new Set([
+  "createdAt",
+  "createdBy",
+  "updatedAt",
+  "updatedBy",
+])
+
+/* link/bigint 值經 pg 回傳為字串 → 統一轉數值 id(lookup 用) */
+function toId(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isSafeInteger(v)) return v
+  if (typeof v === "string" && /^\d+$/.test(v)) return Number(v)
+  return undefined
+}
+
+function systemFieldValue(type: CellValueType, rec: RecordRow): unknown {
+  switch (type) {
+    case "createdAt":
+      return rec.createdAt instanceof Date ? rec.createdAt.toISOString() : rec.createdAt
+    case "updatedAt":
+      return rec.updatedAt instanceof Date ? rec.updatedAt.toISOString() : rec.updatedAt
+    case "createdBy":
+      return rec.createdBy
+    case "updatedBy":
+      return rec.updatedBy
+    default:
+      return null
+  }
 }
 
 interface ResolvedForm {
@@ -85,6 +116,120 @@ export class RecordService {
     return out
   }
 
+  /* R1·UP-4 讀時計算虛擬欄注入(系統欄投影 / lookup / rollup)。順序在 withFormulas 之前 →
+     公式可引用其結果。全 systemManaged(值不儲存);越權讀 target(lookup)由呼叫端 policy 遮罩兜底。 */
+  private async withComputed(
+    tenantId: number,
+    resolved: ResolvedForm,
+    records: readonly RecordRow[],
+  ): Promise<RecordRow[]> {
+    const systemFields = resolved.fields.filter((f) => SYSTEM_FIELD_TYPES.has(f.type))
+    const lookupFields = resolved.fields.filter((f) => f.type === "lookup")
+    const rollupFields = resolved.fields.filter((f) => f.type === "rollup")
+    if (systemFields.length === 0 && lookupFields.length === 0 && rollupFields.length === 0) {
+      return [...records]
+    }
+    const out = records.map((r) => ({ ...r, values: { ...r.values } }))
+
+    // 系統欄:投影 RecordRow 信封之 audit 值
+    for (const rec of out) {
+      for (const sf of systemFields) {
+        rec.values[sf.row.name] = systemFieldValue(sf.type, rec)
+      }
+    }
+
+    // lookup:批次拉 target 記錄(raw,無巢狀計算)之指定欄
+    for (const lf of lookupFields) {
+      const opts = lf.row.options as { linkFieldName?: string; targetFieldName?: string }
+      const linkField = opts.linkFieldName ? resolved.byName.get(opts.linkFieldName) : undefined
+      const targetFormId = (linkField?.row.options as { targetFormId?: number } | undefined)
+        ?.targetFormId
+      if (
+        opts.linkFieldName === undefined ||
+        opts.targetFieldName === undefined ||
+        targetFormId === undefined
+      ) {
+        for (const rec of out) rec.values[lf.row.name] = null
+        continue
+      }
+      const linkName = opts.linkFieldName
+      const targetName = opts.targetFieldName
+      const ids = [
+        ...new Set(
+          out.map((r) => toId(r.values[linkName])).filter((v): v is number => v !== undefined),
+        ),
+      ]
+      const targets = await this.getRecordsByIds(tenantId, targetFormId, ids)
+      for (const rec of out) {
+        const linkedId = toId(rec.values[linkName])
+        const target = linkedId !== undefined ? targets.get(linkedId) : undefined
+        rec.values[lf.row.name] = target?.values[targetName] ?? null
+      }
+    }
+
+    // rollup:listByParents(N+1 safe)+ 純函式聚合
+    const parentIds = out.map((r) => r.id)
+    for (const rf of rollupFields) {
+      const opts = rf.row.options as {
+        childFormId?: number
+        childFieldName?: string
+        fn?: AggregateFn
+        condition?: { field: string; equals: unknown }
+      }
+      if (
+        opts.childFormId === undefined ||
+        opts.childFieldName === undefined ||
+        opts.fn === undefined
+      ) {
+        for (const rec of out) rec.values[rf.row.name] = null
+        continue
+      }
+      const childField = opts.childFieldName
+      const condition = opts.condition
+      const fn = opts.fn
+      const children = await this.listByParents(tenantId, opts.childFormId, parentIds)
+      const byParent = new Map<number, RecordRow[]>()
+      for (const c of children) {
+        if (c.parentId === null) continue
+        const list = byParent.get(c.parentId) ?? []
+        list.push(c)
+        byParent.set(c.parentId, list)
+      }
+      for (const rec of out) {
+        const rows = (byParent.get(rec.id) ?? []).filter((r) =>
+          condition === undefined ? true : r.values[condition.field] === condition.equals,
+        )
+        const val = aggregate(
+          fn,
+          rows.map((r) => toFormulaValue(r.values[childField])),
+        )
+        rec.values[rf.row.name] = val instanceof Decimal ? val.toString() : val
+      }
+    }
+    return out
+  }
+
+  /* 批次依 id 取記錄(lookup target 用;raw 值,無 withComputed/withFormulas 避遞迴) */
+  private async getRecordsByIds(
+    tenantId: number,
+    formId: number,
+    ids: readonly number[],
+  ): Promise<Map<number, RecordRow>> {
+    if (ids.length === 0) return new Map()
+    const resolved = await this.resolveForm(tenantId, formId)
+    return this.inTenantTx(tenantId, async (trx) => {
+      const rows = (await this.baseQuery(trx, tenantId, resolved).whereIn(`${resolved.table}.id`, [
+        ...ids,
+      ])) as Record<string, unknown>[]
+      const map = new Map<number, RecordRow>()
+      for (const row of rows) {
+        const rec = this.toRecord(resolved, row)
+        map.set(rec.id, rec)
+      }
+      return map
+    })
+  }
+
   /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(M1 spike S3) */
   private async inTenantTx<T>(
     tenantId: number,
@@ -109,7 +254,8 @@ export class RecordService {
     const record = await this.inTenantTx(tenantId, (trx) =>
       this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null),
     )
-    const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
+    const [enriched] = await this.withComputed(tenantId, resolved, [record])
+    const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
     return masked ?? injected ?? record
   }
@@ -155,7 +301,8 @@ export class RecordService {
       if (row === undefined) throw new RecordNotFoundError(recordId)
       return this.toRecord(resolved, row as Record<string, unknown>)
     })
-    const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
+    const [enriched] = await this.withComputed(tenantId, resolved, [record])
+    const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
     return masked ?? injected ?? record
   }
@@ -234,7 +381,8 @@ export class RecordService {
       const last = records[records.length - 1]
       return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
     })
-    const computed = await this.withFormulas(tenantId, formId, resolved, result.records)
+    const enriched = await this.withComputed(tenantId, resolved, result.records)
+    const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
     return {
       records: this.maskRead(resolved, formId, computed, policy),
       nextCursor: result.nextCursor,
@@ -376,11 +524,15 @@ export class RecordService {
     if (loaded.form.provisionState !== "ready") {
       throw new FormNotReadyError(formId, loaded.form.provisionState)
     }
-    const fields = loaded.fields.map((row) => ({
-      row,
-      column: physicalColumnName(row.id),
-      type: row.cellValueType as CellValueType,
-    }))
+    const fields = loaded.fields.map((row) => {
+      const type = row.cellValueType as CellValueType
+      return {
+        row,
+        column: physicalColumnName(row.id),
+        type,
+        virtual: fieldType(type).virtual === true,
+      }
+    })
     // layout 讀時 parse 兜底(DB 竄改/舊版 → 忽略,走無預設)
     const layoutParsed =
       loaded.form.layout === null ? null : layoutSchema.safeParse(loaded.form.layout)
@@ -436,7 +588,8 @@ export class RecordService {
         ...(resolved.isSubtable
           ? [`${resolved.table}.parent_id`, `${resolved.table}.line_no`]
           : []),
-        ...resolved.fields.map((f) => `${resolved.table}.${f.column}`),
+        // 虛擬欄(系統欄/lookup/rollup)無物理欄 → 不 select(值於 withComputed 讀時注入)
+        ...resolved.fields.filter((f) => !f.virtual).map((f) => `${resolved.table}.${f.column}`),
       ])
       .where(`${resolved.table}.tenant_id`, tenantId)
       .whereNull(`${resolved.table}.deleted_at`)

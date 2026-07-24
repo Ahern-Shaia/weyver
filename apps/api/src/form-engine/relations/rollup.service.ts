@@ -1,31 +1,18 @@
-import { callFunction, Decimal, type FormulaValue, tryDecimal } from "@weyver/formula"
+import type { FormulaValue } from "@weyver/formula"
 import { Inject, Injectable } from "@nestjs/common"
 import { RecordService } from "../records/record.service.js"
 import type { RecordRow } from "../records/record-specs.js"
+import { type AggregateFn, aggregate, toFormulaValue } from "./rollup-agg.js"
 
 /* Rollup 聚合(子表 / 一對多)。N+1 防護:一次 listByParents 撈全部子列 → app 層分組聚合(非逐父查)。
    讀時算(無物化)→ 子列刪 / 改即反映,天生無 Salesforce 之「刪子不重算」痛點。
-   多層鏈式(grandchild)由依賴圖(M2)於整合重算時串接;此 service 為單層聚合原語。 */
+   聚合純函式抽 rollup-agg.ts,與 RecordService 讀時注入共用(避服務循環)。 */
 
-export type AggregateFn = "SUM" | "COUNT" | "AVERAGE" | "MIN" | "MAX"
+export type { AggregateFn }
 
 export interface RollupCondition {
   readonly field: string
   readonly equals: unknown
-}
-
-function toFormulaValue(raw: unknown): FormulaValue {
-  if (raw === null || raw === undefined) return null
-  if (typeof raw === "boolean") return raw
-  return String(raw)
-}
-
-function aggregate(fn: AggregateFn, values: readonly FormulaValue[]): FormulaValue {
-  if (fn === "COUNT") return new Decimal(values.length)
-  if (fn === "SUM") return callFunction("SUM", values) // SUM([]) = 0
-  const hasNumeric = values.some((v) => tryDecimal(v) !== null)
-  if (!hasNumeric) return null // AVERAGE / MIN / MAX 於空集 → null(不拋)
-  return callFunction(fn === "AVERAGE" ? "AVERAGE" : fn, values)
 }
 
 @Injectable()
