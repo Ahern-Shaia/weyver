@@ -8,6 +8,7 @@ import {
   type CreateFormInput,
   type FormDto,
   type ListResponse,
+  type Layout,
   type RecordRow,
   type ViewConfig,
   type ViewDto,
@@ -15,6 +16,7 @@ import {
   type ViewSort,
   formDtoSchema,
   formSummarySchema,
+  layoutSchema,
   listResponseSchema,
   recordRowSchema,
   viewDtoSchema,
@@ -219,6 +221,28 @@ export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, page
       }),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
+  })
+}
+
+/* R1·UP-3 2D 設計器版面 */
+const layoutResponseSchema = z.object({ layout: layoutSchema.nullable() })
+
+export function useLayout(formId: number | null) {
+  return useQuery({
+    queryKey: ["forms", formId ?? -1, "layout"],
+    queryFn: () => engineFetch(`/forms/${formId}/layout`, layoutResponseSchema),
+    enabled: formId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function usePutLayout(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (layout: Layout): Promise<Layout> =>
+      engineFetch(`/forms/${formId}/layout`, layoutSchema, { method: "PATCH", body: layout }),
+    onSuccess: () =>
+      invalidate([["forms", formId, "layout"], formKeys.detail(formId), formKeys.all]),
   })
 }
 

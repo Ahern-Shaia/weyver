@@ -2,21 +2,13 @@
 
 import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
 import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
-import { cn } from "@weyver/ui/lib/utils"
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
-import { conversionTargets, fieldTypeMeta, isStubType } from "@/lib/engine/field-types"
-import {
-  useAddField,
-  useAlterFieldType,
-  useDropField,
-  useForm,
-  useMoveField,
-} from "@/lib/engine/hooks"
-import type { CellValueType, FieldDto } from "@/lib/engine/schemas"
+import { fieldTypeMeta } from "@/lib/engine/field-types"
+import { useAddField, useForm } from "@/lib/engine/hooks"
+import type { CellValueType } from "@/lib/engine/schemas"
+import { DesignCanvas } from "./design-canvas"
 import { FieldPalette } from "./field-palette"
 
 const STATE_TONE: Record<string, StatusTone> = {
@@ -58,9 +50,6 @@ export function EditFormPanel({
 }) {
   const formQuery = useForm(formId)
   const addField = useAddField(formId)
-  const alterType = useAlterFieldType(formId)
-  const dropField = useDropField(formId)
-  const moveField = useMoveField(formId)
 
   const [pending, setPending] = useState<PendingField | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,28 +106,27 @@ export function EditFormPanel({
     <div className="flex h-full min-h-0">
       <FieldPalette onPick={startAdd} disabled={form.provisionState !== "ready"} />
 
-      <div className="min-w-0 flex-1 overflow-y-auto bg-surface p-5">
-        <div className="mx-auto max-w-[760px]">
-          <div className="mb-3 flex items-center gap-2.5">
-            <h1 className="text-[17px] font-semibold tracking-tight text-ink">{form.name}</h1>
-            <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>
-              {form.provisionState}
-            </StatusChip>
-            <span className="ml-auto font-mono text-[11px] text-ink-4">
-              v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
-            </span>
-            {form.parentFormId === null ? (
-              <Button onClick={() => onAddSubtable(form.id, form.name)}>＋ 加子表</Button>
-            ) : null}
-          </div>
-
-          {error !== null ? (
-            <div className="mb-3 rounded-md border border-er-line bg-er-t px-3 py-2 text-[12px] text-er">
-              {error}
-            </div>
+      <div className="flex min-w-0 flex-1 flex-col bg-surface">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-card px-4 py-2.5">
+          <h1 className="text-[15px] font-semibold tracking-tight text-ink">{form.name}</h1>
+          <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>
+            {form.provisionState}
+          </StatusChip>
+          <span className="ml-auto font-mono text-[11px] text-ink-4">
+            v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
+          </span>
+          {form.parentFormId === null ? (
+            <Button onClick={() => onAddSubtable(form.id, form.name)}>＋ 加子表</Button>
           ) : null}
+        </div>
 
-          {pending !== null ? (
+        {error !== null ? (
+          <div className="shrink-0 border-b border-er-line bg-er-t px-4 py-2 text-[12px] text-er">
+            {error}
+          </div>
+        ) : null}
+        {pending !== null ? (
+          <div className="shrink-0 border-b border-line px-4 py-2">
             <PendingEditor
               pending={pending}
               onChange={setPending}
@@ -146,119 +134,18 @@ export function EditFormPanel({
               onCancel={() => setPending(null)}
               busy={addField.isPending}
             />
-          ) : null}
+          </div>
+        ) : null}
 
-          <section className="overflow-hidden rounded-md border border-line bg-card">
-            <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
-              <span className="size-1.5 rounded-full bg-primary" />
-              欄位
-              <span className="ml-auto font-normal text-[10.5px] text-ink-4">滑到列可調整</span>
-            </header>
-            <ul>
-              {fields.map((field, index) => (
-                <FieldRow
-                  key={field.id}
-                  field={field}
-                  isFirst={index === 0}
-                  isLast={index === fields.length - 1}
-                  onMove={(direction) => moveField.mutate({ fieldId: field.id, direction })}
-                  onAlterType={(type) => alterType.mutate({ fieldId: field.id, type })}
-                  onDrop={() => dropField.mutate(field.id)}
-                />
-              ))}
-            </ul>
-          </section>
-          {form.provisionState === "failed" ? (
-            <p className="mt-2 text-[11px] text-er">此表單建置失敗,無法編輯(見 API ddl_audit)。</p>
-          ) : null}
-        </div>
+        {form.provisionState === "failed" ? (
+          <p className="shrink-0 px-4 py-2 text-[11px] text-er">
+            此表單建置失敗,無法編輯(見 API ddl_audit)。
+          </p>
+        ) : (
+          <DesignCanvas formId={formId} form={form} />
+        )}
       </div>
     </div>
-  )
-}
-
-function FieldRow({
-  field,
-  isFirst,
-  isLast,
-  onMove,
-  onAlterType,
-  onDrop,
-}: {
-  field: FieldDto
-  isFirst: boolean
-  isLast: boolean
-  onMove: (direction: "up" | "down") => void
-  onAlterType: (type: CellValueType) => void
-  onDrop: () => void
-}) {
-  const meta = fieldTypeMeta(field.type)
-  const targets = conversionTargets(field.type)
-  return (
-    <li
-      className={cn(
-        "group flex items-center gap-2.5 px-3.5 py-2 transition-colors duration-150 hover:bg-head/70",
-        !isLast && "border-b border-line-2",
-      )}
-    >
-      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm bg-label font-mono text-[9.5px] font-semibold text-ink-3">
-        {meta.mark}
-      </span>
-      <span className="flex-1 text-[12.5px] text-ink">
-        {field.required ? <span className="mr-0.5 font-semibold text-er">*</span> : null}
-        {field.name}
-        {isStubType(field.type) ? (
-          <span className="ml-1 text-[10px] text-ink-4">(即將推出)</span>
-        ) : null}
-      </span>
-      <span className="w-16 shrink-0 text-right text-[10.5px] text-ink-4">{meta.label}</span>
-      {targets.length > 0 ? (
-        <Select
-          value=""
-          onChange={(e) => {
-            if (e.target.value !== "") onAlterType(e.target.value as CellValueType)
-          }}
-          className="h-7 shrink-0 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100"
-          aria-label={`改 ${field.name} 型別`}
-        >
-          <option value="">改型別…</option>
-          {targets.map((t) => (
-            <option key={t} value={t}>
-              → {fieldTypeMeta(t).label}
-            </option>
-          ))}
-        </Select>
-      ) : null}
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
-        <Button
-          variant="subtle"
-          size="icon"
-          onClick={() => onMove("up")}
-          disabled={isFirst}
-          title="上移"
-        >
-          <ChevronUp />
-        </Button>
-        <Button
-          variant="subtle"
-          size="icon"
-          onClick={() => onMove("down")}
-          disabled={isLast}
-          title="下移"
-        >
-          <ChevronDown />
-        </Button>
-        <Button
-          variant="subtle"
-          size="icon"
-          onClick={onDrop}
-          title="下架欄位"
-          className="hover:bg-er-t hover:text-er"
-        >
-          <Trash2 />
-        </Button>
-      </div>
-    </li>
   )
 }
 

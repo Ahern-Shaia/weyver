@@ -139,6 +139,85 @@ export const viewDtoSchema = z.object({
 })
 export type ViewDto = z.infer<typeof viewDtoSchema>
 
+/* R1·UP-3 2D 設計器版面 metadata(form_def.layout;鏡射後端 layout-specs)。 */
+export const DEFAULT_VARIABLES = [
+  "$DATE",
+  "$TIME",
+  "$DATETIME",
+  "$YEAR",
+  "$MONTH",
+  "$WEEKDAY",
+  "$USERID",
+  "$USERNAME",
+] as const
+export type DefaultVariable = (typeof DEFAULT_VARIABLES)[number]
+
+export const defaultValueSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("literal"), value: z.string() }),
+  z.object({ kind: z.literal("variable"), value: z.enum(DEFAULT_VARIABLES) }),
+  z.object({ kind: z.literal("formula"), value: z.string() }),
+])
+export type DefaultValue = z.infer<typeof defaultValueSchema>
+
+const layoutStyleSchema = z
+  .object({
+    font: z.string().optional(),
+    size: z.number().int().optional(),
+    color: z.string().optional(),
+    align: z.enum(["left", "center", "right"]).optional(),
+    bg: z.string().optional(),
+  })
+  .partial()
+
+export const fieldLayoutSchema = z.object({
+  row: z.number().int(),
+  col: z.number().int(),
+  colSpan: z.number().int().optional(),
+  sectionId: z.string().optional(),
+  placeholder: z.string().optional(),
+  help: z.string().optional(),
+  readonly: z.boolean().optional(),
+  hidden: z.boolean().optional(),
+  defaultValue: defaultValueSchema.optional(),
+})
+export type FieldLayout = z.infer<typeof fieldLayoutSchema>
+
+export const staticElementSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["text", "image"]),
+  row: z.number().int(),
+  col: z.number().int(),
+  colSpan: z.number().int().optional(),
+  text: z.string().optional(),
+  markdown: z.boolean().optional(),
+  href: z.string().optional(),
+  imageUrl: z.string().optional(),
+  designOnly: z.boolean().optional(),
+  style: layoutStyleSchema.optional(),
+})
+export type StaticElement = z.infer<typeof staticElementSchema>
+
+export const sectionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fromRow: z.number().int(),
+  toRow: z.number().int(),
+  style: layoutStyleSchema.optional(),
+})
+export type Section = z.infer<typeof sectionSchema>
+
+export const layoutSchema = z.object({
+  grid: z.object({
+    cols: z.number().int(),
+    rowHeights: z.record(z.string(), z.number()).optional(),
+    colWidths: z.record(z.string(), z.number()).optional(),
+  }),
+  fields: z.record(z.string(), fieldLayoutSchema),
+  statics: z.array(staticElementSchema),
+  sections: z.array(sectionSchema),
+})
+export type Layout = z.infer<typeof layoutSchema>
+
 export const errorEnvelopeSchema = z.object({
   code: z.string(),
   message: z.string(),
