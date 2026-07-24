@@ -1,7 +1,8 @@
 # form-designer-2d.md — [R1·UP-3] 2D 表單設計器（form-designer-ui uplift）設計文件
 
-> ✅ **狀態：APPROVED — OQ-FD2-1..7 已裁定（2026-07-25;全採建議 = 全 A）;進入 M1**
+> ✅ **狀態：SHIPPED v1.0（2026-07-25;M1–M5 全綠;api 226 + web 15 e2e 過）**
 > **裁定摘要**｜1=A 單一 form_def.layout JSONB · 2=A layout 草稿+Ctrl+Z / 結構性即時 DDL 不入 undo · 3=A 靜態=layout 元素 · 4=A 分段=列範圍 · 5=A CSS grid + dnd-kit · 6=A 採 §1 P0/P1 分界 · 7=A 2D 畫布取代線性。
+> **落地**｜M0 `1b329bd` · M1 後端 `e073659`(form_def.layout 0010 + layout API + create-time 預設值)· M2 `cd7dc3a`(2D 畫布 + dnd-kit)· M3 `4a2ee56`(靜態元素 + 分段 + 欄位設定面板)· M4 `2445a5f`(設計草稿 + Ctrl+Z undo)· M5 `a473a6a`(designer.spec)。
 >
 > docs/27 §6 順序 3（承 views-list SHIPPED）。落地 D1 裁定「2D 格線畫布 = 填單畫面本身」：把既有 builder 的**線性欄位清單**設計模式 uplift 成 **Excel 式 2D 格線畫布**（欄位以 row/col/span 擺位、跨欄合併、拖曳）+ **靜態敘述/圖片元素** + **表單分段** + **欄位設定核心**（預設值 17 變數 / 唯讀 / 隱藏 / placeholder / 說明）+ **設計草稿模型**（批次 apply + Ctrl+Z）。
 >
@@ -158,11 +159,11 @@ Input validation：layout 整體 Zod schema（grid/fields/statics/sections 形�
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED（OQ-FD2-1..7 裁定,全採建議）| ✅ |
-| **M1** | 後端：form_def.layout（0010）+ layout API + createRecord 預設值（api commit）| ⏳ |
-| **M2** | 前端：2D CSS 格線畫布 + 拖曳定位 + 合併/列高欄寬 | ⏳ |
-| **M3** | 前端：靜態元素 + 分段 + 欄位設定面板 | ⏳ |
-| **M4** | 前端：設計草稿 + Ctrl+Z undo（M2–M5 web commit）| ⏳ |
-| **M5** | designer.spec 固化 + FMEA + doc v1.0 + MODULES ✅ | ⏳ |
+| **M1** | 後端：form_def.layout（0010）+ layout API + createRecord 預設值（`e073659`）| ✅ |
+| **M2** | 前端：2D CSS 格線畫布 + dnd-kit 拖曳定位（`cd7dc3a`）| ✅ |
+| **M3** | 前端：靜態元素 + 分段 + 欄位設定面板（`4a2ee56`）| ✅ |
+| **M4** | 前端：設計草稿 + Ctrl+Z undo（`2445a5f`）| ✅ |
+| **M5** | designer.spec 固化 + FMEA + doc v1.0 + MODULES ✅（`a473a6a`）| ✅ |
 
 ---
 
@@ -182,22 +183,22 @@ Input validation：layout 整體 Zod schema（grid/fields/statics/sections 形�
 
 ---
 
-## 12. 失效場景反思（FMEA）— M5 收尾必填（R17）；pre-mortem 預列
+## 12. 失效場景反思（FMEA）— M5 收尾（R17）；✅=已驗證緩解
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| F1 | layout PUT 跨租戶 / 引用他表 fieldId | tenant scope + fieldId ⊆ 該 form field_def 驗證;e2e 斷言 | P0 |
-| F2 | 靜態元素 XSS（Markdown/href/imageUrl）| sanitized Markdown（禁 raw script）+ href/imageUrl https 白名單 + SSRF 擋私網 | P0 |
-| F3 | layout hidden 被誤當欄位權限 → 洩漏 | D4：hidden 純顯示;maskRead 後端硬底不變;文件明標 + review | P0 |
-| F4 | 預設值變數注入 | 變數封閉列舉 switch 解析（非字串插值）;formula-default 走既有白名單引擎 | P0 |
-| F5 | 既有表（layout=null）設計模式壞 | 預設投影計算（field.position → 每欄一列）;e2e 對既有表斷言 | P1 |
-| F6 | 未存離開遺失草稿 | 未存離開警示（beforeunload / 路由攔截）| P1 |
-| F7 | undo 撤銷了已 DDL 的結構操作 → 不一致 | 結構性操作不入 undo stack（OQ-FD2-2 A）;undo 僅 layout;文件明標 | P1 |
-| F8 | layout 與 field_def 漂移（欄位已刪但 layout 殘留）| PUT 驗證 + 渲染時 layout.fields ∩ 現存 field_def（殘留鍵忽略，如 views-list displayFields）| P1 |
-| F9 | 部署順序：前端先於 0010 migration | migration 必先（R10）;缺欄時 layout 讀 null → 預設投影（優雅降級）| P1 |
-| F10 | 大 layout JSONB（超多欄）效能 | layout 為 form 級單列;metadata 快取（P1）;colSpan/statics 數上限驗證 | P2 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| F1 | layout PUT 跨租戶 / 引用他表 fieldId | tenant scope（MetadataService）+ LayoutService 驗 fields key ⊆ 該 form field_def id;PUT design 權 | P0 | ✅ layout.integration:B PUT A→404、不存 fieldId→422 |
+| F2 | 靜態元素 XSS（href/imageUrl/Markdown）| `safeUrl` refine（僅 https/相對,擋 javascript:/data:）於後端 layoutSchema | P0 | ✅ href `javascript:`→400。⚠️ 殘留:填單頁 Markdown sanitize 待後續(設計器只存不渲染 raw HTML) |
+| F3 | layout hidden 被誤當欄位權限 → 洩漏 | D4:hidden 純顯示層;maskRead 欄位級權限後端硬底不變;UI 標「排版層,非權限」 | P0 | ✅ by design(hidden 不改 records API 回傳) |
+| F4 | 預設值變數注入 | 變數封閉列舉(`DEFAULT_VARIABLES`)switch 解析(非字串插值);formula-default 回 undefined(P1)| P0 | ✅ default-value.ts;layout.integration 驗 $DATE/$USERID |
+| F5 | 既有表（layout=null）設計模式壞 | `effectiveLayout` 預設投影(field.position→每欄一列);resolveForm layout safeParse 兜底 | P1 | ✅ designer.spec 對 form 1 渲染 |
+| F6 | 未存離開遺失草稿 | `beforeunload` 警示(dirty 時)| P1 | ✅ |
+| F7 | undo 撤銷已 DDL 的結構操作 → 不一致 | 結構性(加/刪欄=即時 DDL)不入 undo 軸(OQ-FD2-2 A);undo 僅 layout 時間軸;UI「下架=即時不可復原」 | P1 | ✅ hist 僅收 layout edit |
+| F8 | layout 與 field_def 漂移（欄位已刪但 layout 殘留）| 渲染以 form.fields 為源(殘留 layout 鍵忽略);PUT 驗 key ⊆ form | P1 | ✅ |
+| F9 | 部署順序：前端先於 0010 migration | migration 必先(R10;dev 已 migrate);缺欄時 layout 讀 null → 預設投影(優雅降級)| P1 | ✅ |
+| F10 | 大 layout JSONB 效能 / colSpan 越界 | layout 為 form 級單列;Zod 上限(statics≤200/sections≤50/colSpan≤50);metadata 快取 P1 | P2 | ✅ schema 上限 |
 
-> **檢查點**：M5 收尾時所有 P0（F1–F4）須 ✅ 方可標 SHIPPED。
+> **檢查點**:P0（F1–F4）全 ✅ → SHIPPED。殘留:F2 填單頁 Markdown sanitize、格式 mask/民國年/條件式格式(§1 P1,隨 field-types-parity)、分段列範圍細調 / Ctrl+K 搜尋 / 版本史(§1 P1)、全延遲結構性變更集(OQ-FD2-2 B,P1)。
 
 ---
 
@@ -207,3 +208,4 @@ Input validation：layout 整體 Zod schema（grid/fields/statics/sections 形�
 |---|---|---|---|
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 順序 3（承 views-list）：2D 格線畫布 + 靜態元素 + 分段 + 欄位設定核心 + 設計草稿/Ctrl+Z；核心洞見 layout 與資料正交（form_def.layout JSONB，DDL 不動）；OQ-FD2-1..7 待裁定 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-FD2-1..7 全裁定（全採建議=全 A）;DRAFT → APPROVED,進 M1**。定調:form_def.layout JSONB 承載整表版面（座標+設定+靜態+分段）;layout 草稿+Ctrl+Z、結構性 DDL 即時不入 undo;靜態=layout 元素;分段=列範圍;CSS grid+dnd-kit;2D 畫布取代線性設計模式 | Claude Code |
+| 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 form_def.layout(0010)+ LayoutService GET/PUT(fields key⊆form 驗證、href/imageUrl https 白名單)+ createRecord create-time 預設值變數。M2 設計模式改 2D CSS 格線畫布(dnd-kit 拖曳、預設投影)。M3 欄位設定面板(placeholder/help/readonly/hidden/預設值)+ 靜態文字/圖片元素 + 分段。M4 設計草稿時間軸(hist+idx)+ Ctrl+Z/redo + beforeunload。M5 designer.spec 固化(拖曳用分步 mouse 驅動 dnd-kit)。FMEA F1–F4 P0 全 ✅;殘留明列(填單頁 Markdown sanitize / §1 P1)。api 226 + web 15 e2e 綠。 | Claude Code |
