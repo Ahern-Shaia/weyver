@@ -9,8 +9,8 @@ import {
   useSensors,
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Image as ImageIcon, Rows3, Trash2, Type } from "lucide-react"
-import { type ReactNode, useMemo, useState } from "react"
+import { GripVertical, Image as ImageIcon, Redo2, Rows3, Trash2, Type, Undo2 } from "lucide-react"
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { fieldTypeMeta } from "@/lib/engine/field-types"
 import { useDropField, useLayout, usePutLayout } from "@/lib/engine/hooks"
@@ -55,20 +55,54 @@ export function DesignCanvas({
   const { data: layoutResp, isPending } = useLayout(formId)
   const putLayout = usePutLayout(formId)
   const dropField = useDropField(formId)
-  const [draft, setDraft] = useState<Layout | null>(null)
+  // 設計草稿 = 時間軸(hist[idx]);idx<0 = 乾淨(= 已存 baseline)。Ctrl+Z 沿時間軸移動(OQ-FD2-2)
+  const [hist, setHist] = useState<Layout[]>([])
+  const [idx, setIdx] = useState(-1)
   const [selected, setSelected] = useState<Selected>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const histRef = useRef<Layout[]>([])
+  histRef.current = hist
 
   const serverLayout = layoutResp?.layout ?? null
-  const effective = useMemo(
-    () => effectiveLayout(form.fields, draft ?? serverLayout),
-    [form.fields, draft, serverLayout],
+  const baseline = useMemo(
+    () => effectiveLayout(form.fields, serverLayout),
+    [form.fields, serverLayout],
   )
-  const dirty = draft !== null
+  const effective = idx < 0 ? baseline : (hist[idx] ?? baseline)
+  const dirty = idx >= 0
+  const canRedo = idx < hist.length - 1
   const cols = effective.grid.cols
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
-  const edit = (next: Layout): void => setDraft(next)
+  const edit = (next: Layout): void => {
+    setHist((h) => [...h.slice(0, idx + 1), next])
+    setIdx((i) => i + 1)
+  }
+  const undo = useCallback(() => setIdx((i) => Math.max(-1, i - 1)), [])
+  const redo = useCallback(() => setIdx((i) => Math.min(histRef.current.length - 1, i + 1)), [])
+
+  // Ctrl+Z / Ctrl+Shift+Z（結構性 DDL 操作不入此軸,OQ-FD2-2）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return
+      e.preventDefault()
+      if (e.shiftKey) redo()
+      else undo()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [undo, redo])
+
+  // 未存離開警示(F6)
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent): void => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [dirty])
   const patchField = (id: string, patch: Partial<FieldLayout>): void => {
     const cur = effective.fields[id]
     if (cur === undefined) return
@@ -109,10 +143,11 @@ export function DesignCanvas({
   }
 
   const save = (): void => {
-    if (draft === null) return
-    putLayout.mutate(draft, {
+    if (idx < 0) return
+    putLayout.mutate(effective, {
       onSuccess: () => {
-        setDraft(null)
+        setHist([])
+        setIdx(-1)
         setMsg("版面已儲存")
       },
       onError: (e) => setMsg(describeEngineError(e)),
@@ -165,6 +200,28 @@ export function DesignCanvas({
           <TB onClick={addSection} icon={<Rows3 size={13} />}>
             分段
           </TB>
+          <div className="ml-1 flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!dirty}
+              title="復原 (Ctrl+Z)"
+              aria-label="復原"
+              className="rounded-xs border border-line p-1 text-ink-4 hover:text-primary disabled:opacity-30"
+            >
+              <Undo2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!canRedo}
+              title="取消復原 (Ctrl+Shift+Z)"
+              aria-label="取消復原"
+              className="rounded-xs border border-line p-1 text-ink-4 hover:text-primary disabled:opacity-30"
+            >
+              <Redo2 size={13} />
+            </button>
+          </div>
           {dirty ? <span className="text-[11px] text-warn">● 未儲存</span> : null}
           <button
             type="button"
