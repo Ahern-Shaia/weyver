@@ -67,6 +67,39 @@ function systemFieldValue(type: CellValueType, rec: RecordRow): unknown {
   }
 }
 
+interface AutoNumberOptions {
+  readonly prefix?: string
+  readonly width?: number
+  readonly dateFormat?: "yyyy" | "yyyyMM" | "yyyyMMdd"
+  readonly resetScope?: "none" | "daily" | "monthly" | "yearly" | "field"
+  readonly resetField?: string
+}
+
+function formatDatePart(fmt: "yyyy" | "yyyyMM" | "yyyyMMdd", d: Date): string {
+  const y = String(d.getUTCFullYear())
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(d.getUTCDate()).padStart(2, "0")
+  if (fmt === "yyyy") return y
+  if (fmt === "yyyyMM") return y + m
+  return y + m + day
+}
+
+/* reset_key:counter 依此分桶(空=全域)。日期段依 UTC 一致(避免跨時區重號) */
+function computeResetKey(options: AutoNumberOptions, values: RecordValues, now: Date): string {
+  switch (options.resetScope ?? "none") {
+    case "yearly":
+      return `y${now.getUTCFullYear()}`
+    case "monthly":
+      return `m${formatDatePart("yyyyMM", now)}`
+    case "daily":
+      return `d${formatDatePart("yyyyMMdd", now)}`
+    case "field":
+      return `f${options.resetField ? String(values[options.resetField] ?? "") : ""}`
+    default:
+      return ""
+  }
+}
+
 interface ResolvedForm {
   readonly table: string
   readonly byName: ReadonlyMap<string, ResolvedField>
@@ -604,7 +637,7 @@ export class RecordService {
     parentId: number | null,
     lineNo: number | null,
   ): Promise<RecordRow> {
-    const columns = await this.validateValues(trx, resolved, values, "create")
+    const columns = await this.validateValues(trx, tenantId, resolved, values, "create")
     const insert: Record<string, unknown> = {
       tenant_id: tenantId,
       created_by: actorId,
@@ -635,7 +668,7 @@ export class RecordService {
     actorId: number,
     lineNo?: number,
   ): Promise<void> {
-    const columns = await this.validateValues(trx, resolved, values, "update")
+    const columns = await this.validateValues(trx, tenantId, resolved, values, "update")
     let builder = trx
       .withSchema(DATA_SCHEMA)
       .table(resolved.table)
@@ -665,6 +698,7 @@ export class RecordService {
   /* 值驗證:name whitelist → systemManaged 拒寫 → required(create)→ 型別 Zod → DB 值轉換 */
   private async validateValues(
     trx: Knex.Transaction,
+    tenantId: number,
     resolved: ResolvedForm,
     values: RecordValues,
     mode: "create" | "update",
@@ -700,21 +734,47 @@ export class RecordService {
           throw new RequiredFieldError(field.row.name)
         }
         if (field.type === "autoNumber") {
-          columns[field.column] = await this.nextAutoNumber(trx, field)
+          columns[field.column] = await this.nextAutoNumber(trx, tenantId, field, values)
         }
       }
     }
     return columns
   }
 
-  private async nextAutoNumber(trx: Knex.Transaction, field: ResolvedField): Promise<string> {
-    const options = field.row.options as { prefix?: string; width?: number }
-    const seq = sequenceName(field.row.id)
-    const result = (await trx.raw("SELECT nextval(?) AS n", [`${DATA_SCHEMA}.${seq}`])) as {
-      rows: { n: string }[]
+  /* autoNumber:無 dateFormat 且 resetScope=none → 全域 PG sequence(向後相容);
+     否則走 counter table(依 reset_key,支援日期段 + 群組重設,R1·UP-4 M2)。 */
+  private async nextAutoNumber(
+    trx: Knex.Transaction,
+    tenantId: number,
+    field: ResolvedField,
+    values: RecordValues,
+  ): Promise<string> {
+    const options = field.row.options as AutoNumberOptions
+    const width = options.width ?? 4
+    const prefix = options.prefix ?? ""
+    const patterned = options.dateFormat !== undefined || (options.resetScope ?? "none") !== "none"
+
+    if (!patterned) {
+      const seq = sequenceName(field.row.id)
+      const result = (await trx.raw("SELECT nextval(?) AS n", [`${DATA_SCHEMA}.${seq}`])) as {
+        rows: { n: string }[]
+      }
+      const n = result.rows[0]?.n ?? "0"
+      return `${prefix}${n.padStart(width, "0")}`
     }
-    const n = result.rows[0]?.n ?? "0"
-    return `${options.prefix ?? ""}${n.padStart(options.width ?? 4, "0")}`
+
+    const now = new Date()
+    const resetKey = computeResetKey(options, values, now)
+    const res = (await trx.raw(
+      `INSERT INTO public.autonumber_counter (field_id, tenant_id, reset_key, value)
+       VALUES (?, ?, ?, 1)
+       ON CONFLICT (field_id, reset_key) DO UPDATE SET value = autonumber_counter.value + 1
+       RETURNING value`,
+      [field.row.id, tenantId, resetKey],
+    )) as { rows: { value: string }[] }
+    const seq = Number(res.rows[0]?.value ?? "0")
+    const datePart = options.dateFormat === undefined ? "" : formatDatePart(options.dateFormat, now)
+    return `${prefix}${datePart}${String(seq).padStart(width, "0")}`
   }
 
   private toDbValue(type: CellValueType, value: unknown): unknown {

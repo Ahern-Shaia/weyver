@@ -90,8 +90,17 @@ export interface FieldTypeDefinition {
   readonly virtual?: boolean
 }
 
+/* R1·UP-4 M2 選項顏色 + 連動:加法擴充(colors/parentField/optionParents 皆 optional)。
+   valueSchema 仍 z.enum(choices) → 既有表零遷移;連動為前端過濾導引 + 後端仍驗 enum。 */
 const choicesSchema = z
-  .object({ choices: z.array(z.string().min(1).max(100)).min(1).max(200) })
+  .object({
+    choices: z.array(z.string().min(1).max(100)).min(1).max(200),
+    // 選項 → 語意色 token(非 raw hex,對齊 docs/14)
+    colors: z.record(z.string(), z.string().max(40)).optional(),
+    // 連動:依 parentField 當前值過濾本欄可選項(optionParents: 子選項 → 允許之父選項清單)
+    parentField: z.string().max(100).optional(),
+    optionParents: z.record(z.string(), z.array(z.string().max(100)).max(200)).optional(),
+  })
   .strict()
 
 function def(entry: FieldTypeDefinition): FieldTypeDefinition {
@@ -246,6 +255,11 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
       .object({
         prefix: z.string().max(20).regex(NO_CONTROL_RE).default(""),
         width: z.number().int().min(3).max(10).default(4),
+        // R1·UP-4 M2 pattern:日期段(yyyy/yyyyMM/yyyyMMdd)+ 重設範圍(counter table)。
+        // 無 dateFormat 且 resetScope=none → 沿用全域 PG sequence(向後相容);否則走 counter。
+        dateFormat: z.enum(["yyyy", "yyyyMM", "yyyyMMdd"]).optional(),
+        resetScope: z.enum(["none", "daily", "monthly", "yearly", "field"]).default("none"),
+        resetField: z.string().max(100).optional(),
       })
       .strict(),
     buildColumn: (t, col) => void t.text(col),
@@ -265,7 +279,13 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
   link: def({
     cellValueType: "link",
     dbFieldType: "bigint",
-    optionsSchema: z.object({ targetFormId: z.number().int().positive() }).strict(),
+    optionsSchema: z
+      .object({
+        targetFormId: z.number().int().positive(),
+        // R1·UP-4 M2 顯示標籤:呈現 target 之哪些欄(空=首欄)
+        displayFields: z.array(z.string().max(100)).max(10).optional(),
+      })
+      .strict(),
     buildColumn: (t, col) => void t.bigint(col),
     valueSchema: () => z.number().int().positive(),
     filterOperators: EQUALITY,

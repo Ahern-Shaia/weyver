@@ -344,3 +344,16 @@ export const viewDefs = pgTable(
     check("view_def_scope", sql`scope IN ('personal','shared')`),
   ],
 )
+
+/* R1·UP-4 autoNumber pattern 計數器(reset scope 用;RLS + weyver_app 車道,寫於記錄 tx 內)。
+   reset_key = 依 resetScope 計算(''=全域無 reset / 日期字串 / 群組欄值)。RLS 補於 migration。 */
+export const autonumberCounter = pgTable(
+  "autonumber_counter",
+  {
+    fieldId: bigint("field_id", { mode: "number" }).notNull(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    resetKey: text("reset_key").notNull(),
+    value: bigint("value", { mode: "number" }).notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.fieldId, t.resetKey] })],
+)
