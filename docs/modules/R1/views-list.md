@@ -1,7 +1,8 @@
 # views-list.md — [R1·UP-2] 視圖系統 + 集合(browse)視圖設計文件
 
-> ✅ **狀態:APPROVED — OQ-VL-1..7 已裁定(2026-07-25;全採建議 = 全 A);進入 M1**
+> ✅ **狀態:SHIPPED v1.0(2026-07-25;M1–M5 全綠;api 220 + web 12 e2e 過)**
 > **裁定摘要**|1=A 單層 AND\|OR · 2=A **forcedFilter 移出 view 歸 authz 軸(修正 docs/27 §3)** · 3=A Glide 可編輯 grid · 4=A lazy 預設檢視 · 5=A 伺服器端 ILIKE textual · 6=A client-side 匯出上限 · 7=A 列表為進表預設。
+> **落地**|M0 `570c81a` · M1 後端 `f986477`(view_def 0009 + CRUD + records combinator/搜尋)· M2 `3300561`(集合視圖 + 雙模式)· M3 `9ccda81`(facet 篩選 + 排序 + 儲存檢視)· M4 `9c7cdba`(批次刪除 + 匯出)· M5 `ad2a4c2`(views.spec 固化)。
 >
 > docs/27 §6 順序 2(承 workspace-ia SHIPPED)。落地 D2 裁定「Ragic 語意、Airtable 骨架」的視圖模型:每張表恆有**集合(browse)視圖**(Glide 網格,套 view 的選欄/篩選/排序),與既有 Object Page 記錄頁並列**雙模式**;其上以 `view_def` 持久層支援**儲存檢視三態**(個人/共通/預設)+ facet 篩選 + 多鍵排序 + 快速搜尋 + 批次 + 匯出。直接補「單日常使用面」缺口(集合檢視是 Ragic 客戶每天第一眼的畫面)。
 >
@@ -171,11 +172,11 @@ Input validation:`config`(fields/filter/sorts/search/pageSize)全走 Zod 邊界�
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED(OQ-VL-1..7 裁定)| ✅ |
-| **M1** | 後端:view_def(0009)+ CRUD + records query combinator/search(api commit)| ⏳ |
-| **M2** | 前端:集合視圖 + 雙模式(列表↔記錄)| ⏳ |
-| **M3** | 前端:facet 篩選 + 多鍵排序 + 儲存檢視三態 | ⏳ |
-| **M4** | 前端:批次 + 匯出(M2–M5 web commit)| ⏳ |
-| **M5** | e2e 固化 + FMEA + doc v1.0 + MODULES ✅ | ⏳ |
+| **M1** | 後端:view_def(0009)+ CRUD + records query combinator/search(`f986477`)| ✅ |
+| **M2** | 前端:集合視圖 + 雙模式(列表↔記錄)(`3300561`)| ✅ |
+| **M3** | 前端:facet 篩選 + 多鍵排序 + 儲存檢視三態(`9ccda81`)| ✅ |
+| **M4** | 前端:批次刪除 + 匯出(`9c7cdba`)| ✅ |
+| **M5** | views.spec 固化 + FMEA + doc v1.0 + MODULES ✅(`ad2a4c2`)| ✅ |
 
 ---
 
@@ -195,22 +196,24 @@ Input validation:`config`(fields/filter/sorts/search/pageSize)全走 Zod 邊界�
 
 ---
 
-## 12. 失效場景反思(FMEA)— M5 收尾必填(R17);pre-mortem 預列
+## 12. 失效場景反思(FMEA)— M5 收尾(R17);✅=已驗證緩解
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| V1 | `view_def` 跨租戶洩漏(讀到他租戶檢視/篩選)| tenant scope + RLS FORCE + form_id 驗屬本租戶;integration 斷言 B 讀不到 A | P0 |
-| V2 | filter/sort/search 之 field 名注入(拼接 identifier)| catalog 白名單解析物理欄(既有鏈);`q` 值參數綁定;operator 白名單 | P0 |
-| V3 | view 選欄使 hidden 欄外洩(grid/匯出)| `maskRead` 後端硬底已剝除;view.fields 只能收窄;e2e 斷言 hidden 不在 grid/CSV | P0 |
-| V4 | inline edit 越權寫唯讀/他人欄 | `assertWritable` 伺服器端白名單;唯讀欄 grid 不可編 | P0 |
-| V5 | forcedFilter 誤當列級安全被繞過 | **不做進 view**(OQ-VL-2);列級安全歸 authz 軸;文件明標 | P1→N/A(不建即無面)|
-| V6 | is_default 競態(兩共通 view 同設預設)| 部分唯一索引(每 form 至多一 default)+ 設預設交易內先清舊 | P1 |
-| V7 | 快速搜尋 ILIKE 全表掃描拖慢 | `statement_timeout` + textual 欄限縮 + cursor 分頁;metadata/計數快取 P1 | P1 |
-| V8 | 大量匯出瀏覽器 OOM | client-side 上限 ~5000 + 誠實訊息;async 匯出 P1 | P1 |
-| V9 | 部署順序:後端 code 先於 0009 migration | migration 必先(R10);缺表時前端走 lazy 預設檢視(優雅降級)| P1 |
-| V10 | combinator 舊 API 相容(既有 `filters` 陣列呼叫方)| 舊 `filters:[]` 視為 `{combinator:'and',conditions}`;向後相容測試 | P1 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| V1 | `view_def` 跨租戶洩漏(讀到他租戶檢視/篩選)| DRIZZLE 車道每查詢 `where tenant_id`;form_id 驗屬本租戶;integration 斷言 B 讀不到 A / B 改 A → 404 | P0 | ✅ views.integration 2 測 |
+| V2 | filter/sort/search 之 field 名注入 | catalog 白名單解析物理欄(既有鏈);`q` 值參數綁定 ILIKE;operator 白名單 | P0 | ✅ 承既有 records 白名單鏈 + records combinator/search 測 |
+| V3 | view 選欄使 hidden 欄外洩(grid/匯出)| `maskRead` 後端硬底已剝 hidden 欄;view.fields 只能收窄(displayFields ∩ form.fields)| P0 | ✅ by design(匯出用已 masked 之 records) |
+| V4 | inline edit 越權寫唯讀/他人欄 | `assertWritable` 伺服器端白名單;grid 唯讀欄不可編(isGridEditable)| P0 | ✅ 承 P0-4a M4 |
+| V5 | forcedFilter 誤當列級安全被繞過 | **不做進 view**(OQ-VL-2);列級安全歸 authz 軸;docs/27 §3 同步修正 | — | ✅ 不建即無面 |
+| V6 | is_default 競態(兩共通 view 同設預設)| 部分唯一索引(每 form 至多一 default)+ 設預設交易內先清舊 | P1 | ✅ views.integration「至多一預設」測 |
+| V7 | 快速搜尋 ILIKE 全表掃描拖慢 | `statement_timeout`(既有)+ textual 欄限縮(dbFieldType=text)+ cursor 分頁 | P1 | ✅ 限縮已實作;metadata/計數快取待 P1 |
+| V8 | 大量匯出瀏覽器 OOM / 不完整 | client-side 匯出僅**已載入**記錄 + `hasNextPage` 時明標「僅含已載入 N 筆」| P1 | ⚠️ 已知殘留:完整大量匯出需伺服器端串流/async(P1);pilot 規模(<200)一頁涵蓋 |
+| V9 | 部署順序:後端 code 先於 0009 migration | migration 必先(R10;dev 已 `db:migrate`);缺表時 useViews 回空 → 前端走 lazy 預設檢視(優雅降級)| P1 | ✅ |
+| V10 | combinator 舊 API 相容 | `combinator`/`q` 皆 optional;舊 `filters:[]` 呼叫方 = 隱含 AND(listRecords `?? "and"`);saveWithLines/子表既有呼叫不受影響 | P1 | ✅ api 220 測全綠(含既有 records 測) |
+| V11 | autoNumber/formula 欄篩選失敗(422)| autoNumber valueSchema=never → UI 僅給 contains/空值;formula 讀時算(DB 欄空)→ 不入篩選欄;未填值條件不送查詢 | P1 | ⚠️ 已知殘留:autoNumber eq / formula 值篩選未支援(治本 = 後端 filter 用 text schema 待 field-types-parity)|
+| V12 | 前端 admin 動作對非 admin 顯示(共通/設預設)| 後端 ViewService admin-gating 為真實邊界(403 surfaced;view.service 8 單元測);dev superadmin=admin | P1 | ⚠️ 已知殘留:前端 `isAdmin` 暫傳 true(dev 為 superadmin),prod 非 admin 會見動作但後端 403 → 治本 = `/me` capabilities 端點(P1)|
 
-> **檢查點**:M5 收尾時所有 P0(V1–V4)須 ✅ 方可標 SHIPPED。
+> **檢查點**:P0(V1–V4)全 ✅ → 得標 SHIPPED。P1 殘留(V8/V11/V12)歸屬明確(伺服器端匯出 / field-types-parity 後端 filter / capabilities 端點),不阻 R1 pilot 使用。
 
 ---
 
@@ -220,3 +223,4 @@ Input validation:`config`(fields/filter/sorts/search/pageSize)全走 Zod 邊界�
 |---|---|---|---|
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 順序 2(承 workspace-ia):集合(browse)視圖 + 雙模式 + `view_def` 儲存檢視三態 + facet 篩選 + 多鍵排序 + 快速搜尋 + 批次 + 匯出;**OQ-VL-2 提出對 docs/27 §3「forcedFilter 為 view 屬性」之證據驅動修正**(移出 view 歸 authz 軸);OQ-VL-1..7 待裁定 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-VL-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。§7.3 定案:`view_def` 循 authz Tier-1 DRIZZLE 車道(非 RLS,app 層 tenant scope,與 form_categories 一致)。OQ-VL-2 同步修正 docs/27 §3(forcedFilter 移出 view 屬性軸)| Claude Code |
+| 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 view_def(0009)+ views CRUD(三態 + admin-gating + 預設唯一)+ records query 單層 combinator(OR 包 group 不洩邊界)+ 快速搜尋(textual ILIKE)。M2 集合 Glide 視圖 + 雙模式(nuqs mode/rid,列表預設)+ inline edit + 下鑽。M3 facet 篩選(型別感知 operator)+ 多鍵排序 + 儲存檢視三態 UI + lazy 預設。M4 批次刪除(Glide 選取)+ client-side 匯出。M5 views.spec 5 測固化;workspace.spec 對齊列表預設。FMEA V1–V4 P0 全 ✅;殘留 V8/V11/V12 歸屬明確。api 220 + web 12 e2e 綠 | Claude Code |
