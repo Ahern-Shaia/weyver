@@ -58,7 +58,15 @@ export class FormsController {
   async listForms(
     @Tenant() tenant: TenantContext,
     @Permissions() permissions: EffectivePermissions,
-  ): Promise<Array<Omit<FormDto, "fields"> & { locked: boolean }>> {
+  ): Promise<
+    Array<
+      Omit<FormDto, "fields"> & {
+        locked: boolean
+        categoryId: number | null
+        updatedAt: string
+      }
+    >
+  > {
     const forms = await this.metadata.listForms(tenant.tenantId)
     // OQ-ARI-8:可讀 → 完整;非敏感無權 → 鎖定 stub(顯示,不含資料);敏感無權 → 隱藏(不回)
     const { readable, locked } = permissions.listableForms(forms.map((f) => f.id))
@@ -72,6 +80,9 @@ export class FormsController {
         provisionState: form.provisionState,
         version: form.version,
         parentFormId: form.parentFormId,
+        // R1·UP-1:工作區目錄用(所屬分類 + 最近更新)
+        categoryId: form.categoryId,
+        updatedAt: form.updatedAt.toISOString(),
         locked: lockedSet.has(form.id),
       }))
   }

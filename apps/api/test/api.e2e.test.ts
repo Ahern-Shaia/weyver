@@ -217,4 +217,37 @@ describe("A7 REST API e2e", () => {
     const after = await app.inject({ method: "GET", url: `/api/forms/${id}`, headers: A() })
     expect(after.statusCode).toBe(404)
   })
+
+  // R1·UP-1 workspace-ia M1:分類清單唯讀端點 + 跨租戶隔離
+  it("GET /api/categories 回本租戶分類;跨租戶不洩", async () => {
+    const cat = await app.inject({
+      method: "POST",
+      url: "/api/authz/categories",
+      headers: A(),
+      payload: { name: `採購${Date.now().toString().slice(-5)}` },
+    })
+    expect(cat.statusCode).toBe(201)
+    const catId = (cat.json() as { id: number }).id
+
+    const listA = await app.inject({ method: "GET", url: "/api/categories", headers: A() })
+    expect(listA.statusCode).toBe(200)
+    const rowsA = listA.json() as Array<{ id: number; name: string; position: number }>
+    expect(rowsA.some((c) => c.id === catId)).toBe(true)
+    // 只回 id/name/position,不洩 tenantId
+    expect(Object.keys(rowsA[0] ?? {}).sort()).toEqual(["id", "name", "position"])
+
+    const listB = await app.inject({ method: "GET", url: "/api/categories", headers: B() })
+    expect(listB.statusCode).toBe(200)
+    expect((listB.json() as Array<{ id: number }>).some((c) => c.id === catId)).toBe(false)
+  })
+
+  it("forms 清單 DTO 含 categoryId + updatedAt", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/forms", headers: A() })
+    expect(res.statusCode).toBe(200)
+    const rows = res.json() as Array<{ categoryId: number | null; updatedAt: string }>
+    expect(rows.length).toBeGreaterThan(0)
+    const r = rows[0]
+    expect(r).toHaveProperty("categoryId")
+    expect(typeof r?.updatedAt).toBe("string")
+  })
 })
