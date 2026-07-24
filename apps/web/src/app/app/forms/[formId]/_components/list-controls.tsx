@@ -44,8 +44,10 @@ export function ListControls({
 }): ReactNode {
   const [panel, setPanel] = useState<"filter" | "sort" | null>(null)
   const activeView = views.find((v) => v.id === activeViewId) ?? null
-  // formula 值為讀時算(DB 欄空,篩選無意義)、attachment 無序 → 皆不入篩選欄
-  const filterable = form.fields.filter((f) => f.type !== "attachment" && f.type !== "formula")
+  // formula/計算型讀時算(無可篩物理欄)、attachment 無序 → 皆不入篩選欄(空 operator 亦排除)
+  const filterable = form.fields.filter(
+    (f) => f.type !== "attachment" && f.type !== "formula" && fieldOperators(f.type).length > 0,
+  )
   const conditions = config.filter.conditions
   const sorts = config.sorts
 

@@ -22,6 +22,14 @@ export const CELL_VALUE_TYPES = [
   "link",
   "attachment",
   "formula",
+  // R1·UP-4 讀時計算 virtual + 條碼(鏡射後端 registry)
+  "createdAt",
+  "createdBy",
+  "updatedAt",
+  "updatedBy",
+  "lookup",
+  "rollup",
+  "barcode",
 ] as const
 
 export type CellValueType = (typeof CELL_VALUE_TYPES)[number]

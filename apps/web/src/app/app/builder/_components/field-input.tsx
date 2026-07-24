@@ -41,6 +41,31 @@ export function FieldInput({
       )
     }
 
+    // R1·UP-4 讀時計算虛擬欄:唯讀(值由後端讀時注入,填單不可編)
+    case "createdAt":
+    case "createdBy":
+    case "updatedAt":
+    case "updatedBy":
+    case "lookup":
+    case "rollup": {
+      const shown = value === null || value === undefined || value === "" ? "—" : String(value)
+      return (
+        <span className="inline-flex items-center gap-1 text-[12px] text-ink">
+          {shown}
+          <span className="rounded-xs bg-label px-1 text-[9px] text-ink-4">唯讀</span>
+        </span>
+      )
+    }
+
+    case "barcode":
+      return (
+        <Input
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="條碼內容值"
+        />
+      )
+
     case "longText":
       return (
         <textarea

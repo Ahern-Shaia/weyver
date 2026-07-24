@@ -35,16 +35,34 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   link: { label: "關聯", mark: "⛓", ...D },
   attachment: { label: "附件", mark: "📎", ...D },
   formula: { label: "公式", mark: "fx", ...D, needsExpression: true },
+  // R1·UP-4 讀時計算 virtual(唯讀)+ 條碼
+  createdAt: { label: "建立時間", mark: "◷", ...D },
+  createdBy: { label: "建立者", mark: "◍", ...D },
+  updatedAt: { label: "更新時間", mark: "◷", ...D },
+  updatedBy: { label: "更新者", mark: "◍", ...D },
+  lookup: { label: "帶入", mark: "⇒", ...D },
+  rollup: { label: "彙總", mark: "Σ", ...D },
+  barcode: { label: "條碼", mark: "▐", ...D },
 }
+
+/* 進階型別:需 M4 設計器設定(target/公式/聚合)才能建 → 不入簡易 palette */
+export const ADVANCED_TYPES: readonly CellValueType[] = [
+  "createdAt",
+  "createdBy",
+  "updatedAt",
+  "updatedBy",
+  "lookup",
+  "rollup",
+]
 
 export function fieldTypeMeta(type: CellValueType): FieldTypeMeta {
   return { type, ...META[type] }
 }
 
-/* 可建型別:排除 stub(member/link/attachment/formula 行為未實作)*/
+/* 可建型別:排除 stub + 進階型別(進階由 M4 設計器設定建)*/
 export const BUILDABLE_TYPES: readonly CellValueType[] = (
   Object.keys(META) as CellValueType[]
-).filter((t) => !STUB_TYPES.includes(t))
+).filter((t) => !STUB_TYPES.includes(t) && !ADVANCED_TYPES.includes(t))
 
 export function isStubType(type: CellValueType): boolean {
   return STUB_TYPES.includes(type)

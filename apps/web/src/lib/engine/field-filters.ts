@@ -34,8 +34,18 @@ export function fieldOperators(type: CellValueType): FilterOperator[] {
     case "member":
     case "link":
       return EQUALITY
+    case "barcode":
+      return TEXTUAL
     case "attachment":
       return EMPTINESS
+    // R1·UP-4 讀時計算虛擬欄:無物理欄 → 不可篩(比照後端 filterOperators [])
+    case "createdAt":
+    case "createdBy":
+    case "updatedAt":
+    case "updatedBy":
+    case "lookup":
+    case "rollup":
+      return []
   }
 }
 
