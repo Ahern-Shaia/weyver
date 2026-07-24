@@ -12,6 +12,7 @@ import { type ReactNode, useMemo, useState } from "react"
 import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
 import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
 import { describeEngineError } from "@/lib/engine/client"
+import { operatorNeedsValue } from "@/lib/engine/field-filters"
 import { type RecordQuery, useInfiniteRecordsQuery, useUpdateRecord } from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
 
@@ -35,7 +36,12 @@ export function CollectionView({
 
   const query = useMemo<RecordQuery>(
     () => ({
-      filters: view?.filter.conditions ?? [],
+      // 跳過未填值的條件(避免 op 需值但空 → 後端 422;亦即「輸入前不套用」)
+      filters: (view?.filter.conditions ?? []).filter(
+        (c) =>
+          !operatorNeedsValue(c.op) ||
+          (c.value !== "" && c.value !== null && c.value !== undefined),
+      ),
       combinator: view?.filter.combinator ?? "and",
       sort: view?.sorts ?? [],
       q: quickSearch.trim() || view?.search || undefined,

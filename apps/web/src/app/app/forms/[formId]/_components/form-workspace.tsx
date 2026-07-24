@@ -4,13 +4,29 @@ import { FileText } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { Segmented } from "@weyver/ui/segmented"
-import { useForm, useForms, useRecords } from "@/lib/engine/hooks"
-import type { FormSummary } from "@/lib/engine/schemas"
+import { describeEngineError } from "@/lib/engine/client"
+import {
+  useCreateView,
+  useDeleteView,
+  useForm,
+  useForms,
+  useRecords,
+  useUpdateView,
+  useViews,
+} from "@/lib/engine/hooks"
+import type { FormSummary, ViewConfig } from "@/lib/engine/schemas"
 import { CollectionView } from "./collection-view"
+import { ListControls } from "./list-controls"
 import { ObjectPage } from "./object-page"
 import { RecordList } from "./record-list"
+
+const EMPTY_CONFIG: ViewConfig = {
+  fields: [],
+  filter: { combinator: "and", conditions: [] },
+  sorts: [],
+}
 
 /* R1·UP-2 表單工作台雙模式(OQ-VL-7:列表為進表預設)。
    列表 = 集合(browse)網格 → 點「檢視」下鑽記錄頁;記錄 = master-detail(RecordList + Object Page)。
@@ -34,11 +50,73 @@ export function FormWorkspace(): ReactNode {
   const [rid, setRid] = useQueryState("rid", parseAsInteger)
   const [q, setQ] = useState("")
 
+  const { data: views = [] } = useViews(valid ? formId : null)
+  const [activeViewId, setActiveViewId] = useState<number | null>(null)
+  const [workingConfig, setWorkingConfig] = useState<ViewConfig>(EMPTY_CONFIG)
+  const [msg, setMsg] = useState<string | null>(null)
+  const createView = useCreateView(formId)
+  const updateView = useUpdateView(formId)
+  const deleteView = useDeleteView(formId)
+
+  // 一次性:載入時套用共通預設檢視(OQ-VL-4 lazy default;之後尊重使用者選擇)
+  const appliedDefault = useRef(false)
+  useEffect(() => {
+    if (appliedDefault.current || views.length === 0) return
+    appliedDefault.current = true
+    const def = views.find((v) => v.isDefault)
+    if (def) {
+      setActiveViewId(def.id)
+      setWorkingConfig(def.config)
+    }
+  }, [views])
+
   const childForm = (forms ?? []).find((f) => f.parentFormId === formId) ?? null
 
   const openRecord = (id: number): void => {
     void setRid(id)
     void setMode("record")
+  }
+
+  const selectView = (id: number | null): void => {
+    setActiveViewId(id)
+    setWorkingConfig(views.find((v) => v.id === id)?.config ?? EMPTY_CONFIG)
+  }
+  const onSaveNew = (name: string, scope: "personal" | "shared"): void => {
+    createView.mutate(
+      { name, scope, config: workingConfig, isDefault: false },
+      {
+        onSuccess: (v) => {
+          setActiveViewId(v.id)
+          setMsg(`已儲存檢視「${name}」`)
+        },
+        onError: (e) => setMsg(describeEngineError(e)),
+      },
+    )
+  }
+  const onUpdate = (): void => {
+    if (activeViewId === null) return
+    updateView.mutate(
+      { viewId: activeViewId, patch: { config: workingConfig } },
+      { onSuccess: () => setMsg("已更新檢視"), onError: (e) => setMsg(describeEngineError(e)) },
+    )
+  }
+  const onSetDefault = (): void => {
+    if (activeViewId === null) return
+    updateView.mutate(
+      { viewId: activeViewId, patch: { scope: "shared", isDefault: true } },
+      { onSuccess: () => setMsg("已設為預設檢視"), onError: (e) => setMsg(describeEngineError(e)) },
+    )
+  }
+  const onDelete = (): void => {
+    if (activeViewId === null || !window.confirm("刪除此檢視?")) return
+    deleteView.mutate(activeViewId, {
+      onSuccess: () => {
+        setActiveViewId(null)
+        setWorkingConfig(EMPTY_CONFIG)
+        setMsg("已刪除檢視")
+      },
+      onError: (e) => setMsg(describeEngineError(e)),
+    })
   }
 
   return (
@@ -73,13 +151,33 @@ export function FormWorkspace(): ReactNode {
         formPending || form === undefined ? (
           <div className="flex-1 bg-surface p-6 text-[12px] text-ink-3">載入…</div>
         ) : (
-          <CollectionView
-            formId={formId}
-            form={form}
-            view={null}
-            quickSearch={q}
-            onRowOpen={openRecord}
-          />
+          <>
+            <ListControls
+              form={form}
+              views={views}
+              activeViewId={activeViewId}
+              config={workingConfig}
+              isAdmin
+              onSelectView={selectView}
+              onConfigChange={setWorkingConfig}
+              onSaveNew={onSaveNew}
+              onUpdate={onUpdate}
+              onSetDefault={onSetDefault}
+              onDelete={onDelete}
+            />
+            {msg !== null ? (
+              <div className="shrink-0 border-b border-line bg-label px-4 py-1.5 text-[11.5px] text-ink-2">
+                {msg}
+              </div>
+            ) : null}
+            <CollectionView
+              formId={formId}
+              form={form}
+              view={workingConfig}
+              quickSearch={q}
+              onRowOpen={openRecord}
+            />
+          </>
         )
       ) : (
         <RecordDetail
