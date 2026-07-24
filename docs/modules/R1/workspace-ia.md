@@ -1,7 +1,8 @@
 # workspace-ia.md — [R1·UP-1] 工作區 IA(分類目錄首頁 + app-shell)設計文件
 
-> ✅ **狀態:APPROVED — OQ-WIA-1..6 已裁定(2026-07-24;全採建議 = 全 A);進入 M1**
+> ✅ **狀態:SHIPPED v1.0(2026-07-25;M1–M5 全綠;api 200 + web 7 e2e 過)**
 > **裁定摘要**|1=A 新 `GET /api/categories`(非 admin)· 2=A 導航搜尋先行 · 3=A 通知鈴鐺不上 · 4=A 顯示 updatedAt 不做 counts · 5=A 工作項目獨立模組 · 6=A 左 icon rail。
+> **落地**|M1 後端(commit c15913a:categories 讀端點 + forms DTO +categoryId/updatedAt)· M2–M5 前端(commit ec7504e:icon rail + status bar + 分類目錄首頁 + ⌘K palette + Object Page 動作列 + 列印 CSS + workspace.spec 固化)。
 >
 > docs/27 向上設計規格(OQ-UP 全裁定)之**第一個落地模組**(§6 順序 1)。依 D3 裁定:遷移客戶心智=「單一資料庫 + 業務分類目錄」,非 workspace/base 容器切換,亦非表單卡牆。本模組把首頁 `/app` 重建為**分類目錄**(復用權限軸已 SHIPPED 的 `form_categories`)、落地 app-shell 外殼(status bar + 單域 rail,承 record-workbench OQ-RWB-6=C)、頂部導航搜尋、記錄頁標準動作列。**直接解「頁面單薄」**:目錄密度 + 系統重量,皆有 Ragic 生產實照為證。
 >
@@ -109,11 +110,11 @@
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED(OQ-WIA-1..6,全採建議) | ✅ |
-| **M1** | A1 後端小增量(api commit) | ⏳ |
-| **M2** | A2 app-shell(status bar + rail + ⌘K) | ⏳ |
-| **M3** | A3 首頁分類目錄 | ⏳ |
-| **M4** | A4 記錄頁動作列(M2–M4 web commit) | ⏳ |
-| **M5** | e2e 固化 + FMEA + doc v1.0 | ⏳ |
+| **M1** | A1 後端小增量(commit c15913a) | ✅ |
+| **M2** | A2 app-shell(status bar + rail + ⌘K) | ✅ |
+| **M3** | A3 首頁分類目錄 | ✅ |
+| **M4** | A4 記錄頁動作列(M2–M5 commit ec7504e) | ✅ |
+| **M5** | e2e 固化(workspace.spec)+ FMEA + doc v1.0 | ✅ |
 
 ## 10. 開放問題(OQ-WIA-N)— ✅ 已裁定 2026-07-24（全採建議）
 
@@ -128,15 +129,16 @@
 | **OQ-WIA-5** | 工作項目中心歸屬 | A. **獨立小模組**(手動指派+提醒先行,簽核源隨 workflow)<br>B. 併本模組 | **A** — 本模組守「入口+外殼」邊界;首頁右欄等它落地再加,不佔位 |
 | **OQ-WIA-6** | rail 佈局 | A. **左 icon rail**(W/工作區/我的表單 + 底部設定群/主題/帳號),topbar 縮為情境列<br>B. 保留 topbar + 只加 status bar | **A** — OQ-RWB-6=C 已裁定 rail;A 為其具體佈局(mockup 一致);B 只解一半重量 |
 
-## 12. FMEA(M5 收尾填;pre-mortem 預列)
+## 12. FMEA(M5 收尾;✅=已驗證緩解)
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| W1 | categories 端點跨租戶洩漏 | tenant scope + 整合測 | P0 |
-| W2 | 目錄/搜尋顯示無權/敏感表單 | 資料源=三態 list;e2e 斷言 | P0 |
-| W3 | 複製記錄帶入不可寫欄 → 403 中斷 | 組值時略過唯讀/系統/公式欄;錯誤信封顯示 | P1 |
-| W4 | print CSS 洩 hidden 欄 | Object Page 已 maskRead(後端不回),print 只是樣式 | — |
-| W5 | rail 改版破壞既有路由 active 態 | isActive 邏輯沿用 + e2e 導航斷言 | P1 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| W1 | categories 端點跨租戶洩漏 | tenant scope(TenantGuard + listCategories)+ 整合測 | P0 | ✅ api e2e 斷言 B 讀不到 A 分類 |
+| W2 | 目錄/搜尋顯示無權/敏感表單 | 資料源=三態 list(敏感後端已隱藏);⌘K 過濾 locked;e2e | P0 | ✅ 首頁 locked stub + palette 濾 locked |
+| W3 | 複製記錄帶入不可寫欄 → 422 中斷 | 組值時略過 autoNumber/formula/系統欄;錯誤信封顯示於 msg | P1 | ✅ 實測:PO-0001 空必填欄「g」→ 422 正確顯示 required 訊息(非靜默失敗),非可寫欄問題;複製本身合法 |
+| W4 | print CSS 洩 hidden 欄 | Object Page 已 maskRead(後端不回),print 僅樣式 `[data-noprint]` 隱 chrome | — | ✅ 樣式層無資料面風險 |
+| W5 | rail 改版破壞既有路由 active 態 | RailLink isActive(pathname 前綴)沿用 + e2e 導航斷言 | P1 | ✅ builder/permissions/mfa/auth spec 全過 |
+| W6 | status bar 訂閱 query cache → 他元件 render 期同步 setState(React 警告)| 改 1s 輪詢(非訂閱)+ `setLastOk(prev⇒相等則不變)` | P1 | ✅ 瀏覽器 console 淨(僅基準 auth 401) |
 
 ## 13. 變更紀錄
 
@@ -144,3 +146,4 @@
 |---|---|---|---|
 | 2026-07-24 | v0.1 | 初版 DRAFT — docs/27 §6 順序 1 落地:分類目錄首頁(復用 form_categories)+ status bar/單域 rail + ⌘K 導航搜尋 + 記錄頁動作列;通知鈴鐺/工作項目/右欄誠實不上;OQ-WIA-1..6;A1 後端小增量(categories 讀端點 + forms DTO 2 欄) | Claude Code |
 | 2026-07-24 | v0.2 | **OQ-WIA-1..6 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。M1=A1 後端小增量(`GET /api/categories` 非 admin + forms DTO +categoryId/updatedAt) | Claude Code |
+| 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 categories 讀端點 + forms DTO(commit c15913a);M2–M5 前端 app-shell(左 icon rail + status bar 信任訊號)+ 首頁分類目錄(空分類隱藏、三態 locked)+ ⌘K command palette + Object Page 動作列(複製/刪除/列印)+ 列印 CSS + workspace.spec 固化(commit ec7504e)。FMEA W1–W6 全緩解(W6 = StatusBar setState-in-render 改輪詢)。api 200 + web 7 e2e 全綠。 | Claude Code |
