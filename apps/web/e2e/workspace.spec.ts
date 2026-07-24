@@ -20,8 +20,8 @@ test("工作區:分類目錄 + status bar + ⌘K 導航 + 記錄頁動作列", a
   await page.keyboard.press("Enter")
   await expect(page).toHaveURL(/\/app\/forms\/\d+/)
 
-  // 4) 記錄頁動作列(採購單 id 1 有記錄)
-  await page.goto("/app/forms/1")
+  // 4) 記錄頁動作列(採購單 id 1 有記錄;views-list 後列表為進表預設 → 明指 mode=record)
+  await page.goto("/app/forms/1?mode=record")
   await expect(page.getByRole("button", { name: "複製" })).toBeVisible()
   await expect(page.getByRole("button", { name: "刪除" })).toBeVisible()
   await expect(page.getByRole("button", { name: "列印" })).toBeVisible()
