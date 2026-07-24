@@ -302,3 +302,43 @@ export const categoryPermissions = pgTable(
     index("category_permissions_category_idx").on(t.categoryId),
   ],
 )
+
+/* R1·UP-2 視圖系統(docs/modules/R1/views-list.md)。授權/metadata 類 Tier-1 表 —— DRIZZLE 車道 +
+   app 層 tenant scope,非 RLS(同 form_categories;view 是「存查詢」非 tenant 記錄資料)。
+   config JSONB:{ fields:[fieldId], filter:{combinator,conditions[]}, sorts:[{field,dir}], search?, pageSize? }。
+   forcedFilter 刻意不做進 view(OQ-VL-2:列級安全歸 authz 軸)。 */
+export const viewDefs = pgTable(
+  "view_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => formDefs.id),
+    name: text("name").notNull(),
+    // 'personal'(僅建立者)| 'shared'(租戶可見,建立限 admin/設計者)
+    scope: text("scope").notNull().default("personal"),
+    // 進表自動套用(僅 shared 可為 default;每 (tenant,form) 至多一筆)
+    isDefault: boolean("is_default").notNull().default(false),
+    // config-lock(admin;僅鎖組態編輯,非列級安全,Airtable locked view 語意)
+    locked: boolean("locked").notNull().default(false),
+    config: jsonb("config").notNull(),
+    position: integer("position").notNull().default(0),
+    createdBy: bigint("created_by", { mode: "number" }).references((): AnyPgColumn => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("view_def_tenant_form_name_uq")
+      .on(t.tenantId, t.formId, t.name)
+      .where(sql`deleted_at IS NULL`),
+    uniqueIndex("view_def_one_default_uq")
+      .on(t.tenantId, t.formId)
+      .where(sql`is_default AND deleted_at IS NULL`),
+    index("view_def_tenant_form_idx").on(t.tenantId, t.formId),
+    check("view_def_scope", sql`scope IN ('personal','shared')`),
+  ],
+)

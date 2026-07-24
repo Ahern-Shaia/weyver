@@ -24,6 +24,10 @@ export const listQuerySchema = z.object({
     )
     .max(20)
     .default([]),
+  // R1·UP-2 單層 combinator(OQ-VL-1):跨 filters 之 AND|OR;缺省 = and(向後相容既有呼叫)
+  combinator: z.enum(["and", "or"]).optional(),
+  // R1·UP-2 快速搜尋:對 textual 欄 ILIKE OR 串接(record.service 白名單解析物理欄)
+  q: z.string().max(200).optional(),
   sort: z
     .array(
       z.object({

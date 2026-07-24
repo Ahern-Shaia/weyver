@@ -9,6 +9,7 @@ import { DbModule } from "./db/db.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
 import { HealthModule } from "./health/health.module.js"
 import { DomainExceptionFilter } from "./http/domain-exception.filter.js"
+import { ViewsModule } from "./views/views.module.js"
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { DomainExceptionFilter } from "./http/domain-exception.filter.js"
     AuthzModule,
     AuthModule,
     FormEngineModule,
+    ViewsModule,
     HealthModule,
   ],
   providers: [

@@ -182,8 +182,34 @@ export class RecordService {
     const result = await this.inTenantTx(tenantId, async (trx) => {
       let builder = this.baseQuery(trx, tenantId, resolved)
 
-      for (const filter of query.filters) {
-        builder = this.applyFilter(builder, resolved, filter)
+      // filters 包在自身 group(關鍵:combinator=or 不得洩到 tenant/deleted_at 之 AND 邊界)
+      if (query.filters.length > 0) {
+        const combinator = query.combinator ?? "and"
+        builder = builder.where((group: Knex.QueryBuilder) => {
+          query.filters.forEach((filter, i) => {
+            const joiner: "where" | "orWhere" =
+              i === 0 || combinator === "and" ? "where" : "orWhere"
+            group[joiner]((sub: Knex.QueryBuilder) => {
+              this.applyFilter(sub, resolved, filter)
+            })
+          })
+        })
+      }
+      // 快速搜尋:AND 一個「跨 textual 欄 OR ILIKE」子群(白名單 = dbFieldType text)
+      const term = query.q?.trim()
+      if (term !== undefined && term !== "") {
+        const pattern = `%${escapeLike(term)}%`
+        const textColumns = resolved.fields
+          .filter((f) => fieldType(f.type).dbFieldType === "text")
+          .map((f) => f.column)
+        if (textColumns.length > 0) {
+          builder = builder.where((group: Knex.QueryBuilder) => {
+            textColumns.forEach((col, i) => {
+              if (i === 0) group.where(col, "ilike", pattern)
+              else group.orWhere(col, "ilike", pattern)
+            })
+          })
+        }
       }
       for (const sort of query.sort) {
         const field = resolved.byName.get(sort.field)

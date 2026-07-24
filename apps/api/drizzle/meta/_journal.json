@@ -64,6 +64,13 @@
       "when": 1784836512636,
       "tag": "0008_resource_inheritance",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784911715130,
+      "tag": "0009_massive_white_queen",
+      "breakpoints": true
     }
   ]
 }

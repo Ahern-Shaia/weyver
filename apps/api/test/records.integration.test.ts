@@ -369,3 +369,95 @@ describe("A5 subtable saveWithLines on real PG", () => {
     expect(after.records.some((r) => r.values.客戶 === "失敗訂單")).toBe(false)
   })
 })
+
+describe("R1·UP-2 records query:單層 combinator + 快速搜尋", () => {
+  let vFormId = 0
+
+  beforeAll(async () => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: "供應商清單",
+        fields: [
+          { name: "名稱", type: "text", required: true },
+          { name: "分類", type: "singleSelect", options: { choices: ["蔬菜", "水果", "肉品"] } },
+          { name: "金額", type: "money" },
+        ],
+      }),
+    )
+    vFormId = form.id
+    await records.createManyRecords(
+      tenantA,
+      vFormId,
+      [
+        { 名稱: "高麗菜", 分類: "蔬菜", 金額: "100.0000" },
+        { 名稱: "蘋果", 分類: "水果", 金額: "200.0000" },
+        { 名稱: "豬肉", 分類: "肉品", 金額: "300.0000" },
+        { 名稱: "菠菜", 分類: "蔬菜", 金額: "50.0000" },
+      ],
+      ACTOR,
+    )
+  })
+
+  it("combinator=or:跨條件聯集", async () => {
+    const res = await records.listRecords(
+      tenantA,
+      vFormId,
+      q({
+        combinator: "or",
+        filters: [
+          { field: "分類", op: "eq", value: "水果" },
+          { field: "分類", op: "eq", value: "肉品" },
+        ],
+      }),
+    )
+    expect(res.records.map((r) => r.values.名稱).sort()).toEqual(["蘋果", "豬肉"].sort())
+  })
+
+  it("combinator 缺省=and:交集", async () => {
+    const res = await records.listRecords(
+      tenantA,
+      vFormId,
+      q({
+        filters: [
+          { field: "分類", op: "eq", value: "蔬菜" },
+          { field: "金額", op: "gt", value: "60" },
+        ],
+      }),
+    )
+    expect(res.records.map((r) => r.values.名稱)).toEqual(["高麗菜"])
+  })
+
+  it("combinator=or:tenant / deleted_at 留在 OR group 之外(不洩漏)", async () => {
+    const doomed = await records.createRecord(
+      tenantA,
+      vFormId,
+      { 名稱: "作廢水果", 分類: "水果" },
+      ACTOR,
+    )
+    await records.softDeleteRecord(tenantA, vFormId, doomed.id, ACTOR)
+    const res = await records.listRecords(
+      tenantA,
+      vFormId,
+      q({
+        combinator: "or",
+        filters: [
+          { field: "分類", op: "eq", value: "水果" },
+          { field: "分類", op: "eq", value: "肉品" },
+        ],
+      }),
+    )
+    // 已軟刪之列不得因 OR 冒出(證明 deleted_at 為 group 外的 AND 邊界)
+    expect(res.records.some((r) => r.values.名稱 === "作廢水果")).toBe(false)
+  })
+
+  it("快速搜尋 q:跨 textual 欄 ILIKE", async () => {
+    const res = await records.listRecords(tenantA, vFormId, q({ q: "菜" }))
+    expect(res.records.map((r) => r.values.名稱).sort()).toEqual(["菠菜", "高麗菜"].sort())
+  })
+
+  it("快速搜尋涵蓋 singleSelect(text 欄)", async () => {
+    const res = await records.listRecords(tenantA, vFormId, q({ q: "水果" }))
+    expect(res.records.map((r) => r.values.名稱)).toEqual(["蘋果"])
+  })
+})
