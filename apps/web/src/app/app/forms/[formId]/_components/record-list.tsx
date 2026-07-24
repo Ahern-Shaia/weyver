@@ -26,7 +26,7 @@ export function RecordList({
   readonly onSelect: (id: number) => void
 }): ReactNode {
   return (
-    <div className="flex w-60 shrink-0 flex-col border-r border-line bg-card">
+    <div data-noprint className="flex w-60 shrink-0 flex-col border-r border-line bg-card">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
         <b className="truncate text-[12.5px] font-semibold">{formName}</b>
         <span className="ml-auto rounded-xs border border-line px-1.5 font-mono text-[10px] text-ink-3">

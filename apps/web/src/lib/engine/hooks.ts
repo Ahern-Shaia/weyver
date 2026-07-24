@@ -30,6 +30,22 @@ export function useForms() {
   })
 }
 
+/* R1·UP-1 workspace-ia:分類清單(非 admin，工作區目錄用;只 id/name/position） */
+const workspaceCategorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  position: z.number(),
+})
+export type WorkspaceCategory = z.infer<typeof workspaceCategorySchema>
+
+export function useCategories() {
+  return useQuery({
+    queryKey: ["categories"],
+    queryFn: () => engineFetch("/categories", z.array(workspaceCategorySchema)),
+    staleTime: 60_000,
+  })
+}
+
 export function useForm(formId: number | null) {
   return useQuery({
     queryKey: formKeys.detail(formId ?? -1),
@@ -146,6 +162,16 @@ export function useUpdateRecord(formId: number) {
         method: "PATCH",
         body: { expectedVersion: input.expectedVersion, values: input.values },
       }),
+    onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
+/* R1·UP-1 記錄頁動作:刪除(軟刪) */
+export function useDeleteRecord(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (recordId: number) =>
+      engineFetch(`/forms/${formId}/records/${recordId}`, voidSchema, { method: "DELETE" }),
     onSuccess: () => invalidate([formKeys.records(formId)]),
   })
 }

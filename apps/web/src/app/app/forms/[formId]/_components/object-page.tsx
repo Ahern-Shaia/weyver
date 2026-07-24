@@ -1,11 +1,16 @@
 "use client"
 
-import { Pencil } from "lucide-react"
+import { Copy, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
+import { describeEngineError } from "@/lib/engine/client"
+import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
 import { LineItems } from "./line-items"
 import { titleOf } from "./record-list"
+
+/* 複製時排除的欄位型別(系統計算/自動產生;由引擎於新記錄重算) */
+const COPY_EXCLUDE = new Set(["autoNumber", "formula"])
 
 /* 中欄 Object Page(SAP Fiori 式):黏頂摘要頭 + 區段錨點 scroll-spy + 基本資料 + 明細(rollup)+ 稽核。
    只接真資料(明細/formula/稽核皆 SHIPPED);R2 之 GL 過帳 / 簽核不放(不造假)。 */
@@ -34,6 +39,23 @@ export function ObjectPage({
 }): ReactNode {
   const fields = form.fields
   const moneyField = fields.find((f) => f.type === "money")
+  const createRecord = useCreateRecord(formId)
+  const deleteRecord = useDeleteRecord(formId)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const onCopy = (): void => {
+    const values: Record<string, unknown> = {}
+    for (const f of fields) if (!COPY_EXCLUDE.has(f.type)) values[f.name] = record.values[f.name]
+    createRecord.mutate(values, {
+      onSuccess: () => setMsg("已複製為新記錄(見左側清單)"),
+      onError: (e) => setMsg(describeEngineError(e)),
+    })
+  }
+  const onDelete = (): void => {
+    if (!window.confirm(`確定刪除「${titleOf(record, fields)}」?此動作可於資源回收桶還原。`)) return
+    deleteRecord.mutate(record.id, { onError: (e) => setMsg(describeEngineError(e)) })
+  }
+  const busy = createRecord.isPending || deleteRecord.isPending
   const sections = useMemo<readonly string[]>(
     () => ["基本資料", ...(childForm ? ["明細"] : []), "稽核"],
     [childForm],
@@ -86,15 +108,40 @@ export function ObjectPage({
               </span>
             </span>
           ) : null}
-          <Link
-            href={`/app/builder?form=${formId}`}
-            className={`flex h-7 items-center gap-1.5 rounded-md border border-line bg-card px-2.5 text-[12px] text-ink-2 hover:bg-head ${moneyField ? "" : "ml-auto"}`}
-          >
-            <Pencil size={13} strokeWidth={1.9} />
-            在設計器開啟
-          </Link>
+          <div data-noprint className={`flex items-center gap-1.5 ${moneyField ? "" : "ml-auto"}`}>
+            <ActBtn
+              icon={<Copy size={13} strokeWidth={1.9} />}
+              label="複製"
+              onClick={onCopy}
+              disabled={busy}
+            />
+            <ActBtn
+              icon={<Trash2 size={13} strokeWidth={1.9} />}
+              label="刪除"
+              onClick={onDelete}
+              disabled={busy}
+              danger
+            />
+            <ActBtn
+              icon={<Printer size={13} strokeWidth={1.9} />}
+              label="列印"
+              onClick={() => window.print()}
+            />
+            <Link
+              href={`/app/builder?form=${formId}`}
+              title="在設計器開啟"
+              className="flex size-7 items-center justify-center rounded-md border border-line bg-card text-ink-2 hover:bg-head"
+            >
+              <Pencil size={13} strokeWidth={1.9} />
+            </Link>
+          </div>
         </div>
-        <div className="mt-2.5 flex gap-1">
+        {msg ? (
+          <div className="mt-2 rounded-sm border border-line bg-label px-2.5 py-1 text-[11.5px] text-ink-2">
+            {msg}
+          </div>
+        ) : null}
+        <div className="mt-2.5 flex gap-1" data-noprint>
           {sections.map((s) => (
             <button
               key={s}
@@ -168,6 +215,36 @@ export function ObjectPage({
         </section>
       </div>
     </div>
+  )
+}
+
+function ActBtn({
+  icon,
+  label,
+  onClick,
+  disabled,
+  danger,
+}: {
+  readonly icon: ReactNode
+  readonly label: string
+  readonly onClick: () => void
+  readonly disabled?: boolean
+  readonly danger?: boolean
+}): ReactNode {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[12px] transition-colors duration-150 disabled:opacity-50 ${
+        danger
+          ? "border-er-line text-er hover:bg-er-t"
+          : "border-line bg-card text-ink-2 hover:bg-head"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 

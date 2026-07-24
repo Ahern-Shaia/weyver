@@ -47,7 +47,8 @@ test("匯入 Excel → 推斷預覽 → 建表 → 網格改格 → 資料驗證
   // 4) 導到新表單 → 網格模式 → 6 筆
   await expect(page.getByRole("tab", { name: "網格" })).toBeVisible()
   await page.getByRole("tab", { name: "網格" }).click()
-  await expect(page.getByText(/6 筆/)).toBeVisible()
+  // 頁上有兩處記錄計數(工作台 header + 網格面板)—— 取首個即證 6 列已載
+  await expect(page.getByText(/6 筆/).first()).toBeVisible()
 
   // 5) 改第一列品名(canvas cell → overlay 編輯器)
   const canvas = page.locator("canvas").first()

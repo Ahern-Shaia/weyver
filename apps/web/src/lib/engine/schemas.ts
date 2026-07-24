@@ -49,6 +49,9 @@ export const formSummarySchema = z.object({
   parentFormId: z.number().int().nullable(),
   // P0-4a·uplift OQ-8:清單三態之鎖定 stub(非敏感無權)。單筆 GET 不含此欄 → optional
   locked: z.boolean().optional(),
+  // R1·UP-1 workspace-ia:目錄用(所屬分類 + 最近更新);單筆 GET 不含 → optional
+  categoryId: z.number().int().nullable().optional(),
+  updatedAt: z.string().optional(),
 })
 
 export type FormSummary = z.infer<typeof formSummarySchema>

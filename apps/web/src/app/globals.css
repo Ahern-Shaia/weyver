@@ -31,3 +31,16 @@
     outline-offset: 1px;
   }
 }
+
+/* R1·UP-1 友善列印:隱 app-shell(rail/status bar)與標記 [data-noprint] 之 chrome,只留單據 */
+@media print {
+  nav,
+  footer,
+  [data-noprint] {
+    display: none !important;
+  }
+  main,
+  main * {
+    overflow: visible !important;
+  }
+}
