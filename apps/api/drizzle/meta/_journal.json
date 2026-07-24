@@ -71,6 +71,13 @@
       "when": 1784911715130,
       "tag": "0009_massive_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784930054875,
+      "tag": "0010_cute_true_believers",
+      "breakpoints": true
     }
   ]
 }

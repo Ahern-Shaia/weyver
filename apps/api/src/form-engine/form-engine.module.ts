@@ -4,6 +4,7 @@ import { FormsController } from "./api/forms.controller.js"
 import { RecordsController } from "./api/records.controller.js"
 import { DdlService } from "./ddl/ddl.service.js"
 import { FormulaService } from "./formula/formula.service.js"
+import { LayoutService } from "./layout/layout.service.js"
 import { MetadataService } from "./metadata/metadata.service.js"
 import { RecordService } from "./records/record.service.js"
 import { RelationService } from "./relations/relation.service.js"
@@ -19,6 +20,7 @@ import { RollupService } from "./relations/rollup.service.js"
     FormulaService,
     RelationService,
     RollupService,
+    LayoutService,
   ],
   exports: [
     MetadataService,
@@ -27,6 +29,7 @@ import { RollupService } from "./relations/rollup.service.js"
     FormulaService,
     RelationService,
     RollupService,
+    LayoutService,
   ],
 })
 export class FormEngineModule {}

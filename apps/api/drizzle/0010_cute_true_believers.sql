@@ -1,0 +1,1 @@
+ALTER TABLE "form_def" ADD COLUMN "layout" jsonb;

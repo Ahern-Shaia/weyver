@@ -214,6 +214,28 @@ export class MetadataService {
     })
   }
 
+  /* R1·UP-3 2D 設計器:整表版面覆寫(純 metadata,零 DDL)+ bumpVersion。 */
+  async setLayout(tenantId: number, formId: number, layout: unknown): Promise<void> {
+    const updated = await this.db
+      .update(formDefs)
+      .set({ layout, version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
+      .where(
+        and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+      )
+      .returning({ id: formDefs.id })
+    if (updated.length === 0) throw new FormNotFoundError(formId)
+  }
+
+  /* $USERNAME 預設值解析用(DRIZZLE 車道;weyver_app 無 users grant → 走此)。 */
+  async getUserName(actorId: number): Promise<string | null> {
+    const rows = await this.db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, actorId))
+      .limit(1)
+    return rows[0]?.name ?? null
+  }
+
   async bumpVersion(tenantId: number, formId: number): Promise<void> {
     const updated = await this.db
       .update(formDefs)

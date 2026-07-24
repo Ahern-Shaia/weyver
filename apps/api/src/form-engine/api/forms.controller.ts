@@ -19,6 +19,8 @@ import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
+import { LayoutService } from "../layout/layout.service.js"
+import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { MetadataService } from "../metadata/metadata.service.js"
 import {
   addFieldSpecSchema,
@@ -43,6 +45,7 @@ export class FormsController {
   constructor(
     @Inject(DdlService) private readonly ddl: DdlService,
     @Inject(MetadataService) private readonly metadata: MetadataService,
+    @Inject(LayoutService) private readonly layout: LayoutService,
   ) {}
 
   @Post()
@@ -93,6 +96,25 @@ export class FormsController {
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<FormDto> {
     return toFormDto(await this.metadata.getForm(tenant.tenantId, formId))
+  }
+
+  /* R1·UP-3 2D 設計器版面。GET=view;PUT=design(整表覆寫,純 metadata) */
+  @Get(":formId/layout")
+  async getLayout(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+  ): Promise<{ layout: unknown }> {
+    return { layout: await this.layout.getLayout(tenant.tenantId, formId) }
+  }
+
+  @Patch(":formId/layout")
+  @RequiresFormAction("design")
+  async putLayout(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(layoutSchema)) layout: Layout,
+  ): Promise<Layout> {
+    return this.layout.setLayout(tenant.tenantId, formId, layout)
   }
 
   @Delete(":formId")

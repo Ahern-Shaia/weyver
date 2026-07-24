@@ -64,6 +64,8 @@ export const formDefs = pgTable(
     ),
     // 敏感表:不吃分類繼承/預設,只認 owner + 明確覆寫(OQ-ARI-5)
     isSensitive: boolean("is_sensitive").notNull().default(false),
+    // R1·UP-3 2D 設計器:整表版面 metadata(座標/設定/靜態/分段;與資料正交,null=預設投影,OQ-FD2-1)
+    layout: jsonb("layout"),
     // 建立者:owner 短路(得資料動作、design 除外,OQ-ARI-4=B)。既有表遷移為 NULL(無 owner)
     createdBy: bigint("created_by", { mode: "number" }).references((): AnyPgColumn => users.id),
     version: integer("version").notNull().default(1),

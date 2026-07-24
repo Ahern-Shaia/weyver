@@ -20,6 +20,8 @@ import {
   VersionConflictError,
 } from "../errors.js"
 import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
+import { defaultNeedsUserName, resolveDefaultValue } from "../layout/default-value.js"
+import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import {
   MetadataService,
@@ -39,6 +41,7 @@ interface ResolvedForm {
   readonly byName: ReadonlyMap<string, ResolvedField>
   readonly fields: readonly ResolvedField[]
   readonly isSubtable: boolean
+  readonly layout: Layout | null
 }
 
 const BULK_MAX_ROWS = 5000
@@ -101,9 +104,10 @@ export class RecordService {
     policy?: FieldAccessPolicy,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    this.assertWritable(resolved, formId, values, policy)
+    const withDefaults = await this.applyDefaults(resolved, values, actorId)
+    this.assertWritable(resolved, formId, withDefaults, policy)
     const record = await this.inTenantTx(tenantId, (trx) =>
-      this.insertOne(trx, tenantId, resolved, values, actorId, null, null),
+      this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null),
     )
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
@@ -125,8 +129,9 @@ export class RecordService {
     return this.inTenantTx(tenantId, async (trx) => {
       for (const [index, values] of rows.entries()) {
         try {
-          this.assertWritable(resolved, formId, values, policy)
-          await this.insertOne(trx, tenantId, resolved, values, actorId, null, null)
+          const withDefaults = await this.applyDefaults(resolved, values, actorId)
+          this.assertWritable(resolved, formId, withDefaults, policy)
+          await this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null)
         } catch (error) {
           if (error instanceof DomainError) throw new BulkRowError(index, error.message)
           throw error
@@ -376,12 +381,45 @@ export class RecordService {
       column: physicalColumnName(row.id),
       type: row.cellValueType as CellValueType,
     }))
+    // layout 讀時 parse 兜底(DB 竄改/舊版 → 忽略,走無預設)
+    const layoutParsed =
+      loaded.form.layout === null ? null : layoutSchema.safeParse(loaded.form.layout)
     return {
       table: physicalTableName(loaded.form.id),
       byName: new Map(fields.map((f) => [f.row.name, f])),
       fields,
       isSubtable: loaded.form.parentFormId !== null,
+      layout: layoutParsed?.success ? layoutParsed.data : null,
     }
+  }
+
+  /* R1·UP-3 套用 layout 之 create-time 預設值:未給值且非 systemManaged 之欄,依 defaultValue 填。
+     只在 create 呼叫(不覆蓋使用者提供的值);$USERNAME 需查 users(lazy)。 */
+  private async applyDefaults(
+    resolved: ResolvedForm,
+    values: RecordValues,
+    actorId: number,
+  ): Promise<RecordValues> {
+    const layout = resolved.layout
+    if (layout === null) return values
+    const entries = Object.entries(layout.fields).filter(([, fl]) => fl.defaultValue !== undefined)
+    if (entries.length === 0) return values
+    const needsUser = entries.some(
+      ([, fl]) => fl.defaultValue !== undefined && defaultNeedsUserName(fl.defaultValue),
+    )
+    const userName = needsUser ? await this.metadata.getUserName(actorId) : null
+    const ctx = { actorId, userName, now: new Date() }
+    const out: RecordValues = { ...values }
+    for (const [fieldIdStr, fl] of entries) {
+      if (fl.defaultValue === undefined) continue
+      const fieldId = Number(fieldIdStr)
+      const field = resolved.fields.find((f) => f.row.id === fieldId)
+      if (field === undefined || fieldType(field.type).systemManaged) continue
+      if (out[field.row.name] !== undefined) continue // 使用者已提供 → 不套預設
+      const resolvedVal = resolveDefaultValue(fl.defaultValue, ctx)
+      if (resolvedVal !== undefined) out[field.row.name] = resolvedVal
+    }
+    return out
   }
 
   private baseQuery(db: Knex, tenantId: number, resolved: ResolvedForm): Knex.QueryBuilder {
