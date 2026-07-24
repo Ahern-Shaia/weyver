@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
 import { APP_FILTER, APP_GUARD } from "@nestjs/core"
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler"
+import { ActionsModule } from "./actions/actions.module.js"
 import { AuthModule } from "./auth/auth.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
 import { validateEnv } from "./config/env.js"
@@ -21,6 +22,7 @@ import { ViewsModule } from "./views/views.module.js"
     AuthModule,
     FormEngineModule,
     ViewsModule,
+    ActionsModule,
     HealthModule,
   ],
   providers: [

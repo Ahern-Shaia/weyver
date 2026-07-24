@@ -345,6 +345,119 @@ export const viewDefs = pgTable(
   ],
 )
 
+/* R1·後續-1 自訂按鈕定義(metadata 類 → authz Tier-1 DRIZZLE 車道 + app tenant scope,OQ-AA-5)。
+   config JSONB 依 action_type:updateSelf{setFields} / pushTo{targetFormId,fieldMap} / openUrl{url}。 */
+export const buttonDefs = pgTable(
+  "button_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => formDefs.id),
+    label: text("label").notNull(),
+    actionType: text("action_type").notNull(),
+    config: jsonb("config").notNull(),
+    confirm: boolean("confirm").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("button_def_tenant_form_idx").on(t.tenantId, t.formId),
+    check("button_def_action_type", sql`action_type IN ('updateSelf','pushTo','openUrl')`),
+  ],
+)
+
+/* 動作執行稽核(記錄類;冪等 key 唯一 → 重試不重複執行,OQ-AA-2 / FMEA A2)。 */
+export const actionAudits = pgTable(
+  "action_audit",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    buttonId: bigint("button_id", { mode: "number" }),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    actorId: bigint("actor_id", { mode: "number" }).notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    outcome: text("outcome").notNull(),
+    detail: jsonb("detail"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("action_audit_idem_uq").on(t.tenantId, t.idempotencyKey),
+    index("action_audit_record_idx").on(t.tenantId, t.formId, t.recordId),
+  ],
+)
+
+/* R1·後續-1 簽核定義(metadata 車道)。steps JSONB:[{stepNo, approverRoleId, minAmount?, amountField?}]
+   —— 金額條件由 ZEN 決策(OQ-AA-4);onCompleteButtonId = 簽核完自動執行之按鈕。 */
+export const approvalDefs = pgTable(
+  "approval_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => formDefs.id),
+    name: text("name").notNull(),
+    steps: jsonb("steps").notNull(),
+    onCompleteButtonId: bigint("on_complete_button_id", { mode: "number" }),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("approval_def_tenant_form_idx").on(t.tenantId, t.formId)],
+)
+
+/* 簽核實例(狀態機;pending step 由 approve 推進,OQ-AA-1=A 無 DBOS)。
+   同一 (form,record) 至多一筆進行中 → 部分唯一索引。 */
+export const approvalInstances = pgTable(
+  "approval_instance",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    defId: bigint("def_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    currentStep: integer("current_step").notNull().default(1),
+    status: text("status").notNull().default("pending"),
+    submittedBy: bigint("submitted_by", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("approval_instance_active_uq")
+      .on(t.tenantId, t.formId, t.recordId)
+      .where(sql`status = 'pending'`),
+    index("approval_instance_lookup_idx").on(t.tenantId, t.formId, t.recordId),
+    check("approval_instance_status", sql`status IN ('pending','approved','rejected','withdrawn')`),
+  ],
+)
+
+/* 簽核步驟決策日誌(audit;不可變) */
+export const approvalStepLogs = pgTable(
+  "approval_step_log",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    instanceId: bigint("instance_id", { mode: "number" }).notNull(),
+    stepNo: integer("step_no").notNull(),
+    actorId: bigint("actor_id", { mode: "number" }).notNull(),
+    decision: text("decision").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("approval_step_log_instance_idx").on(t.instanceId),
+    check("approval_step_log_decision", sql`decision IN ('approve','reject','submit','withdraw')`),
+  ],
+)
+
 /* R1·UP-4 autoNumber pattern 計數器(reset scope 用;RLS + weyver_app 車道,寫於記錄 tx 內)。
    reset_key = 依 resetScope 計算(''=全域無 reset / 日期字串 / 群組欄值)。RLS 補於 migration。 */
 export const autonumberCounter = pgTable(
