@@ -5,6 +5,7 @@ import {
   type EditableGridCell,
   type GridCell,
   type GridColumn,
+  type GridSelection,
   type Item,
   type Theme,
 } from "@glideapps/glide-data-grid"
@@ -19,6 +20,9 @@ export interface GridSheetProps {
   readonly getCell: (cell: Item) => GridCell
   readonly onCellEdited?: (cell: Item, newValue: EditableGridCell) => void
   readonly onCellClicked?: (cell: Item) => void
+  readonly rowMarkers?: "number" | "checkbox" | "both" | "none"
+  readonly gridSelection?: GridSelection
+  readonly onGridSelectionChange?: (selection: GridSelection) => void
   readonly height?: number | string
   readonly className?: string
 }
@@ -33,6 +37,9 @@ export function GridSheet({
   getCell,
   onCellEdited,
   onCellClicked,
+  rowMarkers = "number",
+  gridSelection,
+  onGridSelectionChange,
   height = 420,
   className,
 }: GridSheetProps): ReactElement {
@@ -77,10 +84,12 @@ export function GridSheet({
         getCellContent={getCell}
         {...(onCellEdited ? { onCellEdited } : {})}
         {...(onCellClicked ? { onCellClicked } : {})}
+        {...(gridSelection ? { gridSelection } : {})}
+        {...(onGridSelectionChange ? { onGridSelectionChange } : {})}
         theme={theme}
         width="100%"
         height="100%"
-        rowMarkers="number"
+        rowMarkers={rowMarkers}
         smoothScrollX
         smoothScrollY
         getCellsForSelection

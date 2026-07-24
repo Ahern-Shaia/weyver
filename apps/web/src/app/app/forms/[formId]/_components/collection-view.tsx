@@ -1,20 +1,33 @@
 "use client"
 
 import {
+  CompactSelection,
   type EditableGridCell,
   type GridCell,
   GridCellKind,
   type GridColumn,
+  type GridSelection,
   type Item,
 } from "@glideapps/glide-data-grid"
 import { GridSheet } from "@weyver/ui/grid-sheet"
 import { type ReactNode, useMemo, useState } from "react"
+import { utils, writeFile } from "xlsx"
 import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
 import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
 import { describeEngineError } from "@/lib/engine/client"
 import { operatorNeedsValue } from "@/lib/engine/field-filters"
-import { type RecordQuery, useInfiniteRecordsQuery, useUpdateRecord } from "@/lib/engine/hooks"
+import {
+  type RecordQuery,
+  useDeleteRecord,
+  useInfiniteRecordsQuery,
+  useUpdateRecord,
+} from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
+
+const EMPTY_SELECTION: GridSelection = {
+  columns: CompactSelection.empty(),
+  rows: CompactSelection.empty(),
+}
 
 /* R1·UP-2 集合(browse)視圖:Glide 網格套 view 選欄/篩選/排序 + 快速搜尋;前導「開啟」欄下鑽記錄頁;
    inline 編輯依欄位寫入權限(後端 assertWritable 強制;編輯後不即時 re-sort,留位至 refetch)。 */
@@ -32,7 +45,9 @@ export function CollectionView({
   readonly onRowOpen: (recordId: number) => void
 }): ReactNode {
   const updateRecord = useUpdateRecord(formId)
+  const deleteRecord = useDeleteRecord(formId)
   const [error, setError] = useState<string | null>(null)
+  const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
 
   const query = useMemo<RecordQuery>(
     () => ({
@@ -60,6 +75,43 @@ export function CollectionView({
     const byName = new Map(form.fields.map((f) => [f.name, f]))
     return view.fields.map((n) => byName.get(n)).filter((f): f is FieldDto => f !== undefined)
   }, [view, form.fields])
+
+  const selectedIds = useMemo(
+    () =>
+      selection.rows
+        .toArray()
+        .map((i) => records[i]?.id)
+        .filter((id): id is number => id !== undefined),
+    [selection, records],
+  )
+
+  const onExport = (): void => {
+    const rows = records.map((r) => {
+      const o: Record<string, unknown> = {}
+      for (const f of displayFields) {
+        const disp = formatFieldValue(f, r.values[f.name])
+        o[f.name] = disp === "—" ? "" : disp
+      }
+      return o
+    })
+    const ws = utils.json_to_sheet(rows)
+    const wb = utils.book_new()
+    utils.book_append_sheet(wb, ws, (form.name || "Sheet1").slice(0, 31))
+    writeFile(wb, `${form.name || "export"}.xlsx`)
+  }
+
+  const onBatchDelete = async (): Promise<void> => {
+    if (selectedIds.length === 0 || !window.confirm(`刪除選取的 ${selectedIds.length} 筆?`)) return
+    setError(null)
+    for (const id of selectedIds) {
+      try {
+        await deleteRecord.mutateAsync(id)
+      } catch (e) {
+        setError(describeEngineError(e))
+      }
+    }
+    setSelection(EMPTY_SELECTION)
+  }
 
   const OPEN_COL = 0
   const columns: GridColumn[] = [
@@ -175,22 +227,47 @@ export function CollectionView({
             getCell={getCell}
             onCellEdited={onCellEdited}
             onCellClicked={onCellClicked}
+            rowMarkers="both"
+            gridSelection={selection}
+            onGridSelectionChange={setSelection}
             height="100%"
             className="border border-line"
           />
         )}
       </div>
       <div className="flex h-8 shrink-0 items-center gap-3 border-t border-line bg-card px-4 text-[11px] text-ink-3">
-        <span className="font-mono">{records.length} 筆</span>
-        {recordsQuery.hasNextPage ? (
+        <span className="font-mono">
+          {records.length} 筆{selectedIds.length > 0 ? ` · 已選 ${selectedIds.length}` : ""}
+        </span>
+        {selectedIds.length > 0 ? (
           <button
             type="button"
-            onClick={() => void recordsQuery.fetchNextPage()}
-            disabled={recordsQuery.isFetchingNextPage}
-            className="rounded-xs border border-line px-2 py-0.5 hover:bg-head disabled:opacity-50"
+            onClick={() => void onBatchDelete()}
+            className="rounded-xs border border-line px-2 py-0.5 text-er hover:border-er hover:bg-er-t"
           >
-            {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
+            批次刪除
           </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={records.length === 0}
+          className="rounded-xs border border-line px-2 py-0.5 hover:bg-head disabled:opacity-50"
+        >
+          匯出 Excel
+        </button>
+        {recordsQuery.hasNextPage ? (
+          <>
+            <button
+              type="button"
+              onClick={() => void recordsQuery.fetchNextPage()}
+              disabled={recordsQuery.isFetchingNextPage}
+              className="rounded-xs border border-line px-2 py-0.5 hover:bg-head disabled:opacity-50"
+            >
+              {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
+            </button>
+            <span className="text-ink-4">(匯出僅含已載入 {records.length} 筆)</span>
+          </>
         ) : null}
       </div>
     </div>
