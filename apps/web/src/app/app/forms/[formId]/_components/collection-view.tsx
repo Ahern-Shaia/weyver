@@ -1,0 +1,192 @@
+"use client"
+
+import {
+  type EditableGridCell,
+  type GridCell,
+  GridCellKind,
+  type GridColumn,
+  type Item,
+} from "@glideapps/glide-data-grid"
+import { GridSheet } from "@weyver/ui/grid-sheet"
+import { type ReactNode, useMemo, useState } from "react"
+import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
+import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
+import { describeEngineError } from "@/lib/engine/client"
+import { type RecordQuery, useInfiniteRecordsQuery, useUpdateRecord } from "@/lib/engine/hooks"
+import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
+
+/* R1·UP-2 集合(browse)視圖:Glide 網格套 view 選欄/篩選/排序 + 快速搜尋;前導「開啟」欄下鑽記錄頁;
+   inline 編輯依欄位寫入權限(後端 assertWritable 強制;編輯後不即時 re-sort,留位至 refetch)。 */
+export function CollectionView({
+  formId,
+  form,
+  view,
+  quickSearch,
+  onRowOpen,
+}: {
+  readonly formId: number
+  readonly form: FormDto
+  readonly view: ViewConfig | null
+  readonly quickSearch: string
+  readonly onRowOpen: (recordId: number) => void
+}): ReactNode {
+  const updateRecord = useUpdateRecord(formId)
+  const [error, setError] = useState<string | null>(null)
+
+  const query = useMemo<RecordQuery>(
+    () => ({
+      filters: view?.filter.conditions ?? [],
+      combinator: view?.filter.combinator ?? "and",
+      sort: view?.sorts ?? [],
+      q: quickSearch.trim() || view?.search || undefined,
+    }),
+    [view, quickSearch],
+  )
+  const recordsQuery = useInfiniteRecordsQuery(formId, query)
+  const records: RecordRow[] = useMemo(
+    () => recordsQuery.data?.pages.flatMap((p) => p.records) ?? [],
+    [recordsQuery.data],
+  )
+
+  // view 選欄(依名解析成現存欄、保序;丟棄已不存在的名);空 = 全欄
+  const displayFields: FieldDto[] = useMemo(() => {
+    if (view === null || view.fields.length === 0) return form.fields
+    const byName = new Map(form.fields.map((f) => [f.name, f]))
+    return view.fields.map((n) => byName.get(n)).filter((f): f is FieldDto => f !== undefined)
+  }, [view, form.fields])
+
+  const OPEN_COL = 0
+  const columns: GridColumn[] = [
+    { title: "", id: "__open__", width: 52 },
+    ...displayFields.map((f) => ({
+      title: f.name,
+      id: String(f.id),
+      width: f.type === "longText" ? 240 : 140,
+    })),
+  ]
+
+  const getCell = ([col, row]: Item): GridCell => {
+    if (col === OPEN_COL) {
+      return {
+        kind: GridCellKind.Text,
+        data: "",
+        displayData: "檢視 ↗",
+        allowOverlay: false,
+      }
+    }
+    const field = displayFields[col - 1]
+    const record = records[row]
+    if (field === undefined || record === undefined) {
+      return { kind: GridCellKind.Text, data: "", displayData: "", allowOverlay: false }
+    }
+    const value = record.values[field.name]
+    const editable = isGridEditable(field)
+    const display = formatFieldValue(field, value) === "—" ? "" : formatFieldValue(field, value)
+    const kind = gridKind(field.type)
+
+    if (kind === "boolean") {
+      return {
+        kind: GridCellKind.Boolean,
+        data: value === true,
+        allowOverlay: false,
+        readonly: !editable,
+      }
+    }
+    if (kind === "number") {
+      const n = gridEditData(field, value)
+      return {
+        kind: GridCellKind.Number,
+        data: typeof n === "number" && Number.isFinite(n) ? n : undefined,
+        displayData: display,
+        allowOverlay: editable,
+        readonly: !editable,
+      }
+    }
+    return {
+      kind: GridCellKind.Text,
+      data: String(gridEditData(field, value)),
+      displayData: display,
+      allowOverlay: editable,
+      readonly: !editable,
+    }
+  }
+
+  const onCellClicked = ([col, row]: Item): void => {
+    if (col !== OPEN_COL) return
+    const record = records[row]
+    if (record !== undefined) onRowOpen(record.id)
+  }
+
+  const onCellEdited = ([col, row]: Item, newValue: EditableGridCell): void => {
+    if (col === OPEN_COL) return
+    const field = displayFields[col - 1]
+    const record = records[row]
+    if (field === undefined || record === undefined || !isGridEditable(field)) return
+
+    let raw: unknown
+    const kind = gridKind(field.type)
+    if (kind === "boolean") {
+      raw = newValue.kind === GridCellKind.Boolean && newValue.data === true
+    } else if (kind === "number") {
+      const d = newValue.kind === GridCellKind.Number ? newValue.data : undefined
+      raw = d === undefined || d === null ? "" : String(d)
+    } else {
+      raw = newValue.kind === GridCellKind.Text ? newValue.data : ""
+    }
+    const converted = toSubmitValue(field, raw)
+
+    setError(null)
+    updateRecord.mutate(
+      {
+        recordId: record.id,
+        expectedVersion: record.version,
+        values: { [field.name]: converted ?? null },
+      },
+      { onError: (e) => setError(describeEngineError(e)) },
+    )
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-surface">
+      {error !== null ? (
+        <div className="border-b border-er-line bg-er-t px-4 py-1.5 text-[12px] text-er">
+          {error}
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1 p-3">
+        {recordsQuery.isPending ? (
+          <div className="flex h-full items-center justify-center text-[12px] text-ink-4">
+            載入記錄…
+          </div>
+        ) : records.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-[12px] text-ink-4">
+            無相符記錄{query.q || query.filters.length > 0 ? "(篩選/搜尋無結果)" : ""}。
+          </div>
+        ) : (
+          <GridSheet
+            columns={columns}
+            rowCount={records.length}
+            getCell={getCell}
+            onCellEdited={onCellEdited}
+            onCellClicked={onCellClicked}
+            height="100%"
+            className="border border-line"
+          />
+        )}
+      </div>
+      <div className="flex h-8 shrink-0 items-center gap-3 border-t border-line bg-card px-4 text-[11px] text-ink-3">
+        <span className="font-mono">{records.length} 筆</span>
+        {recordsQuery.hasNextPage ? (
+          <button
+            type="button"
+            onClick={() => void recordsQuery.fetchNextPage()}
+            disabled={recordsQuery.isFetchingNextPage}
+            className="rounded-xs border border-line px-2 py-0.5 hover:bg-head disabled:opacity-50"
+          >
+            {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}

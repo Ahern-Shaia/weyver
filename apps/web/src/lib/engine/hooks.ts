@@ -9,10 +9,15 @@ import {
   type FormDto,
   type ListResponse,
   type RecordRow,
+  type ViewConfig,
+  type ViewDto,
+  type ViewFilterCondition,
+  type ViewSort,
   formDtoSchema,
   formSummarySchema,
   listResponseSchema,
   recordRowSchema,
+  viewDtoSchema,
 } from "./schemas"
 
 const voidSchema = z.undefined().or(z.unknown().transform(() => undefined))
@@ -186,6 +191,94 @@ export function useBulkCreate(formId: number) {
         body: { rows: rows.map((values) => ({ values })) },
       }),
     onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
+/* R1·UP-2 集合視圖:POST /records/query 無限捲動(套 filter/combinator/sort/快速搜尋)。 */
+export interface RecordQuery {
+  readonly filters: readonly ViewFilterCondition[]
+  readonly combinator: "and" | "or"
+  readonly sort: readonly ViewSort[]
+  readonly q?: string | undefined
+}
+
+export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, pageSize = 200) {
+  return useInfiniteQuery({
+    queryKey: [...formKeys.records(formId), "query", query],
+    queryFn: ({ pageParam }) =>
+      engineFetch<ListResponse>(`/forms/${formId}/records/query`, listResponseSchema, {
+        method: "POST",
+        body: {
+          filters: query.filters,
+          combinator: query.combinator,
+          sort: query.sort,
+          ...(query.q !== undefined && query.q !== "" ? { q: query.q } : {}),
+          limit: pageSize,
+          ...(pageParam === undefined ? {} : { cursor: pageParam }),
+        },
+      }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  })
+}
+
+export const viewKeys = {
+  list: (formId: number) => ["forms", formId, "views"] as const,
+}
+
+export function useViews(formId: number | null) {
+  return useQuery({
+    queryKey: viewKeys.list(formId ?? -1),
+    queryFn: () => engineFetch(`/forms/${formId}/views`, z.array(viewDtoSchema)),
+    enabled: formId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export interface ViewInput {
+  readonly name: string
+  readonly scope?: "personal" | "shared"
+  readonly config: ViewConfig
+  readonly isDefault?: boolean
+  readonly locked?: boolean
+}
+
+export interface ViewPatch {
+  readonly name?: string
+  readonly config?: ViewConfig
+  readonly scope?: "personal" | "shared"
+  readonly isDefault?: boolean
+  readonly locked?: boolean
+  readonly position?: number
+}
+
+export function useCreateView(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: ViewInput): Promise<ViewDto> =>
+      engineFetch(`/forms/${formId}/views`, viewDtoSchema, { method: "POST", body: input }),
+    onSuccess: () => invalidate([viewKeys.list(formId)]),
+  })
+}
+
+export function useUpdateView(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { viewId: number; patch: ViewPatch }): Promise<ViewDto> =>
+      engineFetch(`/forms/${formId}/views/${input.viewId}`, viewDtoSchema, {
+        method: "PATCH",
+        body: input.patch,
+      }),
+    onSuccess: () => invalidate([viewKeys.list(formId)]),
+  })
+}
+
+export function useDeleteView(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (viewId: number) =>
+      engineFetch(`/forms/${formId}/views/${viewId}`, voidSchema, { method: "DELETE" }),
+    onSuccess: () => invalidate([viewKeys.list(formId)]),
   })
 }
 

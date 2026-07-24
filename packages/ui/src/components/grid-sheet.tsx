@@ -18,6 +18,7 @@ export interface GridSheetProps {
   readonly rowCount: number
   readonly getCell: (cell: Item) => GridCell
   readonly onCellEdited?: (cell: Item, newValue: EditableGridCell) => void
+  readonly onCellClicked?: (cell: Item) => void
   readonly height?: number | string
   readonly className?: string
 }
@@ -31,6 +32,7 @@ export function GridSheet({
   rowCount,
   getCell,
   onCellEdited,
+  onCellClicked,
   height = 420,
   className,
 }: GridSheetProps): ReactElement {
@@ -74,6 +76,7 @@ export function GridSheet({
         rows={rowCount}
         getCellContent={getCell}
         {...(onCellEdited ? { onCellEdited } : {})}
+        {...(onCellClicked ? { onCellClicked } : {})}
         theme={theme}
         width="100%"
         height="100%"

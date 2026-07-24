@@ -83,6 +83,62 @@ export const listResponseSchema = z.object({
 
 export type ListResponse = z.infer<typeof listResponseSchema>
 
+/* R1·UP-2 視圖(view_def)。config 欄位以「顯示名」表示,直接對映 records query API。 */
+export const FILTER_OPERATORS = [
+  "eq",
+  "neq",
+  "contains",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "anyOf",
+  "isEmpty",
+  "isNotEmpty",
+] as const
+export type FilterOperator = (typeof FILTER_OPERATORS)[number]
+
+export const viewFilterConditionSchema = z.object({
+  field: z.string(),
+  op: z.enum(FILTER_OPERATORS),
+  value: z.unknown().optional(),
+})
+export type ViewFilterCondition = z.infer<typeof viewFilterConditionSchema>
+
+export const viewSortSchema = z.object({
+  field: z.string(),
+  dir: z.enum(["asc", "desc"]),
+})
+export type ViewSort = z.infer<typeof viewSortSchema>
+
+export const viewConfigSchema = z.object({
+  fields: z.array(z.string()).default([]),
+  filter: z
+    .object({
+      combinator: z.enum(["and", "or"]).default("and"),
+      conditions: z.array(viewFilterConditionSchema).default([]),
+    })
+    .default({ combinator: "and", conditions: [] }),
+  sorts: z.array(viewSortSchema).default([]),
+  search: z.string().optional(),
+  pageSize: z.number().int().optional(),
+})
+export type ViewConfig = z.infer<typeof viewConfigSchema>
+
+export const viewDtoSchema = z.object({
+  id: z.number().int(),
+  formId: z.number().int(),
+  name: z.string(),
+  scope: z.enum(["personal", "shared"]),
+  isDefault: z.boolean(),
+  locked: z.boolean(),
+  config: viewConfigSchema,
+  position: z.number().int(),
+  createdBy: z.number().int().nullable(),
+  updatedAt: z.string(),
+})
+export type ViewDto = z.infer<typeof viewDtoSchema>
+
 export const errorEnvelopeSchema = z.object({
   code: z.string(),
   message: z.string(),
