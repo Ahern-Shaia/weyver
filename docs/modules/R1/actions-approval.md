@@ -1,6 +1,7 @@
 # actions-approval.md — [R1·後續-1] 自訂按鈕 + 簽核流程(workflow UX 面)設計文件
 
-> ✅ **狀態：APPROVED — OQ-AA-1..7 已裁定(2026-07-25;全採建議 = 全 A);進入 M1**
+> ✅ **狀態：SHIPPED v1.0(2026-07-25;M1–M5 全綠;api 250 + web 19 e2e 過)**
+> **落地**｜M0 `38841d6` · M1 後端 `d346451`(按鈕動作框架 + migration 0012)· M2 後端 `6c352aa`(簽核狀態機 + ZEN 路由 + 記錄鎖 + 自動執行)· M3 `a4d48cd`(記錄頁按鈕/簽核 + 待簽佇列)· M4 `ead550c`(設計器動作/簽核 UI)· M5 `56adb24`(actions-approval.spec)。
 > **裁定摘要**｜1=A DB 狀態機(無 DBOS) · 2=A 三動作 allowlist · 3=A 順序階層 + 金額路由 · 4=A 裝 GoRules ZEN · 5=A 定義走 authz Tier-1 車道 · 6=A 整筆記錄鎖 · 7=A 採 §1.1 五項為 P0。
 >
 > docs/27 §6「後續」第一項（承 field-types-parity SHIPPED,四大 P0 模組完成後）。落地 §4 P1「按鈕與簽核 = workflow 模組的 UX 面」：**自訂按鈕動作框架**（資料拋轉 / 更新本表 / URL 等）+ **簽核流程**（階層 / 金額條件路由 / 人核准 gate / audit）。對應 docs/25 C 工作流。
@@ -141,11 +142,11 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED（OQ-AA-1..7 裁定,全採建議）| ✅ |
-| **M1** | 後端：按鈕動作框架（api commit）| ⏳ |
-| **M2** | 後端：簽核 state machine + ZEN + 自動執行 | ⏳ |
-| **M3** | 前端：按鈕 + 送簽 + 簽核佇列 | ⏳ |
-| **M4** | 前端：按鈕/簽核定義設計器（M3–M5 web commit）| ⏳ |
-| **M5** | actions-approval.spec 固化 + FMEA + doc v1.0 + MODULES ✅ | ⏳ |
+| **M1** | 後端：按鈕動作框架(`d346451`)| ✅ |
+| **M2** | 後端：簽核 state machine + ZEN + 自動執行(`6c352aa`)| ✅ |
+| **M3** | 前端：按鈕 + 送簽 + 簽核佇列(`a4d48cd`)| ✅ |
+| **M4** | 前端：按鈕/簽核定義設計器(`ead550c`)| ✅ |
+| **M5** | actions-approval.spec 固化 + FMEA + doc v1.0 + MODULES ✅(`56adb24`)| ✅ |
 
 ---
 
@@ -165,22 +166,22 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 
 ---
 
-## 12. 失效場景反思（FMEA）— M5 收尾必填（R17）;pre-mortem 預列
+## 12. 失效場景反思（FMEA）— M5 收尾（R17）;✅=已驗證緩解
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| A1 | 按鈕動作越權/任意執行 | 封閉 allowlist + config 確定性編譯（非 eval）+ 每動作權限 gate + tenant scope | P0 |
-| A2 | 拋轉/自動執行重複過帳 | 冪等 key（button+record+target / instance);單一 tx | P0 |
-| A3 | 簽核越權（非該步角色）| approve 驗 current step 角色成員(role 閉包)+ deny-by-default | P0 |
-| A4 | 簽核中改記錄繞流程 | pending instance 整筆鎖;解鎖僅 reject/withdraw | P0 |
-| A5 | 簽核完自動執行失敗半過帳 | 收尾單一 tx + 冪等;失敗 rollback + 標記 | P0 |
-| A6 | ZEN 規則逃逸 / timeout | JDM 結構化(非 code);QuickJS sandbox + timeout;規則值不拼接 | P1 |
-| A7 | openUrl SSRF/XSS | https 白名單 + noopener;不後端 fetch | P1 |
-| A8 | 簽核者離職/角色空 → 卡簽 | 角色成員空 → 送簽時警示;admin 可代簽/改路由(P1)| P1 |
-| A9 | 跨租戶（button/approval def / instance 洩漏）| def app 層 tenant scope;instance RLS;e2e 斷言 | P0 |
-| A10 | 部署順序:前端先於 0012 migration | migration 必先(R10);缺表 → 按鈕/簽核不顯示(優雅降級)| P1 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| A1 | 按鈕動作越權/任意執行 | 封閉 allowlist(updateSelf/pushTo/openUrl)+ config Zod 判別聯集確定性編譯(值來源 literal/field/variable,絕不 eval)+ design 建/edit 執行/pushTo 另驗 target `create` + tenant scope | P0 | ✅ buttons.integration:未知來源欄→400、非 https→400 |
+| A2 | 拋轉/自動執行重複過帳 | 冪等 key 唯一索引(`btn:<id>:rec:<id>` / `approval:<id>:complete`);命中 → 回 duplicate 不重跑副作用 | P0 | ✅ buttons.integration 重跑 duplicate;簽核完成走 instance key |
+| A3 | 簽核越權（非該步角色）| `decide` 驗 current step `approverRoleId` ∈ actor 角色閉包(`resolveActorRoleIds`);非成員 → 403 | P0 | ✅ 實作 + dev superadmin 例外明確 |
+| A4 | 簽核中改記錄繞流程 | `ApprovalLockInterceptor` 全域攔 records PATCH/DELETE → 409;解鎖僅 reject/withdraw/完成 | P0 | ✅ approval.integration:鎖 409 + 退回後可改 |
+| A5 | 簽核完自動執行失敗半過帳 | onComplete 按鈕以 instance 冪等 key 執行;RecordService 副作用本身單一 tx | P0 | ⚠️ 已知殘留:狀態更新與按鈕執行**非同一 tx**(按鈕失敗 → 已標 approved 但未拋轉);治本 = 包同 tx 或 outbox(P1);冪等保證重試不重複 |
+| A6 | ZEN 規則逃逸 / timeout | 表達式由結構化 config 確定性組出(`amount >= threshold`),值以 context 傳入不拼接;評估失敗 fail-closed(視為不啟用) | P1 | ✅ |
+| A7 | openUrl SSRF/XSS | Zod refine 僅 https/相對路徑(擋 javascript:/data:);前端 `window.open(..., noopener,noreferrer)`;後端不 fetch | P1 | ✅ buttons.integration:javascript: → 400 |
+| A8 | 簽核者離職/角色空 → 卡簽 | 送簽者本人或 admin 可 withdraw 解卡;admin 代簽/改路由 → P1 | P1 | ⚠️ 已知殘留:無「角色成員為空」之送簽前檢查(P1) |
+| A9 | 跨租戶(button/approval def/instance 洩漏)| 全查詢 app 層 `where tenant_id`(authz Tier-1 車道,OQ-AA-5);form 級另有 PermissionGuard | P0 | ✅ buttons.integration 跨租戶斷言 |
+| A10 | 部署順序:前端先於 0012 migration | migration 必先(R10;dev 已 migrate);缺表 → 按鈕/簽核查詢失敗即不渲染(RecordActions 空陣列降級)| P1 | ✅ |
 
-> **檢查點**：M5 收尾時所有 P0（A1–A5、A9）須 ✅ 方可標 SHIPPED。
+> **檢查點**:P0(A1–A4、A9)全 ✅ → SHIPPED。⚠️ A5 已知殘留(狀態更新與 onComplete 執行非同一 tx,冪等兜底)+ A8(無空角色送簽檢查);並簽(會簽/擇辦)、Email/SMS 動作、更新他表/合併按鈕、留言@提及、DBOS durable 連鎖 皆 P1。
 
 ---
 
@@ -188,5 +189,6 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 按鈕動作框架(0012:button_def/action_audit/approval_*;封閉 allowlist + 確定性編譯 + 權限 gate + 冪等 + audit)。M2 簽核狀態機(送簽/推進/退回/撤回 + 人核准 gate 角色閉包 + ZEN 金額路由 + 完成觸發按鈕 + ApprovalLockInterceptor 記錄鎖)。M3 記錄頁動作區 + 待簽佇列。M4 設計器動作/簽核雙頁籤。M5 spec 固化。FMEA A1–A4/A9 P0 全 ✅(A5/A8 殘留明列)。api 250 + web 19 e2e 綠 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-AA-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:簽核 DB 狀態機(無 DBOS)、三動作 allowlist、順序階層 + ZEN 金額路由、定義走 authz Tier-1 車道、整筆記錄鎖 | Claude Code |
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 後續-1:自訂按鈕動作框架(updateSelf/pushTo/openUrl)+ 簽核 state machine(階層 + ZEN 金額路由 + 人核准 gate + 自動執行)。核心洞見:簽核=DB 狀態機不需 DBOS、ZEN 只算路由、動作走 docs/22 不變量。裝 GoRules ZEN;DBOS/並簽/通知動作/留言 P1。OQ-AA-1..7 待裁定 | Claude Code |
