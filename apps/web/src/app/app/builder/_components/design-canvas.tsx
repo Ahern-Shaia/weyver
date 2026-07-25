@@ -9,12 +9,22 @@ import {
   useSensors,
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Image as ImageIcon, Redo2, Rows3, Trash2, Type, Undo2 } from "lucide-react"
+import {
+  GripVertical,
+  Image as ImageIcon,
+  Redo2,
+  Rows3,
+  Trash2,
+  Type,
+  Undo2,
+  Zap,
+} from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { fieldTypeMeta } from "@/lib/engine/field-types"
 import { useDropField, useLayout, usePutLayout } from "@/lib/engine/hooks"
 import type { FieldDto, FieldLayout, FormDto, Layout, StaticElement } from "@/lib/engine/schemas"
+import { ActionsDesigner } from "./actions-designer"
 import { FieldSettingsPanel, StaticSettingsPanel } from "./field-settings-panel"
 
 /* R1·UP-3 M2+M3 2D 格線畫布(OQ-FD2-7=A)。layout metadata → CSS grid;dnd-kit 拖曳重定位;
@@ -60,6 +70,7 @@ export function DesignCanvas({
   const [idx, setIdx] = useState(-1)
   const [selected, setSelected] = useState<Selected>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [showActions, setShowActions] = useState(false)
   const histRef = useRef<Layout[]>([])
   histRef.current = hist
 
@@ -200,6 +211,9 @@ export function DesignCanvas({
           <TB onClick={addSection} icon={<Rows3 size={13} />}>
             分段
           </TB>
+          <TB onClick={() => setShowActions((v) => !v)} icon={<Zap size={13} />}>
+            動作/簽核
+          </TB>
           <div className="ml-1 flex items-center gap-0.5">
             <button
               type="button"
@@ -315,6 +329,9 @@ export function DesignCanvas({
           onChange={(patch) => patchField(selected.id, patch)}
           onClose={() => setSelected(null)}
         />
+      ) : null}
+      {showActions ? (
+        <ActionsDesigner formId={formId} form={form} onClose={() => setShowActions(false)} />
       ) : null}
       {selStatic !== undefined && selected?.type === "static" ? (
         <StaticSettingsPanel
