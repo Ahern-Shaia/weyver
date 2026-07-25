@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
-import { APP_FILTER, APP_GUARD } from "@nestjs/core"
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core"
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler"
 import { ActionsModule } from "./actions/actions.module.js"
+import { ApprovalLockInterceptor } from "./actions/approval-lock.interceptor.js"
 import { AuthModule } from "./auth/auth.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
 import { validateEnv } from "./config/env.js"
@@ -28,6 +29,8 @@ import { ViewsModule } from "./views/views.module.js"
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // R1·後續-1:簽核中記錄拒改(全域 interceptor;guards 之後執行 → 取得可信租戶)
+    { provide: APP_INTERCEPTOR, useClass: ApprovalLockInterceptor },
   ],
 })
 export class AppModule {}
