@@ -7,6 +7,7 @@ import { describeEngineError } from "@/lib/engine/client"
 import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
 import { LineItems } from "./line-items"
+import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
 
 /* 複製時排除的欄位型別(系統計算/自動產生;由引擎於新記錄重算) */
@@ -158,6 +159,9 @@ export function ObjectPage({
           ))}
         </div>
       </div>
+
+      {/* R1·後續-1:自訂按鈕 + 簽核 */}
+      <RecordActions formId={formId} recordId={record.id} />
 
       {/* 區段 */}
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-4">

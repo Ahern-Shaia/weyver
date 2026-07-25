@@ -226,6 +226,86 @@ export const layoutSchema = z.object({
 })
 export type Layout = z.infer<typeof layoutSchema>
 
+/* R1·後續-1 自訂按鈕 + 簽核(鏡射後端 action-specs) */
+export const valueSourceSchema = z.discriminatedUnion("from", [
+  z.object({ from: z.literal("literal"), value: z.union([z.string(), z.number(), z.boolean()]) }),
+  z.object({ from: z.literal("field"), field: z.string() }),
+  z.object({ from: z.literal("variable"), variable: z.enum(["$NOW", "$TODAY", "$USERID"]) }),
+])
+export type ValueSource = z.infer<typeof valueSourceSchema>
+
+export const buttonConfigSchema = z.discriminatedUnion("actionType", [
+  z.object({
+    actionType: z.literal("updateSelf"),
+    setFields: z.record(z.string(), valueSourceSchema),
+  }),
+  z.object({
+    actionType: z.literal("pushTo"),
+    targetFormId: z.number().int(),
+    fieldMap: z.record(z.string(), valueSourceSchema),
+  }),
+  z.object({ actionType: z.literal("openUrl"), url: z.string() }),
+])
+export type ButtonConfig = z.infer<typeof buttonConfigSchema>
+
+export const buttonDtoSchema = z.object({
+  id: z.number().int(),
+  formId: z.number().int(),
+  label: z.string(),
+  actionType: z.enum(["updateSelf", "pushTo", "openUrl"]),
+  config: buttonConfigSchema,
+  confirm: z.boolean(),
+  position: z.number().int(),
+})
+export type ButtonDto = z.infer<typeof buttonDtoSchema>
+
+export const actionResultSchema = z.object({
+  outcome: z.enum(["updated", "created", "openUrl", "duplicate"]),
+  targetRecordId: z.number().int().optional(),
+  url: z.string().optional(),
+})
+export type ActionResult = z.infer<typeof actionResultSchema>
+
+export const approvalStepSchema = z.object({
+  stepNo: z.number().int(),
+  approverRoleId: z.number().int(),
+  amountField: z.string().optional(),
+  minAmount: z.number().optional(),
+})
+export type ApprovalStep = z.infer<typeof approvalStepSchema>
+
+export const approvalDefDtoSchema = z.object({
+  id: z.number().int(),
+  formId: z.number().int(),
+  name: z.string(),
+  steps: z.array(approvalStepSchema),
+  onCompleteButtonId: z.number().int().nullable(),
+  active: z.boolean(),
+})
+export type ApprovalDefDto = z.infer<typeof approvalDefDtoSchema>
+
+export const approvalInstanceDtoSchema = z.object({
+  id: z.number().int(),
+  defId: z.number().int(),
+  formId: z.number().int(),
+  recordId: z.number().int(),
+  currentStep: z.number().int(),
+  status: z.enum(["pending", "approved", "rejected", "withdrawn"]),
+  submittedBy: z.number().int(),
+  updatedAt: z.string(),
+  steps: z.array(approvalStepSchema),
+  log: z.array(
+    z.object({
+      stepNo: z.number().int(),
+      actorId: z.number().int(),
+      decision: z.string(),
+      comment: z.string().nullable(),
+      at: z.string(),
+    }),
+  ),
+})
+export type ApprovalInstanceDto = z.infer<typeof approvalInstanceDtoSchema>
+
 export const errorEnvelopeSchema = z.object({
   code: z.string(),
   message: z.string(),

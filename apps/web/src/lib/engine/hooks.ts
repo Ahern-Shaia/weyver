@@ -8,12 +8,18 @@ import {
   type CreateFormInput,
   type FormDto,
   type ListResponse,
+  type ApprovalStep,
+  type ButtonConfig,
   type Layout,
   type RecordRow,
   type ViewConfig,
   type ViewDto,
   type ViewFilterCondition,
   type ViewSort,
+  actionResultSchema,
+  approvalDefDtoSchema,
+  approvalInstanceDtoSchema,
+  buttonDtoSchema,
   formDtoSchema,
   formSummarySchema,
   layoutSchema,
@@ -243,6 +249,141 @@ export function usePutLayout(formId: number) {
       engineFetch(`/forms/${formId}/layout`, layoutSchema, { method: "PATCH", body: layout }),
     onSuccess: () =>
       invalidate([["forms", formId, "layout"], formKeys.detail(formId), formKeys.all]),
+  })
+}
+
+/* R1·後續-1 自訂按鈕 + 簽核 */
+export const actionKeys = {
+  buttons: (formId: number) => ["forms", formId, "buttons"] as const,
+  approvalDefs: (formId: number) => ["forms", formId, "approvalDefs"] as const,
+  recordApproval: (formId: number, recordId: number) =>
+    ["forms", formId, "approval", recordId] as const,
+  myPending: ["approvals", "pending"] as const,
+}
+
+export function useButtons(formId: number | null) {
+  return useQuery({
+    queryKey: actionKeys.buttons(formId ?? -1),
+    queryFn: () => engineFetch(`/forms/${formId}/buttons`, z.array(buttonDtoSchema)),
+    enabled: formId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateButton(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { label: string; config: ButtonConfig; confirm?: boolean }) =>
+      engineFetch(`/forms/${formId}/buttons`, buttonDtoSchema, { method: "POST", body: input }),
+    onSuccess: () => invalidate([actionKeys.buttons(formId)]),
+  })
+}
+
+export function useDeleteButton(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (buttonId: number) =>
+      engineFetch(`/forms/${formId}/buttons/${buttonId}`, voidSchema, { method: "DELETE" }),
+    onSuccess: () => invalidate([actionKeys.buttons(formId)]),
+  })
+}
+
+export function useRunButton(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { buttonId: number; recordId: number }) =>
+      engineFetch(
+        `/forms/${formId}/buttons/${input.buttonId}/run/${input.recordId}`,
+        actionResultSchema,
+        { method: "POST", body: {} },
+      ),
+    onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
+export function useApprovalDefs(formId: number | null) {
+  return useQuery({
+    queryKey: actionKeys.approvalDefs(formId ?? -1),
+    queryFn: () => engineFetch(`/forms/${formId}/approvals/defs`, z.array(approvalDefDtoSchema)),
+    enabled: formId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateApprovalDef(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      name: string
+      steps: ApprovalStep[]
+      onCompleteButtonId?: number | null
+    }) =>
+      engineFetch(`/forms/${formId}/approvals/defs`, approvalDefDtoSchema, {
+        method: "POST",
+        body: input,
+      }),
+    onSuccess: () => invalidate([actionKeys.approvalDefs(formId)]),
+  })
+}
+
+const recordApprovalSchema = z.object({ instance: approvalInstanceDtoSchema.nullable() })
+
+export function useRecordApproval(formId: number | null, recordId: number | null) {
+  return useQuery({
+    queryKey: actionKeys.recordApproval(formId ?? -1, recordId ?? -1),
+    queryFn: () =>
+      engineFetch(`/forms/${formId}/approvals/records/${recordId}`, recordApprovalSchema),
+    enabled: formId !== null && recordId !== null,
+  })
+}
+
+export function useSubmitApproval(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (recordId: number) =>
+      engineFetch(
+        `/forms/${formId}/approvals/records/${recordId}/submit`,
+        approvalInstanceDtoSchema,
+        { method: "POST", body: {} },
+      ),
+    onSuccess: (_d, recordId) =>
+      invalidate([actionKeys.recordApproval(formId, recordId), actionKeys.myPending]),
+  })
+}
+
+export function useMyPendingApprovals() {
+  return useQuery({
+    queryKey: actionKeys.myPending,
+    queryFn: () => engineFetch("/approvals/pending", z.array(approvalInstanceDtoSchema)),
+    staleTime: 15_000,
+  })
+}
+
+export function useDecideApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      instanceId: number
+      decision: "approve" | "reject"
+      comment?: string
+    }) =>
+      engineFetch(`/approvals/${input.instanceId}/decide`, approvalInstanceDtoSchema, {
+        method: "POST",
+        body: { decision: input.decision, ...(input.comment ? { comment: input.comment } : {}) },
+      }),
+    onSuccess: () => void queryClient.invalidateQueries(),
+  })
+}
+
+export function useWithdrawApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (instanceId: number) =>
+      engineFetch(`/approvals/${instanceId}/withdraw`, approvalInstanceDtoSchema, {
+        method: "POST",
+        body: {},
+      }),
+    onSuccess: () => void queryClient.invalidateQueries(),
   })
 }
 
