@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
+import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { LineItems } from "./line-items"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
@@ -185,7 +186,15 @@ export function ObjectPage({
                       : "flex-1 text-[12.5px] text-ink"
                   }
                 >
-                  {fmtVal(record.values[f.name])}
+                  {fieldSymbology(f) === null ? (
+                    fmtVal(record.values[f.name])
+                  ) : (
+                    <BarcodeView
+                      value={record.values[f.name]}
+                      symbology={fieldSymbology(f) ?? "qr"}
+                      size={72}
+                    />
+                  )}
                 </span>
               </div>
             ))}

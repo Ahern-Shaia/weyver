@@ -3,6 +3,7 @@
 import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
 import { Select } from "@weyver/ui/select"
+import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { choicesOf } from "./field-value"
@@ -57,14 +58,20 @@ export function FieldInput({
       )
     }
 
-    case "barcode":
+    // R1·後續-2 M2:存值 + 即時 QR 預覽(qrcode.react)
+    case "barcode": {
+      const sym = fieldSymbology(field) ?? "qr"
       return (
-        <Input
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="條碼內容值"
-        />
+        <div className="flex flex-col gap-1.5">
+          <Input
+            value={typeof value === "string" ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="條碼內容值"
+          />
+          <BarcodeView value={value} symbology={sym} size={64} />
+        </div>
       )
+    }
 
     case "longText":
       return (
@@ -171,13 +178,18 @@ export function FieldInput({
       )
     }
 
-    default:
-      // text / email / url / phone
+    default: {
+      // text / email / url / phone;text 欄可設「以條碼顯示」(Ragic doc/53,QR-only)
+      const sym = fieldSymbology(field)
       return (
-        <Input
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <div className={sym === null ? "" : "flex flex-col gap-1.5"}>
+          <Input
+            value={typeof value === "string" ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {sym === null ? null : <BarcodeView value={value} symbology={sym} size={64} />}
+        </div>
       )
+    }
   }
 }
