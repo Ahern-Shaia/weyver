@@ -15,6 +15,7 @@
 | **Auth + 租戶 context + 使用者身分**(Better Auth + Argon2id)| F-2 | ✅ **SHIPPED v1.0**(M0–M5:引擎+DI · 對映表+IdentityService · AuthGuard session→tenant + 剝 client header + TenantGuard 環境分派 + 跨租戶隔離 e2e · `/api/auth/*` handler + 前端登入/註冊/登出 + 受保護 layout〔強制登入僅 prod〕· rateLimit/安全標頭/throttler 硬化 · auth.spec 固化 · FMEA P0 全緩解;§6-bis 登入分層+治理;org→tenant 走 afterCreateOrganization hook;**dev header→真實認證,R1 上 prod 硬前提達成**。三層 RBAC=P0-4;SSO/MFA=後續)| [foundation/auth.md](foundation/auth.md) |
 | UI shell + design tokens + deploy | F-3 | ✅ 前端 v2.1(`packages/ui` + `/app`)| —(見 docs/14)|
 | **二步驟驗證(MFA / TOTP)** | F-4 | ✅ **SHIPPED v1.0**(M0–M4:twoFactor plugin + 4 整合測 · 帳號設定啟用/停用 UI〔QR + backup codes〕· 登入二步 challenge〔/login/2fa,TOTP + 備用碼〕· verify 端點 rateLimit · mfa.spec 固化 · FMEA P0 全緩解;承 F-2;scope out email/SMS OTP · passkey · org 強制 · trustDevice)| [foundation/mfa.md](foundation/mfa.md) |
+| **檔案儲存基礎設施(上傳/下載/附件欄)** | F-5 | 🚧 **M0 APPROVED — OQ-FS-1..7 全裁定(2026-07-27,全採建議),進 M1**|**解三模組共同硬阻塞**(OQ-FTP-6 image·signature·attachment 上傳 / OQ-PM-1 合併列印範本上傳·PDF 寫回·浮水印)。P0:`StorageDriver` 抽象(local dev/on-prem + S3-compatible 涵蓋 R2·S3·GCS·MinIO,承 docs/11 §3.6 R2 決策 + §16 避 lock-in)+ 伺服器代理上傳(**magic bytes 驗型別**/大小/白名單/**生成檔名**)+ API 代理下載(表單 view + **欄位 hidden 檢查**、`Content-Disposition: attachment`+nosniff)+ `file_object`(0014,RLS 車道)+ 兩階段綁定(pending→bound)+ 租戶配額 + attachment 欄完成(欄型契約不動)。docs/22 上傳鐵則逐條對照。**P1**:病毒掃描 ClamAV / presigned 直傳直下 / 縮圖 Sharp / image·signature 欄 / 範本上傳。migration 0014。≈0.37 mo | [foundation/file-storage.md](foundation/file-storage.md) |
 
 ---
 
