@@ -10,6 +10,7 @@ import { LayoutService } from "./layout/layout.service.js"
 import { MetadataService } from "./metadata/metadata.service.js"
 import { RecordService } from "./records/record.service.js"
 import { RelationService } from "./relations/relation.service.js"
+import { ReverseRelationService } from "./relations/reverse-relation.service.js"
 import { RollupService } from "./relations/rollup.service.js"
 
 @Module({
@@ -22,6 +23,7 @@ import { RollupService } from "./relations/rollup.service.js"
     RecordService,
     FormulaService,
     RelationService,
+    ReverseRelationService,
     RollupService,
     LayoutService,
   ],
@@ -31,6 +33,7 @@ import { RollupService } from "./relations/rollup.service.js"
     RecordService,
     FormulaService,
     RelationService,
+    ReverseRelationService,
     RollupService,
     LayoutService,
   ],

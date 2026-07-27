@@ -20,9 +20,13 @@ import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
-import { RecordService } from "../records/record.service.js"
 import { listQuerySchema } from "../records/record-specs.js"
 import type { RecordRow } from "../records/record-specs.js"
+import { RecordService } from "../records/record.service.js"
+import {
+  type ReverseRelationGroup,
+  ReverseRelationService,
+} from "../relations/reverse-relation.service.js"
 import {
   bulkRecordsBodySchema,
   createRecordBodySchema,
@@ -44,7 +48,10 @@ interface ListResponse {
 @Controller("api/forms/:formId/records")
 @UseGuards(TenantGuard, PermissionGuard)
 export class RecordsController {
-  constructor(@Inject(RecordService) private readonly records: RecordService) {}
+  constructor(
+    @Inject(RecordService) private readonly records: RecordService,
+    @Inject(ReverseRelationService) private readonly reverseRelations: ReverseRelationService,
+  ) {}
 
   @Get()
   async list(
@@ -118,6 +125,17 @@ export class RecordsController {
     @Param("recordId", ParseIntPipe) recordId: number,
   ): Promise<RecordRow> {
     return this.records.getRecord(tenant.tenantId, formId, recordId, permissions)
+  }
+
+  /* R1·workbench-uplift A3|反向關聯:本筆被哪些記錄引用(唯讀導航用) */
+  @Get(":recordId/relations")
+  async relations(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("recordId", ParseIntPipe) recordId: number,
+  ): Promise<ReverseRelationGroup[]> {
+    return this.reverseRelations.listReferencing(tenant.tenantId, formId, recordId, permissions)
   }
 
   @Patch(":recordId")
