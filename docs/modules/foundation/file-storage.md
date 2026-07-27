@@ -157,11 +157,17 @@ interface StorageDriver {
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED(OQ-FS-1..7 裁定,全採建議)| ✅ |
-| **M1** | 驅動抽象 + env 設定(api commit)| ⏳ |
-| **M2** | file_object(0014)+ 上傳/下載/刪除端點 | ⏳ |
-| **M3** | 兩階段綁定 + 孤兒 + 配額 | ⏳ |
-| **M4** | 前端 attachment 欄(上傳/下載/移除)| ⏳ |
-| **M5** | file-storage.spec + FMEA + doc v1.0 + MODULES ✅ + 回填解鎖註記 | ⏳ |
+| **M1** | 驅動抽象 + env 設定(`346f67d`)| ✅ |
+| **M2** | file_object(0014 RLS)+ 上傳/下載/刪除端點(`bdd8c88`)| ✅ |
+| **M3** | 兩階段綁定 + 孤兒 + 配額(`ee066d5`)| ✅ |
+| **M4** | 前端 attachment 欄(上傳/下載/移除)(`2a78956`)| ✅ |
+| **M5** | `file-storage.spec`(3 測)+ FMEA + doc v1.0 + MODULES ✅ + 回填解鎖註記 | ✅ |
+
+**實作偏離 M0 之處(誠實記錄)**
+1. **上傳路由帶 `:formId`**|M0 §1.1 寫 `POST /api/files`,實作為 `POST /api/forms/:formId/files?fieldId=` —— PermissionGuard 依路由 `:formId` 判表單級動作,不帶則無法在 guard 層驗 `edit`(M0 §4.3 步驟 1 之要求)。下載/刪除仍為 `/api/files/{key}`(key 三段對應路徑段)。
+2. **`@fastify/multipart` 釘 v8**|v10 要求 fastify 5,本專案釘 4.28.1(F-2 期型別重複問題)。
+3. **孤兒 sweep 無排程器**|於每次上傳前順帶掃該租戶逾期 pending(走 `(tenant_id,status)` 索引)。避免引入 `@nestjs/schedule` 常駐 ops;實體回收仍為 P1。
+4. **`FilesService` 不依賴 `FormEngineModule`**|欄位型別直查 `field_def`(Drizzle),使 `RecordService` 可反向注入 `FilesService` 做綁定而不需 `forwardRef`(AGENTS 禁)。
 
 ---
 
@@ -183,20 +189,23 @@ interface StorageDriver {
 
 ## 12. 失效場景反思(FMEA)— M5 收尾必填(R17);pre-mortem 預列
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| S1 | 猜 key 下載他人/他租戶檔案(BOLA)| key 非憑證;回查 metadata + tenant scope + 表單權限 + RLS | P0 |
-| S2 | 附件掛在 hidden 欄仍可下載(繞欄位級權限)| 下載驗 `fieldVisibility !== hidden`(maskRead 同源);integration 斷言 | P0 |
-| S3 | 惡意檔上傳(偽副檔名 / HTML·SVG XSS / 可執行)| magic bytes + 白名單 + 生成檔名 + `Content-Disposition: attachment` + nosniff + 不 inline | P0 |
-| S4 | 路徑穿越 / key 注入(`../`)| key 由伺服器生成(uuid),使用者輸入不入路徑;driver 端二次驗 key 格式 | P0 |
-| S5 | 大檔 / 大量上傳耗盡磁碟或頻寬(DoS)| 單檔上限 + 欄檔數上限 + 租戶配額 + throttler;超限明示拒 | P1 |
-| S6 | 孤兒檔累積(上傳後未存檔)| pending 狀態 + 期限標 orphaned;回收 job P1(明標殘留)| P1 |
-| S7 | 記錄刪除後檔案仍可下載 | 下載檢查記錄 soft-delete 狀態(bound 檔隨記錄不可讀);實體回收 P1 | P1 |
-| S8 | prod 缺 STORAGE_* 設定 → 執行期才爆 | env `superRefine` prod fail-fast(承既有 pattern)| P1 |
-| S9 | local driver 目錄落在 webroot / 被靜態服務 | 不註冊 `@fastify/static`;目錄設定於 repo 外;文件明載 | P1 |
-| S10 | 部署順序:前端先於 0014 migration | migration 必先(R10);缺表 → 上傳端點 500 前先 fail-fast 檢核 | P1 |
+> **收尾結論(2026-07-27)**|P0 之 S1–S4 **全數已緩解且有測試斷言**;P1 殘留 6 項如下標註,不阻 SHIPPED。
 
-> **檢查點**:M5 收尾時所有 P0(S1–S4)須 ✅ 方可標 SHIPPED。
+| # | 場景 | 落地緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| S1 | 猜 key 下載他人/他租戶檔案(BOLA)| key 非憑證:`requireFile` 回查 `file_object`(RLS + app 層 `tenant_id`)→ 表單 `view` → 欄位可見性。測:B 租戶持 A 之 key → 404 | P0 | ✅ |
+| S2 | 附件掛在 hidden 欄仍可下載(繞欄位級權限)| 下載驗 `fieldVisibility !== "hidden"`(與 `maskRead` 同源)。測:hidden → 403、read → 放行 | P0 | ✅ |
+| S3 | 惡意檔上傳(偽副檔名 / HTML·SVG XSS / 可執行)| magic bytes 判型 + 白名單(zip 僅 OOXML 副檔名放行、純文字僅 txt/csv 且無 NUL)+ 生成檔名 + `Content-Disposition: attachment` + 保守 `application/octet-stream` + nosniff。測:ELF 偽裝 .png/.pdf → 415(api + e2e 各一) | P0 | ✅ |
+| S4 | 路徑穿越 / key 注入(`../`)| key 由伺服器生成(uuid);`KEY_RE` 形狀白名單於 service 與 driver **雙重**驗證;local driver 另做 resolve 前綴比對。測:9 種穿越形狀全拒 | P0 | ✅ |
+| S5 | 大檔 / 大量上傳耗盡磁碟或頻寬(DoS)| multipart `fileSize`/`files:1` 硬限 + `truncated` 明示拒 + service 再驗 + 租戶配額 413 + 既有全域 throttler。測:配額超限 → 413 | P1 | ✅ 已緩解 |
+| S6 | 孤兒檔累積(上傳後未存檔)| pending 逾 24h → `orphaned`(每次上傳前順帶 sweep,不計入配額)。**殘留:實體檔案不刪** —— 需回收 job(P1) | P1 | ⚠️ 部分 |
+| S7 | 記錄刪除後檔案仍可下載 | **殘留**:目前 bound 檔於記錄 soft-delete 後仍可經 key 下載(權限仍需通過表單 `view`)。修法:下載時 join 記錄 `deleted_at`。列 P1 | P1 | ⚠️ 未做 |
+| S8 | prod 缺 STORAGE_* 設定 → 執行期才爆 | env `superRefine`:driver=s3 時缺 bucket/keys 開機即 fail-fast | P1 | ✅ |
+| S9 | local driver 目錄落在 webroot / 被靜態服務 | 未註冊 `@fastify/static`;`STORAGE_LOCAL_DIR` 預設 `.weyver-storage`(已 gitignore),prod 應指向 repo 外掛載點 | P1 | ✅ |
+| S10 | 部署順序:前端先於 0014 migration | migration 必先(R10)。開發期已實遇:未跑 0014 → 上傳 500(PG 42P01)。**殘留**:無啟動期 schema 檢核 | P1 | ⚠️ 流程約束 |
+| S11 | 綁定於 tx 外 → 記錄已存但綁定失敗 | 刻意設計:不回滾已存檔記錄;失敗之檔留 pending → 逾期轉 orphaned 兜底 | P2 | ✅ 已知取捨 |
+
+> **檢查點**:P0(S1–S4)全數 ✅ → SHIPPED。P1 殘留(S6 實體回收 / S7 記錄刪除後可讀 / S10 schema 檢核)已明列,隨 P1 批次補。
 
 ---
 
@@ -204,5 +213,6 @@ interface StorageDriver {
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-27 | **v1.0** | **SHIPPED** — M1 驅動抽象(local + S3 相容)/ M2 `file_object`(0014 RLS FORCE)+ 上傳·下載·刪除端點 / M3 兩階段綁定 + 孤兒 sweep + 租戶配額 / M4 前端 attachment 欄 / M5 `file-storage.spec` 3 測。api 283 + web 45 + e2e 25 全綠;FMEA P0 全緩解,P1 殘留 3 項明列。記錄 4 項實作偏離(上傳路由帶 formId / multipart 釘 v8 / 無排程器之 sweep / FilesService 不依賴 FormEngineModule) | Claude Code |
 | 2026-07-27 | v0.2 | **OQ-FS-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:local + S3-compatible 雙驅動抽象;伺服器代理上傳(magic bytes)與下載(欄位 hidden + attachment disposition);uuid key 非授權憑證;兩階段 pending→bound;病毒掃描 P1;file_object 走 RLS 車道 | Claude Code |
 | 2026-07-27 | v0.1 | 初版 DRAFT — 解 OQ-FTP-6 / OQ-PM-1 之共同阻塞。落地既有決策(docs/11 §3.6 R2 + §16 避 lock-in → S3-compatible 抽象 + local 驅動;docs/22 上傳安全鐵則逐條對照)。P0 = 驅動抽象 + 上傳/下載端點 + file_object(RLS)+ 兩階段綁定 + 配額 + attachment 欄完成;病毒掃描/presigned/縮圖/範本上傳/image·signature 欄 → P1。OQ-FS-1..7 待裁定 | Claude Code |

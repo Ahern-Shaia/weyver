@@ -40,7 +40,7 @@
 
 ### 1.3 不做的事
 
-- ❌ **合併列印 / 客製列印報表(範本上傳 + Carbone)**|依 **file-storage 基礎設施**(上傳端點 + 物件儲存 + 掃描),與 OQ-FTP-6 同一阻塞 → **P1,待 file-storage 落地**(OQ-PM-1)。
+- ⏳ **合併列印 / 客製列印報表(範本上傳 + Carbone)**|~~依 file-storage 基礎設施~~ → **【2026-07-27 阻塞已解除】**[F-5 file-storage](../foundation/file-storage.md) SHIPPED v1.0 提供上傳/下載/物件儲存抽象;本件維持 **P1**,待排期時直接接既有 `POST /api/forms/:formId/files` 與 `StorageDriver`(OQ-PM-1)。
 - ❌ **伺服器端 PDF 產生**(puppeteer / pdfmake)|P0 走瀏覽器列印(Ragic 亦將紙張/邊界/方向委派瀏覽器);伺服器端 PDF(密碼保護 / 大量非同步)→ P1(OQ-PM-3)。
 - ❌ **Code128 等 QR 以外 symbology**|`qrcode.react` 已在且 Ragic 僅列 Code128/QR;Code128 需新依賴 → P1(OQ-PM-4)。
 - ❌ **列印輸出寫回記錄之附件欄**(Ragic 批次合併列印可寫回)|依 file-storage → P1。

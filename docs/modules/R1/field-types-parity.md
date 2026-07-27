@@ -34,7 +34,8 @@
 
 ### 1.3 不做的事
 
-- ❌ **image / signature 欄 + attachment 上傳完成**｜依賴**檔案儲存基礎設施**(上傳端點 + 物件儲存抽象,OSS MinIO/local + 病毒掃描 + 大小/數量限制)—— 列為 **file-storage 依賴**(OQ-FTP-6:自成 P1 子件,本模組 P0 不含)。barcode(渲染)/mask(顯示)不需儲存 → 入 P0。
+- ✅ **【2026-07-27 解鎖】attachment 上傳已完成**|[F-5 file-storage](../foundation/file-storage.md) SHIPPED v1.0 —— attachment 欄已可上傳/下載/移除(前端 STUB 移除)。**image / signature 欄仍待本模組 P1 續作**(儲存基礎設施已就緒,只差欄型與拍照/簽名 UI)。
+- ❌ **image / signature 欄**｜~~依賴**檔案儲存基礎設施**~~(已解除)(上傳端點 + 物件儲存抽象,OSS MinIO/local + 病毒掃描 + 大小/數量限制)—— 列為 **file-storage 依賴**(OQ-FTP-6:自成 P1 子件,本模組 P0 不含)。barcode(渲染)/mask(顯示)不需儲存 → 入 P0。
 - ❌ **member 補完**(需 user 解析 UI + users grant)｜P1。
 - ❌ **rich text / Markdown 欄、address(Google Maps+GPS)、循環日期、匯率(外部 API + circuit breaker)、民國年等日期格式、文字遮罩前後 N 碼**｜§2 P1。
 - ❌ **Duration / Button / AI 欄 / 行動掃碼輸入 / 傳閱·選擇群組·打卡 / 付款(綠界)**｜§2 P2 / R2。
