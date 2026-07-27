@@ -5,7 +5,9 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  type OnModuleInit,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
 } from "@nestjs/common"
@@ -15,6 +17,7 @@ import type { Knex } from "knex"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { APP_KNEX, DRIZZLE, type DrizzleDb } from "../db/db.module.js"
 import { fieldDefs } from "../db/schema.js"
+import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { detectType } from "../storage/file-type.js"
 import { STORAGE_DRIVER, type StorageDriver, isValidKey } from "../storage/storage-driver.js"
@@ -47,13 +50,27 @@ function num(value: string | number): number {
 }
 
 @Injectable()
-export class FilesService {
+export class FilesService implements OnModuleInit {
+  private readonly logger = new Logger(FilesService.name)
+
   constructor(
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
+
+  /* FMEA S10|部署順序防護:0014 未套用時於**開機**即明示失敗,而非等到使用者上傳才 500。
+     prod fail-fast(容器不啟動 → 部署顯性失敗);dev/test 只告警,避免尚未 migrate 的本機無法啟動。 */
+  async onModuleInit(): Promise<void> {
+    const result = await this.knex.raw<{ rows: { reg: string | null }[] }>(
+      "SELECT to_regclass('public.file_object')::text AS reg",
+    )
+    if (result.rows[0]?.reg != null) return
+    const message = "file_object 資料表不存在:請先套用 migration 0014(pnpm db:migrate)"
+    if (this.config.get<string>("NODE_ENV") === "production") throw new Error(message)
+    this.logger.warn(message)
+  }
 
   maxFileBytes(): number {
     return (this.config.get<number>("STORAGE_MAX_FILE_MB") ?? 20) * 1024 * 1024
@@ -138,7 +155,7 @@ export class FilesService {
     return { key, name: filename.slice(0, 255), mime: detected.mime, size: body.length }
   }
 
-  /* 下載:回查 metadata → 表單 view → 欄位非 hidden → 串流(FMEA S1/S2)。 */
+  /* 下載:回查 metadata → 表單 view → 欄位非 hidden → 記錄未刪 → 串流(FMEA S1/S2/S7)。 */
   async openForDownload(
     tenant: TenantContext,
     permissions: EffectivePermissions,
@@ -153,6 +170,7 @@ export class FilesService {
     if (permissions.fieldVisibility(fieldId, formId) === "hidden") {
       throw new ForbiddenException({ code: "FIELD_FORBIDDEN", message: "無此欄位檢視權限" })
     }
+    await this.assertRecordReadable(tenant.tenantId, formId, row.record_id)
     const stream = await this.storage.get(key)
     return {
       stream,
@@ -260,6 +278,29 @@ export class FilesService {
     return field !== undefined && ATTACHMENT_FIELD_TYPES.has(field.cellValueType)
       ? field
       : undefined
+  }
+
+  /* FMEA S7|已綁記錄之附件隨記錄生滅:記錄 soft-delete 後不得再經 key 下載
+     (未綁記錄之 pending 檔不受此限 —— 填單中尚未存檔)。identifier 出自 catalog 生成函式,
+     非使用者輸入(鐵則 1);值一律參數綁定。 */
+  private async assertRecordReadable(
+    tenantId: number,
+    formId: number,
+    recordId: string | number | null,
+  ): Promise<void> {
+    if (recordId === null) return
+    const table = physicalTableName(formId)
+    const found = await this.inTenantTx(tenantId, (trx) =>
+      trx
+        .withSchema(DATA_SCHEMA)
+        .table(table)
+        .where({ tenant_id: tenantId, id: num(recordId) })
+        .whereNull("deleted_at")
+        .first("id"),
+    )
+    if (found === undefined) {
+      throw new NotFoundException({ code: "FILE_NOT_FOUND", message: "檔案不存在" })
+    }
   }
 
   private async requireFile(tenant: TenantContext, key: string): Promise<FileObjectRow> {

@@ -311,6 +311,39 @@ describe("F-5 M3 兩階段綁定 / 孤兒 / 配額", () => {
   })
 })
 
+describe("F-5 v1.1 P1 殘留補強", () => {
+  it("FMEA S7:記錄 soft-delete 後,已綁附件不可再下載", async () => {
+    const { body } = await upload(A(), "隨記錄.pdf", Buffer.from("%PDF-1.7\nrec"))
+    const key = String(body.key)
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/records`,
+      headers: A(),
+      payload: { values: { 品名: "隨記錄刪除", 證明文件: [{ key, name: "隨記錄.pdf" }] } },
+    })
+    const recordId = (created.json() as { id: number }).id
+
+    const before = await app.inject({ method: "GET", url: `/api/files/${key}`, headers: A() })
+    expect(before.statusCode).toBe(200)
+
+    const del = await app.inject({
+      method: "DELETE",
+      url: `/api/forms/${formId}/records/${recordId}`,
+      headers: A(),
+    })
+    expect(del.statusCode).toBe(204)
+
+    const after = await app.inject({ method: "GET", url: `/api/files/${key}`, headers: A() })
+    expect(after.statusCode).toBe(404)
+  })
+
+  it("未綁記錄之 pending 檔不受記錄狀態影響(填單中仍可預覽)", async () => {
+    const { body } = await upload(A(), "填單中.pdf", Buffer.from("%PDF-1.7\ndraft"))
+    const res = await app.inject({ method: "GET", url: `/api/files/${body.key}`, headers: A() })
+    expect(res.statusCode).toBe(200)
+  })
+})
+
 describe("F-5 M2 欄位級授權(非 admin;dev header 恆為 super admin 故直呼 service)", () => {
   it("FMEA S2:附件掛在 hidden 欄 → 拒下載", async () => {
     const { body } = await upload(A(), "薪資表.pdf", Buffer.from("%PDF-1.7\npay"))
