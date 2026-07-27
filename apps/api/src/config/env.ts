@@ -23,14 +23,40 @@ export const envSchema = z
     BETTER_AUTH_TRUSTED_ORIGINS: z
       .string()
       .default("http://localhost:3000,http://localhost:3002,http://localhost:3001"),
+    /* F-5 檔案儲存(OQ-FS-1=A):local = dev / on-prem 自 host;s3 = S3 相容(R2 / S3 / GCS / MinIO)。
+       prod 選 s3 時 bucket/keys 必填(見 superRefine),避免執行期才爆(FMEA S8)。 */
+    STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+    // local 驅動根目錄:**必須位於 webroot 外**(docs/22);預設為 repo 外的暫存目錄
+    STORAGE_LOCAL_DIR: z.string().default(".weyver-storage"),
+    STORAGE_BUCKET: z.string().optional(),
+    STORAGE_ENDPOINT: z.string().url().optional(),
+    STORAGE_REGION: z.string().default("auto"),
+    STORAGE_ACCESS_KEY: z.string().optional(),
+    STORAGE_SECRET_KEY: z.string().optional(),
+    // 單檔上限 MB(另有 Fastify multipart limits 兜底)
+    STORAGE_MAX_FILE_MB: z.coerce.number().int().min(1).max(200).default(20),
+    // 每租戶總量配額 MB(0 = 不限)
+    STORAGE_TENANT_QUOTA_MB: z.coerce.number().int().min(0).default(2048),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.BETTER_AUTH_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["BETTER_AUTH_SECRET"],
-        message: "BETTER_AUTH_SECRET is required in production (min 32 chars; inject via Infisical)",
+        message:
+          "BETTER_AUTH_SECRET is required in production (min 32 chars; inject via Infisical)",
       })
+    }
+    if (env.STORAGE_DRIVER === "s3") {
+      for (const key of ["STORAGE_BUCKET", "STORAGE_ACCESS_KEY", "STORAGE_SECRET_KEY"] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} is required when STORAGE_DRIVER=s3 (inject via Infisical)`,
+          })
+        }
+      }
     }
   })
   .transform((env) => ({

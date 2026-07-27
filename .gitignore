@@ -44,3 +44,6 @@ test-results/
 /*.png
 /*.jpg
 *.log
+
+# F-5 local 儲存驅動根目錄(webroot 外;不進版控)
+.weyver-storage/

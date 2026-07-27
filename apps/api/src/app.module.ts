@@ -11,6 +11,7 @@ import { DbModule } from "./db/db.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
 import { HealthModule } from "./health/health.module.js"
 import { LabelsModule } from "./labels/labels.module.js"
+import { StorageModule } from "./storage/storage.module.js"
 import { DomainExceptionFilter } from "./http/domain-exception.filter.js"
 import { ViewsModule } from "./views/views.module.js"
 
@@ -20,6 +21,7 @@ import { ViewsModule } from "./views/views.module.js"
     // 全域速率限制(AGENTS 🔒:APP_GUARD)—— Nest 路由防護;/api/auth/* 另由 Better Auth rateLimit 覆蓋
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     DbModule,
+    StorageModule,
     AuthzModule,
     AuthModule,
     FormEngineModule,
