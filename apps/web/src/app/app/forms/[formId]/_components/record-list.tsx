@@ -1,9 +1,12 @@
 "use client"
 
-import type { ReactNode } from "react"
 import type { FieldDto, RecordRow } from "@/lib/engine/schemas"
+import { StatusChip } from "@weyver/ui/status-chip"
+import type { ReactNode } from "react"
 
-/* 工作台左欄:記錄清單(常駐,審一批不換頁)。標題取首欄值,fallback #id。 */
+/* 工作台左欄:記錄清單(常駐,審一批不換頁)。標題取首欄值,fallback #id。
+   R1·workbench-uplift A2:每列補**狀態 + 金額**(triage 用的兩個訊號),
+   免得只靠標題無法判斷該先看哪筆。 */
 export function titleOf(record: RecordRow, fields: readonly FieldDto[]): string {
   const first = fields[0]
   const v = first ? record.values[first.name] : undefined
@@ -25,6 +28,8 @@ export function RecordList({
   readonly selectedId: number | null
   readonly onSelect: (id: number) => void
 }): ReactNode {
+  const statusField = fields.find((f) => f.type === "singleSelect")
+  const moneyField = fields.find((f) => f.type === "money")
   return (
     <div data-noprint className="flex w-60 shrink-0 flex-col border-r border-line bg-card">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -55,7 +60,19 @@ export function RecordList({
                 <div className="truncate text-[12px] font-medium text-ink">
                   {titleOf(r, fields)}
                 </div>
-                <div className="mt-0.5 font-mono text-[10.5px] text-ink-4">#{r.id}</div>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="font-mono text-[10.5px] text-ink-4">#{r.id}</span>
+                  {statusField ? (
+                    <StatusChip className="h-[15px] text-[9.5px]">
+                      {String(r.values[statusField.name] ?? "—")}
+                    </StatusChip>
+                  ) : null}
+                  {moneyField ? (
+                    <span className="ml-auto font-mono text-[10.5px] tabular-nums text-ink-2">
+                      {String(r.values[moneyField.name] ?? "—")}
+                    </span>
+                  ) : null}
+                </div>
               </button>
             )
           })

@@ -42,6 +42,20 @@ export const STUB_TYPES: readonly CellValueType[] = ["member", "link"]
 export const attachmentItemSchema = z.object({ key: z.string(), name: z.string() })
 export type AttachmentItem = z.infer<typeof attachmentItemSchema>
 
+/* R1·workbench-uplift A5:actor id → 顯示名(稽核區用;後端只回 {id,name})*/
+export const userNameSchema = z.object({ id: z.number().int(), name: z.string() })
+export type UserName = z.infer<typeof userNameSchema>
+
+/* A3 反向關聯:本筆被哪些記錄引用 */
+export const reverseRelationGroupSchema = z.object({
+  formId: z.number().int(),
+  formName: z.string(),
+  viaFieldName: z.string(),
+  records: z.array(z.object({ id: z.number().int(), title: z.string() })),
+  truncated: z.boolean(),
+})
+export type ReverseRelationGroup = z.infer<typeof reverseRelationGroupSchema>
+
 export const fileDtoSchema = z.object({
   key: z.string(),
   name: z.string(),

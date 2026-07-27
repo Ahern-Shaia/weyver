@@ -1,17 +1,21 @@
 "use client"
 
+import { FieldInput } from "@/app/app/builder/_components/field-input"
+import { toSubmitValue } from "@/app/app/builder/_components/field-value"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
-import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
+import { useCreateRecord, useDeleteRecord, useUpdateRecord, useUserNames } from "@/lib/engine/hooks"
 import { useLayout } from "@/lib/engine/hooks"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
-import { Copy, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
+import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
+import { Check, Copy, Paperclip, Pencil, Printer, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { LineItems } from "./line-items"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
+import { RelationRail } from "./relation-rail"
 
 /* 複製時排除的欄位型別(系統計算/自動產生;由引擎於新記錄重算) */
 const COPY_EXCLUDE = new Set(["autoNumber", "formula"])
@@ -30,6 +34,26 @@ function fmtVal(v: unknown): string {
   return String(v)
 }
 
+/* R1·workbench-uplift A2|狀態欄慣例(OQ-RWB-3=A):**第一個 singleSelect 即狀態**,零設定。
+   tone 只認欄位 options.colors 明確設定的語意色;未設定一律 neutral —— 不以字面猜測
+   「已核准/待審」(那會在客戶自訂用語下猜錯),且對齊 docs/14「已了結退到背景」。
+   顏色設定 UI 為 field-types-parity P1;在那之前狀態章恆為中性框,仍提供「這是狀態」的結構訊號。 */
+const TONES: readonly StatusTone[] = ["ok", "warn", "error", "neutral"]
+
+function statusFieldOf(fields: readonly FieldDto[]): FieldDto | undefined {
+  return fields.find((f) => f.type === "singleSelect")
+}
+
+function statusToneOf(field: FieldDto, value: unknown): StatusTone {
+  const colors = (field.options as { colors?: Record<string, string> }).colors
+  const token = typeof value === "string" ? colors?.[value] : undefined
+  return TONES.includes(token as StatusTone) ? (token as StatusTone) : "neutral"
+}
+
+/* 金額彙總:money / percent / formula / rollup 之現值(單筆的「算」的結果)。
+   與「基本資料」重複呈現是刻意的 —— 摘要區讓人不必往下捲就看到數字(信任訊號,docs/14)。 */
+const SUMMARY_TYPES = new Set(["money", "percent", "formula", "rollup"])
+
 export function ObjectPage({
   form,
   record,
@@ -43,8 +67,47 @@ export function ObjectPage({
 }): ReactNode {
   const fields = form.fields
   const moneyField = fields.find((f) => f.type === "money")
+  const statusField = statusFieldOf(fields)
+  const summaryFields = fields.filter((f) => SUMMARY_TYPES.has(f.type))
+  const { data: userNames } = useUserNames([record.createdBy, record.updatedBy])
+  const nameOf = (actorId: number): string =>
+    userNames?.find((u) => u.id === actorId)?.name ?? `actor #${actorId}`
   const createRecord = useCreateRecord(formId)
   const deleteRecord = useDeleteRecord(formId)
+  const updateRecord = useUpdateRecord(formId)
+
+  /* R1·workbench-uplift A4(OQ-RWB-5=A)|就地編輯:同一版面切換檢視↔編輯,不跳設計器。
+     draft 只在進入編輯時由現值初始化;送出走既有 PATCH(帶 expectedVersion → 版本衝突由後端擋)。 */
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<Record<string, unknown>>({})
+
+  const startEdit = (): void => {
+    const initial: Record<string, unknown> = {}
+    for (const f of fields) {
+      const v = record.values[f.name]
+      initial[f.name] = v === null || v === undefined ? "" : v
+    }
+    setDraft(initial)
+    setMsg(null)
+    setEditing(true)
+  }
+  const saveEdit = (): void => {
+    const values: Record<string, unknown> = {}
+    for (const f of fields) {
+      const submitted = toSubmitValue(f, draft[f.name])
+      if (submitted !== undefined) values[f.name] = submitted
+    }
+    updateRecord.mutate(
+      { recordId: record.id, expectedVersion: record.version, values },
+      {
+        onSuccess: () => {
+          setEditing(false)
+          setMsg("已儲存")
+        },
+        onError: (e) => setMsg(describeEngineError(e)),
+      },
+    )
+  }
   const { data: layoutResp } = useLayout(formId)
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -75,7 +138,7 @@ export function ObjectPage({
     if (!window.confirm(`確定刪除「${titleOf(record, fields)}」?此動作可於資源回收桶還原。`)) return
     deleteRecord.mutate(record.id, { onError: (e) => setMsg(describeEngineError(e)) })
   }
-  const busy = createRecord.isPending || deleteRecord.isPending
+  const busy = createRecord.isPending || deleteRecord.isPending || updateRecord.isPending
   const sections = useMemo<readonly string[]>(
     () => ["基本資料", ...(childForm ? ["明細"] : []), "稽核"],
     [childForm],
@@ -120,6 +183,11 @@ export function ObjectPage({
           <span className="font-mono text-[11px] text-ink-4">
             #{record.id} · v{record.version}
           </span>
+          {statusField ? (
+            <StatusChip tone={statusToneOf(statusField, record.values[statusField.name])}>
+              {fmtVal(record.values[statusField.name])}
+            </StatusChip>
+          ) : null}
           {moneyField ? (
             <span className="ml-auto flex items-baseline gap-1.5">
               <span className="text-[10px] text-ink-4">{moneyField.name}</span>
@@ -129,6 +197,29 @@ export function ObjectPage({
             </span>
           ) : null}
           <div data-noprint className={`flex items-center gap-1.5 ${moneyField ? "" : "ml-auto"}`}>
+            {editing ? (
+              <>
+                <ActBtn
+                  icon={<Check size={13} strokeWidth={1.9} />}
+                  label="儲存"
+                  onClick={saveEdit}
+                  disabled={busy}
+                />
+                <ActBtn
+                  icon={<X size={13} strokeWidth={1.9} />}
+                  label="取消"
+                  onClick={() => setEditing(false)}
+                  disabled={busy}
+                />
+              </>
+            ) : (
+              <ActBtn
+                icon={<Pencil size={13} strokeWidth={1.9} />}
+                label="編輯"
+                onClick={startEdit}
+                disabled={busy}
+              />
+            )}
             <ActBtn
               icon={<Copy size={13} strokeWidth={1.9} />}
               label="複製"
@@ -184,6 +275,19 @@ export function ObjectPage({
 
       {/* 區段 */}
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+        {summaryFields.length > 0 ? (
+          <section className="mb-4 flex flex-wrap gap-x-8 gap-y-2 border border-line bg-card px-4 py-3">
+            {summaryFields.map((f) => (
+              <div key={f.id} className="flex flex-col gap-0.5">
+                <span className="text-[10px] text-ink-4">{f.name}</span>
+                <span className="font-mono text-[14px] font-semibold tabular-nums text-ink">
+                  {fmtVal(record.values[f.name])}
+                </span>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
         <section id="sec-基本資料" className="scroll-mt-2 pb-5">
           <h4 className="mb-2.5 text-[11.5px] font-semibold text-ink-3">基本資料</h4>
           <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
@@ -208,7 +312,14 @@ export function ObjectPage({
                       : "flex-1 text-[12.5px] text-ink"
                   }
                 >
-                  {f.type === "attachment" ? (
+                  {editing ? (
+                    <FieldInput
+                      field={f}
+                      formId={formId}
+                      value={draft[f.name]}
+                      onChange={(v) => setDraft((prev) => ({ ...prev, [f.name]: v }))}
+                    />
+                  ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />
                   ) : fieldSymbology(f) === null ? (
                     fmtVal(record.values[f.name])
@@ -237,14 +348,16 @@ export function ObjectPage({
           </section>
         ) : null}
 
+        <RelationRail formId={formId} record={record} fields={fields} />
+
         <section id="sec-稽核" className="scroll-mt-2 border-t border-line pt-4">
           <h4 className="mb-2.5 text-[11.5px] font-semibold text-ink-3">稽核紀錄</h4>
           <div className="relative pl-4">
             <div className="absolute top-1 bottom-1 left-1 w-px bg-line" />
-            <Event label="建立" who={`actor #${record.createdBy}`} at={fmtDate(record.createdAt)} />
+            <Event label="建立" who={nameOf(record.createdBy)} at={fmtDate(record.createdAt)} />
             <Event
               label={`更新 · v${record.version}`}
-              who={`actor #${record.updatedBy}`}
+              who={nameOf(record.updatedBy)}
               at={fmtDate(record.updatedAt)}
               now
             />

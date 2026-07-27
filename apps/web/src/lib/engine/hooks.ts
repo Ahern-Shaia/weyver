@@ -5,13 +5,13 @@ import { z } from "zod"
 import { engineFetch } from "./client"
 import {
   type AddFieldInput,
-  type CreateFormInput,
-  type FormDto,
-  type ListResponse,
   type ApprovalStep,
   type ButtonConfig,
+  type CreateFormInput,
+  type FormDto,
   type LabelConfig,
   type Layout,
+  type ListResponse,
   type RecordRow,
   type ViewConfig,
   type ViewDto,
@@ -27,6 +27,8 @@ import {
   layoutSchema,
   listResponseSchema,
   recordRowSchema,
+  reverseRelationGroupSchema,
+  userNameSchema,
   viewDtoSchema,
 } from "./schemas"
 
@@ -505,5 +507,32 @@ export function useSaveWithLines(parentFormId: number) {
         { method: "POST", body: input },
       ),
     onSuccess: () => invalidate([formKeys.records(parentFormId)]),
+  })
+}
+
+/* R1·workbench-uplift A5|actor id → 顯示名。以排序後的 id 集合為 key → 同一組 id 共用快取;
+   稽核區每筆記錄只有建立者/更新者兩個 id,故一次請求即足。 */
+export function useUserNames(actorIds: readonly number[]) {
+  const ids = [...new Set(actorIds.filter((id) => Number.isSafeInteger(id) && id > 0))].sort(
+    (a, b) => a - b,
+  )
+  return useQuery({
+    queryKey: ["users", "lookup", ids],
+    enabled: ids.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: () => engineFetch(`/users/lookup?ids=${ids.join(",")}`, z.array(userNameSchema)),
+  })
+}
+
+/* A3|反向關聯(本筆被哪些記錄引用)。記錄切換即重取;無關聯時後端回空陣列。 */
+export function useReverseRelations(formId: number, recordId: number | null) {
+  return useQuery({
+    queryKey: ["forms", formId, "records", recordId, "relations"],
+    enabled: recordId !== null,
+    queryFn: () =>
+      engineFetch(
+        `/forms/${formId}/records/${String(recordId)}/relations`,
+        z.array(reverseRelationGroupSchema),
+      ),
   })
 }
