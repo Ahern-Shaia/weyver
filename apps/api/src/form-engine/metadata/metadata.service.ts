@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common"
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
-import { DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
+import { DRIZZLE, type DrizzleDb, TenantDb } from "../../db/db.module.js"
 import { fieldDefs, formDefs, users } from "../../db/schema.js"
 import { FieldNotFoundError, FormNotFoundError } from "../errors.js"
 import { FIELD_TYPE_REGISTRY } from "../field-types/field-type-registry.js"
@@ -18,7 +18,13 @@ export interface FormWithFields {
    DDL(M3)包裹本 service:createDraft → 物理 DDL → markProvisioned。 */
 @Injectable()
 export class MetadataService {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+  constructor(
+    /* 特權車道:僅用於跨租戶系統表(users;weyver_app 無 grant)。 */
+    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    /* F-6 M3:租戶範疇 metadata(form_def / field_def)一律經此 —— app 車道 + app.tenant_id
+       → 既有 RLS FORCE 成為第二防線(T4);app 層 WHERE tenant_id 仍保留為第一防線。 */
+    @Inject(TenantDb) private readonly tenantDb: TenantDb,
+  ) {}
 
   /* actorId 選用:有則寫 created_by(owner 短路,OQ-ARI-4);系統/種子建表可省。
      created_by 須為真實 users 列(FK):prod actorId 必為已 upsert 之使用者;dev 之 x-dev-actor 為
@@ -28,16 +34,17 @@ export class MetadataService {
     spec: CreateFormSpec,
     actorId?: number,
   ): Promise<FormWithFields> {
-    return this.db.transaction(async (tx) => {
-      let createdBy: number | null = null
-      if (actorId !== undefined) {
-        const found = await tx
-          .select({ id: users.id })
-          .from(users)
-          .where(eq(users.id, actorId))
-          .limit(1)
-        createdBy = found[0]?.id ?? null
-      }
+    let createdBy: number | null = null
+    if (actorId !== undefined) {
+      // users 為跨租戶系統表(非 RLS、app 角色無 grant)→ 特權車道;純讀取,無跨車道原子性顧慮
+      const found = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, actorId))
+        .limit(1)
+      createdBy = found[0]?.id ?? null
+    }
+    return this.tenantDb.withTenant(tenantId, async (tx) => {
       const insertedForms = await tx
         .insert(formDefs)
         .values({
@@ -71,29 +78,33 @@ export class MetadataService {
   }
 
   async getForm(tenantId: number, formId: number): Promise<FormWithFields> {
-    const forms = await this.db
-      .select()
-      .from(formDefs)
-      .where(
-        and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
-      )
-    const form = forms[0]
-    if (form === undefined) throw new FormNotFoundError(formId)
+    return this.tenantDb.withTenant(tenantId, async (tx) => {
+      const forms = await tx
+        .select()
+        .from(formDefs)
+        .where(
+          and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+        )
+      const form = forms[0]
+      if (form === undefined) throw new FormNotFoundError(formId)
 
-    const fields = await this.db
-      .select()
-      .from(fieldDefs)
-      .where(and(eq(fieldDefs.formId, form.id), isNull(fieldDefs.deletedAt)))
-      .orderBy(asc(fieldDefs.position))
-    return { form, fields }
+      const fields = await tx
+        .select()
+        .from(fieldDefs)
+        .where(and(eq(fieldDefs.formId, form.id), isNull(fieldDefs.deletedAt)))
+        .orderBy(asc(fieldDefs.position))
+      return { form, fields }
+    })
   }
 
   async listForms(tenantId: number): Promise<readonly FormDefRow[]> {
-    return this.db
-      .select()
-      .from(formDefs)
-      .where(and(eq(formDefs.tenantId, tenantId), isNull(formDefs.deletedAt)))
-      .orderBy(asc(formDefs.id))
+    return this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .select()
+        .from(formDefs)
+        .where(and(eq(formDefs.tenantId, tenantId), isNull(formDefs.deletedAt)))
+        .orderBy(asc(formDefs.id)),
+    )
   }
 
   async markProvisioned(
@@ -101,11 +112,13 @@ export class MetadataService {
     formId: number,
     state: "ready" | "failed",
   ): Promise<void> {
-    const updated = await this.db
-      .update(formDefs)
-      .set({ provisionState: state, updatedAt: new Date() })
-      .where(and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId)))
-      .returning({ id: formDefs.id })
+    const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .update(formDefs)
+        .set({ provisionState: state, updatedAt: new Date() })
+        .where(and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId)))
+        .returning({ id: formDefs.id }),
+    )
     if (updated.length === 0) throw new FormNotFoundError(formId)
   }
 
@@ -115,7 +128,8 @@ export class MetadataService {
     spec: AddFieldSpec,
     position: number,
   ): Promise<FieldDefRow> {
-    const rows = await this.db
+    const rows = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
       .insert(fieldDefs)
       .values({
         formId,
@@ -128,16 +142,17 @@ export class MetadataService {
         isUnique: spec.unique,
         position,
       })
-      .returning()
+      .returning(),
+    )
     const row = rows[0]
     if (row === undefined) throw new Error("insert field_def returned no row")
     return row
   }
 
   async hardDeleteField(tenantId: number, fieldId: number): Promise<void> {
-    await this.db
-      .delete(fieldDefs)
-      .where(and(eq(fieldDefs.tenantId, tenantId), eq(fieldDefs.id, fieldId)))
+    await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx.delete(fieldDefs).where(and(eq(fieldDefs.tenantId, tenantId), eq(fieldDefs.id, fieldId))),
+    )
   }
 
   /* metadata-only 換位(OQ-FDU-3=B):同 tx 交換兩欄 position;無 DDL、無 rewrite */
@@ -145,7 +160,7 @@ export class MetadataService {
     tenantId: number,
     updates: readonly { fieldId: number; position: number }[],
   ): Promise<void> {
-    await this.db.transaction(async (tx) => {
+    await this.tenantDb.withTenant(tenantId, async (tx) => {
       for (const { fieldId, position } of updates) {
         await tx
           .update(fieldDefs)
@@ -156,17 +171,19 @@ export class MetadataService {
   }
 
   async softDeleteField(tenantId: number, fieldId: number): Promise<void> {
-    const updated = await this.db
-      .update(fieldDefs)
-      .set({ deletedAt: new Date() })
-      .where(
-        and(
-          eq(fieldDefs.tenantId, tenantId),
-          eq(fieldDefs.id, fieldId),
-          isNull(fieldDefs.deletedAt),
-        ),
-      )
-      .returning({ id: fieldDefs.id })
+    const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .update(fieldDefs)
+        .set({ deletedAt: new Date() })
+        .where(
+          and(
+            eq(fieldDefs.tenantId, tenantId),
+            eq(fieldDefs.id, fieldId),
+            isNull(fieldDefs.deletedAt),
+          ),
+        )
+        .returning({ id: fieldDefs.id }),
+    )
     if (updated.length === 0) throw new FieldNotFoundError(fieldId)
   }
 
@@ -177,22 +194,24 @@ export class MetadataService {
     dbFieldType: string,
     options: Record<string, unknown>,
   ): Promise<void> {
-    const updated = await this.db
-      .update(fieldDefs)
-      .set({ cellValueType, dbFieldType, options })
-      .where(
-        and(
-          eq(fieldDefs.tenantId, tenantId),
-          eq(fieldDefs.id, fieldId),
-          isNull(fieldDefs.deletedAt),
-        ),
-      )
-      .returning({ id: fieldDefs.id })
+    const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .update(fieldDefs)
+        .set({ cellValueType, dbFieldType, options })
+        .where(
+          and(
+            eq(fieldDefs.tenantId, tenantId),
+            eq(fieldDefs.id, fieldId),
+            isNull(fieldDefs.deletedAt),
+          ),
+        )
+        .returning({ id: fieldDefs.id }),
+    )
     if (updated.length === 0) throw new FieldNotFoundError(fieldId)
   }
 
   async softDeleteForm(tenantId: number, formId: number): Promise<void> {
-    await this.db.transaction(async (tx) => {
+    await this.tenantDb.withTenant(tenantId, async (tx) => {
       const updated = await tx
         .update(formDefs)
         .set({ deletedAt: new Date(), updatedAt: new Date() })
@@ -216,13 +235,15 @@ export class MetadataService {
 
   /* R1·UP-3 2D 設計器:整表版面覆寫(純 metadata,零 DDL)+ bumpVersion。 */
   async setLayout(tenantId: number, formId: number, layout: unknown): Promise<void> {
-    const updated = await this.db
-      .update(formDefs)
-      .set({ layout, version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
-      .where(
-        and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
-      )
-      .returning({ id: formDefs.id })
+    const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .update(formDefs)
+        .set({ layout, version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
+        .where(
+          and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+        )
+        .returning({ id: formDefs.id }),
+    )
     if (updated.length === 0) throw new FormNotFoundError(formId)
   }
 
@@ -237,11 +258,13 @@ export class MetadataService {
   }
 
   async bumpVersion(tenantId: number, formId: number): Promise<void> {
-    const updated = await this.db
-      .update(formDefs)
-      .set({ version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
-      .where(and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId)))
-      .returning({ id: formDefs.id })
+    const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .update(formDefs)
+        .set({ version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
+        .where(and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId)))
+        .returning({ id: formDefs.id }),
+    )
     if (updated.length === 0) throw new FormNotFoundError(formId)
   }
 }

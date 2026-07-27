@@ -2,7 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { and, eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDdlKnex, createDrizzle, type DrizzleDb } from "../src/db/db.module.js"
+import { createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { formulaDefs, tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
@@ -35,10 +35,10 @@ beforeAll(async () => {
     .returning()
   tenantA = rows[0]?.id ?? 0
 
-  const metadata = new MetadataService(db)
+  const metadata = new MetadataService(db, new TenantDb(db))
   const ddlKnex = createDdlKnex(container.getConnectionUri())
   knexDestroy = () => ddlKnex.destroy()
-  const formula = new FormulaService(db, metadata)
+  const formula = new FormulaService(new TenantDb(db), metadata)
   // 關鍵:formula 注入 DdlService(建表自動 defineFormula)+ RecordService(讀時算注入)
   const ddl = new DdlService(ddlKnex, db, metadata, formula)
   records = new RecordService(ddlKnex, metadata, formula)

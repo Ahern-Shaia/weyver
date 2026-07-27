@@ -3,6 +3,7 @@ import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { ddlAudits } from "../../db/schema.js"
 import { FormulaService } from "../formula/formula.service.js"
+import { QuotaService } from "../../reliability/quota.service.js"
 import {
   FieldNotFoundError,
   FormNotPendingError,
@@ -33,6 +34,8 @@ export class DdlService {
     @Inject(MetadataService) private readonly metadata: MetadataService,
     // formula 欄建立後自動註冊 formula_def(P0-3 M6);optional 不影響既有測試建構
     @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
+    // F-6 M2 配額(C5 DDL DoS);optional 使既有單元測建構不受影響
+    @Optional() @Inject(QuotaService) private readonly quota?: QuotaService,
   ) {}
 
   async createForm(
@@ -40,6 +43,10 @@ export class DdlService {
     spec: CreateFormSpec,
     actorId?: number,
   ): Promise<FormWithFields> {
+    if (this.quota !== undefined) {
+      await this.quota.assertCanCreateForm(tenantId)
+      await this.quota.assertFieldCountWithinQuota(tenantId, spec.fields.length)
+    }
     const draft = await this.metadata.createFormDraft(tenantId, spec, actorId)
     await this.provisionForm(tenantId, draft)
     const loaded = await this.metadata.getForm(tenantId, draft.form.id)
@@ -65,6 +72,7 @@ export class DdlService {
 
   async addField(tenantId: number, formId: number, spec: AddFieldSpec): Promise<FieldDefRow> {
     const { form, fields } = await this.readyForm(tenantId, formId)
+    if (this.quota !== undefined) await this.quota.assertCanAddFields(tenantId, formId, 1)
     const position = fields.reduce((max, f) => Math.max(max, f.position), -1) + 1
     const row = await this.metadata.insertField(tenantId, formId, spec, position)
     const table = physicalTableName(form.id)

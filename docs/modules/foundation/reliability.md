@@ -1,6 +1,7 @@
 # reliability.md — [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job)設計文件
 
-> ⏳ **狀態:DRAFT — OQ-REL-1..7 待裁定**
+> ✅ **狀態:APPROVED — OQ-REL-1..7 已裁定(2026-07-27;全採建議);進入 M1**
+> **裁定摘要**|1=A 冪等 key 選填 · 2=**B** per-tenant 可調配額(tenants 加 nullable 欄)· 3=A 只切租戶範疇 metadata · 4=A `@nestjs/schedule` + advisory lock · 5=A 24h · 6=A 佔位 + 409 · 7=A 不補 outbox。
 >
 > **本模組不是新功能,是把散落各模組的 P1 殘留一次收斂。** 各模組 SHIPPED 時皆誠實記錄「治本歸屬 = I 平台可靠性工程」,本檔即該歸屬的落地設計。
 >
@@ -92,9 +93,9 @@
 
 ---
 
-## 10. 開放問題(OQ-REL-N)— 待裁定
+## 10. 開放問題(OQ-REL-N)— ✅ 已裁定 2026-07-27(全採建議)
 
-| # | 議題 | 選項 | 建議 |
+| # | 議題 | 選項 | 建議 = 裁定 |
 |---|---|---|---|
 | **OQ-REL-1** | 冪等 key 為必填或選填 | A. **選填**(有帶才生效;前端逐步接)<br>B. 所有 mutation 必填,無 key 即 400 | **A** — B 會一次打斷所有既有前端呼叫與 24 個端點的既有測試,且對「使用者手動點兩次」無幫助(那是 UI 防連點問題)。真正需要的是**重試安全**:前端 mutation 統一由 client 產生 key 即可全覆蓋。**證據**:Stripe / Adyen 皆為選填標頭 |
 | **OQ-REL-2** | 配額上限來源 | A. **程式常數 + env 覆寫**(單一預設值,pilot 夠用)<br>B. `tenant` 表加欄位,per-tenant 可調<br>C. 完整方案表 | **B** — 白牌/方案分級已在 docs/04 A 模組列為需求,且 `tenants` 表加 4 個 nullable 欄成本極低(NULL = 用預設)。A 會在第一個大客戶就得改 schema;C 是 Phase 2 計費的事 |

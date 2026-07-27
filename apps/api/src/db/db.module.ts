@@ -1,5 +1,6 @@
 import { Global, Inject, Injectable, Module, type OnModuleDestroy } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
+import { sql } from "drizzle-orm"
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import knex, { type Knex } from "knex"
 import pg from "pg"
@@ -12,6 +13,12 @@ export const DRIZZLE = Symbol("DRIZZLE")
 export const DDL_KNEX = Symbol("DDL_KNEX")
 /* app 車道:記錄 DML(prod = weyver_app;無 DDL / 無 BYPASSRLS → RLS 真正執法) */
 export const APP_KNEX = Symbol("APP_KNEX")
+/* F-6 M3|metadata 之 app 車道(prod = weyver_app)。與 DRIZZLE 同 schema、不同連線角色:
+   租戶範疇之 metadata(form_def / field_def / formula_def / relation_def)改走此車道 +
+   每交易 set_config('app.tenant_id') → 既有 RLS FORCE policy 真正生效(T4 單防線 → 雙防線)。
+   跨租戶系統表(users / tenants 寫入 / 種子 / DDL)仍走 DRIZZLE 特權車道(OQ-REL-3=A)。 */
+export const APP_DRIZZLE = Symbol("APP_DRIZZLE")
+export const APP_PG_POOL = Symbol("APP_PG_POOL")
 
 export type DrizzleDb = NodePgDatabase<typeof schema>
 
@@ -27,17 +34,38 @@ export function createAppKnex(connectionString: string): Knex {
   return knex({ client: "pg", connection: connectionString, pool: { min: 0, max: 10 } })
 }
 
+/* F-6 M3|租戶範疇 metadata 存取入口。強制「每次存取都在設好 app.tenant_id 的交易內」——
+   呼叫端拿不到裸 db,便無法寫出漏設租戶語境的查詢(RLS 會讓那種查詢回空,難以察覺)。 */
+@Injectable()
+export class TenantDb {
+  constructor(@Inject(APP_DRIZZLE) private readonly db: DrizzleDb) {}
+
+  async withTenant<T>(tenantId: number, fn: (tx: DrizzleDb) => Promise<T>): Promise<T> {
+    return this.db.transaction(async (tx) => {
+      // SET LOCAL 不可參數綁定 → set_config(..., true) 為交易範圍等價(承 RecordService)
+      await tx.execute(sql`SELECT set_config('app.tenant_id', ${String(tenantId)}, true)`)
+      return fn(tx as unknown as DrizzleDb)
+    })
+  }
+}
+
 /* graceful shutdown:app.close() / SIGTERM 時收乾連線(零停機滾動部署前提) */
 @Injectable()
 class DbLifecycle implements OnModuleDestroy {
   constructor(
     @Inject(PG_POOL) private readonly pool: pg.Pool,
+    @Inject(APP_PG_POOL) private readonly appPool: pg.Pool,
     @Inject(DDL_KNEX) private readonly ddlKnex: Knex,
     @Inject(APP_KNEX) private readonly appKnex: Knex,
   ) {}
 
   async onModuleDestroy(): Promise<void> {
-    await Promise.all([this.pool.end(), this.ddlKnex.destroy(), this.appKnex.destroy()])
+    await Promise.all([
+      this.pool.end(),
+      this.appPool.end(),
+      this.ddlKnex.destroy(),
+      this.appKnex.destroy(),
+    ])
   }
 }
 
@@ -57,6 +85,18 @@ class DbLifecycle implements OnModuleDestroy {
       inject: [PG_POOL],
     },
     {
+      provide: APP_PG_POOL,
+      useFactory: (config: ConfigService): pg.Pool =>
+        new pg.Pool({ connectionString: config.getOrThrow<string>("APP_DATABASE_URL"), max: 10 }),
+      inject: [ConfigService],
+    },
+    {
+      provide: APP_DRIZZLE,
+      useFactory: (pool: pg.Pool): DrizzleDb => createDrizzle(pool),
+      inject: [APP_PG_POOL],
+    },
+    TenantDb,
+    {
       provide: DDL_KNEX,
       useFactory: (config: ConfigService): Knex =>
         createDdlKnex(config.getOrThrow<string>("DATABASE_URL")),
@@ -69,6 +109,6 @@ class DbLifecycle implements OnModuleDestroy {
       inject: [ConfigService],
     },
   ],
-  exports: [PG_POOL, DRIZZLE, DDL_KNEX, APP_KNEX],
+  exports: [PG_POOL, DRIZZLE, APP_PG_POOL, APP_DRIZZLE, TenantDb, DDL_KNEX, APP_KNEX],
 })
 export class DbModule {}

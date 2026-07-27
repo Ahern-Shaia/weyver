@@ -28,6 +28,11 @@ export const tenants = pgTable("tenants", {
   ),
   // P0-4a·uplift 資源軸繼承:未分類且無授權之非敏感表 baseline(Salesforce OWD 式;空=deny,admin 可設 view)
   defaultFormActions: text("default_form_actions").array().notNull().default(sql`ARRAY[]::text[]`),
+  /* F-6 M2 per-tenant 資源配額(OQ-REL-2=B)。NULL = 用系統預設值 → 既有租戶零遷移;
+     方案分級 / 大客戶調高只需改列,不必改 schema。 */
+  maxForms: integer("max_forms"),
+  maxFieldsPerForm: integer("max_fields_per_form"),
+  maxRecordsPerForm: integer("max_records_per_form"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -342,6 +347,30 @@ export const viewDefs = pgTable(
       .where(sql`is_default AND deleted_at IS NULL`),
     index("view_def_tenant_form_idx").on(t.tenantId, t.formId),
     check("view_def_scope", sql`scope IN ('personal','shared')`),
+  ],
+)
+
+/* F-6 M1 冪等性(AGENTS ⚙️ [P0]:mutation 重試不重複建單)。
+   key 由 client 產生,scope 於租戶(PK 含 tenant_id → 不同租戶同 key 互不干擾,FMEA L2)。
+   走 **RLS 車道**(與 records 同級 —— 內容含回應快照,屬租戶資料)。
+   request_hash:同 key 不同 body = 用戶端錯誤 → 422(Stripe 語意),避免回放錯誤結果。 */
+export const idempotencyKeys = pgTable(
+  "idempotency_key",
+  {
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    key: text("key").notNull(),
+    endpoint: text("endpoint").notNull(),
+    requestHash: text("request_hash").notNull(),
+    status: text("status").notNull().default("in_flight"),
+    responseCode: integer("response_code"),
+    responseBody: jsonb("response_body"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tenantId, t.key] }),
+    index("idempotency_key_expiry_idx").on(t.expiresAt),
+    check("idempotency_key_status", sql`status IN ('in_flight','done')`),
   ],
 )
 

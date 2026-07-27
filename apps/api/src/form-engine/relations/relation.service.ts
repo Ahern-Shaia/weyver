@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common"
 import { and, eq } from "drizzle-orm"
-import { DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
+import { TenantDb } from "../../db/db.module.js"
 import { relationDefs } from "../../db/schema.js"
 import { NotALinkFieldError, UnknownFieldError } from "../errors.js"
 import type { FieldDefRow } from "../metadata/metadata.service.js"
@@ -23,7 +23,8 @@ function linkTargetFormId(field: FieldDefRow): number | null {
 @Injectable()
 export class RelationService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    // F-6 M3:relation_def 為 RLS 表 → 走 app 車道 + tenant GUC
+    @Inject(TenantDb) private readonly tenantDb: TenantDb,
     @Inject(MetadataService) private readonly metadata: MetadataService,
     @Inject(RecordService) private readonly records: RecordService,
   ) {}
@@ -45,12 +46,16 @@ export class RelationService {
   /* 註冊關聯 metadata(idempotent;M4 Lookup/Rollup 之反向查詢用)*/
   async registerRelation(tenantId: number, formId: number, linkFieldName: string): Promise<void> {
     const { field, targetFormId } = await this.resolveLinkField(tenantId, formId, linkFieldName)
-    const existing = await this.db
-      .select()
-      .from(relationDefs)
-      .where(and(eq(relationDefs.tenantId, tenantId), eq(relationDefs.fieldId, field.id)))
+    const existing = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .select()
+        .from(relationDefs)
+        .where(and(eq(relationDefs.tenantId, tenantId), eq(relationDefs.fieldId, field.id))),
+    )
     if (existing.length > 0) return
-    await this.db.insert(relationDefs).values({ tenantId, formId, fieldId: field.id, targetFormId })
+    await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx.insert(relationDefs).values({ tenantId, formId, fieldId: field.id, targetFormId }),
+    )
   }
 
   /* Load / 帶入:給 link 欄指向的目標 record id → 讀目標記錄之指定欄值(快照複製至來源記錄之語意)。

@@ -1,7 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDrizzle } from "../src/db/db.module.js"
+import { createDrizzle, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { FormNotFoundError } from "../src/form-engine/errors.js"
@@ -25,7 +25,7 @@ beforeAll(async () => {
     .returning()
   tenantA = rows[0]?.id ?? 0
   tenantB = rows[1]?.id ?? 0
-  service = new MetadataService(db)
+  service = new MetadataService(db, new TenantDb(db))
 })
 
 afterAll(async () => {

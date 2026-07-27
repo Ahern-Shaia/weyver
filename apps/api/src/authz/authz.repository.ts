@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common"
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm"
-import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
+import { DRIZZLE, type DrizzleDb, TenantDb } from "../db/db.module.js"
 import {
   categoryPermissions,
   fieldPermissions,
@@ -74,7 +74,11 @@ export const ADMIN_ROLE_KEY = "admin"
 
 @Injectable()
 export class AuthzRepository {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    /* form_def 為 RLS 表 → 該讀取走 app 車道(F-6 M3);authz Tier-1 表刻意非 RLS,續用特權車道 */
+    @Inject(TenantDb) private readonly tenantDb: TenantDb,
+  ) {}
 
   /* 租戶建立 → 種入系統角色(idempotent;並發下 unique(tenant_id,key) 兜底)。 */
   async seedSystemRoles(tenantId: number): Promise<void> {
@@ -334,15 +338,17 @@ export class AuthzRepository {
 
   /* 全租戶表單授權 metadata(繼承解析輸入)。form_def 小且每租戶,單次索引查詢 + per-request 快取。 */
   async loadFormMeta(tenantId: number): Promise<FormMetaRow[]> {
-    const rows = await this.db
-      .select({
-        formId: formDefs.id,
-        categoryId: formDefs.categoryId,
-        isSensitive: formDefs.isSensitive,
-        createdBy: formDefs.createdBy,
-      })
-      .from(formDefs)
-      .where(and(eq(formDefs.tenantId, tenantId), isNull(formDefs.deletedAt)))
+    const rows = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .select({
+          formId: formDefs.id,
+          categoryId: formDefs.categoryId,
+          isSensitive: formDefs.isSensitive,
+          createdBy: formDefs.createdBy,
+        })
+        .from(formDefs)
+        .where(and(eq(formDefs.tenantId, tenantId), isNull(formDefs.deletedAt))),
+    )
     return rows
   }
 

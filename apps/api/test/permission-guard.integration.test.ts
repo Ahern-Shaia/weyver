@@ -7,7 +7,7 @@ import { RequiresFormAction } from "../src/authz/authz-http.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { PermissionGuard } from "../src/authz/permission.guard.js"
 import { PermissionService } from "../src/authz/permission.service.js"
-import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
+import { type DrizzleDb, createDrizzle, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { formDefs, tenants, users } from "../src/db/schema.js"
 import type { TenantContext } from "../src/http/tenant-context.js"
@@ -53,7 +53,7 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  const repo = new AuthzRepository(db)
+  const repo = new AuthzRepository(db, new TenantDb(db))
   guard = new PermissionGuard(new PermissionService(repo), new Reflector())
 
   const tA = await db

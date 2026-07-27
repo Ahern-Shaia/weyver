@@ -15,7 +15,7 @@ import { ConfigService } from "@nestjs/config"
 import { and, eq, isNull } from "drizzle-orm"
 import type { Knex } from "knex"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
-import { APP_KNEX, DRIZZLE, type DrizzleDb } from "../db/db.module.js"
+import { APP_KNEX, TenantDb } from "../db/db.module.js"
 import { fieldDefs } from "../db/schema.js"
 import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
@@ -56,7 +56,7 @@ export class FilesService implements OnModuleInit {
   constructor(
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
-    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    @Inject(TenantDb) private readonly tenantDb: TenantDb,
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
 
@@ -262,18 +262,20 @@ export class FilesService implements OnModuleInit {
     formId: number,
     fieldId: number,
   ): Promise<{ readonly id: number } | undefined> {
-    const rows = await this.db
-      .select({ id: fieldDefs.id, cellValueType: fieldDefs.cellValueType })
-      .from(fieldDefs)
-      .where(
+    const rows = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .select({ id: fieldDefs.id, cellValueType: fieldDefs.cellValueType })
+        .from(fieldDefs)
+        .where(
         and(
           eq(fieldDefs.tenantId, tenantId),
           eq(fieldDefs.formId, formId),
           eq(fieldDefs.id, fieldId),
-          isNull(fieldDefs.deletedAt),
-        ),
-      )
-      .limit(1)
+            isNull(fieldDefs.deletedAt),
+          ),
+        )
+        .limit(1),
+    )
     const field = rows[0]
     return field !== undefined && ATTACHMENT_FIELD_TYPES.has(field.cellValueType)
       ? field

@@ -9,7 +9,7 @@ import { AuthModule } from "../src/auth/auth.module.js"
 import { AUTH } from "../src/auth/auth.tokens.js"
 import { type Auth, createAuth } from "../src/auth/auth.js"
 import { validateEnv } from "../src/config/env.js"
-import { DRIZZLE, PG_POOL, createDrizzle } from "../src/db/db.module.js"
+import { APP_DRIZZLE, DRIZZLE, PG_POOL, TenantDb, createDrizzle } from "../src/db/db.module.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -75,8 +75,11 @@ describe("Better Auth 接入(F-2 M1)", () => {
       providers: [
         { provide: PG_POOL, useValue: pool },
         { provide: DRIZZLE, useFactory: () => createDrizzle(pool) },
+        // F-6 M3:AuthzRepository 需 TenantDb(app 車道);測試同 pool 即可
+        { provide: APP_DRIZZLE, useFactory: () => createDrizzle(pool) },
+        TenantDb,
       ],
-      exports: [PG_POOL, DRIZZLE],
+      exports: [PG_POOL, DRIZZLE, APP_DRIZZLE, TenantDb],
     })
     class FakePgModule {}
 

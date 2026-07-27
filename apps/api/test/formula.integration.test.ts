@@ -1,7 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDdlKnex, createDrizzle, type DrizzleDb } from "../src/db/db.module.js"
+import { createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { formulaDefs, tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
@@ -38,11 +38,11 @@ beforeAll(async () => {
     .returning()
   tenantA = rows[0]?.id ?? 0
 
-  const metadata = new MetadataService(db)
+  const metadata = new MetadataService(db, new TenantDb(db))
   const ddlKnex = createDdlKnex(container.getConnectionUri())
   knexDestroy = () => ddlKnex.destroy()
   const ddl = new DdlService(ddlKnex, db, metadata)
-  formula = new FormulaService(db, metadata)
+  formula = new FormulaService(new TenantDb(db), metadata)
 
   const { fields } = await ddl.createForm(
     tenantA,

@@ -2,7 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import type { Knex } from "knex"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createAppKnex, createDdlKnex, createDrizzle, type DrizzleDb } from "../src/db/db.module.js"
+import { createAppKnex, createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
@@ -44,7 +44,7 @@ beforeAll(async () => {
   tenantA = rows[0]?.id ?? 0
   tenantB = rows[1]?.id ?? 0
 
-  const metadata = new MetadataService(db)
+  const metadata = new MetadataService(db, new TenantDb(db))
   const ddlKnex = createDdlKnex(container.getConnectionUri())
   destroyers.push(() => ddlKnex.destroy())
   ddl = new DdlService(ddlKnex, db, metadata)

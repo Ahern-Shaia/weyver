@@ -3,7 +3,7 @@ import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { FieldAccessPolicy } from "../src/authz/authz-effective.js"
 import type { FieldVisibility } from "../src/authz/authz-model.js"
-import { createDdlKnex, createDrizzle, type DrizzleDb } from "../src/db/db.module.js"
+import { createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
@@ -38,7 +38,7 @@ beforeAll(async () => {
     .values([{ name: "廠 A" }])
     .returning()
   tenantA = rows[0]?.id ?? 0
-  metadata = new MetadataService(db)
+  metadata = new MetadataService(db, new TenantDb(db))
   const ddlKnex = createDdlKnex(container.getConnectionUri())
   ddlDestroy = () => ddlKnex.destroy()
   const ddl = new DdlService(ddlKnex, db, metadata)

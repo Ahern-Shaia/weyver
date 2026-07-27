@@ -13,7 +13,7 @@ import {
 } from "@weyver/formula"
 import { Inject, Injectable } from "@nestjs/common"
 import { and, eq, sql } from "drizzle-orm"
-import { DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
+import { TenantDb } from "../../db/db.module.js"
 import { formulaDefs } from "../../db/schema.js"
 import {
   FieldNotFoundError,
@@ -72,15 +72,18 @@ interface StoredDef {
 @Injectable()
 export class FormulaService {
   constructor(
-    @Inject(DRIZZLE) private readonly db: DrizzleDb,
+    // F-6 M3:formula_def 為 RLS 表 → 走 app 車道 + tenant GUC
+    @Inject(TenantDb) private readonly tenantDb: TenantDb,
     @Inject(MetadataService) private readonly metadata: MetadataService,
   ) {}
 
   private async loadDefs(tenantId: number, formId: number): Promise<StoredDef[]> {
-    const rows = await this.db
-      .select()
-      .from(formulaDefs)
-      .where(and(eq(formulaDefs.tenantId, tenantId), eq(formulaDefs.formId, formId)))
+    const rows = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .select()
+        .from(formulaDefs)
+        .where(and(eq(formulaDefs.tenantId, tenantId), eq(formulaDefs.formId, formId))),
+    )
     return rows.map((r) => ({
       fieldId: r.fieldId,
       exprSource: r.exprSource,
@@ -131,13 +134,15 @@ export class FormulaService {
       return f === undefined ? "unknown" : toFormulaType(f.cellValueType)
     })
 
-    await this.db
-      .insert(formulaDefs)
-      .values({ tenantId, formId, fieldId, exprSource, resultType, dependsOn })
-      .onConflictDoUpdate({
-        target: formulaDefs.fieldId,
-        set: { exprSource, resultType, dependsOn, updatedAt: sql`now()` },
-      })
+    await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .insert(formulaDefs)
+        .values({ tenantId, formId, fieldId, exprSource, resultType, dependsOn })
+        .onConflictDoUpdate({
+          target: formulaDefs.fieldId,
+          set: { exprSource, resultType, dependsOn, updatedAt: sql`now()` },
+        }),
+    )
 
     return { fieldId, resultType, dependsOn }
   }

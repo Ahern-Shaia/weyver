@@ -5,6 +5,7 @@ import { z } from "zod"
 import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
 import { APP_KNEX } from "../../db/db.module.js"
 import { FilesService } from "../../files/files.service.js"
+import { QuotaService } from "../../reliability/quota.service.js"
 import {
   BulkRowError,
   BulkTooLargeError,
@@ -128,6 +129,8 @@ export class RecordService {
     @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
     // F-5 M3 兩階段綁定;optional 使既有單元測 new RecordService(knex, metadata) 不受影響
     @Optional() @Inject(FilesService) private readonly files?: FilesService,
+    // F-6 M2 記錄配額(只在 bulk 路徑檢核:單筆做全表 count 於大表為 seq scan)
+    @Optional() @Inject(QuotaService) private readonly quota?: QuotaService,
   ) {}
 
   /* 讀時公式注入:formula 欄之值不儲存,讀取時以其他欄計算後併入(docs OQ-FML-8 之讀時算模式)。
@@ -309,6 +312,11 @@ export class RecordService {
     if (rows.length > BULK_MAX_ROWS) throw new BulkTooLargeError(BULK_MAX_ROWS)
     if (rows.length === 0) return { created: 0 }
     const resolved = await this.resolveForm(tenantId, formId)
+    if (this.quota !== undefined) {
+      const limit = await this.quota.maxRecordsFor(tenantId)
+      const existing = await this.countRecords(tenantId, resolved)
+      this.quota.assertRecordCount(existing, rows.length, limit)
+    }
     return this.inTenantTx(tenantId, async (trx) => {
       for (const [index, values] of rows.entries()) {
         try {
@@ -321,6 +329,20 @@ export class RecordService {
         }
       }
       return { created: rows.length }
+    })
+  }
+
+  /* F-6 M2 配額用:單次 count(僅 bulk 路徑呼叫,非每列)。 */
+  private async countRecords(tenantId: number, resolved: ResolvedForm): Promise<number> {
+    return this.inTenantTx(tenantId, async (trx) => {
+      const rows = (await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId })
+        .whereNull("deleted_at")
+        .count({ total: "id" })) as { total: string | number }[]
+      const total = rows[0]?.total ?? 0
+      return typeof total === "number" ? total : Number(total)
     })
   }
 

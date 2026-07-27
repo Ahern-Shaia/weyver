@@ -4,7 +4,7 @@ import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzAdminService } from "../src/authz/authz-admin.service.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
-import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
+import { type DrizzleDb, createDrizzle, TenantDb } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { fieldDefs, formDefs, tenants, users } from "../src/db/schema.js"
 
@@ -29,7 +29,7 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  repo = new AuthzRepository(db)
+  repo = new AuthzRepository(db, new TenantDb(db))
   admin = new AuthzAdminService(repo)
 
   const t = await db

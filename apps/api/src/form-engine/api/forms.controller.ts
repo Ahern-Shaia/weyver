@@ -17,6 +17,7 @@ import { Permissions, RequiresFormAction } from "../../authz/authz-http.js"
 import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
+import { Throttle } from "@nestjs/throttler"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
 import { LayoutService } from "../layout/layout.service.js"
@@ -49,6 +50,9 @@ export class FormsController {
   ) {}
 
   @Post()
+  // F-6 M2:建表為 DDL 類端點,較全域 300/min 更嚴(C5 DDL DoS);
+  // Excel 匯入走單次 bulk 呼叫不逐表打,故不誤傷(FMEA L6)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @RequiresFormAction("design") // 建表 = 設計動作;無 formId → 需租戶管理權(admin)
   async createForm(
     @Tenant() tenant: TenantContext,
@@ -128,6 +132,7 @@ export class FormsController {
   }
 
   @Post(":formId/fields")
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @RequiresFormAction("design")
   async addField(
     @Tenant() tenant: TenantContext,
