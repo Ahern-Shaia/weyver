@@ -306,6 +306,43 @@ export const approvalInstanceDtoSchema = z.object({
 })
 export type ApprovalInstanceDto = z.infer<typeof approvalInstanceDtoSchema>
 
+/* R1·後續-2 標籤定義(鏡射後端 label-specs) */
+export const labelItemSchema = z.object({
+  field: z.string(),
+  asQr: z.boolean().optional(),
+  style: z
+    .object({
+      size: z.number().int().optional(),
+      align: z.enum(["left", "center", "right"]).optional(),
+      bold: z.boolean().optional(),
+      wrap: z.boolean().optional(),
+    })
+    .optional(),
+})
+export type LabelItem = z.infer<typeof labelItemSchema>
+
+export const labelConfigSchema = z.object({
+  size: z.object({ widthMm: z.number(), heightMm: z.number() }),
+  tile: z.boolean(),
+  gapMm: z.number(),
+  showFieldNames: z.boolean(),
+  copiesField: z.string().optional(),
+  items: z.array(labelItemSchema),
+})
+export type LabelConfig = z.infer<typeof labelConfigSchema>
+
+export const labelDtoSchema = z.object({
+  id: z.number().int(),
+  formId: z.number().int(),
+  name: z.string(),
+  config: labelConfigSchema,
+  position: z.number().int(),
+})
+export type LabelDto = z.infer<typeof labelDtoSchema>
+
+export const MAX_LABELS_PER_RUN = 1000
+export const MAX_COPIES_PER_RECORD = 99
+
 export const errorEnvelopeSchema = z.object({
   code: z.string(),
   message: z.string(),

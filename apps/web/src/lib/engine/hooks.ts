@@ -10,6 +10,7 @@ import {
   type ListResponse,
   type ApprovalStep,
   type ButtonConfig,
+  type LabelConfig,
   type Layout,
   type RecordRow,
   type ViewConfig,
@@ -22,6 +23,7 @@ import {
   buttonDtoSchema,
   formDtoSchema,
   formSummarySchema,
+  labelDtoSchema,
   layoutSchema,
   listResponseSchema,
   recordRowSchema,
@@ -384,6 +386,48 @@ export function useWithdrawApproval() {
         body: {},
       }),
     onSuccess: () => void queryClient.invalidateQueries(),
+  })
+}
+
+/* R1·後續-2 標籤定義 */
+export const labelKeys = { list: (formId: number) => ["forms", formId, "labels"] as const }
+
+export function useLabels(formId: number | null) {
+  return useQuery({
+    queryKey: labelKeys.list(formId ?? -1),
+    queryFn: () => engineFetch(`/forms/${formId}/labels`, z.array(labelDtoSchema)),
+    enabled: formId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateLabel(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { name: string; config: LabelConfig }) =>
+      engineFetch(`/forms/${formId}/labels`, labelDtoSchema, { method: "POST", body: input }),
+    onSuccess: () => invalidate([labelKeys.list(formId)]),
+  })
+}
+
+export function useUpdateLabel(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { labelId: number; patch: { name?: string; config?: LabelConfig } }) =>
+      engineFetch(`/forms/${formId}/labels/${input.labelId}`, labelDtoSchema, {
+        method: "PATCH",
+        body: input.patch,
+      }),
+    onSuccess: () => invalidate([labelKeys.list(formId)]),
+  })
+}
+
+export function useDeleteLabel(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (labelId: number) =>
+      engineFetch(`/forms/${formId}/labels/${labelId}`, voidSchema, { method: "DELETE" }),
+    onSuccess: () => invalidate([labelKeys.list(formId)]),
   })
 }
 

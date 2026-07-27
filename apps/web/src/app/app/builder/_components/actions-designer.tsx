@@ -15,6 +15,7 @@ import {
   useForms,
 } from "@/lib/engine/hooks"
 import type { ApprovalStep, ButtonConfig, FormDto } from "@/lib/engine/schemas"
+import { LabelsPanel } from "./labels-panel"
 
 /* R1·後續-1 M4 設計器:表單掛自訂按鈕(動作型別 + 映射)+ 簽核定義(步驟 + 簽核角色 + 金額條件)。
    欄位映射為簡表(目標欄 ← 來源欄/固定值),對映後端封閉 allowlist config。 */
@@ -27,7 +28,7 @@ export function ActionsDesigner({
   readonly form: FormDto
   readonly onClose: () => void
 }): ReactNode {
-  const [tab, setTab] = useState<"buttons" | "approval">("buttons")
+  const [tab, setTab] = useState<"buttons" | "approval" | "labels">("buttons")
   return (
     <div className="flex w-80 shrink-0 flex-col border-l border-line bg-card">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -53,6 +54,17 @@ export function ActionsDesigner({
         >
           簽核流程
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("labels")}
+          className={
+            tab === "labels"
+              ? "text-[12px] font-semibold text-primary"
+              : "text-[12px] text-ink-3 hover:text-ink"
+          }
+        >
+          標籤
+        </button>
         <button type="button" onClick={onClose} className="ml-auto text-ink-4 hover:text-ink">
           <X size={14} />
         </button>
@@ -60,8 +72,10 @@ export function ActionsDesigner({
       <div className="flex-1 overflow-y-auto p-3">
         {tab === "buttons" ? (
           <ButtonsPanel formId={formId} form={form} />
-        ) : (
+        ) : tab === "approval" ? (
           <ApprovalPanel formId={formId} form={form} />
+        ) : (
+          <LabelsPanel formId={formId} form={form} />
         )}
       </div>
     </div>
