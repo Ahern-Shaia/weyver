@@ -10,6 +10,7 @@ import { validateEnv } from "./config/env.js"
 import { DbModule } from "./db/db.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
 import { HealthModule } from "./health/health.module.js"
+import { FilesModule } from "./files/files.module.js"
 import { LabelsModule } from "./labels/labels.module.js"
 import { StorageModule } from "./storage/storage.module.js"
 import { DomainExceptionFilter } from "./http/domain-exception.filter.js"
@@ -28,6 +29,7 @@ import { ViewsModule } from "./views/views.module.js"
     ViewsModule,
     ActionsModule,
     LabelsModule,
+    FilesModule,
     HealthModule,
   ],
   providers: [

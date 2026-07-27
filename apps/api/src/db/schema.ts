@@ -345,6 +345,34 @@ export const viewDefs = pgTable(
   ],
 )
 
+/* F-5 檔案 metadata(**租戶記錄資料** → RLS 車道,與 records 同級;OQ-FS-7)。
+   key 為伺服器生成之物件位址(t{tenant}/f{form}/{uuid}{ext}),**非授權憑證**(OQ-FS-4):
+   下載一律回查本表取得 (tenant, form, field) 再驗表單/欄位權限(BOLA 防護,docs/22)。
+   status:pending(已上傳未綁記錄)→ bound(記錄存檔時綁定)/ orphaned(逾期未綁)。 */
+export const fileObjects = pgTable(
+  "file_object",
+  {
+    key: text("key").primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    fieldId: bigint("field_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }),
+    name: text("name").notNull(),
+    mime: text("mime").notNull(),
+    size: bigint("size", { mode: "number" }).notNull(),
+    status: text("status").notNull().default("pending"),
+    createdBy: bigint("created_by", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("file_object_tenant_form_idx").on(t.tenantId, t.formId),
+    index("file_object_record_idx").on(t.tenantId, t.formId, t.recordId),
+    index("file_object_status_idx").on(t.tenantId, t.status),
+    check("file_object_status", sql`status IN ('pending','bound','orphaned')`),
+  ],
+)
+
 /* R1·後續-2 標籤定義(metadata 類 → authz Tier-1 DRIZZLE 車道 + app tenant scope,OQ-PM-5)。
    config JSONB:{ size:{widthMm,heightMm}, tile, gapMm?, showFieldNames?, copiesField?, items:[…] }
    —— items 為欄位堆疊序(非 2D 座標,OQ-PM-2;與 form_def.layout 刻意解耦)。 */

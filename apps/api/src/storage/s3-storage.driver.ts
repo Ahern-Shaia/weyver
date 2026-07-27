@@ -1,3 +1,4 @@
+import type { Readable } from "node:stream"
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -5,8 +6,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3"
-import type { Readable } from "node:stream"
-import { assertValidKey, type StorageDriver } from "./storage-driver.js"
+import { type StorageDriver, assertValidKey } from "./storage-driver.js"
 
 /* F-5 S3 相容驅動(OQ-FS-1=A)。同一實作涵蓋 **Cloudflare R2 / AWS S3 / GCS 相容模式 / MinIO**
    —— 僅以 endpoint + credentials 區分,無 vendor lock-in(docs/11 §3.6 選 R2、§16 明示避 lock-in)。 */
