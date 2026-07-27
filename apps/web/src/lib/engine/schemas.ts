@@ -214,6 +214,14 @@ export const sectionSchema = z.object({
 })
 export type Section = z.infer<typeof sectionSchema>
 
+/* R1·後續-2 列印設定(列範圍;紙張/邊界/方向委派瀏覽器,OQ-PM-3/6) */
+export const layoutPrintSchema = z.object({
+  headerRows: z.array(z.number().int()),
+  footerRows: z.array(z.number().int()),
+  pageBreakAfterRows: z.array(z.number().int()),
+})
+export type LayoutPrint = z.infer<typeof layoutPrintSchema>
+
 export const layoutSchema = z.object({
   grid: z.object({
     cols: z.number().int(),
@@ -223,6 +231,7 @@ export const layoutSchema = z.object({
   fields: z.record(z.string(), fieldLayoutSchema),
   statics: z.array(staticElementSchema),
   sections: z.array(sectionSchema),
+  print: layoutPrintSchema.optional(),
 })
 export type Layout = z.infer<typeof layoutSchema>
 

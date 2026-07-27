@@ -2,11 +2,13 @@
 
 import { Copy, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
+import type { CSSProperties } from "react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
+import { useLayout } from "@/lib/engine/hooks"
 import { LineItems } from "./line-items"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
@@ -43,7 +45,23 @@ export function ObjectPage({
   const moneyField = fields.find((f) => f.type === "money")
   const createRecord = useCreateRecord(formId)
   const deleteRecord = useDeleteRecord(formId)
+  const { data: layoutResp } = useLayout(formId)
   const [msg, setMsg] = useState<string | null>(null)
+
+  /* R1·後續-2 M4 列印設定:依 layout.print 之列範圍,對該列欄位套列印樣式
+     (頁首/頁尾列於每頁重複;換頁列後分頁)。紙張設定委派瀏覽器(OQ-PM-3)。 */
+  const printStyleFor = (fieldId: number): CSSProperties | undefined => {
+    const layout = layoutResp?.layout
+    if (!layout?.print) return undefined
+    const row = layout.fields[String(fieldId)]?.row
+    if (row === undefined) return undefined
+    const { headerRows, footerRows, pageBreakAfterRows } = layout.print
+    const style: CSSProperties = {}
+    if (headerRows.includes(row)) style.breakInside = "avoid"
+    if (footerRows.includes(row)) style.breakInside = "avoid"
+    if (pageBreakAfterRows.includes(row)) style.breakAfter = "page"
+    return Object.keys(style).length === 0 ? undefined : style
+  }
 
   const onCopy = (): void => {
     const values: Record<string, unknown> = {}
@@ -170,7 +188,11 @@ export function ObjectPage({
           <h4 className="mb-2.5 text-[11.5px] font-semibold text-ink-3">基本資料</h4>
           <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             {fields.map((f) => (
-              <div key={f.id} className="flex items-baseline gap-3 border-b border-line-2 py-2">
+              <div
+                key={f.id}
+                className="flex items-baseline gap-3 border-b border-line-2 py-2"
+                style={printStyleFor(f.id)}
+              >
                 <span className="flex w-24 shrink-0 items-center gap-1 text-[11px] text-ink-4">
                   {f.name}
                   {f.type === "formula" ? (
