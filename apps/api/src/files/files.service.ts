@@ -10,19 +10,25 @@ import {
   UnsupportedMediaTypeException,
 } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
+import { and, eq, isNull } from "drizzle-orm"
 import type { Knex } from "knex"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
-import { APP_KNEX } from "../db/db.module.js"
-import { MetadataService } from "../form-engine/metadata/metadata.service.js"
+import { APP_KNEX, DRIZZLE, type DrizzleDb } from "../db/db.module.js"
+import { fieldDefs } from "../db/schema.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { detectType } from "../storage/file-type.js"
 import { STORAGE_DRIVER, type StorageDriver, isValidKey } from "../storage/storage-driver.js"
 import { ATTACHMENT_FIELD_TYPES, type FileDto, type FileStatus } from "./file-specs.js"
 
-/* F-5 M2|檔案上傳/下載/刪除。file_object 走 **RLS 車道**(APP_KNEX + set_config,與 records 同級;
-   OQ-FS-7)—— 檔案 metadata 是租戶記錄資料而非表單定義。
+/* F-5 M2/M3|檔案上傳/下載/刪除 + 兩階段綁定。file_object 走 **RLS 車道**(APP_KNEX + set_config,
+   與 records 同級;OQ-FS-7)—— 檔案 metadata 是租戶記錄資料而非表單定義。
    授權三層(FMEA S1/S2):RLS 綁租戶(最後防線)→ 表單級動作 → 欄位級可見性;
-   **key 不是授權憑證**(OQ-FS-4):下載一律回查本表取得 (form, field) 再驗權限,猜到 key 亦無用。 */
+   **key 不是授權憑證**(OQ-FS-4):下載一律回查本表取得 (form, field) 再驗權限,猜到 key 亦無用。
+   欄位型別直查 field_def(Drizzle,承 authz.repository 直查 form_def 之慣例)—— 不依賴
+   FormEngineModule,使 RecordService 可反向注入本 service 做綁定而不成循環(AGENTS 禁 forwardRef)。 */
+
+/* pending 檔逾此時數未綁記錄 → 標 orphaned(OQ-FS-5)。 */
+const ORPHAN_AFTER_HOURS = 24
 
 interface FileObjectRow {
   readonly key: string
@@ -45,12 +51,16 @@ export class FilesService {
   constructor(
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
-    @Inject(MetadataService) private readonly metadata: MetadataService,
+    @Inject(DRIZZLE) private readonly db: DrizzleDb,
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
 
   maxFileBytes(): number {
     return (this.config.get<number>("STORAGE_MAX_FILE_MB") ?? 20) * 1024 * 1024
+  }
+
+  private quotaBytes(): number {
+    return (this.config.get<number>("STORAGE_TENANT_QUOTA_MB") ?? 2048) * 1024 * 1024
   }
 
   /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(承 RecordService) */
@@ -82,9 +92,8 @@ export class FilesService {
       })
     }
 
-    const { fields } = await this.metadata.getForm(tenant.tenantId, formId)
-    const field = fields.find((f) => f.id === fieldId)
-    if (field === undefined || !ATTACHMENT_FIELD_TYPES.has(field.cellValueType)) {
+    const field = await this.attachmentField(tenant.tenantId, formId, fieldId)
+    if (field === undefined) {
       throw new BadRequestException({
         code: "NOT_ATTACHMENT_FIELD",
         message: `欄位 ${fieldId} 非附件欄`,
@@ -103,6 +112,10 @@ export class FilesService {
         message: "不支援的檔案類型(以檔案內容判定,非副檔名)",
       })
     }
+
+    // 落儲存前先回收逾期孤兒(釋放配額)再核配額 —— 無排程器之低 ops 做法(掃描走 status 索引)
+    await this.sweepStalePending(tenant.tenantId)
+    await this.assertQuota(tenant.tenantId, body.length)
 
     // 生成檔名(docs/22):使用者檔名永不入路徑,只存 metadata
     const key = `t${tenant.tenantId}/f${formId}/${randomUUID()}${detected.ext}`
@@ -162,6 +175,91 @@ export class FilesService {
         .where({ key, tenant_id: tenant.tenantId })
         .update({ deleted_at: trx.fn.now() }),
     )
+  }
+
+  /* M3 兩階段綁定(OQ-FS-5):記錄存檔後由 RecordService 回呼。
+     - 該筆附件欄現值之 key → pending/bound 皆標 bound + 寫 record_id(冪等)
+     - 原綁此筆但已從欄值移除者 → orphaned(使用者換掉附件後不佔配額)
+     授權已於記錄存檔路徑驗畢(能寫該筆記錄才會走到此);此處只認 tenant + form + record。 */
+  async bindToRecord(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    keys: readonly string[],
+  ): Promise<void> {
+    const valid = [...new Set(keys.filter(isValidKey))]
+    await this.inTenantTx(tenantId, async (trx) => {
+      if (valid.length > 0) {
+        await trx("file_object")
+          .where({ tenant_id: tenantId, form_id: formId })
+          .whereIn("key", valid)
+          .whereNull("deleted_at")
+          .update({ status: "bound" satisfies FileStatus, record_id: recordId })
+      }
+      const stale = trx("file_object")
+        .where({ tenant_id: tenantId, form_id: formId, record_id: recordId })
+        .whereNull("deleted_at")
+      if (valid.length > 0) void stale.whereNotIn("key", valid)
+      await stale.update({ status: "orphaned" satisfies FileStatus })
+    })
+  }
+
+  /* 逾期未綁之 pending → orphaned(不刪實體;實體回收 job 為 P1,doc §12 S6 明標殘留)。 */
+  async sweepStalePending(tenantId: number): Promise<number> {
+    return this.inTenantTx(tenantId, (trx) =>
+      trx("file_object")
+        .where({ tenant_id: tenantId, status: "pending" satisfies FileStatus })
+        .whereNull("deleted_at")
+        .whereRaw(`created_at < now() - interval '${ORPHAN_AFTER_HOURS} hours'`)
+        .update({ status: "orphaned" satisfies FileStatus }),
+    )
+  }
+
+  /* 租戶總量配額(docs/04 A 配額;FMEA S5 noisy neighbor)。orphaned / 已刪不計。 */
+  private async assertQuota(tenantId: number, incomingBytes: number): Promise<void> {
+    const quota = this.quotaBytes()
+    const used = await this.usedBytes(tenantId)
+    if (used + incomingBytes > quota) {
+      throw new PayloadTooLargeException({
+        code: "STORAGE_QUOTA_EXCEEDED",
+        message: `租戶儲存空間已達上限 ${quota / 1024 / 1024} MB(已用 ${Math.round(used / 1024 / 1024)} MB)`,
+      })
+    }
+  }
+
+  async usedBytes(tenantId: number): Promise<number> {
+    const row = await this.inTenantTx(tenantId, (trx) =>
+      trx("file_object")
+        .where({ tenant_id: tenantId })
+        .whereNull("deleted_at")
+        .whereNot({ status: "orphaned" satisfies FileStatus })
+        .sum({ total: "size" })
+        .first<{ total: string | number | null } | undefined>(),
+    )
+    return row?.total === null || row?.total === undefined ? 0 : num(row.total)
+  }
+
+  private async attachmentField(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+  ): Promise<{ readonly id: number } | undefined> {
+    const rows = await this.db
+      .select({ id: fieldDefs.id, cellValueType: fieldDefs.cellValueType })
+      .from(fieldDefs)
+      .where(
+        and(
+          eq(fieldDefs.tenantId, tenantId),
+          eq(fieldDefs.formId, formId),
+          eq(fieldDefs.id, fieldId),
+          isNull(fieldDefs.deletedAt),
+        ),
+      )
+      .limit(1)
+    const field = rows[0]
+    return field !== undefined && ATTACHMENT_FIELD_TYPES.has(field.cellValueType)
+      ? field
+      : undefined
   }
 
   private async requireFile(tenant: TenantContext, key: string): Promise<FileObjectRow> {

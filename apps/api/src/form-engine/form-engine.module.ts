@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common"
 import { AuthzModule } from "../authz/authz.module.js"
+import { FilesModule } from "../files/files.module.js"
 import { FormsController } from "./api/forms.controller.js"
 import { RecordsController } from "./api/records.controller.js"
 import { DdlService } from "./ddl/ddl.service.js"
@@ -11,7 +12,8 @@ import { RelationService } from "./relations/relation.service.js"
 import { RollupService } from "./relations/rollup.service.js"
 
 @Module({
-  imports: [AuthzModule],
+  // FilesModule 單向被 import(其自身不 import 本模組)→ RecordService 可注入 FilesService 綁定附件
+  imports: [AuthzModule, FilesModule],
   controllers: [FormsController, RecordsController],
   providers: [
     MetadataService,

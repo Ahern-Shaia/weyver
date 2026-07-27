@@ -1,11 +1,12 @@
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { ConfigService } from "@nestjs/config"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
 import type { FormAction } from "../src/authz/authz-model.js"
 import { createDrizzle } from "../src/db/db.module.js"
@@ -209,6 +210,104 @@ describe("F-5 M2 下載 / 刪除", () => {
     expect(del.statusCode).toBe(204)
     const res = await app.inject({ method: "GET", url: `/api/files/${body.key}`, headers: A() })
     expect(res.statusCode).toBe(404)
+  })
+})
+
+describe("F-5 M3 兩階段綁定 / 孤兒 / 配額", () => {
+  const statusOf = async (key: string): Promise<{ status: string; recordId: number | null }> => {
+    const client = await pool.connect()
+    try {
+      // FORCE RLS 下需租戶 GUC 才讀得到(即使連線角色為 owner)
+      await client.query("SELECT set_config('app.tenant_id', $1, false)", [String(tenantA)])
+      const res = await client.query<{ status: string; record_id: string | null }>(
+        "SELECT status, record_id FROM file_object WHERE key = $1",
+        [key],
+      )
+      const row = res.rows[0]
+      return {
+        status: row?.status ?? "missing",
+        recordId: row?.record_id == null ? null : Number(row.record_id),
+      }
+    } finally {
+      client.release()
+    }
+  }
+
+  it("上傳為 pending → 記錄存檔後轉 bound + 寫 record_id", async () => {
+    const { body } = await upload(A(), "驗收單.pdf", Buffer.from("%PDF-1.7\nbind"))
+    const key = String(body.key)
+    expect((await statusOf(key)).status).toBe("pending")
+
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/records`,
+      headers: A(),
+      payload: { values: { 品名: "冷凍雞胸", 證明文件: [{ key, name: "驗收單.pdf" }] } },
+    })
+    expect(created.statusCode).toBe(201)
+    const recordId = (created.json() as { id: number }).id
+    expect(await statusOf(key)).toEqual({ status: "bound", recordId })
+  })
+
+  it("更新記錄移除附件 → 原檔轉 orphaned;新附件轉 bound", async () => {
+    const first = await upload(A(), "舊.pdf", Buffer.from("%PDF-1.7\nold"))
+    const second = await upload(A(), "新.pdf", Buffer.from("%PDF-1.7\nnew"))
+    const oldKey = String(first.body.key)
+    const newKey = String(second.body.key)
+
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/records`,
+      headers: A(),
+      payload: { values: { 品名: "換檔測試", 證明文件: [{ key: oldKey, name: "舊.pdf" }] } },
+    })
+    const record = created.json() as { id: number; version: number }
+    expect((await statusOf(oldKey)).status).toBe("bound")
+
+    const updated = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${formId}/records/${record.id}`,
+      headers: A(),
+      payload: {
+        expectedVersion: record.version,
+        values: { 證明文件: [{ key: newKey, name: "新.pdf" }] },
+      },
+    })
+    expect(updated.statusCode).toBe(200)
+    expect((await statusOf(oldKey)).status).toBe("orphaned")
+    expect(await statusOf(newKey)).toEqual({ status: "bound", recordId: record.id })
+  })
+
+  it("逾期未綁之 pending → sweep 標 orphaned(且不再計入配額)", async () => {
+    const { body } = await upload(A(), "遺留.pdf", Buffer.from("%PDF-1.7\nstale"))
+    const key = String(body.key)
+    await pool.query(
+      "UPDATE file_object SET created_at = now() - interval '48 hours' WHERE key = $1",
+      [key],
+    )
+
+    const before = await filesService.usedBytes(tenantA)
+    const swept = await filesService.sweepStalePending(tenantA)
+    expect(swept).toBeGreaterThanOrEqual(1)
+    expect((await statusOf(key)).status).toBe("orphaned")
+    expect(await filesService.usedBytes(tenantA)).toBeLessThan(before)
+  })
+
+  it("超過租戶配額 → 413 STORAGE_QUOTA_EXCEEDED", async () => {
+    // 配額於開機由 validateEnv 定案 → 以 spy 壓低該鍵(其餘鍵委派原實作,不影響 guard 判 env)
+    const config = app.get(ConfigService)
+    const original = config.get.bind(config)
+    const spy = vi
+      .spyOn(config, "get")
+      .mockImplementation(((key: string) =>
+        key === "STORAGE_TENANT_QUOTA_MB" ? 0 : original(key)) as typeof config.get)
+    try {
+      const { statusCode, body } = await upload(A(), "超量.png", PNG)
+      expect(statusCode).toBe(413)
+      expect(body.code).toBe("STORAGE_QUOTA_EXCEEDED")
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 

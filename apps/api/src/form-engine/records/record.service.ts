@@ -1,10 +1,10 @@
-import { Decimal } from "@weyver/formula"
 import { Inject, Injectable, Optional } from "@nestjs/common"
+import { Decimal } from "@weyver/formula"
 import type { Knex } from "knex"
 import { z } from "zod"
-import { APP_KNEX } from "../../db/db.module.js"
-import { FormulaService } from "../formula/formula.service.js"
 import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
+import { APP_KNEX } from "../../db/db.module.js"
+import { FilesService } from "../../files/files.service.js"
 import {
   BulkRowError,
   BulkTooLargeError,
@@ -19,16 +19,17 @@ import {
   UnknownFieldError,
   VersionConflictError,
 } from "../errors.js"
-import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
+import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
+import { FormulaService } from "../formula/formula.service.js"
+import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import { defaultNeedsUserName, resolveDefaultValue } from "../layout/default-value.js"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
-import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
-import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import {
-  MetadataService,
   type FieldDefRow,
   type FormWithFields,
+  MetadataService,
 } from "../metadata/metadata.service.js"
+import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
 import type { LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 
 interface ResolvedField {
@@ -125,6 +126,8 @@ export class RecordService {
     @Inject(MetadataService) private readonly metadata: MetadataService,
     // 讀時算公式注入(P0-3 M6);optional 使既有測試 new RecordService(knex, metadata) 不受影響
     @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
+    // F-5 M3 兩階段綁定;optional 使既有單元測 new RecordService(knex, metadata) 不受影響
+    @Optional() @Inject(FilesService) private readonly files?: FilesService,
   ) {}
 
   /* 讀時公式注入:formula 欄之值不儲存,讀取時以其他欄計算後併入(docs OQ-FML-8 之讀時算模式)。
@@ -287,6 +290,7 @@ export class RecordService {
     const record = await this.inTenantTx(tenantId, (trx) =>
       this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null),
     )
+    await this.bindFiles(tenantId, formId, resolved, record.id, withDefaults)
     const [enriched] = await this.withComputed(tenantId, resolved, [record])
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
@@ -436,6 +440,7 @@ export class RecordService {
     await this.inTenantTx(tenantId, async (trx) => {
       await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
     })
+    await this.bindFiles(tenantId, formId, resolved, recordId, values)
     return this.getRecord(tenantId, formId, recordId, policy)
   }
 
@@ -479,6 +484,8 @@ export class RecordService {
     this.assertWritable(parent, parentFormId, header.values, policy)
     for (const line of lines) this.assertWritable(child, childFormId, line.values, policy)
 
+    // F-5 M3:tx 內收集各 line 的 id,commit 後統一綁定附件(header + lines)
+    const savedLines: { id: number; values: RecordValues }[] = []
     const headerId = await this.inTenantTx(tenantId, async (trx) => {
       let id: number
       if (header.id === undefined) {
@@ -527,13 +534,28 @@ export class RecordService {
       for (const [index, line] of lines.entries()) {
         const lineNo = index + 1
         if (line.id === undefined) {
-          await this.insertOne(trx, tenantId, child, line.values, actorId, id, lineNo)
+          const created = await this.insertOne(
+            trx,
+            tenantId,
+            child,
+            line.values,
+            actorId,
+            id,
+            lineNo,
+          )
+          savedLines.push({ id: created.id, values: line.values })
         } else {
           await this.updateOne(trx, tenantId, child, line.id, null, line.values, actorId, lineNo)
+          savedLines.push({ id: line.id, values: line.values })
         }
       }
       return id
     })
+
+    await this.bindFiles(tenantId, parentFormId, parent, headerId, header.values)
+    for (const line of savedLines) {
+      await this.bindFiles(tenantId, childFormId, child, line.id, line.values)
+    }
 
     const headerRecord = await this.getRecord(tenantId, parentFormId, headerId, policy)
     const lineRecords = await this.listRecords(
@@ -551,6 +573,32 @@ export class RecordService {
   }
 
   // ---- internal ----
+
+  /* F-5 M3|記錄存檔後把附件欄的 key 由 pending 轉 bound(已移除者轉 orphaned)。
+     刻意於 tx 外呼叫:綁定失敗不回滾已存檔記錄(檔案退回孤兒回收,file-storage §12 S6)。 */
+  private async bindFiles(
+    tenantId: number,
+    formId: number,
+    resolved: ResolvedForm,
+    recordId: number,
+    values: RecordValues,
+  ): Promise<void> {
+    if (this.files === undefined) return
+    const attachmentFields = resolved.fields.filter((f) => f.type === "attachment")
+    if (attachmentFields.length === 0) return
+    const keys: string[] = []
+    for (const field of attachmentFields) {
+      const raw = values[field.row.name]
+      if (!Array.isArray(raw)) continue
+      for (const item of raw) {
+        if (typeof item === "object" && item !== null && "key" in item) {
+          const key = (item as { key: unknown }).key
+          if (typeof key === "string") keys.push(key)
+        }
+      }
+    }
+    await this.files.bindToRecord(tenantId, formId, recordId, keys)
+  }
 
   private async resolveForm(tenantId: number, formId: number): Promise<ResolvedForm> {
     const loaded: FormWithFields = await this.metadata.getForm(tenantId, formId)
