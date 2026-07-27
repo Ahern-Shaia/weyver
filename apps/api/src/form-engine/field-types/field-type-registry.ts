@@ -114,7 +114,13 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     cellValueType: "text",
     dbFieldType: "text",
     // R1·UP-4 M3 格式遮罩:displayMask 為前端顯示格式化(儲存原值);加法、既有表零遷移
-    optionsSchema: z.object({ displayMask: z.string().max(60).optional() }).strict(),
+    optionsSchema: z
+      .object({
+        displayMask: z.string().max(60).optional(),
+        // R1·後續-2「以條碼顯示」(Ragic doc/53;QR-only)
+        showAsQr: z.boolean().optional(),
+      })
+      .strict(),
     buildColumn: (t, col) => void t.text(col),
     valueSchema: () => z.string().max(1000).regex(NO_CONTROL_RE),
     filterOperators: TEXTUAL,
