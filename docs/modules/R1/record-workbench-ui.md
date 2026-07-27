@@ -1,6 +1,23 @@
 # record-workbench-ui.md — [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page)設計文件
 
-> ✅ **狀態:APPROVED — OQ-RWB-1..7 已裁定（2026-07-24;全採建議);進入 M1（A0 app-shell 密度先做)**
+> 🚧 **狀態:APPROVED(OQ-RWB-1..7 已裁定 2026-07-24,全採建議)— **A0/A1 已由後續模組吸收**,剩餘 A2–A5 進 M1(2026-07-28)**
+>
+> ### ⚠️ v0.5 範圍重整(2026-07-28;對照程式碼查證,非僅讀文件)
+> 本檔寫於 2026-07-24;其後 workspace-ia(07-25)與 views-list(07-25)**各自吸收了本檔的 A0 與 A1**。逐項核對結果:
+>
+> | 原工作項 | 判定 | 承接者 / 證據 |
+> |---|---|---|
+> | **A0 app-shell 密度**(status bar / 首頁工作面 / 導覽 rail)| ✅ 已交付 | workspace-ia v1.0(`app/app/layout.tsx` footer status bar、`app/app/page.tsx` 分類目錄、左 icon rail)|
+> | **A1 集合視圖**(browse 網格 / 雙模式 / inline 編輯 / 批次)| ✅ 已交付 | views-list v1.0(`collection-view.tsx`、`form-workspace.tsx`)|
+> | **OQ-RWB-1 nested 路由** `/forms/[id]/[recordId]` | 🔄 **已被取代** | views-list OQ-VL-7 改採同路由 nuqs `?mode=&rid=`(狀態集中於 URL query,免 layout 重載);deep-link 能力等價 |
+> | **A2 Object Page 補強**(狀態章 / 金額彙總 / 稽核 user 名 / rail enrich)| ❌ 未做 | 稽核仍顯示 `actor #7` |
+> | **A3 關聯 rail(正+反向)** | ❌ 未做 | `relation_def` 已有 `target_form_id`,反向查詢端點未建 |
+> | **A4 Object Page inline 編輯** | ❌ 未做 | 現況仍跳設計器(`object-page.tsx` 之 Pencil 連結)|
+> | **A5 後端小端點**(users lookup / reverse-relations)| ❌ 未做 | — |
+>
+> **剩餘 ≈ 0.15 mo**(原 0.26 扣除已交付之 A0 0.04 + A1 0.06,並 -0.01 因 OQ-1 路由已由 views-list 解決)。OQ 裁定**全部沿用不重議**(3=A 首個 singleSelect / 4=B 正+反向 / 5=A inline 編輯 / 7=A users lookup)。
+>
+> ~~✅ **狀態:APPROVED — OQ-RWB-1..7 已裁定(2026-07-24;全採建議);進入 M1(A0 app-shell 密度先做)**~~
 > **裁定摘要**|1=B nested 路由 · 2=A 復用 Glide · 3=A 首個 singleSelect 為狀態 · 4=B 正+反向關聯 · 5=A inline 編輯 · **6=C 單域 rail+status bar** · 7=A users lookup 端點。
 >
 > 承 form-designer-ui(P0-1 SHIPPED)+ 現有記錄工作台(`/app/forms/[formId]` 已是誠實的 Object Page 雛形)。把整合 mockup(`weyver-integrated-list-to-object.html`)的方向落成可執行收斂:補上**缺的「集合視圖」那一層**(browse/triage 網格),並就地補強 Object Page 的 R1 信號(狀態章 / 金額彙總 / 關聯 rail / 真實使用者名 / inline 編輯)。**只做 R1 後端撐得起的**;mockup 上屬 R2/工作流的(GL 過帳、簽核 stepper、批號追溯)一律不放(不造假)。
@@ -63,15 +80,24 @@
 
 | 里程碑 | 內容 | 估算 |
 |---|---|---|
-| **A0 app-shell 密度** | 全域 status bar(layout.tsx footer)+ 首頁 `/app` 卡牆改工作面(記錄數/更新/狀態,或首頁記錄集合)+ 導覽 rail(OQ-6)| 0.04 mo |
-| **A1 集合視圖** | per-form 記錄集合視圖(OQ-1 路由 + OQ-2 渲染)+ 狀態章 / 金額 tabular / 開啟一筆 → Object Page;鍵盤 ↑↓↵ triage | 0.06 mo |
+| ~~**A0 app-shell 密度**~~ | ✅ **已由 workspace-ia v1.0 交付**(status bar / 分類目錄首頁 / icon rail)| ~~0.04 mo~~ |
+| ~~**A1 集合視圖**~~ | ✅ **已由 views-list v1.0 交付**(Glide browse / 雙模式 / inline 編輯 / 批次 / 匯出)| ~~0.06 mo~~ |
 | **A2 Object Page 補強** | 狀態章進黏頂頭(OQ-3)+ 金額彙總 section(formula)+ 稽核 user 名 + rail 加 金額/狀態 | 0.05 mo |
 | **A3 關聯 rail + 反向端點** | 後端 reverse-relations 查詢端點(tenant + 權限)+ Object Page 右欄「關聯記錄」;簽核/GL 不放 | 0.04 mo |
 | **A4 inline 編輯** | Object Page 檢視↔編輯就地切換(接既有填單 UI + PATCH) | 0.03 mo |
 | **A5 後端小端點** | users lookup(id→name,tenant-scoped)+ A3 reverse-relations 端點的 service/repo/測試 | 0.03 mo |
 | **M-FMEA** | §12 逐路徑;P0 全清 | 0.01 mo |
 
-**合計** ≈ **0.26 mo**(R1 UI 收斂;不改 R1 總量結論)。前端與後端(A5 端點)**分開 commit**([[feedback_separate_frontend_backend]])。
+**原合計** ≈ 0.26 mo;**v0.5 剩餘** ≈ **0.15 mo**(A2–A5 + FMEA;A0/A1 已交付)。前端與後端(A5 端點)**分開 commit**([[feedback_separate_frontend_backend]])。
+
+### 3-ter. v0.5 落地順序(2026-07-28)
+
+| 里程碑 | 內容 |
+|---|---|
+| **M1 後端**(A5)| `GET /api/users/lookup?ids=`(限本租戶 `role_members`,只回 `{id,name}`)+ `GET /api/forms/:formId/records/:recordId/relations`(反向被引用,經 EffectivePermissions 過濾)|
+| **M2 前端**(A2)| 狀態章(OQ-3=A 首個 singleSelect)+ 金額彙總 section + 稽核顯示真實 user 名 |
+| **M3 前端**(A3/A4)| 關聯 rail(正向 link 主檔 + 反向被引用)+ Object Page inline 檢視↔編輯 + 記錄清單 rail enrich(金額/狀態)|
+| **M4 收尾** | `record-workbench.spec` + §12 FMEA + doc v1.0 + MODULES ✅ |
 
 ---
 
