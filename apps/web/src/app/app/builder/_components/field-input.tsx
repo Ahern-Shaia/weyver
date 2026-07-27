@@ -1,11 +1,12 @@
 "use client"
 
-import { Input } from "@weyver/ui/input"
-import { cn } from "@weyver/ui/lib/utils"
-import { Select } from "@weyver/ui/select"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
+import { Input } from "@weyver/ui/input"
+import { cn } from "@weyver/ui/lib/utils"
+import { Select } from "@weyver/ui/select"
+import { AttachmentInput } from "./attachment-input"
 import { choicesOf } from "./field-value"
 
 /* metadata(cellValueType)→ 輸入元件 map(A4)。值以「原始編輯字串 / 陣列 / 布林」保存於
@@ -16,10 +17,13 @@ const baseInputClass =
 
 export function FieldInput({
   field,
+  formId,
   value,
   onChange,
 }: {
   field: FieldDto
+  /* F-5:附件欄上傳需表單 id(header 用主表、明細列用子表)*/
+  formId: number
   value: unknown
   onChange: (value: unknown) => void
 }) {
@@ -28,6 +32,12 @@ export function FieldInput({
   }
 
   switch (field.type) {
+    // F-5 M4 附件:上傳 → pending 檔,欄值存 [{key,name}],記錄存檔後由後端轉 bound
+    case "attachment":
+      return (
+        <AttachmentInput formId={formId} fieldId={field.id} value={value} onChange={onChange} />
+      )
+
     case "autoNumber":
       return <span className="font-mono text-[11.5px] text-ink-4">儲存後自動產生</span>
 

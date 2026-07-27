@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { BUILDABLE_TYPES, conversionTargets, fieldTypeMeta, isStubType } from "./field-types"
+import {
+  ADVANCED_TYPES,
+  BUILDABLE_TYPES,
+  conversionTargets,
+  fieldTypeMeta,
+  isStubType,
+} from "./field-types"
 import { CELL_VALUE_TYPES, STUB_TYPES } from "./schemas"
 
 describe("field-types (mirrors backend registry)", () => {
@@ -9,12 +15,20 @@ describe("field-types (mirrors backend registry)", () => {
     }
   })
 
-  it("buildable types exclude stubs (11 buildable)", () => {
-    expect(BUILDABLE_TYPES).toHaveLength(CELL_VALUE_TYPES.length - STUB_TYPES.length)
+  it("buildable types exclude stubs and advanced types", () => {
+    expect(BUILDABLE_TYPES).toHaveLength(
+      CELL_VALUE_TYPES.length - STUB_TYPES.length - ADVANCED_TYPES.length,
+    )
     for (const stub of STUB_TYPES) {
       expect(BUILDABLE_TYPES).not.toContain(stub)
       expect(isStubType(stub)).toBe(true)
     }
+    for (const advanced of ADVANCED_TYPES) expect(BUILDABLE_TYPES).not.toContain(advanced)
+  })
+
+  it("attachment 已由 F-5 解鎖:非 stub 且可建", () => {
+    expect(isStubType("attachment")).toBe(false)
+    expect(BUILDABLE_TYPES).toContain("attachment")
   })
 
   it("conversion targets mirror the safe whitelist", () => {

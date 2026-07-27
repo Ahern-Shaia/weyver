@@ -34,8 +34,20 @@ export const CELL_VALUE_TYPES = [
 
 export type CellValueType = (typeof CELL_VALUE_TYPES)[number]
 
-/* stub 型別(引擎 systemManaged / 行為未實作)→ palette 停用、填單唯讀 */
-export const STUB_TYPES: readonly CellValueType[] = ["member", "link", "attachment"]
+/* stub 型別(引擎 systemManaged / 行為未實作)→ palette 停用、填單唯讀。
+   attachment 已於 F-5 file-storage 解鎖(上傳/下載/移除)→ 移出本清單。 */
+export const STUB_TYPES: readonly CellValueType[] = ["member", "link"]
+
+/* F-5 附件:欄值契約 [{key,name}](後端 attachment valueSchema,max 50) */
+export const attachmentItemSchema = z.object({ key: z.string(), name: z.string() })
+export type AttachmentItem = z.infer<typeof attachmentItemSchema>
+
+export const fileDtoSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  mime: z.string(),
+  size: z.number().int(),
+})
 
 export const fieldDtoSchema = z.object({
   id: z.number().int(),

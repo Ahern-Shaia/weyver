@@ -1,17 +1,17 @@
 "use client"
 
+import { describeEngineError } from "@/lib/engine/client"
+import { isStubType } from "@/lib/engine/field-types"
+import { type FormulaFieldSpec, computeFormulaPreview } from "@/lib/engine/formula-preview"
+import { useCreateRecord, useForm, useForms, useSaveWithLines } from "@/lib/engine/hooks"
+import type { FieldDto } from "@/lib/engine/schemas"
+import { toText } from "@weyver/formula"
 import { Button } from "@weyver/ui/button"
 import { cn } from "@weyver/ui/lib/utils"
 import { Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { toText } from "@weyver/formula"
-import { describeEngineError } from "@/lib/engine/client"
-import { isStubType } from "@/lib/engine/field-types"
-import { useCreateRecord, useForm, useForms, useSaveWithLines } from "@/lib/engine/hooks"
-import type { FieldDto } from "@/lib/engine/schemas"
 import { FieldInput } from "./field-input"
 import { toSubmitValue } from "./field-value"
-import { computeFormulaPreview, type FormulaFieldSpec } from "@/lib/engine/formula-preview"
 
 /* 公式欄即時預覽:以填單當前值 client 端算(與後端同引擎);循環 / 錯誤時各欄回 —,不炸整表 */
 function computeHeaderPreview(
@@ -181,6 +181,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
               <FieldRow key={field.id} field={field} isLast={index === form.fields.length - 1}>
                 <FieldInput
                   field={field}
+                  formId={formId}
                   value={field.type === "formula" ? headerPreview[field.name] : values[field.name]}
                   onChange={(v) => set(field.name, v)}
                 />
@@ -228,7 +229,10 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                   </thead>
                   <tbody>
                     {lines.map((line, index) => (
-                      <tr key={line.key} className="group transition-colors duration-150 hover:bg-head/60">
+                      <tr
+                        key={line.key}
+                        className="group transition-colors duration-150 hover:bg-head/60"
+                      >
                         <td className="border-b border-line-2 px-2 py-1 font-mono text-ink-4">
                           {index + 1}
                         </td>
@@ -239,6 +243,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                           >
                             <FieldInput
                               field={field}
+                              formId={childForm?.id ?? formId}
                               value={line.values[field.name]}
                               onChange={(v) => patchLine(line.key, field.name, v)}
                             />

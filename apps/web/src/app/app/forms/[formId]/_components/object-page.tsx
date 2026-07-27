@@ -1,14 +1,14 @@
 "use client"
 
-import { Copy, Pencil, Printer, Trash2 } from "lucide-react"
+import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
+import { describeEngineError, downloadFile } from "@/lib/engine/client"
+import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
+import { useLayout } from "@/lib/engine/hooks"
+import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
+import { Copy, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
-import { describeEngineError } from "@/lib/engine/client"
-import { useCreateRecord, useDeleteRecord } from "@/lib/engine/hooks"
-import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
-import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
-import { useLayout } from "@/lib/engine/hooks"
 import { LineItems } from "./line-items"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
@@ -208,7 +208,9 @@ export function ObjectPage({
                       : "flex-1 text-[12.5px] text-ink"
                   }
                 >
-                  {fieldSymbology(f) === null ? (
+                  {f.type === "attachment" ? (
+                    <AttachmentLinks value={record.values[f.name]} />
+                  ) : fieldSymbology(f) === null ? (
                     fmtVal(record.values[f.name])
                   ) : (
                     <BarcodeView
@@ -250,6 +252,35 @@ export function ObjectPage({
         </section>
       </div>
     </div>
+  )
+}
+
+/* F-5:附件下載走 API 代理(每次驗權限);純 href 於 dev 帶不了租戶標頭 */
+function AttachmentLinks({ value }: { readonly value: unknown }): ReactNode {
+  const items = Array.isArray(value)
+    ? value.filter(
+        (v): v is { key: string; name: string } =>
+          typeof v === "object" &&
+          v !== null &&
+          typeof (v as { key?: unknown }).key === "string" &&
+          typeof (v as { name?: unknown }).name === "string",
+      )
+    : []
+  if (items.length === 0) return <span className="text-ink-4">—</span>
+  return (
+    <span className="flex flex-col gap-0.5">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => void downloadFile(item.key, item.name)}
+          className="flex items-center gap-1 text-left text-[12px] text-primary hover:underline"
+        >
+          <Paperclip size={11} strokeWidth={1.9} />
+          {item.name}
+        </button>
+      ))}
+    </span>
   )
 }
 

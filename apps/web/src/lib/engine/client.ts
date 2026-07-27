@@ -1,5 +1,5 @@
 import type { z } from "zod"
-import { errorEnvelopeSchema } from "./schemas"
+import { errorEnvelopeSchema, fileDtoSchema } from "./schemas"
 
 const BASE = "/api/engine"
 const DEV_TENANT_KEY = "weyver.devTenant"
@@ -66,4 +66,61 @@ export async function engineFetch<T>(
 
   if (response.status === 204) return schema.parse(undefined)
   return schema.parse(await response.json())
+}
+
+/* F-5 檔案:上傳走 multipart(不設 content-type,交瀏覽器帶 boundary);
+   下載走 fetch + blob —— 純 <a href> 於 dev 帶不了 x-dev-tenant 標頭,且可統一錯誤處理。 */
+export async function uploadFile(
+  formId: number,
+  fieldId: number,
+  file: File,
+): Promise<{ key: string; name: string; mime: string; size: number }> {
+  const body = new FormData()
+  body.append("file", file)
+  const response = await fetch(`${BASE}/forms/${formId}/files?fieldId=${fieldId}`, {
+    method: "POST",
+    headers: { "x-dev-tenant": getDevTenant() },
+    body,
+  })
+  if (!response.ok) {
+    const raw: unknown = await response.json().catch(() => ({}))
+    const parsed = errorEnvelopeSchema.safeParse(raw)
+    throw new EngineApiError(
+      response.status,
+      parsed.success ? parsed.data.code : "UNKNOWN",
+      parsed.success ? parsed.data.message : `HTTP ${response.status}`,
+    )
+  }
+  return fileDtoSchema.parse(await response.json())
+}
+
+export async function downloadFile(key: string, name: string): Promise<void> {
+  const response = await fetch(`${BASE}/files/${key}`, {
+    headers: { "x-dev-tenant": getDevTenant() },
+  })
+  if (!response.ok) {
+    const raw: unknown = await response.json().catch(() => ({}))
+    const parsed = errorEnvelopeSchema.safeParse(raw)
+    throw new EngineApiError(
+      response.status,
+      parsed.success ? parsed.data.code : "UNKNOWN",
+      parsed.success ? parsed.data.message : `HTTP ${response.status}`,
+    )
+  }
+  const url = URL.createObjectURL(await response.blob())
+  try {
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = name
+    anchor.click()
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+export async function deleteFile(key: string): Promise<void> {
+  await fetch(`${BASE}/files/${key}`, {
+    method: "DELETE",
+    headers: { "x-dev-tenant": getDevTenant() },
+  })
 }
