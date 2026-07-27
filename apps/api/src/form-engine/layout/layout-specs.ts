@@ -93,6 +93,16 @@ export const layoutSchema = z
     fields: z.record(z.string(), fieldLayoutSchema).default({}),
     statics: z.array(staticElementSchema).max(200).default([]),
     sections: z.array(sectionSchema).max(50).default([]),
+    /* R1·後續-2 列印設定(加法 optional,零 migration;OQ-PM-6=A 列範圍語意,承 Ragic doc/149)。
+       紙張/邊界/方向刻意不自建 —— 委派瀏覽器列印對話框(OQ-PM-3)。 */
+    print: z
+      .object({
+        headerRows: z.array(z.number().int().min(0).max(999)).max(20).default([]),
+        footerRows: z.array(z.number().int().min(0).max(999)).max(20).default([]),
+        pageBreakAfterRows: z.array(z.number().int().min(0).max(999)).max(50).default([]),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 

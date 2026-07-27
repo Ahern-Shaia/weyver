@@ -345,6 +345,28 @@ export const viewDefs = pgTable(
   ],
 )
 
+/* R1·後續-2 標籤定義(metadata 類 → authz Tier-1 DRIZZLE 車道 + app tenant scope,OQ-PM-5)。
+   config JSONB:{ size:{widthMm,heightMm}, tile, gapMm?, showFieldNames?, copiesField?, items:[…] }
+   —— items 為欄位堆疊序(非 2D 座標,OQ-PM-2;與 form_def.layout 刻意解耦)。 */
+export const labelDefs = pgTable(
+  "label_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => formDefs.id),
+    name: text("name").notNull(),
+    config: jsonb("config").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("label_def_tenant_form_idx").on(t.tenantId, t.formId)],
+)
+
 /* R1·後續-1 自訂按鈕定義(metadata 類 → authz Tier-1 DRIZZLE 車道 + app tenant scope,OQ-AA-5)。
    config JSONB 依 action_type:updateSelf{setFields} / pushTo{targetFormId,fieldMap} / openUrl{url}。 */
 export const buttonDefs = pgTable(
