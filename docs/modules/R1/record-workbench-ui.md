@@ -1,6 +1,6 @@
 # record-workbench-ui.md — [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page)設計文件
 
-> 🚧 **狀態:APPROVED(OQ-RWB-1..7 已裁定 2026-07-24,全採建議)— **A0/A1 已由後續模組吸收**,剩餘 A2–A5 進 M1(2026-07-28)**
+> ✅ **狀態:SHIPPED v1.0(2026-07-28;M1–M4 + FMEA E1–E3 / U1–U4)**|A0/A1 由 workspace-ia 與 views-list 交付,A2–A5 由本輪完成
 >
 > ### ⚠️ v0.5 範圍重整(2026-07-28;對照程式碼查證,非僅讀文件)
 > 本檔寫於 2026-07-24;其後 workspace-ia(07-25)與 views-list(07-25)**各自吸收了本檔的 A0 與 A1**。逐項核對結果:
@@ -207,24 +207,24 @@
 
 ---
 
-## 12. 失效場景反思（FMEA）— M5 收尾填
+## 12. 失效場景反思（FMEA）— ✅ M4 收尾確認(2026-07-28)
 
-> pre-mortem 預列;M5 確認。P0 未 ✅ 不得 SHIPPED。
+> **結論**|P0(E1/E2/U1/U2)全數已緩解且有測試斷言;U3 為 OQ-3=A 之已知取捨(下方說明取捨如何收斂);E3/U4 為既有機制覆蓋。
 
 ### 12.1 反向關聯 / users lookup 端點
 | # | 場景 | 影響 | 預定緩解 | Sev |
 |---|---|---|---|---|
-| E1 | 反向關聯回無權/敏感表記錄 | 越權 / 敏感外洩 | 結果過 EffectivePermissions(canRead)+ 敏感表隱藏;整合測斷言 | P0 |
-| E2 | users lookup 列舉他租戶使用者 | 跨租戶洩漏 | 只回本租戶 + ids 同租戶過濾;不回 email | P0 |
-| E3 | 反向關聯 N+1 | 效能 | 單查詢 join / dataloader;cursor 上限 | P1 |
+| E1 | 反向關聯回無權/敏感表記錄 | 越權 / 敏感外洩 | ✅ 來源表未過 `hasAction(view)` → **整組不回**(不洩漏「有東西引用你」);記錄本身再經 RecordService policy 遮罩。測:跨租戶查詢回空且 payload 不含任何摘要 | P0 |
+| E2 | users lookup 列舉他租戶使用者 | 跨租戶洩漏 | ✅ `users` 非 RLS → 以 `role_members` inner join 綁租戶為唯一防線;只回 `{id,name}`,name 空時退回 email 本地部分**不回完整 email**。測:A 查 B 的 actor → 空;混合 id 只回同租戶者 | P0 |
+| E3 | 反向關聯 N+1 | 效能 | ⚠️ 每個來源表一次查詢(來源表上限 20、每表 20 筆並標 `truncated`)。單筆記錄之關聯來源實務上為個位數;真需優化時改單一 UNION 查詢 | P1 |
 
 ### 12.2 集合視圖 / inline 編輯
 | # | 場景 | 影響 | 預定緩解 | Sev |
 |---|---|---|---|---|
-| U1 | 集合視圖顯示無權表單記錄 | 越權 | 沿用 records 端點之權限;無權表單根本進不來(list 三態 P0-4a·uplift) | P0 |
-| U2 | inline 編輯繞過欄位遮罩 | 竄改 hidden/唯讀欄 | 走 record.service 寫白名單(P0-4a M4);前端只渲染可寫欄 | P0 |
-| U3 | 狀態欄猜錯(非狀態的 singleSelect) | 誤導 | OQ-3=A 已知風險;升 B 可治本;先取首個 singleSelect + 可關 | P2 |
-| U4 | 大量記錄集合視圖卡頓 | 體驗 | Glide 虛擬化(OQ-2=A)+ cursor 分頁載更多 | P1 |
+| U1 | 集合視圖顯示無權表單記錄 | 越權 | ✅ 由 views-list v1.0 交付:沿用 records 端點權限 + 清單三態(P0-4a·uplift) | P0 |
+| U2 | inline 編輯繞過欄位遮罩 | 竄改 hidden/唯讀欄 | ✅ PATCH 走 `RecordService.assertWritable` 寫白名單(P0-4a M4);hidden 欄本就不在讀回值中故不會被送出 | P0 |
+| U3 | 狀態欄猜錯(非狀態的 singleSelect) | 誤導 | ⚠️ OQ-3=A 之已知取捨。**降險做法**:章體恆為中性框(不臆測語意色),只在欄位 `options.colors` 明確設定時才上語意色 → 猜錯時最壞情況是「多顯示一個中性標籤」,不會誤導成「已核准=綠」。治本仍為 OQ-3=B(設計器指定狀態欄) | P2 |
+| U4 | 大量記錄集合視圖卡頓 | 體驗 | ✅ 由 views-list v1.0 交付(Glide 虛擬化 + cursor 分頁) | P1 |
 
 ### 12.3 不在本模組 scope
 - 簽核 stepper / 核准動作 → 工作流模組。
@@ -240,4 +240,6 @@
 | 2026-07-24 | v0.1 | 初版 DRAFT — 記錄工作台收斂(集合視圖 → Object Page);對照整合 mockup;現況 Object Page ~70% 已誠實建好,補 R1 缺口(集合視圖 / 狀態 / 金額 / 關聯 / user 名 / inline 編輯),R2/工作流不放;OQ-RWB-1..7 待裁定;2 唯讀後端端點 | Claude Code |
 | 2026-07-24 | v0.2 | **納入 A0 app-shell 密度**(回應「頁面單薄」視覺反思):原 doc 只補 Object Page 深度,不含**入口(首頁)+ 外殼(status bar/nav)**——正是「薄」的第一印象。A0 加 全域 status bar + 首頁卡牆改工作面(塞真資料/縮寬)+ 導覽 rail。**OQ-RWB-6 由二選改三選、建議翻為 C(單域 rail + status bar,拿重量不造空 tab)**。§1/§2/§3/§3-bis/§9 同步;合計 0.22→0.26 mo;A0 排 M1(最便宜最有感先做)| Claude Code |
 | 2026-07-24 | v0.3 | **OQ-RWB-1..7 全裁定(全採建議);DRAFT → APPROVED,進 M1**。1=B nested 路由 · 2=A 復用 Glide · 3=A 首 singleSelect 狀態 · 4=B 正+反向關聯 · 5=A inline 編輯 · **6=C 單域 rail+status bar** · 7=A users lookup。M1=A0 app-shell 密度先做(status bar + 首頁工作面)| Claude Code |
+| 2026-07-28 | **v1.0** | **SHIPPED** — M1 後端(`/api/users/lookup` + `/records/:id/relations`;反向來源改由 `field_def.options->>targetFormId` 推導,不依賴 `relation_def` 之註冊時機)· M2 前端(狀態章 / 金額彙總 / 真實使用者名)· M3 前端(關聯 rail 正+反向 / inline 檢視↔編輯 / 清單列 enrich)· M4(`record-workbench.spec` 3 測 + FMEA 確認)。api 311 + web 45 + e2e 28 全綠。commit `03e3175`(後端)+ `fb2104a`(前端)。**殘留**:U3 狀態欄慣例之治本(OQ-3=B 設計器指定)/ E3 反向關聯單一 UNION 查詢 / 選項顏色設定 UI(field-types-parity P1)| Claude Code |
+| 2026-07-28 | v0.5 | **範圍重整**(對照程式碼查證):A0 已由 workspace-ia、A1 已由 views-list 交付;OQ-RWB-1 nested 路由被 views-list OQ-VL-7 之 nuqs `mode/rid` 取代。剩餘 A2–A5 重排為 M1–M4,OQ 裁定沿用不重議;剩餘量 0.26 → 0.15 mo | Claude Code |
 | 2026-07-24 | v0.4 | **依 docs/27 向上設計規格(OQ-UP 全裁定)調整**:(a) **A0 首頁方案改「分類目錄」**(docs/27 D3;取代「卡片塞資料」— 證據:Ragic 首頁=業務分類密集目錄,復用 form_categories;status bar / 單域 rail 不變);(b) **A1 集合視圖深度升級為 docs/27 §3 P0 全量**(+欄位選擇器 per-view / facet 篩選 rail / 儲存檢視三態 scope×locked×default / 分頁偏好),由 **views-list 模組**(docs/27 §6 順序 2)承接,本模組 A1 縮為其第一增量(Glide browse+開啟);(c) 模組順序併入 docs/27 §6:workspace-ia(=A0 擴版)先行 | Claude Code |
