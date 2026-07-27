@@ -1,6 +1,7 @@
 # print-merge.md — [R1·後續-2] 標籤/QR 產生器 + 列印增強(合併列印為 P1)設計文件
 
-> ✅ **狀態：APPROVED — OQ-PM-1..7 已裁定(2026-07-25;全採建議 = 全 A);進入 M1**
+> ✅ **狀態：SHIPPED v1.0(2026-07-27;M1–M5 全綠;api 258 + web 22 e2e 過)**
+> **落地**｜M0 `5daffc0` · M1 後端 `4620642`(label_def 0013 + CRUD + layout.print)· M2 `7b3f138`+`3778afb`(showAsQr option + barcode QR 實際渲染)· M3 `58b3539`(標籤設計器 + 標籤列印頁)· M4 `de4d46d`(列印頁首/頁尾 + 換頁)· M5 `674deac`(print-merge.spec)。
 > **裁定摘要**｜1=A 合併列印排除歸 P1(待 file-storage) · 2=A 專用 label_def 堆疊模型 · 3=A 瀏覽器列印 · 4=A P0 僅 QR(複用 qrcode.react) · 5=A authz Tier-1 車道 · 6=A layout.print 列範圍 · 7=A 明示硬上限。
 >
 > docs/27 §6「後續」第二項(承 actions-approval SHIPPED)。落地 §4 P1/P2 之列印軸,對應 docs/25 H 列印。
@@ -156,11 +157,11 @@ Input validation:label config 全 Zod(欄名長度、尺寸 mm 範圍、items �
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED(OQ-PM-1..7 裁定,全採建議)| ✅ |
-| **M1** | 後端:label_def(0013)+ CRUD + layout.print(api commit)| ⏳ |
-| **M2** | 前端:barcode 欄 QR 渲染 + 以條碼顯示 | ⏳ |
-| **M3** | 前端:標籤定義設計器 + 標籤列印頁(批次)| ⏳ |
-| **M4** | 前端:列印頁首頁尾 + 換頁(M2–M5 web commit)| ⏳ |
-| **M5** | print-merge.spec 固化 + FMEA + doc v1.0 + MODULES ✅ | ⏳ |
+| **M1** | 後端:label_def(0013)+ CRUD + layout.print(`4620642`)| ✅ |
+| **M2** | barcode 欄 QR 渲染 + 以條碼顯示(`7b3f138`+`3778afb`)| ✅ |
+| **M3** | 前端:標籤定義設計器 + 標籤列印頁(批次)(`58b3539`)| ✅ |
+| **M4** | 前端:列印頁首頁尾 + 換頁(`de4d46d`)| ✅ |
+| **M5** | print-merge.spec 固化 + FMEA + doc v1.0 + MODULES ✅(`674deac`)| ✅ |
 
 ---
 
@@ -180,22 +181,24 @@ Input validation:label config 全 Zod(欄名長度、尺寸 mm 範圍、items �
 
 ---
 
-## 12. 失效場景反思(FMEA)— M5 收尾必填(R17);pre-mortem 預列
+## 12. 失效場景反思(FMEA)— M5 收尾(R17);✅=已驗證緩解
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| P1 | 標籤/列印洩漏無權欄值 | 資料源走 RecordService(maskRead 硬底);渲染時 items ∩ 實際回傳值 | P0 |
-| P2 | 跨租戶讀 label_def / 列印他租戶記錄 | app 層 tenant scope + form 級 PermissionGuard;integration 斷言 | P0 |
-| P3 | QR 內容為惡意字串 → 掃碼導向釣魚 | QR 僅編碼欄值(資料);值來自租戶自有資料;不由 QR 觸發動作(動作條碼屬 R2) | P1 |
-| P4 | 大量標籤 → 瀏覽器 OOM / 列印卡死 | 硬上限 1000 張 + 超量提示;分批引導 | P1 |
-| P5 | 標籤引用已刪欄位 → 破版 | 渲染時忽略不存在欄(承 views-list displayFields 慣例);設計器顯示失效項 | P1 |
-| P6 | `copiesField` 值異常(負數/超大/非數值)| Zod + 執行期夾限(0..99/筆)+ 總量仍受硬上限 | P1 |
-| P7 | print CSS 與既有 `[data-noprint]` 衝突 / 頁首頁尾重疊內容 | 標籤頁為獨立路由(不繼承 app chrome);頁首頁尾用 `@page` margin box 或 fixed + padding 保留區 | P1 |
-| P8 | layout.print 加法破既有表單 | 加法 optional + 讀時忽略未知鍵(承 form-designer-2d 慣例);既有表 e2e 斷言 | P1 |
-| P9 | 部署順序:前端先於 0013 migration | migration 必先(R10);缺表 → 標籤入口不顯示(優雅降級)| P1 |
-| P10 | symbology=code128 之欄位 | 明示「Code128 待 P1」不靜默空白 | P2 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| P1 | 標籤/列印洩漏無權欄值 | 資料源走 RecordService(`maskRead` 後端已剝 hidden 欄);渲染時 `fieldByName` ∩ items,欄位不存在即略過 | P0 | ✅ by design(標籤只呈現已授權回傳值) |
+| P2 | 跨租戶讀 label_def / 列印他租戶記錄 | app 層 `where tenant_id` + form 級 PermissionGuard(list=view / CRUD=design) | P0 | ✅ labels.integration 跨租戶斷言 |
+| P3 | QR 內容為惡意字串 → 掃碼導向釣魚 | QR 僅編碼欄值(資料,非可執行);`qrcode.react` 產 SVG 不插 raw HTML;不由 QR 觸發動作(動作條碼屬 R2) | P1 | ✅ |
+| P4 | 大量標籤 → 瀏覽器 OOM / 列印卡死 | 硬上限 `MAX_LABELS_PER_RUN`=1000 + 超量橫幅明示總數與建議(不靜默截斷)| P1 | ✅ 實作 |
+| P5 | 標籤引用已刪欄位 → 破版 | 渲染時 `fieldByName.get` 查無即 `return null`(略過該項,不破版)| P1 | ✅ 實作。⚠️ 殘留:設計器未標示失效項(P1)|
+| P6 | `copiesField` 值異常(負數/超大/非數值)| 後端驗須為數值型欄;前端 `copiesOf` 夾限 0..`MAX_COPIES_PER_RECORD`(99)、非數值回 1;總量仍受硬上限 | P1 | ✅ 實作 + labels.integration 非數值欄拒 |
+| P7 | print CSS 衝突 / 頁首頁尾重疊 | 標籤頁工具列標 `data-noprint`;頁首/頁尾列採 `break-inside: avoid`、換頁列採 `break-after: page`(不用 fixed → 無重疊風險)| P1 | ✅。⚠️ 殘留:頁首頁尾**未於每頁重複**(僅避免跨頁斷裂);真正重複需 `@page` margin box 或伺服器端 PDF → P1 |
+| P8 | layout.print 加法破既有表單 | `print` 為 optional 加法;不帶 print 之舊 payload 仍可存 | P1 | ✅ labels.integration「加法不破既有」測 |
+| P9 | 部署順序:前端先於 0013 migration | migration 必先(R10;dev 已 migrate);缺表 → useLabels 空 → 標籤區不渲染(優雅降級)| P1 | ✅ |
+| P10 | symbology=code128 之欄位 | `BarcodeView` 明示「Code128 待後續版本」並顯示原值,不靜默空白 | P2 | ✅ 實作 |
 
-> **檢查點**:M5 收尾時所有 P0(P1–P2)須 ✅ 方可標 SHIPPED。
+> **檢查點**:P0(P1–P2)全 ✅ → SHIPPED。⚠️ 殘留:P7 頁首頁尾未每頁重複(需 `@page` margin box 或伺服器端 PDF)、P5 設計器未標失效欄項;**合併列印/客製報表(範本上傳 + Carbone)、伺服器端 PDF(密碼/浮水印/非同步)、列印輸出寫回附件欄、Code128** 皆 P1(多數待 file-storage)。
+>
+> **測試環境註記**|全套 e2e 曾出現一次 `permissions.spec` flaky(單獨跑與兩兩組合皆過,重跑全套 22/22 綠)—— 係共用 dev DB 隨每次 e2e 累積表單/分類所致之既有測試脆弱性,非本模組回歸;治本為 e2e 隔離種子(P1)。
 
 ---
 
@@ -203,5 +206,6 @@ Input validation:label config 全 Zod(欄名長度、尺寸 mm 範圍、items �
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-27 | v1.0 | **M1–M5 SHIPPED**。M1 label_def(0013,authz Tier-1)+ CRUD(欄名/數量欄驗證)+ layout.print 加法。M2 barcode 欄實際渲染 QR(複用 qrcode.react)+ text 欄 showAsQr。M3 標籤設計器(選欄堆疊/尺寸/平舖/份數參照欄)+ 標籤列印頁(@page A4 + mm 平舖 + 份數展開 + 1000 張硬上限明示)。M4 列印頁首/頁尾/換頁(列範圍)+ Object Page 套用。M5 print-merge.spec。FMEA P1–P2 P0 全 ✅;殘留明列。api 258 + web 22 e2e 綠 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-PM-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:合併列印(範本上傳)排除歸 P1 待 file-storage;標籤走專用 label_def 堆疊模型;PDF 走瀏覽器列印;P0 僅 QR 複用 qrcode.react;label_def 走 authz Tier-1 車道;列印頁首頁尾走 layout.print 列範圍;批次明示硬上限 | Claude Code |
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 後續-2。**範圍洞見**:Ragic 列印為三件事,標籤 maker 為 in-app 設定(零上傳)、友善列印委派瀏覽器紙張設定、僅合併列印/客製報表需上傳範本(Carbone)→ P0 取前二(零 infra、零阻塞),範本上傳合併歸 P1 待 file-storage(同 OQ-FTP-6)。`qrcode.react` 已裝可直接複用。OQ-PM-1..7 待裁定 | Claude Code |
