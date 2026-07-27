@@ -1,7 +1,7 @@
 import { Global, Inject, Injectable, Module, type OnModuleDestroy } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { sql } from "drizzle-orm"
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
+import { type NodePgDatabase, drizzle } from "drizzle-orm/node-postgres"
 import knex, { type Knex } from "knex"
 import pg from "pg"
 import "./pg-types.js" // 全域 pg 型別解析覆寫(DATE → 字串);import 副作用,須在建任何 pool 前
@@ -30,8 +30,27 @@ export function createDdlKnex(connectionString: string): Knex {
   return knex({ client: "pg", connection: connectionString, pool: { min: 0, max: 3 } })
 }
 
+/* F-6 M5(core FMEA R8):app 車道設 statement_timeout —— 單一慢查詢不得拖垮連線池。
+   DDL 車道另有自己的 SET LOCAL(較長);報表類長查詢未來走 read replica 而非放寬此值。 */
+const APP_STATEMENT_TIMEOUT = "30s"
+
 export function createAppKnex(connectionString: string): Knex {
-  return knex({ client: "pg", connection: connectionString, pool: { min: 0, max: 10 } })
+  return knex({
+    client: "pg",
+    connection: connectionString,
+    pool: {
+      min: 0,
+      max: 10,
+      afterCreate: (
+        conn: { query: (sql: string, cb: (err: unknown) => void) => void },
+        done: (err: unknown, conn: unknown) => void,
+      ) => {
+        conn.query(`SET statement_timeout = '${APP_STATEMENT_TIMEOUT}'`, (err: unknown) => {
+          done(err, conn)
+        })
+      },
+    },
+  })
 }
 
 /* F-6 M3|租戶範疇 metadata 存取入口。強制「每次存取都在設好 app.tenant_id 的交易內」——

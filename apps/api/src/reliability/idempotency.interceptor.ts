@@ -8,9 +8,9 @@ import {
   type NestInterceptor,
   UnprocessableEntityException,
 } from "@nestjs/common"
+import { Reflector } from "@nestjs/core"
 import type { FastifyReply } from "fastify"
 import type { Knex } from "knex"
-import { Reflector } from "@nestjs/core"
 import { type Observable, catchError, concatMap, from, of, switchMap, throwError } from "rxjs"
 import { APP_KNEX } from "../db/db.module.js"
 import type { RequestWithTenant } from "../http/tenant-context.js"

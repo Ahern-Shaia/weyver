@@ -392,10 +392,10 @@ WHERE n.nspname = 'data' AND c.relkind = 'r' AND NOT c.relforcerowsecurity;
 | # | 場景 | 行為 | 狀態 | Sev |
 |---|---|---|---|---|
 | C1 | 使用者輸入進入 SQL identifier(注入)| 不可能:identifier 全系統生成(DB generated column)+ regex 斷言 + knex quote;測試覆蓋注入形狀 | ✅ | P0 |
-| C2 | metadata 寫入後、DDL 前 crash | form 卡 `pending`,對外不可用(僅 ready 可用)→ 無資料損毀;孤兒需清理 | ✅(⚠️ 清理 job 未實作,SOP 11.3 SQL 手動掃;治本 = I 可靠性工程排程 job)| P1 |
+| C2 | metadata 寫入後、DDL 前 crash | form 卡 `pending`,對外不可用(僅 ready 可用)→ 無資料損毀 | ✅ **【2026-07-28 已清】** F-6 M4 排程清理:逾 24h 之 `pending` 標 `failed` 並寫 `ddl_audit`(不刪,保留供查因)| P1 |
 | C3 | DDL 成功、markProvisioned 前 crash | 物理表存在 + metadata pending;重 provision 撞名 → 失敗路徑 DROP IF EXISTS 冪等清掉 + failed;無使用者資料在內 | ✅ | P1 |
 | C4 | 並發同名建表 | `(tenant_id, name)` partial unique index 擋,一成一敗 | ✅ | P1 |
-| C5 | 惡意大量建表(DDL DoS)| **無 per-tenant quota、無 rate limit** | ⚠️ 殘留:單租戶 catalog 膨脹(spike 證 10K 表無恙 = 5× pilot 餘裕);dev 環境無外部流量;治本 = quota 常數 + @nestjs/throttler(上 prod 前必裝,§ 12.3)| P1 |
+| C5 | 惡意大量建表(DDL DoS)| per-tenant 配額 + 分級限流 | ✅ **【2026-07-28 已清】** F-6 M2:`tenants` 三欄可調配額(表數/欄數/記錄數,NULL=系統預設)+ 建表 20/min·加欄 60/min `@Throttle`;超限 403 `QUOTA_EXCEEDED` | P1 |
 | C6 | 子表指向他租戶 / 未 ready 父表 | readyParentTable 租戶內查 + 狀態檢查,拒 | ✅ | P0 |
 
 ### 12.2 schema 變更(addField / alterFieldType / dropField)
@@ -418,8 +418,8 @@ WHERE n.nspname = 'data' AND c.relkind = 'r' AND NOT c.relforcerowsecurity;
 | R4 | 金額以 float 進入 | money = 十進位字串 regex,float 直接 422(測試)| ✅ | P0 |
 | R5 | 子表部分寫入(header 成 lines 敗)| 單一 tx 全 rollback(測試斷言)| ✅ | P0 |
 | R6 | LIKE / filter 注入 | 欄名 catalog whitelist + 運算子型別 whitelist + LIKE escape(`%` 注入測試)| ✅ | P0 |
-| R7 | **HTTP retry 重複建記錄(冪等性)** | **無 idempotency key** — 重試會建重複記錄(資料髒非毀損)| ⚠️ 殘留:AGENTS ⚙️ 鐵則要求 mutation 帶 idempotency key;現階段無對外流量(prod fail-closed);**治本 = I 平台可靠性工程(docs/04 v2.4 +8 人月)實作 idempotency key,pilot 上線前必補** | P1 |
-| R8 | 大表慢查詢拖垮 app 車道 | cursor 分頁 + limit 200 上限;**殘留:app 車道無 statement_timeout** | ⚠️ P2:pilot 資料量(10K 級)實測無虞;治本 = app 車道連線 `statement_timeout` 預設 | P2 |
+| R7 | **HTTP retry 重複建記錄(冪等性)** | `Idempotency-Key` 標頭(選填)+ `idempotency_key` 表 | ✅ **【2026-07-28 已清】** F-6 M1 全域攔截器:同 key 重放回首次結果、不同 body 422、併發 409、失敗釋放、24h 逾期可再用 | P1 |
+| R8 | 大表慢查詢拖垮 app 車道 | cursor 分頁 + limit 200 上限 + **連線建立時 `SET statement_timeout = '30s'`** | ✅ **【2026-07-28 已清】** F-6 M5:`createAppKnex` 之 pool `afterCreate` 設定;報表類長查詢日後走 read replica 而非放寬此值 | P2 |
 
 ### 12.4 租戶 context / 認證
 
@@ -428,7 +428,7 @@ WHERE n.nspname = 'data' AND c.relkind = 'r' AND NOT c.relforcerowsecurity;
 | T1 | production 無真 auth 裸奔 | DevTenantGuard 於 production **fail-closed 403**(e2e 未測 prod env,程式碼路徑單純)| ✅(🔒 對外服務被 F-2 gate 擋 — 本模組刻意不解)| P0 |
 | T2 | dev header 偽造租戶 | dev-only 已知限制(等價於拿到 DB 憑證);F-2 換 JWT 真實來源 + 剝 client header(鐵則 3)| ✅(dev scope)| P1 |
 | T3 | GUC reset `''` 炸查詢(連線池)| policy `NULLIF` 標準寫法(spike S3 發現→全 policy 落地)| ✅ | P0 |
-| T4 | metadata 車道(Drizzle)仍為特權憑證 | MetadataService 每查詢 WHERE tenant 為現行防線;RLS 對 superuser 不生效 | ⚠️ 殘留:單防線(無 RLS 兜底);dev 可忍;**治本 = F-2 時 metadata 切 app 車道 + nestjs-cls context(設計已預留 token 分離)** | P1 |
+| T4 | metadata 車道(Drizzle)仍為特權憑證 | app 層 WHERE tenant_id + **RLS 兜底** | ✅ **【2026-07-28 已清】** F-6 M3:`form_def`/`field_def`/`formula_def`/`relation_def` 讀寫改走 `TenantDb.withTenant`(app 車道 + `app.tenant_id`)→ 既有 RLS FORCE 真正生效;以非 superuser 角色斷言「漏寫 WHERE 也不外洩」 | P1 |
 
 ### 12.5 audit / 觀測
 
@@ -449,12 +449,12 @@ WHERE n.nspname = 'data' AND c.relkind = 'r' AND NOT c.relforcerowsecurity;
 ### 12.7 不在本模組 scope 修的 pre-existing / 後續 backlog
 
 - **F-2 Better Auth + JWT + nestjs-cls**(T1/T2/T4 治本)— 下一個 M0 模組;**對外上線的硬前提**
-- **idempotency key**(R7)+ **清理 job**(C2/A4)+ **per-tenant quota + throttler**(C5)+ **helmet/CORS**(AGENTS 安全鐵則)— I 平台可靠性工程(docs/04 v2.4 已列 8 人月);pilot 上線前 checklist
+- ~~**idempotency key**(R7)+ **清理 job**(C2/A4)+ **per-tenant quota + throttler**(C5)~~ → **2026-07-28 已由 [F-6 平台可靠性工程](../foundation/reliability.md) SHIPPED**;**helmet/CORS** 仍列 pilot 上線前 checklist
 - **metadata 快取**(§4.2 form_def version 失效)— DML 熱路徑優化,量測後再做
 - **zod-openapi**(M6 deviation)— P0-5 API sprint
 
 > **檢查點:P0 全數 ✅(C1/C6/S3/S4/R1/R2/R4/R5/R6/T1/T3/A2)→ 可標 SHIPPED。**
-> ⚠️ 殘留 6 項(C5/R7/R8/T4/A3/A4)全為 P1/P2,各有明確治本歸屬;**「SHIPPED」≠「可對外上 prod」— 對外前提 = F-2 + § 12.7 可靠性 checklist**。
+> ⚠️ 原殘留 6 項(C5/R7/R8/T4/A3/A4)—— **2026-07-28 C5/R7/R8/T4 已由 F-6 平台可靠性工程清除**;A3/A4 仍為 P1/P2。**「SHIPPED」≠「可對外上 prod」— 對外前提 = F-2 + § 12.7 可靠性 checklist**。
 
 ---
 

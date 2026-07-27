@@ -174,14 +174,14 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 | A2 | 拋轉/自動執行重複過帳 | 冪等 key 唯一索引(`btn:<id>:rec:<id>` / `approval:<id>:complete`);命中 → 回 duplicate 不重跑副作用 | P0 | ✅ buttons.integration 重跑 duplicate;簽核完成走 instance key |
 | A3 | 簽核越權（非該步角色）| `decide` 驗 current step `approverRoleId` ∈ actor 角色閉包(`resolveActorRoleIds`);非成員 → 403 | P0 | ✅ 實作 + dev superadmin 例外明確 |
 | A4 | 簽核中改記錄繞流程 | `ApprovalLockInterceptor` 全域攔 records PATCH/DELETE → 409;解鎖僅 reject/withdraw/完成 | P0 | ✅ approval.integration:鎖 409 + 退回後可改 |
-| A5 | 簽核完自動執行失敗半過帳 | onComplete 按鈕以 instance 冪等 key 執行;RecordService 副作用本身單一 tx | P0 | ⚠️ 已知殘留:狀態更新與按鈕執行**非同一 tx**(按鈕失敗 → 已標 approved 但未拋轉);治本 = 包同 tx 或 outbox(P1);冪等保證重試不重複 |
+| A5 | 簽核完自動執行失敗半過帳 | onComplete 按鈕以 instance 冪等 key 執行;RecordService 副作用本身單一 tx | P0 | ✅ **【2026-07-28 已清】** F-6 M5 改「**先執行副作用、成功才標 approved**」——跨車道(Tier-1 簽核狀態 vs app 車道記錄 DML)本就無法同一 tx;新序下按鈕失敗則實例維持 `pending` 可重按,冪等 key 保證不重複執行,不再有「已核准但未拋轉」之不可修復狀態 |
 | A6 | ZEN 規則逃逸 / timeout | 表達式由結構化 config 確定性組出(`amount >= threshold`),值以 context 傳入不拼接;評估失敗 fail-closed(視為不啟用) | P1 | ✅ |
 | A7 | openUrl SSRF/XSS | Zod refine 僅 https/相對路徑(擋 javascript:/data:);前端 `window.open(..., noopener,noreferrer)`;後端不 fetch | P1 | ✅ buttons.integration:javascript: → 400 |
 | A8 | 簽核者離職/角色空 → 卡簽 | 送簽者本人或 admin 可 withdraw 解卡;admin 代簽/改路由 → P1 | P1 | ⚠️ 已知殘留:無「角色成員為空」之送簽前檢查(P1) |
 | A9 | 跨租戶(button/approval def/instance 洩漏)| 全查詢 app 層 `where tenant_id`(authz Tier-1 車道,OQ-AA-5);form 級另有 PermissionGuard | P0 | ✅ buttons.integration 跨租戶斷言 |
 | A10 | 部署順序:前端先於 0012 migration | migration 必先(R10;dev 已 migrate);缺表 → 按鈕/簽核查詢失敗即不渲染(RecordActions 空陣列降級)| P1 | ✅ |
 
-> **檢查點**:P0(A1–A4、A9)全 ✅ → SHIPPED。⚠️ A5 已知殘留(狀態更新與 onComplete 執行非同一 tx,冪等兜底)+ A8(無空角色送簽檢查);並簽(會簽/擇辦)、Email/SMS 動作、更新他表/合併按鈕、留言@提及、DBOS durable 連鎖 皆 P1。
+> **檢查點**:P0(A1–A4、A9)全 ✅ → SHIPPED。~~A5 已知殘留~~ **2026-07-28 由 F-6 M5 清除**(改先副作用後定案);⚠️ A8(無空角色送簽檢查)仍殘留;並簽(會簽/擇辦)、Email/SMS 動作、更新他表/合併按鈕、留言@提及、DBOS durable 連鎖 皆 P1。
 
 ---
 

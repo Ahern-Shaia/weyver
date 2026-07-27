@@ -4,7 +4,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDrizzle, type DrizzleDb } from "../src/db/db.module.js"
+import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 
@@ -35,7 +35,10 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: uri, max: 5 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  const rows = await db.insert(tenants).values([{ name: "廠 A" }]).returning()
+  const rows = await db
+    .insert(tenants)
+    .values([{ name: "廠 A" }])
+    .returning()
   tenantA = rows[0]?.id ?? 0
 
   process.env.DATABASE_URL = uri
@@ -108,7 +111,9 @@ describe("F-6 M2 per-tenant 配額", () => {
       method: "POST",
       url: `/api/forms/${formId}/records/bulk`,
       headers: A(),
-      payload: { rows: [{ values: { 品名: "a" } }, { values: { 品名: "b" } }, { values: { 品名: "c" } }] },
+      payload: {
+        rows: [{ values: { 品名: "a" } }, { values: { 品名: "b" } }, { values: { 品名: "c" } }],
+      },
     })
     expect(bulk.statusCode).toBe(403)
     expect((bulk.json() as { code: string }).code).toBe("QUOTA_EXCEEDED")

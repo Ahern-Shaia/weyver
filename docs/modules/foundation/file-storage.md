@@ -198,7 +198,7 @@ interface StorageDriver {
 | S3 | 惡意檔上傳(偽副檔名 / HTML·SVG XSS / 可執行)| magic bytes 判型 + 白名單(zip 僅 OOXML 副檔名放行、純文字僅 txt/csv 且無 NUL)+ 生成檔名 + `Content-Disposition: attachment` + 保守 `application/octet-stream` + nosniff。測:ELF 偽裝 .png/.pdf → 415(api + e2e 各一) | P0 | ✅ |
 | S4 | 路徑穿越 / key 注入(`../`)| key 由伺服器生成(uuid);`KEY_RE` 形狀白名單於 service 與 driver **雙重**驗證;local driver 另做 resolve 前綴比對。測:9 種穿越形狀全拒 | P0 | ✅ |
 | S5 | 大檔 / 大量上傳耗盡磁碟或頻寬(DoS)| multipart `fileSize`/`files:1` 硬限 + `truncated` 明示拒 + service 再驗 + 租戶配額 413 + 既有全域 throttler。測:配額超限 → 413 | P1 | ✅ 已緩解 |
-| S6 | 孤兒檔累積(上傳後未存檔)| pending 逾 24h → `orphaned`(每次上傳前順帶 sweep,不計入配額)。**殘留:實體檔案不刪** —— 需排程回收 job,歸「平台可靠性工程」模組(與 form-engine-core C2 孤兒 form 清理同批) | P1 | ⚠️ 部分 |
+| S6 | 孤兒檔累積(上傳後未存檔)| pending 逾 24h → `orphaned`(上傳前順帶 sweep,不計入配額);**實體回收於 2026-07-28 由 [F-6 M4](reliability.md) 補上**(逾 72h 觀察期後刪物件 + 標 `deleted_at`,順序不可反) | P1 | ✅ |
 | S7 | 記錄刪除後檔案仍可下載 | **v1.1 已補**:下載時對 `record_id` 回查該表 `deleted_at IS NULL`(identifier 出自 `physicalTableName`,非使用者輸入);已綁檔隨記錄不可讀,未綁 pending 檔不受限(填單中)。測 2 則 | P1 | ✅ |
 | S8 | prod 缺 STORAGE_* 設定 → 執行期才爆 | env `superRefine`:driver=s3 時缺 bucket/keys 開機即 fail-fast | P1 | ✅ |
 | S9 | local driver 目錄落在 webroot / 被靜態服務 | 未註冊 `@fastify/static`;`STORAGE_LOCAL_DIR` 預設 `.weyver-storage`(已 gitignore),prod 應指向 repo 外掛載點 | P1 | ✅ |

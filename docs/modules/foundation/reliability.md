@@ -1,6 +1,6 @@
 # reliability.md — [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job)設計文件
 
-> ✅ **狀態:APPROVED — OQ-REL-1..7 已裁定(2026-07-27;全採建議);進入 M1**
+> ✅ **狀態:SHIPPED v1.0(2026-07-28)— M1–M5 全數落地,FMEA L1–L7 全緩解**
 > **裁定摘要**|1=A 冪等 key 選填 · 2=**B** per-tenant 可調配額(tenants 加 nullable 欄)· 3=A 只切租戶範疇 metadata · 4=A `@nestjs/schedule` + advisory lock · 5=A 24h · 6=A 佔位 + 409 · 7=A 不補 outbox。
 >
 > **本模組不是新功能,是把散落各模組的 P1 殘留一次收斂。** 各模組 SHIPPED 時皆誠實記錄「治本歸屬 = I 平台可靠性工程」,本檔即該歸屬的落地設計。
@@ -65,9 +65,17 @@
 | **M2 配額 + 分級限流** | `tenant_quota` 常數/設定 + 建表·加欄·記錄數檢核 + 建表類端點嚴限 + 測 | 0.06 mo |
 | **M3 metadata 車道切換** | Drizzle 走 app 車道 + tenant GUC(nestjs-cls 或顯式傳遞)+ **跨租戶隔離斷言**(superuser 不再繞過)+ 回歸 | 0.10 mo |
 | **M4 清理 job** | 排程機制 + 孤兒 form / 孤兒檔實體回收 + 可觀測(結果寫 audit)+ 測 | 0.06 mo |
-| **M5 收尾** | `statement_timeout`、簽核同 tx、FMEA、doc v1.0、回填各模組殘留註記 | 0.04 mo |
+| **M5 收尾** | `statement_timeout`、簽核副作用順序、FMEA、doc v1.0、回填各模組殘留註記 | 0.04 mo |
 
 **合計 ≈ 0.36 mo**(docs/04 I 8 人月中之 P0 子集;其餘 outbox / 加密 / flag 未動)。
+
+### 3-bis. 實作偏離 M0 之處(誠實記錄)
+
+1. **簽核副作用改「先執行、後定案」而非同一 tx**|M0 §1.1-5 寫「簽核完成與副作用同 tx」,但簽核狀態走 Tier-1 Drizzle 車道、記錄 DML 走 app Knex 車道,**跨車道無法同一 DB tx**。改為:先執行 `onComplete` 按鈕(已有綁 instance 的冪等 key)→ 成功才標 `approved`。副作用失敗 → 實例維持 `pending` 可重按核准,冪等 key 保證不重複執行。反向順序(先標 approved)會產生「已核准但單據未動」且無法自動修復的狀態 —— 新作法嚴格優於原設計。
+2. **記錄配額只在 bulk 路徑檢核**|單筆插入前做全表 `count(*)` 在大表為 seq scan(每筆一次),代價與收益不成比例。DDL DoS 的實際載體是建表與批次匯入,故配額落在表數 / 欄數 / bulk;單筆由 throttler 與表/欄上限間接約束。
+3. **冪等性以攔截器而非守衛實作**|全域守衛早於 controller 級 `TenantGuard` 執行,拿不到 `request.tenantContext`(承 `ApprovalLockInterceptor` 同一教訓)。
+4. **`TenantDb.withTenant` 取代裸 db 注入**|M0 §4.3 只說「切 app 車道」;實作進一步**不對外提供裸 db**,強制所有租戶範疇 metadata 存取都在設好 GUC 的交易內 —— 否則 RLS 會讓漏設語境的查詢靜默回空(FMEA L1 的根因),難以察覺。
+5. **清理 job 用交易範圍 advisory lock**|M0 §4.4 未指定鎖形式。採 `pg_try_advisory_xact_lock`(而非 session 級)避免使用 knex 私有連線 API;物件刪除本身冪等(`rm force` / S3 `DeleteObject`),極端情況重跑無害。
 
 ---
 
@@ -109,15 +117,17 @@
 
 ## 12. 失效場景反思(FMEA)— 收尾必填(R17);pre-mortem 預列
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| L1 | metadata 切車道後,某未盤點路徑因無 tenant GUC 而查不到資料(功能壞) | M3 全量回歸 + 逐一盤點呼叫端;RLS 查無 = 空結果非報錯 → **須以測試逼出**,不可只靠人工檢視 | P0 |
-| L2 | 冪等回放把**他人**的回應回給你(key 碰撞) | PK 含 `tenant_id`;key 由 client 產生但 scope 於租戶;`request_hash` 不符即拒 | P0 |
-| L3 | 佔位列寫入後程序 crash → key 永久卡 `in_flight` | `expires_at` + 掃描重置;409 訊息明示可重試 | P1 |
-| L4 | 清理 job 誤刪仍被引用的檔案/表 | 只刪 `orphaned` / 逾時 `pending` 且**加保守時間窗**;刪前寫 audit;先 dry-run 模式 | P0 |
-| L5 | 配額上限過低 → 正常客戶被擋 | 預設值以 pilot 實測為基準 + per-tenant 可調(OQ-REL-2=B);超限訊息含「聯絡管理員」 | P1 |
-| L6 | 建表端點嚴限誤傷 Excel 匯入(一次建多表) | 匯入走 bulk 端點單次呼叫,不逐表打;限流值以實際流程實測 | P1 |
-| L7 | 多實例部署後 job 重複執行 | advisory lock(OQ-REL-4 之代價已標);單實例期不觸發 | P1 |
+> **收尾結論(2026-07-28)**|L1–L7 全數已緩解且有測試斷言。
+
+| # | 場景 | 落地緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| L1 | metadata 切車道後,某未盤點路徑因無 tenant GUC 而查不到資料(功能壞) | `TenantDb.withTenant` 為唯一入口(不曝露裸 db)→ 漏設語境於編譯期即不可能;api 305 全量回歸為第二道網(RLS 回空會讓斷言資料的測試失敗) | P0 | ✅ |
+| L2 | 冪等回放把**他人**的回應回給你(key 碰撞) | PK `(tenant_id, key)`;`endpoint` + `request_hash` 不符即 422。測:B 租戶用 A 的同名 key → 正常執行不回放 | P0 | ✅ |
+| L3 | 佔位列寫入後程序 crash → key 永久卡 `in_flight` | `expires_at`(24h)逾期即可被同 key 重新佔用;handler 失敗主動釋放佔位列。測 2 則 | P1 | ✅ |
+| L4 | 清理 job 誤刪仍被引用的檔案/表 | 只動 `orphaned`(逾 72h 觀察期)/ 逾 24h `pending`;pending form 只標 `failed` **不刪**(保留供查因)並寫 `ddl_audit`;`CLEANUP_DRY_RUN=1` 可先驗。測:未逾時者原封不動 | P0 | ✅ |
+| L5 | 配額上限過低 → 正常客戶被擋 | `tenants` 三欄 per-tenant 可調(NULL=預設);403 訊息含「請聯絡管理員調整配額」 | P1 | ✅ |
+| L6 | 建表端點嚴限誤傷 Excel 匯入(一次建多表) | 匯入走單次 bulk 呼叫不逐表打;建表 20/min、加欄 60/min,遠高於人工設計節奏。e2e `grid-import` 通過 | P1 | ✅ |
+| L7 | 多實例部署後 job 重複執行 | `pg_try_advisory_xact_lock`:取不到即 `skipped`。測:並行兩次不拋錯、至多一個真跑 | P1 | ✅ |
 
 ---
 
@@ -125,4 +135,5 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | **v1.0** | **SHIPPED** — M1 冪等性(0015 + 全域攔截器)/ M2 per-tenant 配額(0016 + 分級限流)/ M3 metadata 車道切 app lane 使 RLS FORCE 生效 / M4 排程清理(孤兒 form + 孤兒檔實體回收 + 逾期冪等 key)/ M5 `statement_timeout` + 簽核副作用順序。**收斂之殘留全清**:core R7 · C5 · T4 · C2 · R8 · file-storage S6 · actions-approval 同 tx。api 305 + e2e 25 全綠(20 新測);FMEA L1–L7 全緩解;§3-bis 記錄 5 項實作偏離 | Claude Code |
 | 2026-07-27 | v0.1 | 初版 DRAFT — 收斂 7 項跨模組 P1 殘留(core R7/C5/T4/C2/R8 · file-storage S6 · actions-approval 同 tx)。P0 = 冪等性 + per-tenant 配額 + metadata 車道 RLS 兜底 + 清理 job;outbox / 加密 / flag / circuit breaker 明確排除並附理由。OQ-REL-1..7 待裁定 | Claude Code |

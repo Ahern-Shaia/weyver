@@ -11,13 +11,13 @@ import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { AuthzRepository } from "../authz/authz.repository.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
-import { ActionsRepository, type ApprovalDefRow } from "./actions.repository.js"
 import type {
   ApprovalDefDto,
   ApprovalInstanceDto,
   ApprovalStep,
   CreateApprovalDefBody,
 } from "./action-specs.js"
+import { ActionsRepository, type ApprovalDefRow } from "./actions.repository.js"
 import { ButtonService } from "./button.service.js"
 
 /* R1·後續-1 M2 簽核狀態機(OQ-AA-1=A:DB pending step 由 approve 推進,無 DBOS)。
@@ -167,8 +167,11 @@ export class ApprovalService {
       return this.toInstanceDto(tenant, instanceId)
     }
 
-    // 全部步驟通過 → 完成 + 觸發 onComplete 按鈕(冪等 key 綁 instance,FMEA A5)
-    await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "approved" })
+    /* 全部步驟通過 → 觸發 onComplete 按鈕,**成功後**才標 approved(F-6 M5)。
+       簽核狀態(Tier-1 車道)與副作用(記錄 DML,app 車道)跨車道,無法同一 DB tx;
+       改以「先副作用、後定案」+ 既有冪等 key(綁 instance)取代:
+       副作用失敗 → 實例維持 pending,可重按核准;冪等 key 保證不會重複執行。
+       反之(先標 approved)會產生「已核准但單據未動」且無法自動修復的狀態。 */
     if (def.onCompleteButtonId !== null) {
       await this.buttons.execute(
         tenant,
@@ -179,6 +182,7 @@ export class ApprovalService {
         `approval:${instanceId}:complete`,
       )
     }
+    await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "approved" })
     return this.toInstanceDto(tenant, instanceId)
   }
 

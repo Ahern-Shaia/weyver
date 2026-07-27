@@ -45,7 +45,8 @@ export class QuotaService {
     return {
       maxForms: row?.maxForms ?? this.fromEnv("QUOTA_MAX_FORMS", DEFAULTS.maxForms),
       maxFieldsPerForm:
-        row?.maxFieldsPerForm ?? this.fromEnv("QUOTA_MAX_FIELDS_PER_FORM", DEFAULTS.maxFieldsPerForm),
+        row?.maxFieldsPerForm ??
+        this.fromEnv("QUOTA_MAX_FIELDS_PER_FORM", DEFAULTS.maxFieldsPerForm),
       maxRecordsPerForm:
         row?.maxRecordsPerForm ??
         this.fromEnv("QUOTA_MAX_RECORDS_PER_FORM", DEFAULTS.maxRecordsPerForm),
