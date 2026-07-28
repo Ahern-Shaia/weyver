@@ -117,12 +117,16 @@ const submit = (recordId: number) =>
     headers: A(),
   })
 
+/* 簽核者刻意用**與送簽者不同**的 actor —— 追溯稽核後禁止自簽(SOX),
+   同一人送簽又核准會回 403 SELF_APPROVAL_FORBIDDEN。 */
+const APPROVER = (): Record<string, string> => ({ ...A(), "x-dev-actor": "8" })
+
 const decide = (instanceId: number, decision: "approve" | "reject") =>
   app.inject({
     method: "POST",
     url: `/api/approvals/${instanceId}/decide`,
-    headers: A(),
-    payload: { decision },
+    headers: APPROVER(),
+    payload: { decision, ...(decision === "reject" ? { comment: "測試駁回" } : {}) },
   })
 
 describe("R1·後續-1 M2 簽核狀態機", () => {
@@ -241,5 +245,95 @@ describe("R1·後續-1 M2 簽核狀態機", () => {
       headers: A(),
     })
     expect((res.json() as InstanceDto).status).toBe("withdrawn")
+  })
+})
+
+describe("🔴 簽核內控補丁包(追溯稽核 #103)", () => {
+  /* 送簽者固定為 actor 7(A());另備一個非送簽者 actor 供核准。 */
+  const other = APPROVER
+
+  const freshInstance = async (): Promise<number> => {
+    const rec = await createRecord({ 品名: "內控測試", 金額: 500, 狀態: "草稿" })
+    const recordId = (rec.json() as { id: number }).id
+    const res = await submit(recordId)
+    expect(res.statusCode).toBe(200)
+    return (res.json() as { id: number }).id
+  }
+
+  it("**禁止自簽** —— 送簽者即使在該關角色內也不得核准自己的單(SOX)", async () => {
+    const instanceId = await freshInstance()
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${instanceId}/decide`,
+      headers: A(), // 同一個 actor = 送簽者
+      payload: { decision: "approve" },
+    })
+    expect(res.statusCode).toBe(403)
+    expect((res.json() as { code: string }).code).toBe("SELF_APPROVAL_FORBIDDEN")
+  })
+
+  it("**駁回必須填理由**;填了才放行", async () => {
+    const instanceId = await freshInstance()
+    const bad = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${instanceId}/decide`,
+      headers: other(),
+      payload: { decision: "reject" },
+    })
+    expect(bad.statusCode).toBe(400)
+    expect((bad.json() as { code: string }).code).toBe("REJECT_REASON_REQUIRED")
+
+    const ok = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${instanceId}/decide`,
+      headers: other(),
+      payload: { decision: "reject", comment: "金額超出預算" },
+    })
+    expect(ok.statusCode).toBe(200)
+  })
+
+  it("**併發雙簽只有一個贏** —— 條件式 UPDATE 由 DB 保證", async () => {
+    const instanceId = await freshInstance()
+    const [a, b] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: `/api/approvals/${instanceId}/decide`,
+        headers: other(),
+        payload: { decision: "reject", comment: "甲" },
+      }),
+      app.inject({
+        method: "POST",
+        url: `/api/approvals/${instanceId}/decide`,
+        headers: other(),
+        payload: { decision: "reject", comment: "乙" },
+      }),
+    ])
+    const codes = [a.statusCode, b.statusCode].sort()
+    /* 一個成功、一個落敗(409 race lost 或 409 已結束)—— 不可兩個都 200 */
+    expect(codes[0]).toBe(200)
+    expect(codes[1]).toBe(409)
+  })
+
+  it("**簽核歷史 append-only** —— 連表 owner 直連也不得 UPDATE / DELETE / TRUNCATE", async () => {
+    const rows = await pool.query<{ n: string }>("SELECT count(*) AS n FROM approval_step_log")
+    expect(Number(rows.rows[0]?.n)).toBeGreaterThan(0)
+
+    /* 只 REVOKE 擋不住 owner(PG:owner 恆持有 grant option)—— 這正是要 trigger 的理由。
+       此處以 migration 角色(即表 owner)直連驗證。 */
+    await expect(pool.query("UPDATE approval_step_log SET decision='approve'")).rejects.toThrow(
+      /append-only/,
+    )
+    await expect(pool.query("DELETE FROM approval_step_log")).rejects.toThrow(/append-only/)
+    await expect(pool.query("TRUNCATE approval_step_log")).rejects.toThrow(/append-only/)
+  })
+
+  it("**INSERT 仍正常** —— append-only 不是唯讀", async () => {
+    const before = await pool.query<{ n: string }>("SELECT count(*) AS n FROM approval_step_log")
+    await pool.query(
+      `INSERT INTO approval_step_log (tenant_id, instance_id, step_no, actor_id, decision)
+       SELECT tenant_id, instance_id, step_no, actor_id, 'submit' FROM approval_step_log LIMIT 1`,
+    )
+    const after = await pool.query<{ n: string }>("SELECT count(*) AS n FROM approval_step_log")
+    expect(Number(after.rows[0]?.n)).toBe(Number(before.rows[0]?.n) + 1)
   })
 })

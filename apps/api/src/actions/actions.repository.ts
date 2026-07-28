@@ -326,18 +326,36 @@ export class ActionsRepository {
     return toInstanceRow(row)
   }
 
+  /* 🔴 條件式 UPDATE — 併發雙簽守衛(追溯稽核)。
+
+     `decide()` 是「先讀 instance → 檢查 → 再寫」,兩人同時按核准會**雙雙通過檢查**
+     然後各推進一關(或重複觸發完成副作用)。把「當時讀到的 status / currentStep」
+     放進 WHERE,**由 DB 保證只有一個贏**;回傳受影響列數供呼叫端判定。
+
+     回傳 false = 有人搶先改了狀態 → 呼叫端應回 409,而非靜默視為成功。 */
   async updateInstance(
     tenantId: number,
     instanceId: number,
     patch: { currentStep?: number; status?: string },
-  ): Promise<void> {
+    expect?: { status?: string; currentStep?: number },
+  ): Promise<boolean> {
     const set: Record<string, unknown> = { updatedAt: sql`now()` }
     if (patch.currentStep !== undefined) set.currentStep = patch.currentStep
     if (patch.status !== undefined) set.status = patch.status
-    await this.db
+    const guards = [
+      eq(approvalInstances.tenantId, tenantId),
+      eq(approvalInstances.id, instanceId),
+      ...(expect?.status === undefined ? [] : [eq(approvalInstances.status, expect.status)]),
+      ...(expect?.currentStep === undefined
+        ? []
+        : [eq(approvalInstances.currentStep, expect.currentStep)]),
+    ]
+    const rows = await this.db
       .update(approvalInstances)
       .set(set)
-      .where(and(eq(approvalInstances.tenantId, tenantId), eq(approvalInstances.id, instanceId)))
+      .where(and(...guards))
+      .returning({ id: approvalInstances.id })
+    return rows.length > 0
   }
 
   async appendStepLog(input: {

@@ -147,6 +147,24 @@ export class ApprovalService {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "非本步驟之簽核者" })
     }
 
+    /* 🔴 禁止自簽(SOX checkpoint 明列「financial transactions 不得自簽」)。
+       原本只驗「是否為該關角色成員」—— 送簽者若本身在該角色內,即可核准自己的單。
+       superAdmin 亦不豁免:內控的意義正在於**沒有人可以自己批准自己**。 */
+    if (instance.submittedBy !== null && instance.submittedBy === tenant.actorId) {
+      throw new ForbiddenException({
+        code: "SELF_APPROVAL_FORBIDDEN",
+        message: "不得核准自己送出的單據,請改由其他簽核者處理",
+      })
+    }
+
+    /* 🔴 駁回強制填理由 —— 退回重工與稽核都需要知道為什麼。核准則不強制。 */
+    if (decision === "reject" && (comment === undefined || comment.trim() === "")) {
+      throw new BadRequestException({
+        code: "REJECT_REASON_REQUIRED",
+        message: "駁回時必須填寫理由",
+      })
+    }
+
     await this.repo.appendStepLog({
       tenantId: tenant.tenantId,
       instanceId,
@@ -157,7 +175,13 @@ export class ApprovalService {
     })
 
     if (decision === "reject") {
-      await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "rejected" })
+      const won = await this.repo.updateInstance(
+        tenant.tenantId,
+        instanceId,
+        { status: "rejected" },
+        { status: "pending", currentStep: step.stepNo },
+      )
+      if (!won) throw raceLost()
       await this.notifySubmitter(tenant, instance, NOTIFICATION_EVENTS.approvalRejected)
       return this.toInstanceDto(tenant, instanceId)
     }
@@ -170,7 +194,13 @@ export class ApprovalService {
     )
     const next = nextActiveStep(def.steps, step.stepNo, record.values)
     if (next !== null) {
-      await this.repo.updateInstance(tenant.tenantId, instanceId, { currentStep: next.stepNo })
+      const won = await this.repo.updateInstance(
+        tenant.tenantId,
+        instanceId,
+        { currentStep: next.stepNo },
+        { status: "pending", currentStep: step.stepNo },
+      )
+      if (!won) throw raceLost()
       await this.notifyStep(tenant, instance.formId, instance.recordId, next.approverRoleId)
       return this.toInstanceDto(tenant, instanceId)
     }
@@ -190,7 +220,15 @@ export class ApprovalService {
         `approval:${instanceId}:complete`,
       )
     }
-    await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "approved" })
+    /* 併發守衛置於副作用**之後** —— 前面的「先副作用後定案」設計不變:
+       副作用由冪等 key 保護不會重複;此處只保證「定案」這一步不被競態重複寫。 */
+    const won = await this.repo.updateInstance(
+      tenant.tenantId,
+      instanceId,
+      { status: "approved" },
+      { status: "pending", currentStep: step.stepNo },
+    )
+    if (!won) throw raceLost()
     await this.notifySubmitter(tenant, instance, NOTIFICATION_EVENTS.approvalApproved)
     return this.toInstanceDto(tenant, instanceId)
   }
@@ -214,7 +252,13 @@ export class ApprovalService {
       actorId: tenant.actorId,
       decision: "withdraw",
     })
-    await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "withdrawn" })
+    const won = await this.repo.updateInstance(
+      tenant.tenantId,
+      instanceId,
+      { status: "withdrawn" },
+      { status: "pending" },
+    )
+    if (!won) throw raceLost()
     return this.toInstanceDto(tenant, instanceId)
   }
 
@@ -355,4 +399,13 @@ function toDefDto(row: ApprovalDefRow): ApprovalDefDto {
     onCompleteButtonId: row.onCompleteButtonId,
     active: row.active,
   }
+}
+
+/* 併發守衛落敗 —— 另一位簽核者已搶先改變狀態。
+   回 409 而非靜默成功:讓 client 重新載入實際狀態,避免兩人都以為自己簽成了。 */
+function raceLost(): ConflictException {
+  return new ConflictException({
+    code: "APPROVAL_RACE_LOST",
+    message: "此簽核已由其他人處理,請重新載入",
+  })
 }

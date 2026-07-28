@@ -148,6 +148,13 @@
       "when": 1785248465740,
       "tag": "0020_complete_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1785281683595,
+      "tag": "0021_append_only_audit",
+      "breakpoints": true
     }
   ]
 }
