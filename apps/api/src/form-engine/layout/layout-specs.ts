@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { FILTER_OPERATORS } from "../records/record-specs.js"
 
 /* R1·UP-3 2D 設計器版面 metadata(form_def.layout;OQ-FD2-1=A 單一 JSONB 承載整表)。
    版面與資料正交:座標/設定/靜態/分段皆此;DDL/DML 鏈不動。 */
@@ -80,6 +81,58 @@ export const sectionSchema = z
   })
   .strict()
 
+/* R1·UP-3b 條件式格式(加法 optional,零 migration)。
+
+   採 Ragic 範式(OQ-CF-1/3/5/7):**表單級**設定、著色**欄位值與標題**(非整列)、
+   **後者覆蓋**、記錄頁與列表頁**各自獨立**一組規則。
+
+   條件複用 `FILTER_OPERATORS`(OQ-CF-4)—— 與列表篩選同一組運算子,
+   「篩得到的」與「上色的」語意才會一致(FMEA G3)。
+   顏色為 12 tone 受控白名單(OQ-CF-2,docs/14 §0.2),**非自由 hex**:
+   前端另以查表映射成 class,兩側皆不接受任意值(FMEA G1)。 */
+export const FORMAT_TONES = [
+  "ok",
+  "warn",
+  "error",
+  "neutral",
+  "c1",
+  "c2",
+  "c3",
+  "c4",
+  "c5",
+  "c6",
+  "c7",
+  "c8",
+] as const
+
+export const formatConditionSchema = z
+  .object({
+    field: z.string().min(1).max(100),
+    op: z.enum(FILTER_OPERATORS),
+    value: z.unknown().optional(),
+  })
+  .strict()
+
+export const formatRuleSchema = z
+  .object({
+    combinator: z.enum(["and", "or"]).default("and"),
+    conditions: z.array(formatConditionSchema).min(1).max(20),
+    /* 套用到哪些欄位(顯示名);空 = 條件所涉之欄位 */
+    targets: z.array(z.string().min(1).max(100)).max(50).default([]),
+    tone: z.enum(FORMAT_TONES),
+  })
+  .strict()
+
+export const conditionalFormatsSchema = z
+  .object({
+    record: z.array(formatRuleSchema).max(20).default([]),
+    list: z.array(formatRuleSchema).max(20).default([]),
+  })
+  .strict()
+
+export type FormatRule = z.infer<typeof formatRuleSchema>
+export type ConditionalFormats = z.infer<typeof conditionalFormatsSchema>
+
 export const layoutSchema = z
   .object({
     grid: z
@@ -103,6 +156,8 @@ export const layoutSchema = z
       })
       .strict()
       .optional(),
+    /* R1·UP-3b 條件式格式(見上;optional = 既有表單零遷移) */
+    conditionalFormats: conditionalFormatsSchema.optional(),
   })
   .strict()
 

@@ -1,6 +1,6 @@
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
@@ -144,5 +144,75 @@ describe("R1·UP-3 form_def.layout API + 預設值", () => {
   it("跨租戶:B PUT A 的 layout → 404", async () => {
     const res = await putLayout(B(), { fields: {} })
     expect(res.statusCode).toBe(404)
+  })
+})
+
+/* R1·UP-3b 條件式格式:規則存於 layout(零 migration),tone 為受控白名單 */
+describe("條件式格式(conditionalFormats)", () => {
+  const putFormats = (formats: unknown) =>
+    putLayout(A(), { fields: {}, conditionalFormats: formats })
+
+  it("記錄頁 / 列表頁 各自一組規則 → round-trip", async () => {
+    const res = await putFormats({
+      record: [
+        {
+          combinator: "and",
+          conditions: [
+            { field: "登記日", op: "lt", value: "2026-08-01" },
+            { field: "備註", op: "isNotEmpty" },
+          ],
+          targets: ["登記日"],
+          tone: "error",
+        },
+      ],
+      list: [
+        {
+          combinator: "or",
+          conditions: [{ field: "備註", op: "contains", value: "急" }],
+          targets: [],
+          tone: "c1",
+        },
+      ],
+    })
+    expect(res.statusCode).toBe(200)
+
+    const got = await app.inject({
+      method: "GET",
+      url: `/api/forms/${formId}/layout`,
+      headers: A(),
+    })
+    const layout = (
+      got.json() as { layout: { conditionalFormats?: { record: unknown[]; list: unknown[] } } }
+    ).layout
+    expect(layout.conditionalFormats?.record).toHaveLength(1)
+    expect(layout.conditionalFormats?.list).toHaveLength(1)
+  })
+
+  it("FMEA G1:tone 非受控白名單(自由 hex / 任意字串)→ 400", async () => {
+    for (const tone of ["#ff0000", "rainbow"]) {
+      const res = await putFormats({
+        record: [{ conditions: [{ field: "登記日", op: "isEmpty" }], tone }],
+        list: [],
+      })
+      expect(res.statusCode).toBe(400)
+    }
+  })
+
+  it("運算子限於既有 FILTER_OPERATORS(與列表篩選同源)→ 400", async () => {
+    const res = await putFormats({
+      record: [{ conditions: [{ field: "登記日", op: "matchesRegex", value: ".*" }], tone: "ok" }],
+      list: [],
+    })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it("空條件之規則 → 400(規則必須至少一個條件)", async () => {
+    const res = await putFormats({ record: [{ conditions: [], tone: "ok" }], list: [] })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it("未設 conditionalFormats 仍可存 layout(既有表單零遷移)", async () => {
+    const res = await putLayout(A(), { fields: {} })
+    expect(res.statusCode).toBe(200)
   })
 })
