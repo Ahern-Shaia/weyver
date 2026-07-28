@@ -248,6 +248,34 @@
 **樂觀鎖擋不住**。這是 master-detail 版型特有的失效,Fiori 以 draft handling + 未儲存提示處理。
 **已加 `key` + e2e 回歸測**(反向驗證過:拿掉 `key` 該測試即紅)。
 
+### Fiori Object Page 的官方結構(照抄以便逐項比對)
+
+**三個組成**|① dynamic page header(**必須**)② navigation bar(可選)③ content area(必須)。
+
+**header 由上到下**|breadcrumb(標題上方)→ **title(必須)** → subtitle(標題**下方**)→ object marker
+→ **header toolbar 放 global actions:Edit / Delete / Copy** → 收合指示器
+→ **header content = facets**(form / plain text / image / **key value(狀態、價格等 KPI)** / micro chart / progress / rating)。
+預設展開,捲動時 **snap 收合**。
+
+**anchor bar 非必要**|內容簡單只需一段 → 用 dynamic page layout;複雜多段才用 object page layout。
+預設 anchor bar,**若各段內容複雜(長表格 / 清單)改 tab bar**。
+硬規則:**section 一律直接反映在導覽列**;section 只能裝 subsection、**不能直接裝內容**;
+第一個 section 無標題;**窄螢幕時 anchor bar 變下拉選單**。
+
+**🔴 表格量級階梯(同樣適用關聯區,可直接照做)**
+
+| 筆數 | 官方作法 |
+|---|---|
+| ≤ 20 | 直接顯示全部 |
+| ≤ 100 | **lazy load** |
+| 50–400 | 改用 **tab** |
+| > 400 | **只顯示 10–20 筆預覽 + 右下 `Show All (x)`** 導向 list report |
+
+> 本專案關聯 rail 目前一律截斷 20 筆並標示 —— 對 ≤20 正確,但**中量級(20–400)缺 lazy load 與 tab、
+> 大量級缺 Show All 導向**,使用者無法得知「其實還有 300 筆」。
+
+**明確不該用 object page 的情況**|需**同時編輯多筆**、或**不知明細下找項目** → 應用 list report。
+
 ### Fiori Object Page 官方規範對照
 
 | 項目 | 判斷 | 官方規範 |
@@ -267,6 +295,7 @@
 
 | 項 | 判斷 |
 |---|---|
+| **三種版型的取捨** | 參考 | **Airtable = modal**(格線是主體,詳情是暫時性)· **Notion = side peek**(保留脈絡)· **Salesforce = 全頁**(記錄極寬、related lists 多)。→ **選擇取決於「記錄有多寬」與「是否需保留清單脈絡」**;記錄很寬時右欄確實過窄,這正是 Fiori FCL 必須能**全螢幕**的原因 |
 | **響應式** | 🔴 `form-workspace.tsx` **全無斷點**(無 `md:` / `lg:`),平板 / 手機必爆版。Material 官方 list-detail 降級:窄螢幕時清單與詳情各佔一畫面。詳情欄亦應隨寬度 4/3/2/1 欄降級(現固定 `sm:grid-cols-2`)|
 | **行內編輯** | ✅ **事實澄清** —— 實作**不是**「點欄位即編輯 + 自動儲存」,而是 **global edit + 明確儲存 + `expectedVersion` 樂觀鎖**,正是企業慣例與 Fiori 正解。⚠️ 建議補「依狀態切換」:已核准 → 唯讀(Salesforce 對簽核鎖定記錄**直接禁止 inline edit**)|
 | **關聯 rail** | ✅ 已分組、後端截斷 20 筆並標示。⚠️ 缺**筆數計數**與 **Show All (x)** 導向該表已篩選檢視 —— Fiori 對 >400 筆明文此解;Salesforce **Related Lists** 同構 |
