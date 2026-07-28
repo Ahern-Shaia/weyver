@@ -20,7 +20,13 @@ import { fieldDefs } from "../db/schema.js"
 import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { detectType } from "../storage/file-type.js"
-import { STORAGE_DRIVER, type StorageDriver, isValidKey } from "../storage/storage-driver.js"
+import { ImageProcessor } from "../storage/image-processor.js"
+import {
+  STORAGE_DRIVER,
+  type StorageDriver,
+  isValidKey,
+  thumbnailKeyOf,
+} from "../storage/storage-driver.js"
 import {
   ATTACHMENT_FIELD_TYPES,
   type FileDto,
@@ -62,6 +68,7 @@ export class FilesService implements OnModuleInit {
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
     @Inject(TenantDb) private readonly tenantDb: TenantDb,
+    @Inject(ImageProcessor) private readonly images: ImageProcessor,
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
 
@@ -142,13 +149,21 @@ export class FilesService implements OnModuleInit {
       })
     }
 
+    /* F-7 影像處理:剝除 EXIF(優先無損)+ 產生縮圖 + 解壓縮炸彈防護。
+       非影像檔原樣通過。處理在配額檢核**之前** —— 配額應以實際佔用量計。 */
+    const processed = await this.images.process(body, detected.mime)
+    const storedSize = processed.body.length + (processed.thumbnail?.length ?? 0)
+
     // 落儲存前先回收逾期孤兒(釋放配額)再核配額 —— 無排程器之低 ops 做法(掃描走 status 索引)
     await this.sweepStalePending(tenant.tenantId)
-    await this.assertQuota(tenant.tenantId, body.length)
+    await this.assertQuota(tenant.tenantId, storedSize)
 
     // 生成檔名(docs/22):使用者檔名永不入路徑,只存 metadata
     const key = `t${tenant.tenantId}/f${formId}/${randomUUID()}${detected.ext}`
-    await this.storage.put(key, body, { mime: detected.mime })
+    await this.storage.put(key, processed.body, { mime: detected.mime })
+    if (processed.thumbnail !== undefined) {
+      await this.storage.put(thumbnailKeyOf(key), processed.thumbnail, { mime: "image/webp" })
+    }
 
     await this.inTenantTx(tenant.tenantId, (trx) =>
       trx("file_object").insert({
@@ -158,13 +173,13 @@ export class FilesService implements OnModuleInit {
         field_id: fieldId,
         name: filename.slice(0, 255),
         mime: detected.mime,
-        size: body.length,
+        size: storedSize,
         status: "pending" satisfies FileStatus,
         created_by: tenant.actorId,
       }),
     )
 
-    return { key, name: filename.slice(0, 255), mime: detected.mime, size: body.length }
+    return { key, name: filename.slice(0, 255), mime: detected.mime, size: storedSize }
   }
 
   /* 下載:回查 metadata → 表單 view → 欄位非 hidden → 記錄未刪 → 串流(FMEA S1/S2/S7)。 */
@@ -172,6 +187,7 @@ export class FilesService implements OnModuleInit {
     tenant: TenantContext,
     permissions: EffectivePermissions,
     key: string,
+    variant?: "thumb",
   ): Promise<{ readonly stream: Readable; readonly meta: FileDto }> {
     const row = await this.requireFile(tenant, key)
     const formId = num(row.form_id)
@@ -183,6 +199,18 @@ export class FilesService implements OnModuleInit {
       throw new ForbiddenException({ code: "FIELD_FORBIDDEN", message: "無此欄位檢視權限" })
     }
     await this.assertRecordReadable(tenant.tenantId, formId, row.record_id)
+    /* 縮圖為衍生物,授權沿用原檔那一條鏈(上方已驗);取不到即回原檔 —— 前端因此永不破圖
+       (OQ-IP-9=A:不建重生工具,以退回原圖取代)。 */
+    if (variant === "thumb") {
+      const thumbKey = thumbnailKeyOf(key)
+      const exists = await this.storage.stat(thumbKey)
+      if (exists !== null) {
+        return {
+          stream: await this.storage.get(thumbKey),
+          meta: { key: thumbKey, name: row.name, mime: "image/webp", size: exists.size },
+        }
+      }
+    }
     const stream = await this.storage.get(key)
     return {
       stream,
@@ -190,7 +218,8 @@ export class FilesService implements OnModuleInit {
     }
   }
 
-  /* 刪除 = 表單 edit;soft delete(實體回收由清理 job,P1;承 records soft-delete 語意)。 */
+  /* 刪除 = 表單 edit;soft delete(實體回收由清理 job;承 records soft-delete 語意)。
+     縮圖為衍生物、無獨立 metadata 列 → 實體回收時由 key 推導一併刪(見 CleanupService)。 */
   async remove(
     tenant: TenantContext,
     permissions: EffectivePermissions,

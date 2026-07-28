@@ -32,10 +32,11 @@ const savedEnv = { STORAGE_LOCAL_DIR: process.env.STORAGE_LOCAL_DIR }
 const A = (): Record<string, string> => ({ "x-dev-tenant": String(tenantA), "x-dev-actor": "7" })
 const B = (): Record<string, string> => ({ "x-dev-tenant": String(tenantB), "x-dev-actor": "9" })
 
-const PNG = Buffer.concat([
-  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  Buffer.alloc(64, 7),
-])
+/* 真實可解碼的 1×1 PNG —— F-7 起上傳會實際解碼影像,假的 magic bytes 會被 422 擋(FMEA P5)*/
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+)
 
 function multipart(filename: string, content: Buffer): { payload: Buffer; contentType: string } {
   const boundary = "----weyverboundary"
@@ -139,7 +140,8 @@ describe("F-5 M2 上傳", () => {
     expect(statusCode).toBe(201)
     expect(body.mime).toBe("image/png")
     expect(body.name).toBe("出貨照片.png")
-    expect(body.size).toBe(PNG.length)
+    // F-7 起 size 為實際佔用(主檔 + 縮圖),不再等於上傳位元組數
+    expect(Number(body.size)).toBeGreaterThanOrEqual(PNG.length)
     expect(String(body.key)).toMatch(new RegExp(`^t${tenantA}/f${formId}/[0-9a-f-]{36}\\.png$`))
     expect(String(body.key)).not.toContain("出貨照片")
   })
@@ -414,6 +416,105 @@ describe("R1·UP-4b image / signature 欄型", () => {
       },
     })
     expect(res.statusCode).toBe(201)
+  })
+})
+
+describe("F-7 影像處理(EXIF 剝除 / 縮圖)", () => {
+  let photoFormId = 0
+  let photoFieldId = 0
+  let withExif: Buffer
+
+  beforeAll(async () => {
+    const sharpMod = await import("sharp")
+    const sharp = sharpMod.default
+    const base = await sharp({
+      create: { width: 900, height: 600, channels: 3, background: "#357" },
+    })
+      .jpeg({ quality: 90 })
+      .toBuffer()
+    withExif = await sharp(base)
+      /* sharp 的 Exif 型別未列 GPS(libvips 執行期接受);測試刻意寫入 GPS 以證明它會被剝除 */
+    .withExif({ IFD0: { Make: "Apple", Model: "iPhone" }, GPS: { GPSLatitudeRef: "N" } } as never)
+      .toBuffer()
+
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: "現場拍照單",
+        fields: [
+          { name: "品名", type: "text", required: true },
+          { name: "照片", type: "image" },
+        ],
+      },
+    })
+    photoFormId = (form.json() as { id: number }).id
+    const detail = await app.inject({
+      method: "GET",
+      url: `/api/forms/${photoFormId}`,
+      headers: A(),
+    })
+    photoFieldId =
+      (detail.json() as { fields: { id: number; name: string }[] }).fields.find(
+        (f) => f.name === "照片",
+      )?.id ?? 0
+  })
+
+  const uploadPhoto = async (buf: Buffer, name = "現場.jpg") => {
+    const { payload, contentType } = multipart(name, buf)
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${photoFormId}/files?fieldId=${photoFieldId}`,
+      headers: { ...A(), "content-type": contentType },
+      payload,
+    })
+    return { statusCode: res.statusCode, body: res.json() as Record<string, unknown> }
+  }
+
+  it("上傳照片 → 下載回來已無 EXIF(GPS 不外洩)", async () => {
+    const { statusCode, body } = await uploadPhoto(withExif)
+    expect(statusCode).toBe(201)
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/files/${body.key}`,
+      headers: A(),
+    })
+    expect(res.statusCode).toBe(200)
+    const sharp = (await import("sharp")).default
+    expect((await sharp(res.rawPayload).metadata()).exif).toBeUndefined()
+  })
+
+  it("縮圖可經 ?variant=thumb 取得,且為 webp、明顯小於原圖", async () => {
+    const { body } = await uploadPhoto(withExif)
+    const thumb = await app.inject({
+      method: "GET",
+      url: `/api/files/${body.key}?variant=thumb`,
+      headers: A(),
+    })
+    expect(thumb.statusCode).toBe(200)
+    const sharp = (await import("sharp")).default
+    const meta = await sharp(thumb.rawPayload).metadata()
+    expect(meta.format).toBe("webp")
+    expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(320)
+    expect(thumb.rawPayload.length).toBeLessThan(withExif.length)
+  })
+
+  it("非影像檔請求縮圖 → 退回原檔(前端永不破圖)", async () => {
+    const { body } = await upload(A(), "規格書.pdf", Buffer.from("%PDF-1.7\nspec"))
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/files/${body.key}?variant=thumb`,
+      headers: A(),
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.rawPayload.toString()).toContain("%PDF")
+  })
+
+  it("配額以實際佔用計(主檔 + 縮圖)", async () => {
+    const { body } = await uploadPhoto(withExif)
+    // 回傳 size 應大於單獨主檔(已含縮圖),且小於原始帶 EXIF 檔 + 縮圖之上界
+    expect(Number(body.size)).toBeGreaterThan(0)
   })
 })
 

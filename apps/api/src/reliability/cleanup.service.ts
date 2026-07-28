@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config"
 import { Cron, CronExpression } from "@nestjs/schedule"
 import type { Knex } from "knex"
 import { DDL_KNEX } from "../db/db.module.js"
-import { STORAGE_DRIVER, type StorageDriver } from "../storage/storage-driver.js"
+import { STORAGE_DRIVER, type StorageDriver, thumbnailKeyOf } from "../storage/storage-driver.js"
 
 /* F-6 M4|排程清理(收斂 core FMEA C2 孤兒 pending form + file-storage S6 孤兒檔實體回收)。
 
@@ -113,6 +113,8 @@ export class CleanupService {
     for (const row of rows) {
       try {
         await this.storage.delete(row.key)
+        // 縮圖為衍生物、無獨立 metadata 列 → 由 key 推導一併刪(刪不到不算錯:未必存在)
+        await this.storage.delete(thumbnailKeyOf(row.key)).catch(() => undefined)
         await trx("file_object").where({ key: row.key }).update({ deleted_at: trx.fn.now() })
         deleted += 1
       } catch (error) {

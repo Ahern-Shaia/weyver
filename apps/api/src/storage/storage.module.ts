@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
+import { ImageProcessor } from "./image-processor.js"
 import { LocalStorageDriver } from "./local-storage.driver.js"
 import { S3StorageDriver } from "./s3-storage.driver.js"
 import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
@@ -26,7 +27,8 @@ import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
         return new LocalStorageDriver(config.get<string>("STORAGE_LOCAL_DIR") ?? ".weyver-storage")
       },
     },
+    ImageProcessor,
   ],
-  exports: [STORAGE_DRIVER],
+  exports: [STORAGE_DRIVER, ImageProcessor],
 })
 export class StorageModule {}

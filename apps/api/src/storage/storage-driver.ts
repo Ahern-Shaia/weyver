@@ -14,10 +14,16 @@ export const STORAGE_DRIVER = Symbol("STORAGE_DRIVER")
 
 /* key 格式(伺服器生成,不含使用者輸入):t{tenantId}/f{formId}/{uuid}{ext}
    —— 路徑穿越防護:任何不符此形狀者一律拒(FMEA S4)。 */
-const KEY_RE = /^t\d+\/f\d+\/[0-9a-f-]{36}(\.[A-Za-z0-9]{1,8})?$/
+const KEY_RE = /^t\d+\/f\d+\/[0-9a-f-]{36}(\.thumb)?(\.[A-Za-z0-9]{1,8})?$/
 
 export function isValidKey(key: string): boolean {
   return KEY_RE.test(key)
+}
+
+/* F-7 縮圖為原檔之**衍生物**(OQ-IP-3=A):以固定後綴定址,零 migration。
+   衍生 key 一律由伺服器生成,仍須通過 KEY_RE(已放寬容納 `.thumb` 後綴)。 */
+export function thumbnailKeyOf(key: string): string {
+  return `${key.replace(/\.[A-Za-z0-9]{1,8}$/, "")}.thumb.webp`
 }
 
 export function assertValidKey(key: string): void {

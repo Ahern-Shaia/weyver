@@ -88,12 +88,14 @@ export class FilesController {
     @Param("tenantSeg") tenantSeg: string,
     @Param("formSeg") formSeg: string,
     @Param("objectName") objectName: string,
+    @Query("variant") variant: string | undefined,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<StreamableFile> {
     const { stream, meta } = await this.files.openForDownload(
       tenant,
       permissions,
       `${tenantSeg}/${formSeg}/${objectName}`,
+      variant === "thumb" ? "thumb" : undefined,
     )
     // 保守 Content-Type + 一律 attachment(不 inline)→ 防 HTML/SVG XSS(docs/22;nosniff 已於 onSend)
     reply.header("content-type", "application/octet-stream")
