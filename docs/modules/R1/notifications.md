@@ -1,6 +1,8 @@
 # [H-1] 通知系統(訂閱 / 提醒 / 通道)
 
-> ⏳ **狀態:M0 DRAFT v0.2 — OQ-NT-1..12 待裁定(2026-07-28)**
+> ✅ **狀態:APPROVED — OQ-NT-1..12 已裁定(2026-07-28;全採建議);UI flow mockup 待 review 後進 M1**
+> **裁定摘要**|1=A Ragic 訂閱制 · 2=A 「跟我相關」P0 只認 createdBy · 3=A service 層顯式 emit · 4=A 通知表兼作佇列(不引 Redis)· 5=A P0 只做站內 + Email · 6=A 提醒不進 P0(待 cron 地基)· 7=A 平台級 SMTP · 8=A 不做摘要合併 · 9=A 通知不含欄位值 · 10=A 租戶自帶通道憑證 · 11=A 綁定鍵含 tenant_id · 12=A inbound 納入抽象但不實作。
+> **權威 UI 稿**|[`docs/mockups/notification-flow.html`](../../mockups/notification-flow.html)
 > **上游**|docs/04 §H(通知系統 2 + 通道 LINE 2 / Slack 1 / Teams 1 / Telegram 1 / WhatsApp 2 / Discord 0.5 + 路由引擎 3 + 通道連接設定 UI 1)· docs/25 §H(全列 ⬜)· docs/24 §6(S10 通知)
 > **緣由**|docs/25 v1.5 覆蓋率彙總指出 H 段僅 12%,且**簽核流程已 SHIPPED 卻無任何機制告知下一關簽核人** —— 一個做完的功能因缺另一個功能而實際不可用,為當前最大功能斷裂。
 
@@ -181,7 +183,7 @@ LINE 文件(經 Ragic KB 300 轉述)明載:UID 經 Provider 加密,**只有該 P
 
 ---
 
-## 10. 開放問題(OQ-NT-N)— ⏳ 待裁定
+## 10. 開放問題(OQ-NT-N)— ✅ 已裁定 2026-07-28(全採建議)
 
 | # | 議題 | 選項 | 建議 |
 |---|---|---|---|
