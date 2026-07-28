@@ -170,7 +170,8 @@ export class NotificationRepository {
       const list = map.get(r.actorId) ?? []
       list.push({
         scope: r.scope,
-        scopeId: r.scopeId,
+        /* 0 為「無特定資源」之哨兵,對外仍以 null 表達 */
+        scopeId: r.scopeId === 0 ? null : r.scopeId,
         level: r.level,
         customEvents: Array.isArray(r.customEvents) ? (r.customEvents as string[]) : null,
       })
@@ -193,7 +194,7 @@ export class NotificationRepository {
         tenantId: input.tenantId,
         actorId: input.actorId,
         scope: input.scope,
-        scopeId: input.scopeId,
+        scopeId: input.scopeId ?? 0,
         level: input.level,
         customEvents: input.customEvents === null ? null : [...input.customEvents],
       })

@@ -290,6 +290,31 @@ describe("H-1 通知與寄送分表 + 非關鍵路徑", () => {
   })
 })
 
+describe("H-1 偏好唯讀性", () => {
+  it("**租戶層偏好重複設定不產生重複列** —— scope_id 為 NULL 時唯一索引失效(SQL: NULL != NULL)", async () => {
+    for (const level of [LEVEL.all, LEVEL.muted, LEVEL.involved]) {
+      await repo.setPref({
+        tenantId: tenantA,
+        actorId: approver,
+        scope: "tenant",
+        scopeId: null,
+        level,
+        customEvents: null,
+      })
+    }
+    const rows = await pool.query<{ n: string }>(
+      "SELECT count(*) AS n FROM notification_pref WHERE tenant_id=$1 AND actor_id=$2 AND scope='tenant'",
+      [tenantA, approver],
+    )
+    expect(Number(rows.rows[0]?.n)).toBe(1)
+    const prefs = await repo.listPrefs(tenantA, [approver])
+    const tenantPref = (prefs.get(approver) ?? []).find((p) => p.scope === "tenant")
+    expect(tenantPref?.level).toBe(LEVEL.involved)
+    /* 對外仍以 null 表達「無特定資源」 */
+    expect(tenantPref?.scopeId).toBeNull()
+  })
+})
+
 describe("H-1 M3 Email 派工", () => {
   it("**SMTP 未設定 → skipped 而非 failed** —— 「還沒設定」不是「寄送失敗」", async () => {
     await pool.query("UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'")

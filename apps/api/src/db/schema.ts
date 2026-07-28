@@ -684,8 +684,10 @@ export const notificationPrefs = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     /* 'tenant' | 'category' | 'form' */
     scope: text("scope").notNull(),
-    /* scope='tenant' 時為 NULL */
-    scopeId: bigint("scope_id", { mode: "number" }),
+    /* scope='tenant' 時為 **0**(不是 NULL)。
+       **不能用 NULL**:唯一索引中 `NULL ≠ NULL`,`ON CONFLICT` 永遠不觸發
+       → 每次改租戶層偏好都新增一列而非更新,解析時取到過期值(e2e 實際踩到)。 */
+    scopeId: bigint("scope_id", { mode: "number" }).notNull().default(0),
     /* 有序層級:0 靜音 < 10 與我相關(預設)< 20 新資料+與我相關 < 30 全部 < 40 自訂。
        **有序才可繼承與比較** —— 這正是改用 enum 而非布林開關的主因。 */
     level: smallint("level").notNull(),

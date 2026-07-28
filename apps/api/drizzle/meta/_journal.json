@@ -141,6 +141,13 @@
       "when": 1785247756242,
       "tag": "0019_wild_roughhouse",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785248465740,
+      "tag": "0020_complete_triathlon",
+      "breakpoints": true
     }
   ]
 }
