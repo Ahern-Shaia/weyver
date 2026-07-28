@@ -211,10 +211,13 @@ export class FilesService implements OnModuleInit {
         }
       }
     }
+    /* Content-Length 必須是**實際串流之物件**的大小 —— `file_object.size` 記的是配額佔用
+       (主檔 + 縮圖),用它當 Content-Length 會多報縮圖大小而導致傳輸截斷(實測 curl 18)。 */
+    const stat = await this.storage.stat(key)
     const stream = await this.storage.get(key)
     return {
       stream,
-      meta: { key: row.key, name: row.name, mime: row.mime, size: num(row.size) },
+      meta: { key: row.key, name: row.name, mime: row.mime, size: stat?.size ?? num(row.size) },
     }
   }
 
