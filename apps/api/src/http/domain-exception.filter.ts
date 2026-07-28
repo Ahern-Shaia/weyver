@@ -39,7 +39,9 @@ interface ErrorEnvelope {
   readonly details?: readonly { rowIndex: number; reason: string }[]
 }
 
-function mapDomainError(error: DomainError): { status: number; code: string } {
+/* 匯出供冪等攔截器共用 —— 兩處若各自映射會漂移,導致「回放的錯誤碼」與
+   「實際回應的錯誤碼」不一致。 */
+export function mapDomainError(error: DomainError): { status: number; code: string } {
   if (error instanceof FormNotFoundError || error instanceof FieldNotFoundError) {
     return { status: HttpStatus.NOT_FOUND, code: "FORM_NOT_FOUND" }
   }

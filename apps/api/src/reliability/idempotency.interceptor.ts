@@ -2,7 +2,9 @@ import { createHash } from "node:crypto"
 import {
   type CallHandler,
   ConflictException,
+  BadRequestException,
   type ExecutionContext,
+  HttpException,
   Inject,
   Injectable,
   type NestInterceptor,
@@ -10,6 +12,8 @@ import {
 } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import type { FastifyReply } from "fastify"
+import { DomainError } from "../form-engine/errors.js"
+import { mapDomainError } from "../http/domain-exception.filter.js"
 import type { Knex } from "knex"
 import { type Observable, catchError, concatMap, from, of, switchMap, throwError } from "rxjs"
 import { APP_KNEX } from "../db/db.module.js"
@@ -105,10 +109,29 @@ export class IdempotencyInterceptor implements NestInterceptor {
             await this.complete(tenantId, key, successCode, body)
             return body
           }),
-          // 失敗不留佔位列 → 重試可真正重跑(避免把一次性錯誤鎖成永久 409)
-          catchError((error: unknown) =>
-            from(this.release(tenantId, key)).pipe(concatMap(() => throwError(() => error))),
-          ),
+          /* 🔴 失敗的冪等語意須依「暫時 vs 永久」分流(追溯稽核;原本一律釋放)。
+
+             **Stripe 官方**:保存首次請求的 status code 與 body,**無論成功或失敗**;
+             唯一例外是「參數驗證失敗 → 端點尚未開始執行」才不保存。
+             **brandur(Stripe 冪等藍本作者)**明確二分:
+             - **5xx / 逾時 = 暫時性** → 釋放,允許重跑
+             - **4xx = 永久性**(業務規則拒絕)→ **存為 done 並回放**,因為重試結果不會改變
+
+             **原實作一律釋放的實際危害**:handler 已執行、寫了部分副作用後才拋 4xx
+             (例:自訂按鈕已更新 A 表、驗 B 失敗)→ 重試會**重複那些副作用**,
+             正是冪等要防的事。
+
+             分流依據取 handler **是否可能已開始執行**:
+             `BadRequestException` 為 ValidationPipe 於 handler 前拋出 → 釋放(對齊 Stripe 例外);
+             其餘 4xx 由 handler 內的業務邏輯拋出 → 保存回放。 */
+          catchError((error: unknown) => {
+            const permanent = permanentFailure(error)
+            const settle =
+              permanent === null
+                ? this.release(tenantId, key)
+                : this.complete(tenantId, key, permanent.status, permanent.body)
+            return from(settle).pipe(concatMap(() => throwError(() => error)))
+          }),
         )
       }),
     )
@@ -181,4 +204,30 @@ export class IdempotencyInterceptor implements NestInterceptor {
       return fn(trx)
     })
   }
+}
+
+/* 判定失敗是否為「永久性」→ 回傳可回放的 status/body;暫時性回 null(釋放佔位)。
+
+   **`DomainError` 必須算永久性** —— 它由 service 於 handler 內拋出(業務規則拒絕),
+   代表副作用可能已部分寫入,重試不會有不同結果。注意它**不是 `HttpException`**,
+   而是由全域 exception filter 映射成 4xx,故不能只看 `instanceof HttpException`。
+
+   `BadRequestException` 例外釋放:它由 ValidationPipe 於 handler **執行前**拋出
+   (對齊 Stripe「參數驗證失敗 → 端點尚未開始執行 → 不保存」)。
+
+   回放 body 只帶 `code` + `message`;**`correlationId` 刻意不回放** ——
+   它識別的是「這一次請求」,不是「這個結果」。 */
+function permanentFailure(error: unknown): { status: number; body: unknown } | null {
+  if (error instanceof BadRequestException) return null
+  if (error instanceof HttpException) {
+    const status = error.getStatus()
+    if (status < 400 || status >= 500) return null
+    const res = error.getResponse()
+    return { status, body: typeof res === "object" ? res : { message: String(res) } }
+  }
+  if (error instanceof DomainError) {
+    const mapped = mapDomainError(error)
+    return { status: mapped.status, body: { code: mapped.code, message: error.message } }
+  }
+  return null
 }

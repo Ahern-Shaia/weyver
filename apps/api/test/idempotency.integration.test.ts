@@ -148,3 +148,53 @@ describe("F-6 M1 冪等性", () => {
     expect(again.headers["idempotent-replay"]).toBeUndefined()
   })
 })
+
+describe("🔴 失敗請求的冪等語意(追溯稽核:原本一律釋放)", () => {
+  /* Stripe 官方:保存首次請求的 status code 與 body,**無論成功或失敗**;
+     brandur(Stripe 冪等藍本作者)二分:5xx/逾時=暫時性→釋放;4xx=永久性→回放。
+     原實作一律釋放的危害:handler 已寫了部分副作用才拋 4xx → 重試會重複那些副作用。 */
+
+  it("**handler 內拋出的 4xx → 回放同一結果**(不重跑,避免重複副作用)", async () => {
+    const key = `perm-4xx-${Date.now()}`
+    /* 未知欄位由 RecordService 在 handler 內拋 → 屬業務規則拒絕 */
+    const first = await createRecord(A(), key, { 不存在的欄: "x" })
+    expect(first.statusCode).toBeGreaterThanOrEqual(400)
+    expect(first.statusCode).toBeLessThan(500)
+
+    /* **關鍵斷言:直接看冪等表的狀態。**
+       比對回應無鑑別力 —— 同樣的輸入重跑會產生同樣的錯誤碼,分不出回放與重跑。
+       永久性失敗必須留下 status='done' 的列(才會回放);釋放則列會消失。 */
+    const row = await pool.query<{ status: string; response_code: number }>(
+      "SELECT status, response_code FROM idempotency_key WHERE tenant_id=$1 AND key=$2",
+      [tenantA, key],
+    )
+    expect(row.rows[0]?.status).toBe("done")
+    expect(row.rows[0]?.response_code).toBe(first.statusCode)
+
+    const replay = await createRecord(A(), key, { 不存在的欄: "x" })
+    expect(replay.statusCode).toBe(first.statusCode)
+  })
+
+  it("**ValidationPipe 的 400 → 釋放**(handler 尚未執行,重試應真正重跑)", async () => {
+    const key = `validation-400-${Date.now()}`
+    /* payload 形狀錯 → ZodValidationPipe 於 handler 前拋 400 */
+    const bad = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/records`,
+      headers: { ...A(), "idempotency-key": key },
+      payload: { 形狀就是錯的: true },
+    })
+    expect(bad.statusCode).toBe(400)
+
+    /* 佔位必須已釋放(列不存在)—— handler 尚未執行,重試應真正重跑 */
+    const row = await pool.query(
+      "SELECT 1 FROM idempotency_key WHERE tenant_id=$1 AND key=$2",
+      [tenantA, key],
+    )
+    expect(row.rowCount).toBe(0)
+
+    /* 同一把 key 換成合法 payload 應能成功 —— 證明佔位已釋放而非鎖成永久錯誤 */
+    const good = await createRecord(A(), key, { 供應商: "驗證後重試" })
+    expect(good.statusCode).toBe(201)
+  })
+})

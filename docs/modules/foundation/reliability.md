@@ -131,6 +131,90 @@
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-29)— **本模組原無業界對照,事後補**
+
+> 冪等 / 配額 / 排程是高度標準化的領域,當初卻只對照自家工程鐵則。
+> 對照 **Stripe 官方**、**IETF draft-ietf-httpapi-idempotency-key-header-07**、
+> 以及 brandur(Stripe 冪等實作藍本作者)。
+
+### 🔴 已修:失敗請求的冪等語意(原本一律釋放佔位列)
+
+- **Stripe 官方**|保存首次請求的 status code 與 body,**無論成功或失敗**;
+  **唯一例外**是「參數驗證失敗或併發衝突 → 端點尚未開始執行 → 不保存」。
+- **brandur** 明確二分:**5xx / 逾時 = 暫時性 → 釋放允許重跑**;
+  **4xx = 永久性**(業務規則拒絕)→ **存為 done 並回放**,因為重試結果不會改變。
+
+**原實作一律釋放的實際危害**|handler 已執行、寫了部分副作用後才拋 4xx
+(例:自訂按鈕已更新 A 表、驗 B 失敗)→ 重試會**重複那些副作用**,正是冪等要防的事。
+
+**修法**|依「handler 是否可能已開始執行」分流:
+`BadRequestException`(ValidationPipe 於 handler 前拋)→ **釋放**(對齊 Stripe 例外條款);
+`DomainError`(service 內拋的業務規則拒絕)與其餘 4xx → **存 done 並回放**;5xx 與未預期錯誤 → 釋放。
+
+⚠️ **實作踩點**|`DomainError` **不是 `HttpException`**(由全域 filter 映射成 4xx),
+初版只判 `instanceof HttpException` 導致它被當成 500 而釋放。
+已把 `mapDomainError` 由 filter **匯出共用** —— 兩處各自映射會漂移,使「回放的錯誤碼」與「實際回應的錯誤碼」不一致。
+
+⚠️ **測試踩點(值得記)**|初版測試比對「回放與首次的 status + code 是否相同」—— **無鑑別力**,
+因為同樣的輸入重跑會產生同樣的錯誤碼,分不出回放與重跑。
+改為**直接斷言 `idempotency_key` 表的狀態**(永久性失敗須留 `status='done'`;釋放則列消失)才測得到。
+
+### 七個決定的裁定
+
+| # | 決定 | 裁定 | 依據 |
+|---|---|---|---|
+| 1 | 冪等 key **選填** | ✅ 維持 | Stripe、AWS `ClientToken`、PayPal `PayPal-Request-Id` **全為選填**。惟 **AWS SDK 自動代產 key** → 建議前端 client 層統一自動附加,補回「忘了帶」的缺口 |
+| 2 | 配額常數 + env | ✅ 維持(**前提已過時**)| `quota.service.ts` 實際已是 `tenants` 覆寫 → plan → env 三層(F-8 加的),早已是 per-tenant |
+| 3 | 只切租戶範疇 metadata | ✅ 維持 | 無外部標準可比;`TenantDb.withTenant` 為唯一入口的收斂是正解 |
+| 4 | `@nestjs/schedule` + advisory lock | ⚠️ **應調整** | 見下 |
+| 5 | 冪等保存 **24h** | ⚠️ **應調整為 72h** | Stripe 官方為 "at least 24 hours";**brandur 建議 72h**,理由是「**週五部署的 bug,週末仍查得到**」—— retention 同時是**除錯窗口**,不只是回放窗口 |
+| 6 | 併發同 key → **409** | ✅ 維持 | **IETF draft-07**:「原請求處理中 SHOULD 回 409」;Stripe 亦 409。⚠️ 建議加 `Retry-After: 1` |
+| 7 | 不做 outbox | ✅ 維持 | 無 GL / 外部通知前無對帳對象 |
+
+### 逐條對照 Stripe 語意
+
+| 題 | Stripe / IETF | 本專案 | 判定 |
+|---|---|---|---|
+| key 有效期 | "at least 24h";brandur 建議 72h | 24h | ⚠️ 建議延長 |
+| **同 key 不同 body** | **draft-07 SHOULD 回 422** | **422** | ✅ **比 Stripe 的 409 更貼近標準** |
+| 併發同 key | 409 | 409 | ✅ |
+| 支援方法 | Stripe 僅 POST,DELETE 忽略 | 納入 PUT / DELETE | ✅ 無害擴張 |
+| 重播標頭 | **無任何 RFC 定義** | 自創 `idempotent-replay` | ⚠️ 建議對齊社群慣用 `Idempotent-Replayed` 並寫進 API 文件 |
+| **key 作用域** | Stripe 為**帳號範疇不分 endpoint**,**跨 endpoint 重用即報錯** | `(tenant, key)` PK + 存 `endpoint` 比對 | ✅ **完全正確** |
+
+> **IETF 現況**|`draft-ietf-httpapi-idempotency-key-header-07`(2025-10)**仍非 RFC**,Standards Track。
+> 本專案的唯一偏離是 draft 要求「必填而缺 key 時回 400」—— 因採選填故不適用。
+
+### 排程(⚠️ 應調整)
+
+**`@nestjs/schedule` 已知缺口**|**無錯過補跑**(部署 / 當機期間的 tick **永久遺失**)· 無執行歷史 · 無重試 ·
+cron 依各實例**本地時鐘**(容器時區 / DST 漂移)。
+
+**`pg_try_advisory_xact_lock` 選得對** —— session 級鎖在連線池歸還後會**洩漏未釋放**,交易級自動釋放;
+它同時兼任「執行超過間隔」的防重疊保護。
+⚠️ **唯一新風險**:鎖持有整個交易 → 清理 job 全程單一長交易,會**拖住 vacuum / xid horizon**,批量大時應改「短交易分批」。
+
+**Node / PG 生態標準解**|**graphile-worker crontab**(`known_crontabs` 表 + **backfill 補跑**)或 pg-boss。
+→ **現階段留著**,但加「上次成功執行時間」欄以偵測遺失、明訂 `TZ`;升多實例或需補跑時換 graphile-worker。
+
+### 其餘
+
+- **`response_body` 進 DB**|Stripe / brandur 的 schema 同樣存。真實 gap 是 **PDPA** ——
+  它是個資的**影子副本**,租戶刪除 / 資料權利流程必須涵蓋此表;另建議設 body 大小上限,超限則不存(退化為不回放)。
+- **清理**|hourly cron 刪逾期 ✅ 對齊 brandur 的 reaper。
+- **配額回應碼**|429 的語意是「稍後重試」,對「表單數達上限」是**假承諾** → **403 正確**,且不應給 `Retry-After`。
+  但限流(throttler)那條 429 應補標頭:`RateLimit-Policy` / `RateLimit`(**draft-11,仍非 RFC**)。
+
+### 來源
+
+- [Stripe: Idempotent requests](https://docs.stripe.com/api/idempotent_requests) · [Stripe: Low-level error / status codes](https://docs.stripe.com/error-low-level)
+- [IETF draft-ietf-httpapi-idempotency-key-header-07](https://www.ietf.org/archive/id/draft-ietf-httpapi-idempotency-key-header-07.html) · [IETF RateLimit header fields (draft-11)](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-ratelimit-headers)
+- [brandur: Implementing Stripe-like Idempotency Keys in Postgres](https://brandur.org/idempotency-keys)
+- [AWS: Making retries safe with idempotent APIs](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/) · [PayPal: Idempotency](https://developer.paypal.com/api/rest/reference/idempotency/)
+- [Graphile Worker: Recurring tasks (crontab)](https://worker.graphile.org/docs/cron)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

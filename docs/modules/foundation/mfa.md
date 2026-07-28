@@ -17,7 +17,7 @@
 ## 1. 目標與範圍
 
 ### 1.1 目標
-1. **自助啟用 / 停用 TOTP**|使用者於帳號設定啟用 → 產生 secret → 顯示 QR + 手動碼 → 輸入一次性碼驗證 → 啟用並顯示 **backup codes**(一次性,雜湊儲存,遺失 app 時救援)。
+1. **自助啟用 / 停用 TOTP**|使用者於帳號設定啟用 → 產生 secret → 顯示 QR + 手動碼 → 輸入一次性碼驗證 → 啟用並顯示 **backup codes**(一次性,**加密儲存**〔非雜湊,見 §0-bis〕,遺失 app 時救援)。
 2. **登入二步**|`signIn.email` 密碼通過後,若該帳號已啟用 2FA → **不直接發 session**,要求輸入 TOTP 碼(或 backup code)驗證通過才發。
 3. **停用需重新驗證**|停用 2FA 需再次驗證(密碼 / 目前 TOTP),防被劫持會話者關閉。
 4. **治理對齊(§6-bis)**|管理層 / owner **強烈建議**啟用;MVP 為 opt-in,org 層強制列後續(僅預留 policy 欄)。
@@ -50,7 +50,7 @@
 
 | 子題 | 內容 | 難度 |
 |---|---|---|
-| **A1 plugin + 後端** | createAuth 掛 `twoFactor({ issuer })`;secret 加密 + backup 雜湊(內建);migration;登入 challenge 語意 | 中 |
+| **A1 plugin + 後端** | createAuth 掛 `twoFactor({ issuer })`;secret 加密 + backup **加密**(內建);migration;登入 challenge 語意 | 中 |
 | **A2 啟用 / 停用 UI** | 帳號設定「二步驟驗證」:啟用 → QR(由 totpURI 前端生)+ 手動碼 → 驗證 → 顯示 backup codes;停用(重新驗證) | 中 |
 | **A3 登入 challenge UI** | login 密碼步後若 `twoFactorRedirect` → 導向 `/login/2fa` 輸入 TOTP / backup → verify → 進 /app | 中 |
 | **A4 安全 + 測試** | 驗證端點 rate-limit;backup 一次性;停用需驗證;整合測 + Playwright 固化 | 中(安全) |
@@ -60,7 +60,7 @@
 ## 4. A1|two-factor plugin(後端)
 
 - `betterAuth({ plugins: [ twoFactor({ issuer: "Weyver" }), organization(...) ] })`。issuer 顯示於 authenticator app。
-- **secret 保護**|Better Auth 以 app secret 加密 TOTP secret、雜湊 backup codes(沿用 F-2 `BETTER_AUTH_SECRET`,prod fail-fast 已具備)。
+- **secret 保護**|Better Auth 以 app secret 加密 TOTP secret;**backup codes 亦為加密(可逆)而非雜湊** —— 見 §0-bis(沿用 F-2 `BETTER_AUTH_SECRET`,prod fail-fast 已具備)。
 - **啟用流程 API**(M1 spike 驗證確切形狀)|`twoFactor.enable({ password })` → 回 `totpURI` + `backupCodes`;`twoFactor.verifyTotp({ code })` 完成啟用;`twoFactor.disable({ password })`;`twoFactor.generateBackupCodes()`。
 - **登入語意**|已啟用 2FA 之帳號 `signIn.email` 回 `{ twoFactorRedirect: true }`(不發完整 session),前端導 challenge;`twoFactor.verifyTotp` / `verifyBackupCode` 通過才發 session。AuthGuard 不變(仍只認伺服器驗證的 session)。
 
@@ -81,7 +81,7 @@
 
 ## 7-bis. 企業級 cross-cutting 檢核(安全關鍵)
 
-- **secret / backup 保護**|TOTP secret 加密、backup codes 雜湊(Better Auth 內建,用 app secret)—— 不落 log、不回傳明文。
+- **secret / backup 保護**|TOTP secret 加密、**backup codes 加密(非雜湊)**(Better Auth 內建,用 app secret)—— 不落 log、不回傳明文。
 - **驗證暴力**|`/two-factor/verify-totp`、`/verify-backup-code` 加嚴 rateLimit customRule(對齊 F-2 sign-in 5/60s 級);TOTP 時間窗容忍設保守(±1 step)。
 - **backup code 一次性**|用過即失效(Better Auth 行為,測試斷言)。
 - **停用防護**|停用 / 重產 backup 需重新驗證,防會話劫持者關閉 2FA。
@@ -105,7 +105,7 @@
 | 里程碑 | 內容 | 狀態 |
 |---|---|---|
 | **M0** 設計 review | 本檔 → APPROVED(OQ-MFA-1..6 全採建議,2026-07-20)| ✅ |
-| **M1** A1 | twoFactor plugin + migration + spike 驗證 API 形狀 + 後端整合測 | ✅ **DONE**|createAuth 掛 `twoFactor({ issuer: "Weyver" })`(secret 加密/backup 雜湊內建);`twoFactor` 表由 getMigrations 生成;rateLimit 加 `/two-factor/verify-totp`、`/verify-backup-code` 5/60s。**spike 確認 API 形狀**:`enableTwoFactor({password})`→`{totpURI,backupCodes}`(未啟用)→ `verifyTOTP` 才啟用;啟用後 `signInEmail` 回 **`twoFactorRedirect:true`(不發完整 session)** → 帶 challenge cookie `verifyTOTP`/`verifyBackupCode` 才發 session。4 整合測(表建立+enable / 登入二步 / 錯碼拒 / **backup 一次性**;otplib 確定性產碼)。全 api 套件 114 綠 |
+| **M1** A1 | twoFactor plugin + migration + spike 驗證 API 形狀 + 後端整合測 | ✅ **DONE**|createAuth 掛 `twoFactor({ issuer: "Weyver" })`(secret 加密 / backup **加密**內建);`twoFactor` 表由 getMigrations 生成;rateLimit 加 `/two-factor/verify-totp`、`/verify-backup-code` 5/60s。**spike 確認 API 形狀**:`enableTwoFactor({password})`→`{totpURI,backupCodes}`(未啟用)→ `verifyTOTP` 才啟用;啟用後 `signInEmail` 回 **`twoFactorRedirect:true`(不發完整 session)** → 帶 challenge cookie `verifyTOTP`/`verifyBackupCode` 才發 session。4 整合測(表建立+enable / 登入二步 / 錯碼拒 / **backup 一次性**;otplib 確定性產碼)。全 api 套件 114 綠 |
 | **M2** A2 | 帳號設定「二步驟驗證」UI | ✅ **DONE**|`/app/settings/security`:啟用(密碼 → enable → QR〔qrcode.react〕+ 手動碼 + backup codes → 輸入碼 verifyTotp → 已啟用)/ 停用(重新驗證);header 加「安全」入口;authClient 加 twoFactorClient |
 | **M3** A3 | 登入 challenge 第二步 UI | ✅ **DONE**|login signIn 回 twoFactorRedirect → `/login/2fa`(TOTP,或「改用備用碼」verifyBackupCode)→ 設 active org → 進 /app;登入/2FA 成功改全頁導向讓 session 重新 hydrate(修 active org 顯示 lag)|
 | **M4** 收尾 | rate-limit + Playwright 固化 + FMEA + SHIPPED | ✅ **DONE**|verify 端點 rateLimit(M1 已含)· `e2e/mfa.spec.ts` 固化(otplib 產碼:註冊→啟用→登出→登入二步→進工作區;5 web e2e 全綠)· §12 FMEA P0 全緩解 · **SHIPPED v1.0** |
@@ -147,6 +147,98 @@
 | 9 | **reactive store 未更新致 active org 顯示錯** | UX 混淆(非安全) | P2 | 登入 / 2FA 成功全頁導向重新 hydrate;DB session.activeOrganizationId 為準 | ✅ 已修 |
 
 **殘留**:管理員協助重設之身分核驗政策(SOP,人工)· passkey/WebAuthn · org 強制 2FA 政策(皆後續)。
+
+---
+
+## 0-bis. 追溯稽核(2026-07-29)— **抓到文件與實作不符**
+
+### 🔴 本檔原本寫錯了:backup codes 是「加密」不是「雜湊」
+
+原文五處寫「backup codes **雜湊**儲存」。**讀 better-auth 1.6.23 原始碼確認為誤**:
+
+```
+dist/plugins/two-factor/index.mjs:26   storeBackupCodes: "encrypted"
+```
+
+實際以 app secret `symmetricEncrypt` **可逆**存放,驗證時整批解密後 `includes()` 比對;
+另有 serverOnly 的 `viewBackupCodes` 可**明文取出**。
+
+**為什麼這件事重要**|**NIST SP 800-63B** 規定 look-up secret 熵 <112 bits 者
+**SHALL 加鹽 + KDF 單向雜湊**。本專案備用碼為 10 碼 × 62 字元集 ≈ **59.5 bits**,落在應雜湊區間。
+→ 文件已就地更正;**實作要改則須自寫 `customBackupCodesGenerate` 並自管驗證**
+(plugin 架構需還原比對,不是改一個 flag),已立 task。
+
+> **這是本次追溯稽核最該記取的一類問題**:doc 描述了一個**比實際更安全**的行為。
+> 日後若有人依 doc 做安全審查,會得到錯誤的結論。
+
+### 🔴 TOTP 無重放防護(違反 RFC 6238 §5.2)
+
+**RFC 6238 §5.2 原文**:「The verifier **MUST NOT** accept the second attempt of the OTP
+after the successful validation has been issued for the first OTP.」
+better-auth 全 plugin grep **無 lastUsed / used 記錄** → 同一組碼在 90 秒窗內可重複使用。
+修法:`twoFactor` 列存 last-used step 或其 HMAC。
+
+> ✅ **時間窗本身合規**:`window = 1`(±30 秒)符合 RFC「at most one time step」。
+
+### 六個決定的裁定
+
+| # | 決定 | 裁定 | 依據 |
+|---|---|---|---|
+| 1 | TOTP + backup codes only | ✅ 維持 | 對照組一致。但缺「**註冊第二個 authenticator**」的自助救援(AWS 官方允許最多 8 個 MFA 裝置,可免走人工救援)→ 列 R2 |
+| 2 | opt-in + 預留 org policy | ⚠️ **應調整** | GitHub / Salesforce / Microsoft **皆已走到強制**。至少 owner / admin 先強制 |
+| 3 | 不做「記住此裝置」 | ⚠️ **應調整** | **Better Auth 已內建** `trustDeviceMaxAge`,預設 **30 天**(HMAC cookie + verification 表可撤銷)—— 成本近零。不做的代價是使用者每天掏手機 → **乾脆不開 MFA** |
+| 4 | 前端由 totpURI 產 QR | ✅ 維持 | 無異議 |
+| 5 | secret / backup 用內建保護 | 🔴 **應改** | 見上(加密非雜湊)|
+| 6 | 獨立 foundation 模組 | ✅ 維持 | — |
+
+### 備用碼規格對照
+
+| | 數量 × 長度 | 一次性 | 重生 | 顯示 |
+|---|---|---|---|---|
+| **GitHub**(官方)| 16 × `xxxxx-yyyyy` | ✅ | 新一組使舊全失效 | 可**下載 / 列印 / 複製**,且**須勾選「已保存」才能啟用** |
+| **Google**(官方)| 10 × 8 碼 | ✅ | 同上 | 可重看 / 下載 |
+| **Weyver 現況** | 10 × `xxxxx-xxxxx` | ✅(整合測已斷言)| ✅ 同慣例 | 🔴 **只在 enroll 顯示一次、無下載 / 複製 / 列印 / 確認勾選、無重生 UI**(`generateBackupCodes` 在後端但前端未接)|
+
+→ 數量長度合格;**保存體驗不合格 —— 這是日後人工救援量的主因**。
+另 GitHub / Auth0 於「用備用碼登入」後會**警示並促使重設 MFA**,本專案無。
+
+### 復原路徑:業界三層,而第三層是最大攻擊面
+
+**多註冊裝置(AWS)→ 備用碼 → 人工核驗。**
+
+管理員「替使用者關 MFA」是必要能力,但正是社交工程的主目標:
+
+- **MGM / Caesars 2023**|Scattered Spider 靠 **vishing 說服 help desk 重設 MFA**,MGM 損失約 **US$100M**(CISA AA23-320a)
+- **Retool 2023**|釣魚 + **深偽語音** + Google Authenticator 雲端同步 → **MFA 退化為單因子**
+
+**控制建議**|限定角色 + 雙人核准 + 冷卻期 + **強制 audit + 通知本人與 owner** + 重設後強制重新註冊。
+
+### 強制策略的推行方式(有前例可抄)
+
+- **GitHub**(官方)|分批 enrollment,**45 天設定期 + 7 天寬限**,逾期鎖 UI 但**不斷既有 token / 自動化**
+- **Salesforce**(官方)|契約要求 → auto-enable(admin 可關)→ in-app 提醒,**跨多 release 分階段**
+- **Microsoft**(官方)|2024-07-29 起取消 14 天 skip;CA 於**登入時攔截註冊**;
+  **政策生效後須 revoke 既有 session** 才真正落地(`Revoke-MgUserSignInSession`)
+
+### 其餘
+
+- **better-auth 有未載於文件的 `accountLockout` 預設**:10 次失敗鎖 15 分鐘(疊在本專案 5/60s rateLimit 之上)—— 應寫入本檔
+- 🔴 **MFA 事件無 audit log**|repo 只有 `ddl_audit` / `action_audit`;MFA 啟用 / 停用 / 備用碼重生與使用 / 管理員重設**全無紀錄**。**SOC 2 明確要求記 MFA 事件**
+- 未驗證的 enroll 殘列(`verified=false`)建議設 TTL 清理
+- **在地**|數位發展部《中小企業基本資安防護指引》(2026-03)已建議辦公軟體強制 2FA —— **可作為對客戶推 org policy 的說帖**
+
+### 查不到
+
+CISA 對 help desk 身分核驗的具體規範(僅有事件通報);台灣中小企業 TOTP 採用率統計。
+
+### 來源
+
+- [NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html) · [RFC 6238 §5.2](https://www.rfc-editor.org/rfc/rfc6238) · [OWASP MFA Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html)
+- [GitHub 2FA recovery methods](https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication-recovery-methods) · [GitHub mandatory 2FA rollout](https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/about-mandatory-two-factor-authentication)
+- [Google 備用碼](https://support.google.com/accounts/answer/1187538) · [AWS 多 MFA 裝置與遺失復原](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_lost-or-broken.html)
+- [Microsoft Entra MFA 設定(remember device / 註冊攔截)](https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration) · [Salesforce MFA 分階段強制](https://help.salesforce.com/s/articleView?id=release-notes.rn_general_mfa_requirement.htm)
+- [CISA AA23-320a Scattered Spider](https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-320a) · [Retool: When MFA isn't actually MFA](https://retool.com/blog/mfa-isnt-mfa)
+- [數位發展部《中小企業基本資安防護指引》](https://www-api.moda.gov.tw/File/Get/acs/zh-tw/1rpP5Mb1iyZwZUF)
 
 ## 13. 變更紀錄
 
