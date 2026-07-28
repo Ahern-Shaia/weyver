@@ -28,10 +28,30 @@ export interface AuthOptions {
    密碼 Argon2id(@node-rs/argon2 預設即 Argon2id;覆寫 Better Auth 預設 scrypt — AGENTS 🔒-4)。
    organization plugin = 多租戶 org(對映 Weyver tenants,M2);org 建立 hook → 建 tenant(M3)。
    session 驗證見 AuthGuard(M3)。secret 由呼叫端(NestJS ConfigService)注入,不散落 process.env。 */
+/* 🔴 organization plugin 的安全選項(兩個分支共用)。
+
+   **`requireEmailVerificationOnInvitation`|不能靠預設。** Better Auth 於 1.6.11 修好
+   CVE-2026-53514(GHSA-fmh4-wcc4-5jm3),但其 fallback 邏輯是:未顯式設定本選項、
+   且使用內建 opaque invitation id 時判定為 **false** —— 也就是**不要求驗證**。
+   本專案原本未設此選項亦無 email 驗證流程(`emailVerified` 恆為 false),
+   等於該 CVE 的攻擊路徑重新打開:知道受邀 email → 搶註冊該 email → 接受邀請
+   → 進入他人租戶。
+
+   ⚠️ **開啟後 email 驗證流程即為必要前置** —— 目前 `sendVerificationEmail` 尚未實作,
+   故**邀請功能在該流程完成前不可對外開放**(目前邀請亦尚未接入任何 UI,不影響既有流程)。
+
+   **`allowUserToCreateOrganization`|維持開啟但標記風險**:每個 org 經 hook 會建一個
+   tenant,對外開放註冊前必須改為受控(邀請制或後台審核),否則為資源濫用途徑。 */
+const ORG_SECURITY = {
+  requireEmailVerificationOnInvitation: true,
+  allowUserToCreateOrganization: true,
+} as const
+
 export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
   const onOrgCreated = options?.hooks?.onOrganizationCreated
   const orgPlugin = onOrgCreated
     ? organization({
+        ...ORG_SECURITY,
         organizationHooks: {
           afterCreateOrganization: async ({ organization: org, user }): Promise<void> => {
             await onOrgCreated({
@@ -42,7 +62,7 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
           },
         },
       })
-    : organization()
+    : organization({ ...ORG_SECURITY })
 
   return betterAuth({
     database: pool,

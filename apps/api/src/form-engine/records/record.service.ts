@@ -400,6 +400,8 @@ export class RecordService {
           query.filters.forEach((filter, i) => {
             const joiner: "where" | "orWhere" =
               i === 0 || combinator === "and" ? "where" : "orWhere"
+            /* 隱藏欄不得作為篩選條件 —— 否則可由回傳筆數反推其值 */
+            this.assertReadable(resolved, formId, filter.field, policy)
             group[joiner]((sub: Knex.QueryBuilder) => {
               this.applyFilter(sub, resolved, filter)
             })
@@ -410,8 +412,14 @@ export class RecordService {
       const term = query.q?.trim()
       if (term !== undefined && term !== "") {
         const pattern = `%${escapeLike(term)}%`
+        /* 快速搜尋**跳過**隱藏欄(而非報錯)—— 搜尋是便利功能非指名查詢,
+           報錯會讓使用者無從得知該打什麼;但掃進隱藏欄即可測知值是否存在。 */
         const textColumns = resolved.fields
-          .filter((f) => fieldType(f.type).dbFieldType === "text")
+          .filter(
+            (f) =>
+              fieldType(f.type).dbFieldType === "text" &&
+              (policy === undefined || policy.fieldVisibility(f.row.id, formId) !== "hidden"),
+          )
           .map((f) => f.column)
         if (textColumns.length > 0) {
           builder = builder.where((group: Knex.QueryBuilder) => {
@@ -425,6 +433,8 @@ export class RecordService {
       for (const sort of query.sort) {
         const field = resolved.byName.get(sort.field)
         if (field === undefined) throw new UnknownFieldError(sort.field)
+        /* 隱藏欄不得作為排序鍵 —— 否則可由列序推出大小關係 */
+        this.assertReadable(resolved, formId, sort.field, policy)
         // 空值一律沉底(PG DESC 預設 NULLS FIRST,對使用者不直覺)
         builder = builder.orderBy(field.column, sort.dir, "last")
       }
@@ -924,6 +934,30 @@ export class RecordService {
         row.parent_id === undefined || row.parent_id === null ? null : Number(row.parent_id),
       lineNo: row.line_no === undefined || row.line_no === null ? null : Number(row.line_no),
       values,
+    }
+  }
+
+  /* 🔴 追溯稽核:**隱藏欄不得出現在 WHERE / ORDER BY / 搜尋**。
+
+     「查完再遮」只擋得住**回傳值**,擋不住**用查詢反推值**:
+     - 篩選 `金額 > 100000` → 由回傳筆數即可二分逼近他人薪資
+     - 排序 `ORDER BY 金額` → 由列序推出大小關係
+     - 快速搜尋跨全部 text 欄 → 輸入值即可測知該值是否存在於隱藏欄
+
+     此為業界重複發生的一整類漏洞:Salesforce `WITH SECURITY_ENFORCED` 官方明載
+     **只檢查 SELECT/FROM,不含 WHERE 與 ORDER BY**;Odoo 亦有多個相關 CVE。
+     正解是**在 query builder 層就拒絕**,而非查完才遮。 */
+  private assertReadable(
+    resolved: ResolvedForm,
+    formId: number,
+    fieldName: string,
+    policy?: FieldAccessPolicy,
+  ): void {
+    if (policy === undefined) return
+    const field = resolved.byName.get(fieldName)
+    if (field === undefined) return
+    if (policy.fieldVisibility(field.row.id, formId) === "hidden") {
+      throw new FieldForbiddenError(fieldName)
     }
   }
 
