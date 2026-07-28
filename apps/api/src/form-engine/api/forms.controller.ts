@@ -50,9 +50,14 @@ export class FormsController {
   ) {}
 
   @Post()
-  // F-6 M2:建表為 DDL 類端點,較全域 300/min 更嚴(C5 DDL DoS);
-  // Excel 匯入走單次 bulk 呼叫不逐表打,故不誤傷(FMEA L6)
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  /* F-6 M2:建表為 DDL 類端點,較全域 300/min 更嚴(C5 DDL DoS)。
+
+     **2026-07-28 由 20 調為 120/min**|原值誤傷真實情境(FMEA L6 成真):
+     Weyver 的 R1 前提是**從 Ragic 遷移客戶**,遷移一個工作區會一次建數十至上百張表 ——
+     20/min 會直接擋死主要使用情境(e2e 全套亦於一分鐘內撞上限而失敗)。
+     **真正的總量防線是 per-tenant 配額**(`tenants.max_forms`,預設 500);
+     本限流只擋「瞬間 DDL 風暴」,不該兼任總量控制。 */
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @RequiresFormAction("design") // 建表 = 設計動作;無 formId → 需租戶管理權(admin)
   async createForm(
     @Tenant() tenant: TenantContext,
@@ -132,7 +137,8 @@ export class FormsController {
   }
 
   @Post(":formId/fields")
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  // 加欄同理放寬:一張遷移過來的表可能有數十欄,且常連續建立多張表
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
   @RequiresFormAction("design")
   async addField(
     @Tenant() tenant: TenantContext,

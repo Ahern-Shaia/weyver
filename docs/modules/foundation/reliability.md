@@ -126,7 +126,7 @@
 | L3 | 佔位列寫入後程序 crash → key 永久卡 `in_flight` | `expires_at`(24h)逾期即可被同 key 重新佔用;handler 失敗主動釋放佔位列。測 2 則 | P1 | ✅ |
 | L4 | 清理 job 誤刪仍被引用的檔案/表 | 只動 `orphaned`(逾 72h 觀察期)/ 逾 24h `pending`;pending form 只標 `failed` **不刪**(保留供查因)並寫 `ddl_audit`;`CLEANUP_DRY_RUN=1` 可先驗。測:未逾時者原封不動 | P0 | ✅ |
 | L5 | 配額上限過低 → 正常客戶被擋 | `tenants` 三欄 per-tenant 可調(NULL=預設);403 訊息含「請聯絡管理員調整配額」 | P1 | ✅ |
-| L6 | 建表端點嚴限誤傷 Excel 匯入(一次建多表) | 匯入走單次 bulk 呼叫不逐表打;建表 20/min、加欄 60/min,遠高於人工設計節奏。e2e `grid-import` 通過 | P1 | ✅ |
+| L6 | 建表端點嚴限誤傷真實情境 | ⚠️ **2026-07-28 實際發生,已修**|原設 建表 20/min、加欄 60/min,推理依據是「遠高於人工設計節奏」—— **但漏想了本產品的主要情境:從 Ragic 遷移**,一個工作區一次會建數十至上百張表;e2e 全套亦於一分鐘內撞限而失敗(症狀先被 dev DB 過慢所掩蓋,清理後才浮現)。**修正**:建表 120/min、加欄 300/min,並釐清分工 —— **總量防線是 per-tenant 配額**(`max_forms` 預設 500),限流只擋瞬間 DDL 風暴,不該兼任總量控制 | P1 | ✅ 已修 |
 | L7 | 多實例部署後 job 重複執行 | `pg_try_advisory_xact_lock`:取不到即 `skipped`。測:並行兩次不拋錯、至多一個真跑 | P1 | ✅ |
 
 ---
@@ -135,5 +135,6 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | v1.1 | **修 FMEA L6 實際誤擊**:建表限流 20→120/min、加欄 60→300/min。原值以「遠高於人工節奏」推理,漏想 Ragic 遷移之批次建表(本產品主要情境);釐清「配額管總量、限流管瞬間」之分工 | Claude Code |
 | 2026-07-28 | **v1.0** | **SHIPPED** — M1 冪等性(0015 + 全域攔截器)/ M2 per-tenant 配額(0016 + 分級限流)/ M3 metadata 車道切 app lane 使 RLS FORCE 生效 / M4 排程清理(孤兒 form + 孤兒檔實體回收 + 逾期冪等 key)/ M5 `statement_timeout` + 簽核副作用順序。**收斂之殘留全清**:core R7 · C5 · T4 · C2 · R8 · file-storage S6 · actions-approval 同 tx。api 305 + e2e 25 全綠(20 新測);FMEA L1–L7 全緩解;§3-bis 記錄 5 項實作偏離 | Claude Code |
 | 2026-07-27 | v0.1 | 初版 DRAFT — 收斂 7 項跨模組 P1 殘留(core R7/C5/T4/C2/R8 · file-storage S6 · actions-approval 同 tx)。P0 = 冪等性 + per-tenant 配額 + metadata 車道 RLS 兜底 + 清理 job;outbox / 加密 / flag / circuit breaker 明確排除並附理由。OQ-REL-1..7 待裁定 | Claude Code |
