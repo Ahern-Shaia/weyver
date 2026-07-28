@@ -21,6 +21,9 @@ export const CELL_VALUE_TYPES = [
   "member",
   "link",
   "attachment",
+  // R1·UP-4b 影像類欄型(與 attachment 同 [{key,name}] 契約)
+  "image",
+  "signature",
   "formula",
   // R1·UP-4 讀時計算 virtual + 條碼(鏡射後端 registry)
   "createdAt",

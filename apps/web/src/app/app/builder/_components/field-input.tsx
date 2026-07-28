@@ -8,6 +8,8 @@ import { cn } from "@weyver/ui/lib/utils"
 import { Select } from "@weyver/ui/select"
 import { AttachmentInput } from "./attachment-input"
 import { choicesOf } from "./field-value"
+import { ImageInput } from "./image-input"
+import { SignatureInput } from "./signature-input"
 
 /* metadata(cellValueType)→ 輸入元件 map(A4)。值以「原始編輯字串 / 陣列 / 布林」保存於
    填單 state;送出前由 toSubmitValue(field-value.ts)轉成後端型別。 */
@@ -37,6 +39,13 @@ export function FieldInput({
       return (
         <AttachmentInput formId={formId} fieldId={field.id} value={value} onChange={onChange} />
       )
+
+    // R1·UP-4b 影像類欄型:同 [{key,name}] 契約,差別在輸入與呈現
+    case "image":
+      return <ImageInput field={field} formId={formId} value={value} onChange={onChange} />
+
+    case "signature":
+      return <SignatureInput field={field} formId={formId} value={value} onChange={onChange} />
 
     case "autoNumber":
       return <span className="font-mono text-[11.5px] text-ink-4">儲存後自動產生</span>

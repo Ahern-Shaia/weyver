@@ -34,6 +34,8 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   member: { label: "成員", mark: "◍", ...D },
   link: { label: "關聯", mark: "⛓", ...D },
   attachment: { label: "附件", mark: "📎", ...D },
+  image: { label: "圖片", mark: "▣", ...D },
+  signature: { label: "簽名", mark: "✍", ...D },
   formula: { label: "公式", mark: "fx", ...D, needsExpression: true },
   // R1·UP-4 讀時計算 virtual(唯讀)+ 條碼
   createdAt: { label: "建立時間", mark: "◷", ...D },

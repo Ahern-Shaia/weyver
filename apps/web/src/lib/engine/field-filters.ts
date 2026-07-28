@@ -37,6 +37,8 @@ export function fieldOperators(type: CellValueType): FilterOperator[] {
     case "barcode":
       return TEXTUAL
     case "attachment":
+    case "image":
+    case "signature":
       return EMPTINESS
     // R1·UP-4 讀時計算虛擬欄:無物理欄 → 不可篩(比照後端 filterOperators [])
     case "createdAt":

@@ -13,8 +13,10 @@ export function toSubmitValue(field: FieldDto, value: unknown): unknown {
   if (isStubType(field.type) || field.type === "autoNumber" || field.type === "formula")
     return undefined
   switch (field.type) {
-    // F-5 附件:[{key,name}];空陣列不送(避免覆寫既有值語意不清)
+    // F-5 附件 / R1·UP-4b 影像類:[{key,name}];空陣列不送(避免覆寫既有值語意不清)
     case "attachment":
+    case "image":
+    case "signature":
       return Array.isArray(value) && value.length > 0 ? value : undefined
     case "checkbox":
       return value === true
@@ -47,7 +49,10 @@ export function formatFieldValue(field: FieldDto, value: unknown): string {
   if (value === null || value === undefined) return "—"
   if (field.type === "checkbox") return value === true ? "是" : "否"
   if (field.type === "multiSelect" && Array.isArray(value)) return value.join("、")
-  if (field.type === "attachment" && Array.isArray(value)) {
+  if (
+    (field.type === "attachment" || field.type === "image" || field.type === "signature") &&
+    Array.isArray(value)
+  ) {
     const names = value.map((v) =>
       typeof v === "object" && v !== null && "name" in v
         ? String((v as { name: unknown }).name)

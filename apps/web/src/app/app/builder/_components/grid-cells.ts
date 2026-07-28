@@ -14,12 +14,14 @@ export function gridKind(type: CellValueType): GridKind {
   return "text"
 }
 
-/* 網格內可直接編輯:排除 autoNumber / formula(computed 唯讀)/ stub / attachment(需上傳 UI)
+/* 網格內可直接編輯:排除 autoNumber / formula(computed 唯讀)/ stub / attachment·image·signature(需上傳或簽名 UI)
    / multiSelect(複雜編輯延後)*/
 export function isGridEditable(field: FieldDto): boolean {
   return (
     !isStubType(field.type) &&
     field.type !== "attachment" &&
+    field.type !== "image" &&
+    field.type !== "signature" &&
     field.type !== "autoNumber" &&
     field.type !== "formula" &&
     field.type !== "multiSelect"

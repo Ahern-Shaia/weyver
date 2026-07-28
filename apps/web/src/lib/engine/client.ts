@@ -94,7 +94,8 @@ export async function uploadFile(
   return fileDtoSchema.parse(await response.json())
 }
 
-export async function downloadFile(key: string, name: string): Promise<void> {
+/* 取檔案位元組(下載與影像預覽共用;預覽見 use-file-preview) */
+export async function fetchFileBlob(key: string): Promise<Blob> {
   const response = await fetch(`${BASE}/files/${key}`, {
     headers: { "x-dev-tenant": getDevTenant() },
   })
@@ -107,7 +108,11 @@ export async function downloadFile(key: string, name: string): Promise<void> {
       parsed.success ? parsed.data.message : `HTTP ${response.status}`,
     )
   }
-  const url = URL.createObjectURL(await response.blob())
+  return response.blob()
+}
+
+export async function downloadFile(key: string, name: string): Promise<void> {
+  const url = URL.createObjectURL(await fetchFileBlob(key))
   try {
     const anchor = document.createElement("a")
     anchor.href = url

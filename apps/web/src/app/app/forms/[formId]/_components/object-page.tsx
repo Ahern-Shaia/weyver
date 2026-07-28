@@ -2,6 +2,7 @@
 
 import { FieldInput } from "@/app/app/builder/_components/field-input"
 import { toSubmitValue } from "@/app/app/builder/_components/field-value"
+import { ImageThumb } from "@/app/app/builder/_components/image-input"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { useCreateRecord, useDeleteRecord, useUpdateRecord, useUserNames } from "@/lib/engine/hooks"
@@ -312,7 +313,9 @@ export function ObjectPage({
                       : "flex-1 text-[12.5px] text-ink"
                   }
                 >
-                  {editing ? (
+                  {!editing && (f.type === "image" || f.type === "signature") ? (
+                    <ImageGallery value={record.values[f.name]} />
+                  ) : editing ? (
                     <FieldInput
                       field={f}
                       formId={formId}
@@ -365,6 +368,27 @@ export function ObjectPage({
         </section>
       </div>
     </div>
+  )
+}
+
+/* R1·UP-4b:圖片 / 簽名以縮圖呈現(值契約同附件,差別只在呈現) */
+function ImageGallery({ value }: { readonly value: unknown }): ReactNode {
+  const items = Array.isArray(value)
+    ? value.filter(
+        (v): v is { key: string; name: string } =>
+          typeof v === "object" &&
+          v !== null &&
+          typeof (v as { key?: unknown }).key === "string" &&
+          typeof (v as { name?: unknown }).name === "string",
+      )
+    : []
+  if (items.length === 0) return <span className="text-ink-4">—</span>
+  return (
+    <span className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <ImageThumb key={item.key} item={item} maxHeight={72} />
+      ))}
+    </span>
   )
 }
 
