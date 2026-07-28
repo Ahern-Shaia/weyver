@@ -1,14 +1,15 @@
 "use client"
 
-import { Button } from "@weyver/ui/button"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
-import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
-import { useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { fieldTypeMeta } from "@/lib/engine/field-types"
 import { useAddField, useForm, useForms } from "@/lib/engine/hooks"
 import type { CellValueType, FieldDto, FormSummary } from "@/lib/engine/schemas"
+import { Button } from "@weyver/ui/button"
+import { Input } from "@weyver/ui/input"
+import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
+import { useState } from "react"
+import { AdvancedFieldOptions } from "./advanced-field-options"
+import { type ChoiceRow, ChoicesEditor, rowsToOptions } from "./choices-editor"
 import { DesignCanvas } from "./design-canvas"
 import { FieldPalette } from "./field-palette"
 
@@ -18,11 +19,11 @@ const STATE_TONE: Record<string, StatusTone> = {
   failed: "error",
 }
 
-interface PendingField {
+export interface PendingField {
   type: CellValueType
   name: string
   required: boolean
-  choicesText: string
+  choices: ChoiceRow[]
   prefix: string
   expressionText: string
   // R1·UP-4 進階
@@ -49,7 +50,7 @@ function pendingOptions(p: PendingField): Record<string, unknown> {
   switch (p.type) {
     case "singleSelect":
     case "multiSelect":
-      return { choices: splitCsv(p.choicesText) }
+      return rowsToOptions(p.choices)
     case "formula":
       return { expression: p.expressionText.trim() }
     case "autoNumber": {
@@ -111,7 +112,12 @@ export function EditFormPanel({
       type,
       name: "",
       required: false,
-      choicesText: meta.needsChoices ? "選項一, 選項二" : "",
+      choices: meta.needsChoices
+        ? [
+            { name: "選項一", tone: "c1" as const },
+            { name: "選項二", tone: "c2" as const },
+          ]
+        : [],
       prefix: type === "autoNumber" ? "NO-" : "",
       expressionText: "",
       dateFormat: "",
@@ -241,7 +247,6 @@ function PendingEditor({
   const meta = fieldTypeMeta(pending.type)
   const set = (patch: Partial<PendingField>) => onChange({ ...pending, ...patch })
   const t = pending.type
-  const linkFields = currentFields.filter((f) => f.type === "link")
   const subtables = forms.filter((f) => f.parentFormId === formId)
 
   return (
@@ -271,11 +276,7 @@ function PendingEditor({
       </label>
 
       {t === "singleSelect" || t === "multiSelect" ? (
-        <Input
-          value={pending.choicesText}
-          onChange={(e) => set({ choicesText: e.target.value })}
-          placeholder="選項以逗號分隔"
-        />
+        <ChoicesEditor rows={pending.choices} onChange={(choices) => set({ choices })} />
       ) : null}
       {t === "formula" ? (
         <Input
@@ -286,137 +287,13 @@ function PendingEditor({
         />
       ) : null}
 
-      {t === "autoNumber" ? (
-        <div className="flex flex-wrap gap-2">
-          <Input
-            value={pending.prefix}
-            onChange={(e) => set({ prefix: e.target.value })}
-            placeholder="前綴,如 PO-"
-            className="w-28"
-          />
-          <Select
-            className="h-7"
-            value={pending.dateFormat}
-            onChange={(e) => set({ dateFormat: e.target.value })}
-          >
-            <option value="">無日期段</option>
-            <option value="yyyy">yyyy</option>
-            <option value="yyyyMM">yyyyMM</option>
-            <option value="yyyyMMdd">yyyyMMdd</option>
-          </Select>
-          <Select
-            className="h-7"
-            value={pending.resetScope}
-            onChange={(e) => set({ resetScope: e.target.value })}
-          >
-            <option value="none">不重設</option>
-            <option value="daily">每日重設</option>
-            <option value="monthly">每月重設</option>
-            <option value="yearly">每年重設</option>
-            <option value="field">依欄位重設</option>
-          </Select>
-          {pending.resetScope === "field" ? (
-            <Select
-              className="h-7"
-              value={pending.resetField}
-              onChange={(e) => set({ resetField: e.target.value })}
-            >
-              <option value="">選重設依據欄</option>
-              {currentFields.map((f) => (
-                <option key={f.id} value={f.name}>
-                  {f.name}
-                </option>
-              ))}
-            </Select>
-          ) : null}
-        </div>
-      ) : null}
-
-      {t === "link" ? (
-        <div className="flex flex-wrap gap-2">
-          <Select
-            className="h-7"
-            value={pending.targetFormId}
-            onChange={(e) => set({ targetFormId: e.target.value })}
-          >
-            <option value="">選目標表單</option>
-            {forms.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </Select>
-          <Input
-            value={pending.displayFields}
-            onChange={(e) => set({ displayFields: e.target.value })}
-            placeholder="顯示欄(逗號,選填)"
-            className="w-44"
-          />
-        </div>
-      ) : null}
-
-      {t === "lookup" ? (
-        <div className="flex flex-wrap gap-2">
-          <Select
-            className="h-7"
-            value={pending.linkFieldName}
-            onChange={(e) => set({ linkFieldName: e.target.value })}
-          >
-            <option value="">選關聯欄</option>
-            {linkFields.map((f) => (
-              <option key={f.id} value={f.name}>
-                {f.name}
-              </option>
-            ))}
-          </Select>
-          <Input
-            value={pending.targetFieldName}
-            onChange={(e) => set({ targetFieldName: e.target.value })}
-            placeholder="目標欄名"
-            className="w-32"
-          />
-          {linkFields.length === 0 ? (
-            <span className="text-[10.5px] text-ink-4">需先加關聯欄</span>
-          ) : null}
-        </div>
-      ) : null}
-
-      {t === "rollup" ? (
-        <div className="flex flex-wrap gap-2">
-          <Select
-            className="h-7"
-            value={pending.childFormId}
-            onChange={(e) => set({ childFormId: e.target.value })}
-          >
-            <option value="">選子表</option>
-            {subtables.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </Select>
-          <Input
-            value={pending.childFieldName}
-            onChange={(e) => set({ childFieldName: e.target.value })}
-            placeholder="子表欄名"
-            className="w-28"
-          />
-          <Select
-            className="h-7"
-            value={pending.rollupFn}
-            onChange={(e) => set({ rollupFn: e.target.value })}
-          >
-            <option value="SUM">加總</option>
-            <option value="COUNT">計數</option>
-            <option value="AVERAGE">平均</option>
-            <option value="MIN">最小</option>
-            <option value="MAX">最大</option>
-          </Select>
-          {subtables.length === 0 ? (
-            <span className="text-[10.5px] text-ink-4">需先加子表</span>
-          ) : null}
-        </div>
-      ) : null}
+      <AdvancedFieldOptions
+        pending={pending}
+        set={set}
+        forms={forms}
+        subtables={subtables}
+        currentFields={currentFields}
+      />
     </div>
   )
 }

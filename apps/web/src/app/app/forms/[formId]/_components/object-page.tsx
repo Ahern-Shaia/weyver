@@ -7,8 +7,9 @@ import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { useCreateRecord, useDeleteRecord, useUpdateRecord, useUserNames } from "@/lib/engine/hooks"
 import { useLayout } from "@/lib/engine/hooks"
+import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
-import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
+import { StatusChip } from "@weyver/ui/status-chip"
 import { Check, Copy, Paperclip, Pencil, Printer, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
@@ -36,19 +37,10 @@ function fmtVal(v: unknown): string {
 }
 
 /* R1·workbench-uplift A2|狀態欄慣例(OQ-RWB-3=A):**第一個 singleSelect 即狀態**,零設定。
-   tone 只認欄位 options.colors 明確設定的語意色;未設定一律 neutral —— 不以字面猜測
-   「已核准/待審」(那會在客戶自訂用語下猜錯),且對齊 docs/14「已了結退到背景」。
-   顏色設定 UI 為 field-types-parity P1;在那之前狀態章恆為中性框,仍提供「這是狀態」的結構訊號。 */
-const TONES: readonly StatusTone[] = ["ok", "warn", "error", "neutral"]
-
+   tone 由 R1·UP-4c 之選項配色供給(`optionTone`,受控白名單);未設定一律 neutral —— 不以
+   字面猜測「已核准/待審」(客戶自訂用語會猜錯),且對齊 docs/14「已了結退到背景」。 */
 function statusFieldOf(fields: readonly FieldDto[]): FieldDto | undefined {
   return fields.find((f) => f.type === "singleSelect")
-}
-
-function statusToneOf(field: FieldDto, value: unknown): StatusTone {
-  const colors = (field.options as { colors?: Record<string, string> }).colors
-  const token = typeof value === "string" ? colors?.[value] : undefined
-  return TONES.includes(token as StatusTone) ? (token as StatusTone) : "neutral"
 }
 
 /* 金額彙總:money / percent / formula / rollup 之現值(單筆的「算」的結果)。
@@ -185,7 +177,7 @@ export function ObjectPage({
             #{record.id} · v{record.version}
           </span>
           {statusField ? (
-            <StatusChip tone={statusToneOf(statusField, record.values[statusField.name])}>
+            <StatusChip tone={optionTone(statusField, record.values[statusField.name])}>
               {fmtVal(record.values[statusField.name])}
             </StatusChip>
           ) : null}
@@ -313,7 +305,18 @@ export function ObjectPage({
                       : "flex-1 text-[12.5px] text-ink"
                   }
                 >
-                  {!editing && (f.type === "image" || f.type === "signature") ? (
+                  {!editing && isChipField(f) ? (
+                    <span className="flex flex-wrap gap-1">
+                      {chipValues(record.values[f.name]).map((v) => (
+                        <StatusChip key={v} tone={optionTone(f, v)}>
+                          {v}
+                        </StatusChip>
+                      ))}
+                      {chipValues(record.values[f.name]).length === 0 ? (
+                        <span className="text-ink-4">—</span>
+                      ) : null}
+                    </span>
+                  ) : !editing && (f.type === "image" || f.type === "signature") ? (
                     <ImageGallery value={record.values[f.name]} />
                   ) : editing ? (
                     <FieldInput

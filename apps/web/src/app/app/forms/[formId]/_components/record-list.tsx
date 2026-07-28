@@ -1,5 +1,6 @@
 "use client"
 
+import { optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, RecordRow } from "@/lib/engine/schemas"
 import { StatusChip } from "@weyver/ui/status-chip"
 import type { ReactNode } from "react"
@@ -63,7 +64,10 @@ export function RecordList({
                 <div className="mt-1 flex items-center gap-1.5">
                   <span className="font-mono text-[10.5px] text-ink-4">#{r.id}</span>
                   {statusField ? (
-                    <StatusChip className="h-[15px] text-[9.5px]">
+                    <StatusChip
+                      tone={optionTone(statusField, r.values[statusField.name])}
+                      className="h-[15px] text-[9.5px]"
+                    >
                       {String(r.values[statusField.name] ?? "—")}
                     </StatusChip>
                   ) : null}

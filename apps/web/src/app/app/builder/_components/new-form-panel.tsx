@@ -1,13 +1,14 @@
 "use client"
 
-import { Button } from "@weyver/ui/button"
-import { Input } from "@weyver/ui/input"
-import { cn } from "@weyver/ui/lib/utils"
-import { useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { fieldTypeMeta } from "@/lib/engine/field-types"
 import { useCreateForm } from "@/lib/engine/hooks"
 import type { CellValueType, CreateFormInput } from "@/lib/engine/schemas"
+import { Button } from "@weyver/ui/button"
+import { Input } from "@weyver/ui/input"
+import { cn } from "@weyver/ui/lib/utils"
+import { useState } from "react"
+import { type ChoiceRow, ChoicesEditor, rowsToOptions } from "./choices-editor"
 import { FieldPalette } from "./field-palette"
 
 interface DraftField {
@@ -15,7 +16,7 @@ interface DraftField {
   name: string
   type: CellValueType
   required: boolean
-  choicesText: string // singleSelect / multiSelect
+  choices: ChoiceRow[] // singleSelect / multiSelect
   prefix: string // autoNumber
   expressionText: string // formula
 }
@@ -29,7 +30,12 @@ function newDraftField(type: CellValueType): DraftField {
     name: `新${meta.label}`,
     type,
     required: false,
-    choicesText: meta.needsChoices ? "選項一, 選項二" : "",
+    choices: meta.needsChoices
+      ? [
+          { name: "選項一", tone: "c1" as const },
+          { name: "選項二", tone: "c2" as const },
+        ]
+      : [],
     prefix: type === "autoNumber" ? "NO-" : "",
     expressionText: "",
   }
@@ -37,13 +43,7 @@ function newDraftField(type: CellValueType): DraftField {
 
 function buildOptions(field: DraftField): Record<string, unknown> {
   const meta = fieldTypeMeta(field.type)
-  if (meta.needsChoices) {
-    const choices = field.choicesText
-      .split(/[,，\n]/)
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0)
-    return { choices }
-  }
+  if (meta.needsChoices) return rowsToOptions(field.choices)
   if (meta.needsPrefix) return { prefix: field.prefix }
   if (meta.needsExpression) return { expression: field.expressionText.trim() }
   return {}
@@ -203,12 +203,12 @@ export function NewFormPanel({
                         </div>
                       </div>
                       {meta.needsChoices ? (
-                        <Input
-                          value={f.choicesText}
-                          onChange={(e) => patch(f.key, { choicesText: e.target.value })}
-                          placeholder="選項以逗號分隔"
-                          className="ml-7"
-                        />
+                        <div className="ml-7">
+                          <ChoicesEditor
+                            rows={f.choices}
+                            onChange={(choices) => patch(f.key, { choices })}
+                          />
+                        </div>
                       ) : null}
                       {meta.needsPrefix ? (
                         <Input
