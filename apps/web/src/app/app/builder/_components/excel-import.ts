@@ -27,6 +27,32 @@ function isBooleanish(v: string): boolean {
   return BOOL_TRUE.has(lower) || BOOL_FALSE.has(lower)
 }
 
+/* 🔴 一票否決:看起來像數字、但**數值化即損毀語意**的識別碼。
+
+   實測(追溯稽核)|原本 `NUMBER_RE` 讓這些全判成 number,經 `Number()` 後:
+   - `00123`(郵遞區號 / 舊料號)→ `123`,**前導零永久消失**
+   - `0912345678`(台灣手機)→ `912345678`,**前導零永久消失**
+   - 15 位以上純數字 → 超過 `MAX_SAFE_INTEGER`,**精度損毀**
+
+   這不是「推斷保守與否」的取捨,是**匯入即毀資料**。客戶手上的舊 Excel
+   幾乎必有電話 / 統編 / 郵遞區號欄,是 onboarding 的第一線。
+
+   例外:欄名明示為量值時仍允許數字(否則「數量」欄的 8 位數會被誤擋)。 */
+const LEADING_ZERO_RE = /^0\d/
+const OVER_PRECISION_RE = /^-?\d{15,}$/
+/* 8–14 位純數字:統編 8 / 身分證 10 / 手機 10 / 市話含區碼 —— 除非欄名是量值 */
+const IDENTIFIER_LEN_RE = /^\d{8,14}$/
+const PHONE_PUNCT_RE = /^[+(]|[\d)]-[\d(]/
+const QUANTITY_NAME_RE = /數量|金額|單價|價格|重量|人數|件數|qty|amount|price|cost|weight|total/i
+
+function looksLikeIdentifier(v: string, columnName: string): boolean {
+  if (LEADING_ZERO_RE.test(v)) return true
+  if (OVER_PRECISION_RE.test(v)) return true
+  if (PHONE_PUNCT_RE.test(v)) return true
+  if (IDENTIFIER_LEN_RE.test(v) && !QUANTITY_NAME_RE.test(columnName)) return true
+  return false
+}
+
 function isNumberish(v: string): boolean {
   return NUMBER_RE.test(v)
 }
@@ -42,13 +68,23 @@ export interface InferredColumn {
   readonly choices?: readonly string[]
 }
 
-export function inferColumnType(rawValues: readonly string[], rowCount: number): InferredColumn {
+export function inferColumnType(
+  rawValues: readonly string[],
+  rowCount: number,
+  columnName = "",
+): InferredColumn {
   const samples = nonEmpty(rawValues).slice(0, SAMPLE_LIMIT)
   if (samples.length === 0) return { type: "text" }
 
   if (allMatch(samples, isBooleanish)) return { type: "checkbox" }
+  /* 日期先判 —— 其形狀明確,且 `2026-07-22` 會誤中下方的電話分隔規則 */
   if (allMatch(samples, (v) => DATETIME_RE.test(v))) return { type: "dateTime" }
   if (allMatch(samples, (v) => DATE_RE.test(v))) return { type: "date" }
+
+  /* 一票否決:只與 money / number 競爭 —— 有任一格像識別碼,整欄退 text。
+     寧可讓使用者手動改成數字(可改),也不能讓前導零消失(不可逆)。 */
+  if (samples.some((v) => looksLikeIdentifier(v, columnName))) return { type: "text" }
+
   if (allMatch(samples, isMoneyish)) return { type: "money" }
   if (allMatch(samples, isNumberish)) return { type: "number" }
 

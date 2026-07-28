@@ -81,3 +81,41 @@ describe("normalizeColumnNames", () => {
     expect(normalizeColumnNames(["金額", "金額", "金額"])).toEqual(["金額", "金額_2", "金額_3"])
   })
 })
+
+describe("🔴 識別碼一票否決(追溯稽核:匯入即毀資料)", () => {
+  it("**前導零不得被數值化** —— 郵遞區號 / 舊料號", () => {
+    expect(inferColumnType(["00123", "00456", "00789"], 3).type).toBe("text")
+  })
+
+  it("**台灣手機號不得被數值化** —— 0912345678 會變成 912345678", () => {
+    expect(inferColumnType(["0912345678", "0987654321"], 2).type).toBe("text")
+  })
+
+  it("統編 / 身分證長度之純數字退 text", () => {
+    expect(inferColumnType(["12345678", "87654321"], 2).type).toBe("text")
+    expect(inferColumnType(["A123456789", "B234567890"], 2).type).toBe("text")
+  })
+
+  it("超過安全整數精度者退 text", () => {
+    expect(inferColumnType(["1234567890123456", "9876543210987654"], 2).type).toBe("text")
+  })
+
+  it("含分隔符的電話退 text", () => {
+    expect(inferColumnType(["02-1234-5678", "03-987-6543"], 2).type).toBe("text")
+    expect(inferColumnType(["+886912345678", "+886987654321"], 2).type).toBe("text")
+  })
+
+  it("**欄名為量值時不誤擋** —— 「數量」欄的 8 位數仍判數字", () => {
+    expect(inferColumnType(["12345678", "87654321"], 2, "數量").type).toBe("number")
+    expect(inferColumnType(["12345678", "87654321"], 2, "金額").type).toBe("number")
+  })
+
+  it("一般數字不受影響", () => {
+    expect(inferColumnType(["12", "345", "6789"], 3).type).toBe("number")
+    expect(inferColumnType(["1.5", "2.75"], 2).type).toBe("number")
+  })
+
+  it("**只要有一格像識別碼,整欄退 text**(不可逆風險優先)", () => {
+    expect(inferColumnType(["123", "456", "00789"], 3).type).toBe("text")
+  })
+})

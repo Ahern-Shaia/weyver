@@ -41,7 +41,7 @@ function distinctValues(values: readonly string[]): string[] {
 function buildDrafts(sheet: ParsedSheet): ColumnDraft[] {
   return sheet.columns.map((name, index) => {
     const values = columnValues(sheet.rows, index)
-    const inferred = inferColumnType(values, sheet.rows.length)
+    const inferred = inferColumnType(values, sheet.rows.length, name)
     return {
       key: `c${index}`,
       sourceIndex: index,
