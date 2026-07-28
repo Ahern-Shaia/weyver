@@ -48,10 +48,13 @@ export async function engineFetch<T>(
   schema: z.ZodType<T>,
   init: { method?: string; body?: unknown } = {},
 ): Promise<T> {
+  /* content-type 只在**真的有 body** 時才送 —— Fastify 對「宣告 application/json
+     但 body 為空」直接回 500(無 body 的 POST 如「全部標為已讀」會踩到)。
+     沒有 body 就沒有內容型別可宣告,這也是正確的 HTTP 語意。 */
   const response = await fetch(`${BASE}${path}`, {
     method: init.method ?? "GET",
     headers: {
-      "content-type": "application/json",
+      ...(init.body === undefined ? {} : { "content-type": "application/json" }),
       "x-dev-tenant": getDevTenant(),
     },
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),

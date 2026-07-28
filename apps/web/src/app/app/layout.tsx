@@ -13,6 +13,7 @@ import {
   useSession,
 } from "@/lib/auth/client"
 import { CommandPalette } from "./_components/command-palette"
+import { NotificationBell } from "./_components/notification-bell"
 import { StatusBar } from "./_components/status-bar"
 
 /* /app/* 受保護區 + app-shell(R1·UP-1:左 icon rail + 全域 status bar + ⌘K)。
@@ -157,6 +158,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
             <RailLink key={item.href} {...item} active={isActive(item.href)} />
           ))}
           <div className="mt-auto flex flex-col items-center gap-1">
+            <NotificationBell />
             {SETTINGS_NAV.map((item) => (
               <RailLink key={item.href} {...item} active={isActive(item.href)} />
             ))}

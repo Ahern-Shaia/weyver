@@ -26,6 +26,8 @@ import {
   labelDtoSchema,
   layoutSchema,
   listResponseSchema,
+  notificationListSchema,
+  notificationSettingsSchema,
   recordRowSchema,
   reverseRelationGroupSchema,
   userNameSchema,
@@ -534,5 +536,73 @@ export function useReverseRelations(formId: number, recordId: number | null) {
         `/forms/${formId}/records/${String(recordId)}/relations`,
         z.array(reverseRelationGroupSchema),
       ),
+  })
+}
+
+/* ── H-1 通知 ───────────────────────────────────────────────── */
+
+export const notificationKeys = {
+  list: ["notifications"] as const,
+  settings: ["notifications", "settings"] as const,
+}
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: notificationKeys.list,
+    queryFn: () => engineFetch("/notifications", notificationListSchema),
+    /* 輪詢而非推送:PgBouncer transaction mode 下 LISTEN/NOTIFY 不可用,
+       且 SSE/WebSocket 為獨立題目。60 秒對簽核場景足夠。 */
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
+}
+
+export function useMarkNotificationsRead() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (ids: readonly number[]) =>
+      engineFetch("/notifications/read", z.unknown(), {
+        method: "POST",
+        body: { ids },
+      }),
+    onSuccess: () => invalidate([notificationKeys.list]),
+  })
+}
+
+export function useMarkAllNotificationsRead() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: () => engineFetch("/notifications/read-all", z.unknown(), { method: "POST" }),
+    onSuccess: () => invalidate([notificationKeys.list]),
+  })
+}
+
+export function useNotificationSettings() {
+  return useQuery({
+    queryKey: notificationKeys.settings,
+    queryFn: () => engineFetch("/notifications/settings", notificationSettingsSchema),
+  })
+}
+
+export function useSaveNotificationSettings() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { enabled: boolean; channels: Record<string, string[]> | null }) =>
+      engineFetch("/notifications/settings", z.unknown(), { method: "POST", body: input }),
+    onSuccess: () => invalidate([notificationKeys.settings, notificationKeys.list]),
+  })
+}
+
+export function useSaveNotificationPref() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      scope: "tenant" | "category" | "form"
+      scopeId: number | null
+      level: number
+      customEvents: string[] | null
+    }) =>
+      engineFetch("/notifications/prefs", z.unknown(), { method: "POST", body: input }),
+    onSuccess: () => invalidate([notificationKeys.settings]),
   })
 }

@@ -438,3 +438,38 @@ export interface CreateFormInput {
   readonly parentFormId?: number
   readonly fields: readonly AddFieldInput[]
 }
+
+/* H-1 通知(docs/modules/R1/notifications.md)。
+   **回應刻意不含欄位值**(OQ-NT-9):欄位級權限使業界主流的「過濾收件人」失效,
+   故通知只帶表單名 + 事件 + 記錄編號,點進去才做權限檢查。 */
+export const notificationItemSchema = z.object({
+  id: z.number(),
+  event: z.string(),
+  formId: z.number().nullable(),
+  recordId: z.number().nullable(),
+  title: z.string(),
+  actorId: z.number().nullable(),
+  read: z.boolean(),
+  createdAt: z.string(),
+})
+export type NotificationItem = z.infer<typeof notificationItemSchema>
+
+export const notificationListSchema = z.object({
+  unread: z.number(),
+  items: z.array(notificationItemSchema),
+})
+
+export const notificationPrefSchema = z.object({
+  scope: z.enum(["tenant", "category", "form"]),
+  scopeId: z.number().nullable(),
+  level: z.number(),
+  customEvents: z.array(z.string()).nullable(),
+})
+export type NotificationPref = z.infer<typeof notificationPrefSchema>
+
+export const notificationSettingsSchema = z.object({
+  enabled: z.boolean(),
+  channels: z.record(z.string(), z.array(z.string())).nullable(),
+  prefs: z.array(notificationPrefSchema),
+})
+export type NotificationSettings = z.infer<typeof notificationSettingsSchema>
