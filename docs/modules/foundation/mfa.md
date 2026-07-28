@@ -152,6 +152,9 @@
 
 ## 0-bis. 追溯稽核(2026-07-29)— **抓到文件與實作不符**
 
+> ✅ **2026-07-29 已修**(commit 見變更紀錄)|備用碼改為 **120 bits + HMAC-SHA256 單向雜湊**;
+> TOTP 補上**重放防護**。以下保留原始稽核記錄。
+
 ### 🔴 本檔原本寫錯了:backup codes 是「加密」不是「雜湊」
 
 原文五處寫「backup codes **雜湊**儲存」。**讀 better-auth 1.6.23 原始碼確認為誤**:
@@ -165,8 +168,26 @@ dist/plugins/two-factor/index.mjs:26   storeBackupCodes: "encrypted"
 
 **為什麼這件事重要**|**NIST SP 800-63B** 規定 look-up secret 熵 <112 bits 者
 **SHALL 加鹽 + KDF 單向雜湊**。本專案備用碼為 10 碼 × 62 字元集 ≈ **59.5 bits**,落在應雜湊區間。
-→ 文件已就地更正;**實作要改則須自寫 `customBackupCodesGenerate` 並自管驗證**
-(plugin 架構需還原比對,不是改一個 flag),已立 task。
+**✅ 修法(已實作)—— 關鍵是改碼長,不是改雜湊演算法。**
+
+NIST 的規定分兩段:所有 look-up secret **SHALL** 以 approved hash 儲存;
+**只有 <112 bits 者**才 SHALL 加鹽 + password hashing scheme。
+原本 59.5 bits 落在後段 → 被迫用 Argon2id(每次登入最多比對 10 組 × ~50ms = **500ms**)。
+**把碼加長到 ≥112 bits,那個前提就消失** —— HMAC-SHA256 即合規,10 組比對 <1ms。
+
+實作:**24 字元 base32 = 120 bits**(256 % 32 = 0,`byte % 32` 無 modulo bias)。
+
+**在此 plugin 架構下要讓單向雜湊成立,需要兩件事同時做到**(plugin 是
+「解出整批 → `includes(使用者輸入)`」的 blob 比對):
+1. `storeBackupCodes.encrypt` 把每組碼雜湊後才存;`decrypt` 直通
+   ⚠️ **必須冪等** —— 用掉一組後 plugin 會把「剩餘碼」再送進來一次,那些已是雜湊值,
+   重複雜湊會讓全部作廢(以 `bc1$` 前綴判別)
+2. **before hook 把使用者輸入也雜湊**,才能被 `includes` 命中
+
+**為什麼是 HMAC 而非隨機加鹽**|hook 在使用者解析前執行,雜湊必須**確定性** →
+無法 per-code random salt。NIST §5.1.1.2 允許 keyed-hash 並建議金鑰與資料分開存放,
+故 pepper 走獨立 env(未設時退回 app secret)。
+**高熵 + keyed hash + 速率限制**(內建 accountLockout 10 次/15 分)三者相扣,**不能只做一半**。
 
 > **這是本次追溯稽核最該記取的一類問題**:doc 描述了一個**比實際更安全**的行為。
 > 日後若有人依 doc 做安全審查,會得到錯誤的結論。
@@ -176,7 +197,21 @@ dist/plugins/two-factor/index.mjs:26   storeBackupCodes: "encrypted"
 **RFC 6238 §5.2 原文**:「The verifier **MUST NOT** accept the second attempt of the OTP
 after the successful validation has been issued for the first OTP.」
 better-auth 全 plugin grep **無 lastUsed / used 記錄** → 同一組碼在 90 秒窗內可重複使用。
-修法:`twoFactor` 列存 last-used step 或其 HMAC。
+
+**✅ 修法(已實作)**|獨立表 `totp_replay_guard(auth_user_id, last_used_step)`
+——**不在 `twoFactor` 加欄**,那張表由 better-auth 的 `getMigrations` 建立與管理,
+在它身上加欄會與其 schema 所有權衝突(測試環境的建表順序即已踩到)。
+存的是 **time step**(單調遞增整數,不含機密,天然涵蓋整個時間窗)。
+
+⚠️ **實作踩點:全部邏輯在 `after` hook**|`/two-factor/verify-totp` 執行時使用者尚在
+two-factor challenge 狀態,`ctx.context.session` 為空 → **before hook 拿不到身分**。
+故改為:驗證成功後以**條件式 UPSERT** 記錄 step,受影響列數為 0 即代表重放 →
+**撤銷剛發出的 session** 並回 401。代價是重放時 session 會先建立再撤銷,
+可接受(攻擊路徑非正常流程,且兩步在同一請求內完成)。
+
+⚠️ **真實 UX 後果(需在設定頁說明)**|啟用 2FA 的流程本身會 verifyTotp 一次 →
+該 step 已被用掉。**使用者若在同一 30 秒窗內接著登入會被擋下**,需等下一組碼。
+RFC 上正確(同一 step 的碼相同),但要讓使用者知道發生了什麼。
 
 > ✅ **時間窗本身合規**:`window = 1`(±30 秒)符合 RFC「at most one time step」。
 

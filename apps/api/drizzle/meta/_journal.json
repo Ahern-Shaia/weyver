@@ -155,6 +155,13 @@
       "when": 1785281683595,
       "tag": "0021_append_only_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785282203753,
+      "tag": "0022_totp_replay_guard",
+      "breakpoints": true
     }
   ]
 }
