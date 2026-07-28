@@ -6,6 +6,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthModule } from "../src/auth/auth.module.js"
+import { BillingModule } from "../src/billing/billing.module.js"
 import { AUTH } from "../src/auth/auth.tokens.js"
 import { type Auth, createAuth } from "../src/auth/auth.js"
 import { validateEnv } from "../src/config/env.js"
@@ -87,6 +88,8 @@ describe("Better Auth 接入(F-2 M1)", () => {
       imports: [
         ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, validate: validateEnv }),
         FakePgModule,
+        /* F-8:TenantGuard 注入 EntitlementService(@Global 但測試模組圖需顯式帶入)*/
+        BillingModule,
         AuthModule,
       ],
     }).compile()

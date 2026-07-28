@@ -3,9 +3,11 @@ import {
   bigint,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   smallint,
@@ -33,8 +35,44 @@ export const tenants = pgTable("tenants", {
   maxForms: integer("max_forms"),
   maxFieldsPerForm: integer("max_fields_per_form"),
   maxRecordsPerForm: integer("max_records_per_form"),
+  /* F-8 M1 計費地基(OQ-SB-2=A)。三欄皆 nullable / 有預設 → **零行為變化**:
+     現有租戶一律 'active' + plan NULL(不受方案管),與加欄前完全相同。
+     **停權檢查採白名單式**(只有明確 suspended/cancelled 才擋)—— FMEA B1:
+     判斷若寫成黑名單,一個未知值就會擋掉全部客戶。 */
+  status: text("status").notNull().default("active"),
+  /* NULL = 不受方案管(現況)。方案內容刻意不入庫(OQ-SB-8=A):
+     docs/05 明載其定價「是模型不是斷言」,不把未定案的商業決策固化成程式碼。 */
+  planCode: text("plan_code"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+/* F-8 M1|每日用量快照(OQ-SB-7=A)。**append-only,計費憑據不可改**(承 AGENTS「傳票不可變」)。
+   粒度 = 日 × 租戶 × 指標碼;指標碼而非固定欄位 → 日後改「計費使用者」定義時
+   用**新指標碼並存**,不改寫歷史(FMEA B5)。
+   唯一鍵使 job 冪等且可補算指定日期(FMEA B4)。
+   **不設清理 job**:百家租戶 × 10 指標 × 365 ≈ 36 萬列/年,量極小;
+   明列於此以免日後誤加清理而砍掉計費憑據(FMEA B8)。 */
+export const tenantUsageDaily = pgTable(
+  "tenant_usage_daily",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    /* 採計日(UTC 日界;帳務爭議看的是「哪一天」不是時刻)*/
+    day: date("day").notNull(),
+    /* 指標碼:billable_users / active_users / forms / records / storage_bytes … */
+    metric: text("metric").notNull(),
+    /* 用 numeric:儲存位元組可超 int4,且金額類指標日後不得用 float(AGENTS P0)*/
+    value: numeric("value").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("tenant_usage_daily_uq").on(t.tenantId, t.day, t.metric),
+    index("tenant_usage_daily_tenant_day_idx").on(t.tenantId, t.day),
+  ],
+)
 
 /* F-2 M2:Weyver 使用者身分(Tier-1 系統表,跨租戶、非 RLS 範疇)。
    auth_user_id ↔ Better Auth user.id;actorId(= users.id bigint)為 created_by/updated_by 之來源(OQ-AUTH-4)。

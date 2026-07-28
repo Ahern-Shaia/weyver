@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler"
 import { ActionsModule } from "./actions/actions.module.js"
 import { ApprovalLockInterceptor } from "./actions/approval-lock.interceptor.js"
 import { AuthModule } from "./auth/auth.module.js"
+import { BillingModule } from "./billing/billing.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
 import { validateEnv } from "./config/env.js"
 import { DbModule } from "./db/db.module.js"
@@ -23,6 +24,8 @@ import { ViewsModule } from "./views/views.module.js"
     // 全域速率限制(AGENTS 🔒:APP_GUARD)—— Nest 路由防護;/api/auth/* 另由 Better Auth rateLimit 覆蓋
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
     DbModule,
+    /* F-8:@Global,須早於 AuthModule(TenantGuard 注入 EntitlementService)*/
+    BillingModule,
     StorageModule,
     AuthzModule,
     AuthModule,

@@ -5,7 +5,9 @@ import { DRIZZLE, type DrizzleDb, TenantDb } from "../db/db.module.js"
 import { fieldDefs, formDefs, tenants } from "../db/schema.js"
 
 /* F-6 M2|per-tenant 資源配額(form-engine-core FMEA C5:惡意大量建表 DDL DoS)。
-   上限來源三層(OQ-REL-2=B):tenants 該列 → env 覆寫 → 程式預設。NULL 欄 = 用預設,既有租戶零遷移。
+   上限來源(F-8 M1 起為四層):tenants 該列 → **方案預設** → env 覆寫 → 程式預設。
+   NULL 欄 = 往下一層找,既有租戶零遷移。
+   **方案預設目前恆為空**(OQ-SB-8=A:方案內容不入庫,待商業決策)—— 此處只把接點留好。
    刻意**不**在單筆建記錄路徑做 count(每次插入一次全表 count 於大表為 seq scan);
    記錄配額只在 bulk 路徑檢核(濫用的實際載體),單筆由 throttler + 表數/欄數上限間接約束。 */
 
@@ -14,6 +16,14 @@ const DEFAULTS = {
   maxFieldsPerForm: 200,
   maxRecordsPerForm: 1_000_000,
 } as const
+
+/* F-8 M1|方案配額查表。**刻意留空** —— OQ-SB-8=A:docs/05 明載其定價「是模型不是斷言」,
+   不把未定案的商業決策固化成程式碼。日後填入 starter/pro/enterprise 即生效,無需改呼叫端。 */
+const PLAN_QUOTAS: Readonly<Record<string, Partial<TenantQuota>>> = {}
+
+function planQuota(planCode: string | null): Partial<TenantQuota> {
+  return planCode === null ? {} : (PLAN_QUOTAS[planCode] ?? {})
+}
 
 export interface TenantQuota {
   readonly maxForms: number
@@ -37,18 +47,23 @@ export class QuotaService {
         maxForms: tenants.maxForms,
         maxFieldsPerForm: tenants.maxFieldsPerForm,
         maxRecordsPerForm: tenants.maxRecordsPerForm,
+        planCode: tenants.planCode,
       })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
       .limit(1)
     const row = rows[0]
+    const plan = planQuota(row?.planCode ?? null)
     return {
-      maxForms: row?.maxForms ?? this.fromEnv("QUOTA_MAX_FORMS", DEFAULTS.maxForms),
+      maxForms:
+        row?.maxForms ?? plan.maxForms ?? this.fromEnv("QUOTA_MAX_FORMS", DEFAULTS.maxForms),
       maxFieldsPerForm:
         row?.maxFieldsPerForm ??
+        plan.maxFieldsPerForm ??
         this.fromEnv("QUOTA_MAX_FIELDS_PER_FORM", DEFAULTS.maxFieldsPerForm),
       maxRecordsPerForm:
         row?.maxRecordsPerForm ??
+        plan.maxRecordsPerForm ??
         this.fromEnv("QUOTA_MAX_RECORDS_PER_FORM", DEFAULTS.maxRecordsPerForm),
     }
   }
