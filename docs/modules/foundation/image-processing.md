@@ -1,6 +1,6 @@
 # image-processing.md — [F-7] 影像處理(EXIF 剝除 / 縮圖 / HEIC)設計文件
 
-> ⏳ **狀態:DRAFT — OQ-IP-1..8 待裁定**
+> ⏳ **狀態:DRAFT v0.2 — OQ-IP-1..9 待裁定**
 >
 > **收斂三個模組共同記錄的 P1 殘留**(皆註明「需影像處理相依,同批補」):
 > - `image-signature-fields` §12 **S4**|照片 EXIF 含 GPS / 裝置資訊外流 —— P0 無剝除能力
@@ -9,7 +9,7 @@
 > - `file-storage` P1|縮圖 Sharp
 >
 > 作者:Claude Code(草擬)
-> 版本:v0.1(2026-07-28)
+> 版本:v0.2(2026-07-28;競品研究後改寫 OQ-IP-4、OQ-IP-7,新增 OQ-IP-9)
 
 ---
 
@@ -38,17 +38,49 @@
 4. **`ignore-scripts` 不是障礙**|sharp ≥ 0.33 改用 optionalDependencies + cpu/os/libc 篩選,**已無 install script**;「sharp 需要 ignore-scripts=false」是 0.33 前的過期資訊。本專案 `pnpm.onlyBuiltDependencies` 已列 sharp,且 sharp 0.34.5 **已在 node_modules**(Next.js 傳遞相依)。
 5. **容器坑**|glibc 與 musl 是不同套件;跨平台安裝需 `supportedArchitectures`;glibc 記憶體碎片化建議設 `MALLOC_ARENA_MAX`(Cloud Run 有記憶體上限)。
 
-### 0.3 對規劃的兩個推翻
+### 0.3 競品實作(clean-room:只讀公開文件與截圖檔名)
 
-1. **我先前說「一個相依(Sharp)解掉三件事」是錯的。** EXIF 剝除與縮圖確實開箱即可、零風險;**HEIC 完全是另一回事** —— 不是設定問題,是專利問題。
+| 面向 | Ragic | Airtable | Teable | Baserow |
+|---|---|---|---|---|
+| 縮圖檔數 | **1(可調)** | 3(small / large / full)| 2(`smThumbnailUrl` / `lgThumbnailUrl`)| 2+ |
+| 縮圖尺寸 | **預設高 120px、寬等比;可設上限;永不放大**(50×50 原圖 → 縮圖 50×50)| **官方未載像素**(社群說 72 / 1024 / 3000,數值分歧不宜當規格)| 未載 | 未載 |
+| 是否改原檔 | 未查到 | **官方明載「does not modify the underlying file」** —— 原檔含 EXIF 原封不動,縮圖另生 | 未查到 | 未查到 |
+| 縮圖定址 | — | metadata 記錄衍生 URL(**2 小時過期**)| metadata 記錄衍生 URL | — |
+| HEIC | 未查到 | 官方明載可預覽(機制未說明)| 未查到 | — |
+
+**其他業界證據**
+- **Teable changelog 是「方向坑」的直接實證**:「Fixed mobile photo thumbnail orientation: New or **regenerated** thumbnails now respect EXIF orientation」—— 競品實際踩過 iPhone 照片轉向錯誤。
+- **Teable 同時證明「預生成派」的代價**:「**regenerated** thumbnails」「Improved recovery for **missing thumbnails on older** attachments」→ 預生成必須自建重生/補產工具。
+- **Dropbox 提供客戶端「以 JPG 上傳」設定**(camera upload)—— 大廠採**上傳端轉檔**之先例,支持 OQ-IP-1=A。
+- **EXIF 業界分歧**:FB/IG/X 剝 GPS;**Slack 原樣保留**;B2B 工具偏向保留原檔。
+- **事故先例(強證據)**:活動 SaaS **Partiful 於 2025-10 遭 TechCrunch 揭露**未剝除使用者照片的 GPS,任何人以瀏覽器 devtools 即可讀出街道級座標;兩日內修補並**回溯清洗既有照片**。對 Weyver 之現場品檢照 / 工單照,這是可預見的 PDPA 風險。
+- **格式**:2026 縮圖預設 **WebP**(同畫質較 JPEG 小 25–34%,支援度 >97%)。
+
+### 0.4 本機再測(重新編碼 vs 無損剝除;2400×1600 照片級圖)
+
+| 作法 | 大小 | 品質 |
+|---|---|---|
+| 原始 JPEG q92 | 990 KB | — |
+| 重編碼 q95 | 1130 KB(**+14%**)| 仍失真,檔案反而變大 |
+| 重編碼 q90 | 912 KB(−8%)| 失真 |
+| 重編碼 q85 | 762 KB(−23%)| 失真較明顯 |
+| **無損切除 APP1/APP13 段** | −0.3 KB | **零失真**(已驗證壓縮資料位元組相同)|
+| 縮圖 320px webp | 1.7 KB / 17 ms | — |
+
+> **重編碼是世代性失真** —— 再高的 quality 都回不來原始資訊,且 q95 還會讓檔案變大。無損切段僅移除 metadata 區塊,像素資料原封不動(約 50 行 JPEG marker 解析即可實作,已實測可行)。
+
+### 0.5 對規劃的三個推翻
+
+1. **「一個相依(Sharp)解掉三件事」是錯的。** EXIF 剝除與縮圖確實開箱即可、零風險;**HEIC 完全是另一回事** —— 不是設定問題,是專利問題。
 2. **縮圖不需要背景工作。** 原以為要排 job(那就要動排程與狀態機);實測 24 MP → 240px 僅 28 ms,同步做即可。**大幅縮小範圍**。
+3. **原本 OQ-IP-4 建議「重編碼後不保留原檔」是錯的。** Airtable 官方明載**不改原檔**,B2B 工具亦偏向保留;而重編碼是**世代性失真**。§0.4 實證出更好的第三條路:**無損切除 metadata 段** —— 像素位元組原封不動、GPS 消失,兩者兼得。OQ-IP-4 已據此改寫。
 
 ---
 
 ## 1. 目標與範圍
 
 ### 1.1 目標(P0)
-1. **EXIF 剝除**|影像類欄位(image / signature / attachment 之影像檔)上傳時剝除全部 metadata;**先 `.rotate()` 把方向燒進像素**再剝,避免照片轉向。
+1. **EXIF 剝除(優先無損)**|上傳時移除 GPS 等 metadata。**JPEG 以無損切段為主**(像素不動);僅當需要把 EXIF 方向燒進像素時才重新編碼(見 §4.1、OQ-IP-4)。
 2. **伺服器縮圖**|上傳時同步產生縮圖,列表與記錄頁改讀縮圖(原圖僅於點開時取)。
 3. **解壓縮炸彈防護**|顯式 `limitInputPixels`,不依賴 sharp 預設(實測擋不住)。
 4. **HEIC 可用**|**前端轉檔**路線(見 OQ-IP-1),伺服器端不解 HEVC。
@@ -92,13 +124,16 @@
 ### 4.1 處理管線(M1)
 ```
 上傳 → magic bytes 判型 → 欄型 MIME 收斂 → 【新】影像處理 → 配額(以處理後大小計)→ 落儲存
-                                              ├ sharp(buf, { limitInputPixels })
-                                              ├ .rotate()        方向燒進像素 + 移除 orientation
-                                              ├ 輸出原尺寸(剝除全部 metadata,預設行為)
-                                              └ 縮圖 resize(inside) → webp
+                                              │
+                                              ├─ 主檔:讀 EXIF orientation
+                                              │   ├ orientation ∈ {1, 無} → **無損切段**(APP1/APP13),像素零改動
+                                              │   └ 否則              → sharp .rotate() 重編碼(方向燒進像素)
+                                              └─ 縮圖:.rotate() → resize(inside, 不放大) → webp
 ```
-- **絕不呼叫 `withMetadata()` / `keepExif()` / `keepMetadata()`** —— 那會把 GPS 放回去,直接違反本模組目的(§12 P1)。
-- 配額以**處理後**大小計(剝 EXIF + 可能重新編碼後才是實際佔用)。
+- **絕不呼叫 `withMetadata()` / `keepExif()` / `keepMetadata()`** —— 那會把 GPS 放回去,直接違反本模組目的(§12 P2)。
+- **縮圖一律走 `.rotate()`** —— Teable changelog 實證:忽略 EXIF orientation 會讓 iPhone 照片縮圖轉向錯誤。
+- **永不放大**(承 Ragic:50×50 原圖之縮圖仍為 50×50)。
+- 配額以**處理後**大小計(主檔 + 縮圖)。
 
 ### 4.2 HEIC(M3;OQ-IP-1)
 - 前端 `accept="image/jpeg,image/png,image/webp,image/gif"` → **iOS Safari 自動轉 JPEG**。
@@ -114,10 +149,11 @@
 | **OQ-IP-1** ⭐ | HEIC 在哪裡解 | A. **前端轉檔**(iOS 自動 + 非 Safari 用 WASM),伺服器不碰 HEVC<br>B. 伺服器自編 libvips(libheif + libde265)<br>C. 不支援 HEIC,只改善錯誤訊息 | **A** — B 的**授權**可解(只做解碼、排除 x265 → LGPL,合 OSS-only),**但專利不可解**:Access Advance 明文把雲端服務納入按 authorized-user 計費,Weyver 正是商用多租戶 SaaS;且要付出多階段 Docker / C++ toolchain / libvips 版本鎖死 / 源碼重建 sharp 的長期維運。A 把解碼移到使用者裝置,專利與運算成本一併消失。C 太保守:iPhone 是 pilot 客戶現場拍照的主力 |
 | **OQ-IP-2** | 縮圖同步或背景 | A. **上傳時同步**<br>B. 背景 job | **A** — 實測 24 MP → 240px 僅 **28 ms**,遠低於上傳本身的網路耗時;B 要引入佇列與「縮圖尚未就緒」的狀態機,複雜度不成比例 |
 | **OQ-IP-3** | 縮圖如何定址 | A. **衍生 key 慣例**(`{key}.thumb.webp`)<br>B. `file_object` 加 `thumb_key` 欄<br>C. 縮圖另立一列 | **A** — 零 migration;縮圖是原檔的**衍生物**非獨立資產,不需自己的生命週期。刪除/回收原檔時一併處理即可。**代價**:key 形狀白名單需放寬以容納後綴 → 須同步更新 `KEY_RE`(FMEA) |
-| **OQ-IP-4** ⭐ | 是否保留原始檔(含 EXIF) | A. **不保留**,儲存的即為已剝除版<br>B. 保留原檔另存剝除版 | **A** — B 等於「隱私資料仍在我們手上」,只是不給看,**沒有真正消除風險**(備份、稽核、資料外洩皆仍含 GPS)。**誠實代價**:這是**破壞性**的 —— 使用者無法取回原始 EXIF,且 JPEG 需重新編碼會有品質損失(以 quality 90 + 原尺寸緩解)。攝影類用途若日後有需求,再以欄位選項開放 |
+| **OQ-IP-4** ⭐ | 主檔如何剝除 EXIF | A. 重編碼剝除(不保留原檔)<br>B. 完全保留原檔(Airtable 作法)<br>C. **無損切除 metadata 段;僅方向需正規化時才重編碼** | **C(v0.2 改寫;原建議 A 已被證據推翻)** — **B 是 Airtable 明載作法**(「does not modify the underlying file」),但**Partiful 2025-10 事故**證明「原檔含 GPS」是真實可外洩風險(TechCrunch 揭露後兩日修補並回溯清洗)。**A 的代價過高**:重編碼是世代性失真,§0.4 實測 q95 甚至讓檔案**變大 14%**。**C 兩者兼得** —— 已實測:切除 APP1/APP13 後 EXIF 消失、**壓縮資料位元組完全相同**,等於 Airtable 的「不改檔案」精神(不動像素)同時消除 GPS。**殘留代價**:iPhone 直拍常為 orientation 6,那些仍需重編碼才能正確顯示;PNG/WebP 之 metadata 罕含 GPS,可先只處理 JPEG |
 | **OQ-IP-5** | `limitInputPixels` 取值 | A. **50 MP**<br>B. sharp 預設 268 MP<br>C. 依 env 可調 | **A** — 實測真實 iPhone 照片為 149.8 MP(全景),但那是極端;50 MP 涵蓋絕大多數手機主鏡頭(48MP 級)。B 已證實擋不住 450 MB 的解碼。超限回明確訊息而非 500 |
 | **OQ-IP-6** | 既有已上傳影像 | A. **不回溯**,只對新上傳生效<br>B. 寫一次性回溯 job | **A** — 回溯需重讀重寫全部既有檔案(跨租戶、耗時、可能失敗一半);目前 pilot 期影像量少。**誠實標註**:既有檔案仍含 EXIF → doc 明列,必要時再補 B |
-| **OQ-IP-7** | 縮圖格式與尺寸 | A. **webp,長邊 320px**<br>B. jpeg<br>C. 兩種都出 | **A** — webp 於相同品質下明顯較小,且瀏覽器支援已普及(我們已在 magic bytes 白名單內);320px 足夠列表與記錄頁縮圖(Ragic 預設 120px 高,我們留餘裕給 retina) |
+| **OQ-IP-7** | 縮圖規格 | A. **單一尺寸:webp,長邊 320px,永不放大**<br>B. 兩種尺寸(比照 Teable sm/lg)<br>C. 三種(比照 Airtable) | **A** — **Ragic 只有一個縮圖**(預設高 120px、可設上限、**永不放大**),我們是 Ragic-parity-first;320px = 120–160px 顯示框的 2× retina 餘裕。webp 為 2026 業界預設(同畫質小 25–34%)。B/C 之多尺寸價值在 responsive srcset,而我們的使用場景只有「格內縮圖 / 展開預覽 / 原檔」三態,原檔已覆蓋後二者。**永不放大**明確承 Ragic 語意 |
+| **OQ-IP-9** | 是否附帶縮圖重生工具 | A. **不做**,缺縮圖時前端退回原圖<br>B. 建重生 job | **A** — **Teable changelog 實證預生成派必須自建重生**(「regenerated thumbnails」「recovery for missing thumbnails on older attachments」);但我們以「缺縮圖 → 前端自動退回原圖」取代,行為上永不壞,且省掉一整套重生機制。日後若縮圖規格要改版,再補 B |
 | **OQ-IP-8** | 非 Safari 的 WASM 轉檔是否納入 P0 | A. **納入**(`heic-to`,LGPL,2026-05 仍活躍)<br>B. P1,先只靠 iOS 自動轉檔 | **B** — iOS Safari 自動轉檔已覆蓋「iPhone 拍照上傳」這個主要情境(且該情境正是需求來源);Android 拍照本就多為 JPEG。WASM 為 ~1.2MB 額外載荷,先不進 P0。**證據強度提醒**:iOS 自動轉檔為社群回報非 Apple 官方文件 → **M3 必須實機/模擬驗證**,若不成立則本條升為 A |
 
 ---
@@ -132,7 +168,8 @@
 | P4 | 縮圖 key 後綴破壞既有 key 形狀白名單 → 下載被擋 | `KEY_RE` 同步放寬並補測;衍生 key 一律由伺服器生成 | P1 |
 | P5 | 處理失敗(損毀檔 / 不支援)導致整個上傳失敗 | 處理失敗 → 明確 415/422 訊息;**不**落半成品到儲存 | P1 |
 | P6 | 同步處理拖慢上傳 / 併發吃滿 CPU | 實測 28 ms;`sharp.concurrency` 設限 + 既有 throttler;Cloud Run 另設 `MALLOC_ARENA_MAX` 防 glibc 碎片化 | P1 |
-| P7 | 既有已上傳影像仍含 EXIF | **已知殘留**(OQ-IP-6=A);doc 明列,不假裝已解決 | P1 |
+| P7 | 既有已上傳影像仍含 EXIF | **已知殘留**(OQ-IP-6=A);doc 明列,不假裝已解決。**先例警示**:Partiful 事故中修補後**有回溯清洗既有照片** —— 若 pilot 上線前影像量仍少,應考慮補做 | P1 |
+| P10 | 縮圖產生失敗或缺漏 → 版面破圖 | 前端缺縮圖時**自動退回原圖**(OQ-IP-9=A),行為上永不壞 | P2 |
 | P8 | 跨平台 lockfile 缺目標平台二進位 → 部署失敗 | pnpm `supportedArchitectures` 明列 linux-x64-glibc;CI 驗證 | P1 |
 | P9 | iOS 自動轉檔的前提不成立 → iPhone 使用者仍被擋 | **證據強度僅為社群回報** → M3 必須實測;不成立則啟用 OQ-IP-8=A(WASM) | P1 |
 
@@ -142,4 +179,5 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | **v0.2** | **競品研究後改寫**(站在巨人肩膀上)。§0.3 加競品實作對照:Ragic **1 個縮圖 / 預設高 120px / 永不放大**;Airtable **官方明載不改原檔**、3 縮圖、URL 2 小時過期;Teable 2 縮圖且 **changelog 實證「縮圖忽略 EXIF orientation」之坑**與「預生成必須自建重生」之代價;Dropbox 提供**客戶端以 JPG 上傳**(支持前端轉檔路線);**Partiful 2025-10 GPS 外洩事故**(TechCrunch,兩日修補並回溯清洗)。§0.4 實測重編碼 vs 無損切段。**推翻原 OQ-IP-4 建議**:改採**無損切除 metadata 段**(像素位元組不動,等同 Airtable「不改檔案」精神又消除 GPS);OQ-IP-7 以 Ragic 規格錨定(單一尺寸、永不放大);新增 OQ-IP-9(不建重生工具,改以「缺縮圖退回原圖」)| Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT — 收斂 image-signature-fields S3/S4/HEIC 與 file-storage 之縮圖殘留。**§0.1 本機實測**推翻兩項前提:(a) HEIC **不是**加相依就能解 —— 我們的 sharp 預建版無 HEVC 解碼器,且維護者已表態永不內含(專利);(b) 縮圖**不需背景 job** —— 實測 24MP→240px 僅 28ms。另實測發現 **1.6MB 檔案可宣告 149.8MP**,sharp 預設 pixel 上限擋不住(解碼約需 450MB)→ 列 P0。**§0.2 網路研究**:授權可解(LGPL,decode-only 避開 x265 GPL)但**專利不可解**(HEVC 池明文涵蓋雲端服務按用戶計費)→ HEIC 走前端轉檔。P0 = EXIF 剝除 + 同步縮圖 + 炸彈防護 + 前端 HEIC 路徑。OQ-IP-1..8 待裁定 | Claude Code |
