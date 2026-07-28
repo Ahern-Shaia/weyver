@@ -9,6 +9,8 @@ import {
 } from "@nestjs/common"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { AuthzRepository } from "../authz/authz.repository.js"
+import { NOTIFICATION_EVENTS } from "../notifications/notification-specs.js"
+import { NotificationService } from "../notifications/notification.service.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import type {
@@ -30,6 +32,7 @@ export class ApprovalService {
     @Inject(AuthzRepository) private readonly authz: AuthzRepository,
     @Inject(RecordService) private readonly records: RecordService,
     @Inject(ButtonService) private readonly buttons: ButtonService,
+    @Inject(NotificationService) private readonly notify: NotificationService,
   ) {}
 
   // ---- 定義 ----
@@ -111,6 +114,9 @@ export class ApprovalService {
       actorId: tenant.actorId,
       decision: "submit",
     })
+    /* H-1:通知該關卡的簽核者。**旁路呼叫,失敗不影響送簽**(非關鍵路徑)。
+       這是本模組存在的理由 —— 簽核流程原本無任何機制告知下一關的人。 */
+    await this.notifyStep(tenant, formId, recordId, firstStep.approverRoleId)
     return this.toInstanceDto(tenant, instance.id)
   }
 
@@ -152,6 +158,7 @@ export class ApprovalService {
 
     if (decision === "reject") {
       await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "rejected" })
+      await this.notifySubmitter(tenant, instance, NOTIFICATION_EVENTS.approvalRejected)
       return this.toInstanceDto(tenant, instanceId)
     }
 
@@ -164,6 +171,7 @@ export class ApprovalService {
     const next = nextActiveStep(def.steps, step.stepNo, record.values)
     if (next !== null) {
       await this.repo.updateInstance(tenant.tenantId, instanceId, { currentStep: next.stepNo })
+      await this.notifyStep(tenant, instance.formId, instance.recordId, next.approverRoleId)
       return this.toInstanceDto(tenant, instanceId)
     }
 
@@ -183,6 +191,7 @@ export class ApprovalService {
       )
     }
     await this.repo.updateInstance(tenant.tenantId, instanceId, { status: "approved" })
+    await this.notifySubmitter(tenant, instance, NOTIFICATION_EVENTS.approvalApproved)
     return this.toInstanceDto(tenant, instanceId)
   }
 
@@ -234,6 +243,43 @@ export class ApprovalService {
       }
     }
     return out
+  }
+
+  /* 待簽通知:收件人 = 該關卡 approverRole 的成員。
+     簽核類事件不受訂閱層級管(specs.isApprovalEvent)—— 層級管的是「旁觀資訊要收多少」,
+     而簽核是**指名要你做事**。 */
+  private async notifyStep(
+    tenant: TenantContext,
+    formId: number,
+    recordId: number,
+    approverRoleId: number,
+  ): Promise<void> {
+    const approvers = await this.authz.listRoleMembers(tenant.tenantId, approverRoleId)
+    await this.notify.emit({
+      tenantId: tenant.tenantId,
+      event: NOTIFICATION_EVENTS.approvalPending,
+      formId,
+      recordId,
+      actorId: tenant.actorId,
+      recipientActorIds: approvers,
+    })
+  }
+
+  /* 結果通知送回送簽者。 */
+  private async notifySubmitter(
+    tenant: TenantContext,
+    instance: { formId: number; recordId: number; submittedBy: number | null },
+    event: string,
+  ): Promise<void> {
+    if (instance.submittedBy === null) return
+    await this.notify.emit({
+      tenantId: tenant.tenantId,
+      event,
+      formId: instance.formId,
+      recordId: instance.recordId,
+      actorId: tenant.actorId,
+      recipientActorIds: [instance.submittedBy],
+    })
   }
 
   private async canApprove(tenant: TenantContext, step: ApprovalStep): Promise<boolean> {

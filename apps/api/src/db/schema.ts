@@ -587,3 +587,135 @@ export const autonumberCounter = pgTable(
   },
   (t) => [primaryKey({ columns: [t.fieldId, t.resetKey] })],
 )
+
+/* ── H-1 通知系統(docs/modules/R1/notifications.md v0.4)────────────────────────
+
+   **通知與寄送刻意分兩張表**(§0.4.2):Discourse / GitLab / Novu 三家皆如此,
+   因生命週期(數月 vs 數天)· 寫入模式(寫一次 vs 反覆 UPDATE 產 dead tuple)
+   · 扇出(1 則 → N 通道)· 保留策略 四者衝突。v0.3 曾規劃「通知表兼作佇列」,
+   經研究確認為已知反模式,故改此形。 */
+
+/* 使用者可見的通知。低頻可操作事件 → 每則一列(Mattermost 式 read-state 指標
+   適用於高頻訊息流,不適用 ERP 場景)。 */
+export const notifications = pgTable(
+  "notification",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    /* 收件人。**多型的另一半(channelTarget / 群組廣播)於 LINE 模組再加**,
+       屆時本欄轉為 nullable + 加 target 欄;現在先不預留空欄位(YAGNI),
+       但 §4.6 已載明模型方向,加欄為純加法。 */
+    recipientActorId: bigint("recipient_actor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /* 事件碼:approval.pending / approval.approved / approval.rejected /
+       approval.overdue / record.created / record.updated */
+    event: text("event").notNull(),
+    formId: bigint("form_id", { mode: "number" }).references(() => formDefs.id, {
+      onDelete: "cascade",
+    }),
+    recordId: bigint("record_id", { mode: "number" }),
+    /* 顯示用文字。**title 不得直接取 fields[0]**(FMEA N14:首欄為使用者自建
+       任意欄位,可能是金額 / 身分證號)—— 由 NotificationService 以安全規則產生。
+       **一律不含欄位值**(OQ-NT-9):欄位級權限使業界主流的「過濾收件人」失效。 */
+    title: text("title").notNull(),
+    /* 觸發者(供 UI 顯示「林採購 送出」);非收件人 */
+    actorId: bigint("actor_id", { mode: "number" }).references(() => users.id),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /* 未讀計數走部分索引(Discourse 實作)—— 未讀是最高頻查詢 */
+    index("notification_unread_idx")
+      .on(t.tenantId, t.recipientActorId)
+      .where(sql`read_at IS NULL`),
+    index("notification_recipient_idx").on(t.tenantId, t.recipientActorId, t.createdAt),
+  ],
+)
+
+/* 外送記錄(每通道一列)。狀態機 pending → sent / failed;M3 才有真正的寄送者。
+   `dedupeKey` 供同記錄去抖動與冪等(OQ-NT-8 / AGENTS 冪等鐵則)。 */
+export const notificationDeliveries = pgTable(
+  "notification_delivery",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    notificationId: bigint("notification_id", { mode: "number" })
+      .notNull()
+      .references(() => notifications.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    /* 退避重試的下次嘗試時刻;輪詢取件以此為條件(**不用 LISTEN/NOTIFY** ——
+       PgBouncer transaction mode 下不可用,AGENTS P0 鐵則要求 tx mode) */
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastError: text("last_error"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /* 取件掃描:只看待送者 */
+    index("notification_delivery_due_idx")
+      .on(t.status, t.nextAttemptAt)
+      .where(sql`status = 'pending'`),
+    index("notification_delivery_notification_idx").on(t.notificationId),
+  ],
+)
+
+/* 訂閱偏好(OQ-NT-15:單一有序 enum,非獨立布林開關)。
+
+   **scope 三層**:tenant(全域預設)/ category / form —— **沿用既有分類資源軸**
+   (authz-resource-inheritance 同一條軸),使用者不必學第二套心智模型。
+   解析時**最具體者勝**(GitLab 語意):form → category → tenant → 系統預設。
+   缺列 = 繼承上層(不是「關閉」)。 */
+export const notificationPrefs = pgTable(
+  "notification_pref",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    actorId: bigint("actor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /* 'tenant' | 'category' | 'form' */
+    scope: text("scope").notNull(),
+    /* scope='tenant' 時為 NULL */
+    scopeId: bigint("scope_id", { mode: "number" }),
+    /* 有序層級:0 靜音 < 10 與我相關(預設)< 20 新資料+與我相關 < 30 全部 < 40 自訂。
+       **有序才可繼承與比較** —— 這正是改用 enum 而非布林開關的主因。 */
+    level: smallint("level").notNull(),
+    /* 僅 level=40(自訂)有效;GitLab 式「與我相關之上加選」保持有序 */
+    customEvents: jsonb("custom_events"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("notification_pref_uq").on(t.tenantId, t.actorId, t.scope, t.scopeId),
+    index("notification_pref_actor_idx").on(t.tenantId, t.actorId),
+  ],
+)
+
+/* 每使用者的總開關與通道選擇(軸 0 + 軸 2;軸 1 層級在 notification_pref)。
+   缺列 = 全部預設值(啟用 + 站內開 + Email 開),既有使用者零遷移。 */
+export const notificationSettings = pgTable(
+  "notification_setting",
+  {
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    actorId: bigint("actor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /* 軸 0 總開關。承 Ragic:關閉時下層設定**鎖住且不發送**,但設定保留不清空。
+       **例外**:簽核逾期一律發送(裁定 ④),故此欄不影響 approval.overdue。 */
+    enabled: boolean("enabled").notNull().default(true),
+    /* 軸 2:事件碼 → 通道開關。缺鍵 = 用系統預設 */
+    channels: jsonb("channels"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.actorId] })],
+)
