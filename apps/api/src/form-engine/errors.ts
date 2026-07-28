@@ -76,6 +76,17 @@ export class InvalidFilterError extends DomainError {
 }
 
 /* bulk 匯入:某列失敗 → 整批 rollback,回失敗列 index(0-based)+ 原因 */
+/* 🔴 批次匯入預檢:**一次回報全部問題列**。
+
+   原本第一列出錯即拋,使用者匯 5000 列有 30 個錯就要來回試 30 次 ——
+   業界(Salesforce Data Loader 產 success/error 兩份 CSV、Ragic 逐列處理可跳過)
+   一律一次回報完整清單。 */
+export class BulkValidationError extends DomainError {
+  constructor(readonly failures: readonly { rowIndex: number; reason: string }[]) {
+    super(`${failures.length} 列未通過檢查`)
+  }
+}
+
 export class BulkRowError extends DomainError {
   constructor(
     readonly rowIndex: number,

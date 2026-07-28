@@ -11,6 +11,7 @@ import { ZodError } from "zod"
 import {
   BulkRowError,
   BulkTooLargeError,
+  BulkValidationError,
   DomainError,
   FieldForbiddenError,
   FieldNotFoundError,
@@ -33,6 +34,9 @@ interface ErrorEnvelope {
   readonly message: string
   readonly correlationId: string
   readonly timestamp: string
+  /* 結構化細節。目前僅批次匯入預檢用(逐列失敗清單)——
+     讓使用者一次看到全部問題列而非來回試。**不得放敏感資訊**。 */
+  readonly details?: readonly { rowIndex: number; reason: string }[]
 }
 
 function mapDomainError(error: DomainError): { status: number; code: string } {
@@ -63,6 +67,9 @@ function mapDomainError(error: DomainError): { status: number; code: string } {
     error instanceof BulkRowError
   ) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "INVALID_FIELD_INPUT" }
+  }
+  if (error instanceof BulkValidationError) {
+    return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "BULK_VALIDATION_FAILED" }
   }
   if (error instanceof BulkTooLargeError) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "BULK_TOO_LARGE" }
@@ -109,7 +116,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
       console.error(`[${correlationId}]`, exception)
     }
 
-    const envelope: ErrorEnvelope = { code, message, correlationId, timestamp }
+    const envelope: ErrorEnvelope = {
+      code,
+      message,
+      correlationId,
+      timestamp,
+      ...(exception instanceof BulkValidationError ? { details: exception.failures } : {}),
+    }
     void reply.status(status).send(envelope)
   }
 }

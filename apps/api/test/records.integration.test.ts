@@ -6,7 +6,7 @@ import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import {
-  BulkRowError,
+  BulkValidationError,
   BulkTooLargeError,
   FieldValueError,
   InvalidFilterError,
@@ -122,7 +122,10 @@ describe("A4 record DML on real PG", () => {
     expect(new Set(bulkNos).size).toBe(3)
   })
 
-  it("createManyRecords: any bad row rolls back the whole batch (BulkRowError with index)", async () => {
+  /* 🔴 追溯稽核改契約:原本第一列出錯即拋 BulkRowError,只回得到一列 ——
+     5000 列有 30 個錯就要來回試 30 次。改為**全列預檢後一次回報**
+     (承 Salesforce Data Loader / Ragic 之逐列錯誤報告)。 */
+  it("createManyRecords: any bad row rolls back the whole batch (BulkValidationError)", async () => {
     const before = await records.listRecords(tenantA, poFormId, q({ limit: 200 }))
     const error = await records
       .createManyRecords(
@@ -132,8 +135,8 @@ describe("A4 record DML on real PG", () => {
         ACTOR,
       )
       .catch((e: unknown) => e)
-    expect(error).toBeInstanceOf(BulkRowError)
-    expect((error as BulkRowError).rowIndex).toBe(2)
+    expect(error).toBeInstanceOf(BulkValidationError)
+    expect((error as BulkValidationError).failures.map((f) => f.rowIndex)).toEqual([2])
     const after = await records.listRecords(tenantA, poFormId, q({ limit: 200 }))
     expect(after.records.length).toBe(before.records.length) // 全 rollback,前兩列也沒進
   })
@@ -459,5 +462,40 @@ describe("R1·UP-2 records query:單層 combinator + 快速搜尋", () => {
   it("快速搜尋涵蓋 singleSelect(text 欄)", async () => {
     const res = await records.listRecords(tenantA, vFormId, q({ q: "水果" }))
     expect(res.records.map((r) => r.values.名稱)).toEqual(["蘋果"])
+  })
+})
+
+describe("🔴 批次匯入預檢:一次回報全部問題列(追溯稽核)", () => {
+  it("**多列有錯 → 一次全部回報**,而非只回第一列", async () => {
+    const error = await records
+      .createManyRecords(
+        tenantA,
+        poFormId,
+        [
+          { 供應商: "好1" },
+          { 金額: 1.5 }, // index 1:缺必填
+          { 供應商: "好3" },
+          { 金額: 2.5 }, // index 3:缺必填
+          { 不存在的欄: "x" }, // index 4:未知欄
+        ],
+        ACTOR,
+      )
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(BulkValidationError)
+    /* 關鍵:原實作只會回 index 1;現在三列全報 */
+    expect((error as BulkValidationError).failures.map((f) => f.rowIndex)).toEqual([1, 3, 4])
+    for (const f of (error as BulkValidationError).failures) {
+      expect(f.reason.length).toBeGreaterThan(0)
+    }
+  })
+
+  it("全列有效 → 正常匯入(不誤傷)", async () => {
+    const res = await records.createManyRecords(
+      tenantA,
+      poFormId,
+      [{ 供應商: "甲" }, { 供應商: "乙" }],
+      ACTOR,
+    )
+    expect(res.created).toBe(2)
   })
 })

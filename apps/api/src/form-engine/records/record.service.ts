@@ -9,6 +9,7 @@ import { QuotaService } from "../../reliability/quota.service.js"
 import {
   BulkRowError,
   BulkTooLargeError,
+  BulkValidationError,
   DomainError,
   FieldForbiddenError,
   FieldValueError,
@@ -318,12 +319,34 @@ export class RecordService {
       this.quota.assertRecordCount(existing, rows.length, limit)
     }
     return this.inTenantTx(tenantId, async (trx) => {
+      /* 🔴 先全列預檢再寫入(追溯稽核)。
+
+         原本第一列出錯即拋 → 5000 列有 30 個錯,使用者要來回試 30 次。
+         業界(Salesforce Data Loader / Ragic)一律**一次回報全部問題列**。
+         預檢在同一個交易內但**不插入**,故不會因 PG 交易中止而連鎖失敗。 */
+      const failures: { rowIndex: number; reason: string }[] = []
+      const prepared: RecordValues[] = []
       for (const [index, values] of rows.entries()) {
         try {
           const withDefaults = await this.applyDefaults(resolved, values, actorId)
           this.assertWritable(resolved, formId, withDefaults, policy)
-          await this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null)
+          await this.validateValues(trx, tenantId, resolved, withDefaults, "create")
+          prepared.push(withDefaults)
         } catch (error) {
+          if (error instanceof DomainError) {
+            failures.push({ rowIndex: index, reason: error.message })
+            continue
+          }
+          throw error
+        }
+      }
+      if (failures.length > 0) throw new BulkValidationError(failures)
+
+      for (const [index, values] of prepared.entries()) {
+        try {
+          await this.insertOne(trx, tenantId, resolved, values, actorId, null, null)
+        } catch (error) {
+          /* 走到這裡多為 DB 層約束(如唯一鍵)—— 交易已中止,無法續驗其餘列 */
           if (error instanceof DomainError) throw new BulkRowError(index, error.message)
           throw error
         }
