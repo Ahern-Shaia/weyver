@@ -5,11 +5,12 @@ import { toSubmitValue } from "@/app/app/builder/_components/field-value"
 import { ImageThumb } from "@/app/app/builder/_components/image-input"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
+import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { useCreateRecord, useDeleteRecord, useUpdateRecord, useUserNames } from "@/lib/engine/hooks"
 import { useLayout } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
-import { StatusChip } from "@weyver/ui/status-chip"
+import { StatusChip, chipToneTextClass } from "@weyver/ui/status-chip"
 import { Check, Copy, Paperclip, Pencil, Printer, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
@@ -102,6 +103,12 @@ export function ObjectPage({
     )
   }
   const { data: layoutResp } = useLayout(formId)
+  /* R1·UP-3b 條件式格式(記錄頁那一組;純前端求值,規則來自 layout)*/
+  const formatTones = evaluateFormats(
+    layoutResp?.layout?.conditionalFormats?.record ?? [],
+    record.values,
+    fields.map((f) => f.name),
+  )
   const [msg, setMsg] = useState<string | null>(null)
 
   /* R1·後續-2 M4 列印設定:依 layout.print 之列範圍,對該列欄位套列印樣式
@@ -290,7 +297,11 @@ export function ObjectPage({
                 className="flex items-baseline gap-3 border-b border-line-2 py-2"
                 style={printStyleFor(f.id)}
               >
-                <span className="flex w-24 shrink-0 items-center gap-1 text-[11px] text-ink-4">
+                <span
+                  className={`flex w-24 shrink-0 items-center gap-1 text-[11px] ${
+                    chipToneTextClass(formatTones.get(f.name)) || "text-ink-4"
+                  }`}
+                >
                   {f.name}
                   {f.type === "formula" ? (
                     <span className="rounded-xs border border-fx/40 px-1 font-mono text-[8.5px] text-fx">

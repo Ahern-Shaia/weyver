@@ -32,6 +32,27 @@ const toneClass: Record<ChipTone, string> = {
   c8: "text-c8 border-c8-line bg-c8-t",
 }
 
+/* 只要文字色的場合(如欄位標題著色)。同為靜態白名單 —— Tailwind 無法由動態字串產生 class,
+   且 tone 來自使用者設定,一律查表。 */
+const toneTextClass: Record<ChipTone, string> = {
+  ok: "text-ok",
+  warn: "text-wn",
+  error: "text-er",
+  neutral: "text-nt",
+  c1: "text-c1",
+  c2: "text-c2",
+  c3: "text-c3",
+  c4: "text-c4",
+  c5: "text-c5",
+  c6: "text-c6",
+  c7: "text-c7",
+  c8: "text-c8",
+}
+
+export function chipToneTextClass(tone: string | undefined): string {
+  return toneTextClass[tone as ChipTone] ?? ""
+}
+
 export const CHIP_TONES: readonly ChipTone[] = Object.keys(toneClass) as ChipTone[]
 
 /* 未知 / 未設定一律 neutral(白名單兜底) */

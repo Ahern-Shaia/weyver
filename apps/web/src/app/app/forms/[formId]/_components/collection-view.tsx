@@ -1,5 +1,19 @@
 "use client"
 
+import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
+import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
+import { describeEngineError } from "@/lib/engine/client"
+import { evaluateFormats } from "@/lib/engine/conditional-format"
+import { operatorNeedsValue } from "@/lib/engine/field-filters"
+import { gridThemeOverride } from "@/lib/engine/grid-tone"
+import {
+  type RecordQuery,
+  useDeleteRecord,
+  useInfiniteRecordsQuery,
+  useLayout,
+  useUpdateRecord,
+} from "@/lib/engine/hooks"
+import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
 import {
   CompactSelection,
   type EditableGridCell,
@@ -10,19 +24,9 @@ import {
   type Item,
 } from "@glideapps/glide-data-grid"
 import { GridSheet } from "@weyver/ui/grid-sheet"
+import type { ChipTone } from "@weyver/ui/status-chip"
 import { type ReactNode, useMemo, useState } from "react"
 import { utils, writeFile } from "xlsx"
-import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
-import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
-import { describeEngineError } from "@/lib/engine/client"
-import { operatorNeedsValue } from "@/lib/engine/field-filters"
-import {
-  type RecordQuery,
-  useDeleteRecord,
-  useInfiniteRecordsQuery,
-  useUpdateRecord,
-} from "@/lib/engine/hooks"
-import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
 
 const EMPTY_SELECTION: GridSelection = {
   columns: CompactSelection.empty(),
@@ -123,6 +127,24 @@ export function CollectionView({
     })),
   ]
 
+  /* R1·UP-3b 條件式格式(列表頁那一組)。每列求值一次並快取 —— 避免每個 cell 重算
+     (每列 ≤20 規則 × ≤20 條件;FMEA G6)。 */
+  const { data: layoutResp } = useLayout(formId)
+  const listRules = layoutResp?.layout?.conditionalFormats?.list ?? []
+  const fieldNames = form.fields.map((f) => f.name)
+  const toneCache = new Map<number, Map<string, ChipTone>>()
+  const tonesFor = (row: number): Map<string, ChipTone> => {
+    const cached = toneCache.get(row)
+    if (cached !== undefined) return cached
+    const record = records[row]
+    const tones =
+      record === undefined || listRules.length === 0
+        ? new Map<string, ChipTone>()
+        : evaluateFormats(listRules, record.values, fieldNames)
+    toneCache.set(row, tones)
+    return tones
+  }
+
   const getCell = ([col, row]: Item): GridCell => {
     if (col === OPEN_COL) {
       return {
@@ -150,6 +172,7 @@ export function CollectionView({
         readonly: !editable,
       }
     }
+    const themeOverride = gridThemeOverride(tonesFor(row).get(field.name))
     if (kind === "number") {
       const n = gridEditData(field, value)
       return {
@@ -158,6 +181,7 @@ export function CollectionView({
         displayData: display,
         allowOverlay: editable,
         readonly: !editable,
+        ...(themeOverride === undefined ? {} : { themeOverride }),
       }
     }
     return {
@@ -166,6 +190,7 @@ export function CollectionView({
       displayData: display,
       allowOverlay: editable,
       readonly: !editable,
+      ...(themeOverride === undefined ? {} : { themeOverride }),
     }
   }
 

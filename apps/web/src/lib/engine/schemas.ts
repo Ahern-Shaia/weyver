@@ -135,6 +135,42 @@ export const FILTER_OPERATORS = [
 ] as const
 export type FilterOperator = (typeof FILTER_OPERATORS)[number]
 
+/* R1·UP-3b 條件式格式(鏡射後端 layout-specs;權威驗證仍在後端)*/
+export const FORMAT_TONES = [
+  "ok",
+  "warn",
+  "error",
+  "neutral",
+  "c1",
+  "c2",
+  "c3",
+  "c4",
+  "c5",
+  "c6",
+  "c7",
+  "c8",
+] as const
+
+export const formatConditionSchema = z.object({
+  field: z.string().min(1).max(100),
+  op: z.enum(FILTER_OPERATORS),
+  value: z.unknown().optional(),
+})
+
+export const formatRuleSchema = z.object({
+  combinator: z.enum(["and", "or"]).default("and"),
+  conditions: z.array(formatConditionSchema).min(1).max(20),
+  targets: z.array(z.string().min(1).max(100)).max(50).default([]),
+  tone: z.enum(FORMAT_TONES),
+})
+export type FormatRule = z.infer<typeof formatRuleSchema>
+
+export const conditionalFormatsSchema = z.object({
+  record: z.array(formatRuleSchema).max(20).default([]),
+  list: z.array(formatRuleSchema).max(20).default([]),
+})
+export type ConditionalFormats = z.infer<typeof conditionalFormatsSchema>
+
 export const viewFilterConditionSchema = z.object({
   field: z.string(),
   op: z.enum(FILTER_OPERATORS),
@@ -261,6 +297,7 @@ export const layoutSchema = z.object({
   statics: z.array(staticElementSchema),
   sections: z.array(sectionSchema),
   print: layoutPrintSchema.optional(),
+  conditionalFormats: conditionalFormatsSchema.optional(),
 })
 export type Layout = z.infer<typeof layoutSchema>
 

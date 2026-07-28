@@ -1,5 +1,16 @@
 "use client"
 
+import { describeEngineError } from "@/lib/engine/client"
+import { fieldTypeMeta } from "@/lib/engine/field-types"
+import { useDropField, useLayout, usePutLayout, useRecords } from "@/lib/engine/hooks"
+import type {
+  FieldDto,
+  FieldLayout,
+  FormDto,
+  Layout,
+  LayoutPrint,
+  StaticElement,
+} from "@/lib/engine/schemas"
 import {
   DndContext,
   type DragEndEvent,
@@ -12,29 +23,20 @@ import { CSS } from "@dnd-kit/utilities"
 import {
   GripVertical,
   Image as ImageIcon,
+  Palette,
+  Printer,
   Redo2,
   Rows3,
   Trash2,
   Type,
-  Printer,
   Undo2,
   Zap,
 } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { describeEngineError } from "@/lib/engine/client"
-import { fieldTypeMeta } from "@/lib/engine/field-types"
-import { useDropField, useLayout, usePutLayout } from "@/lib/engine/hooks"
-import type {
-  FieldDto,
-  FieldLayout,
-  FormDto,
-  Layout,
-  LayoutPrint,
-  StaticElement,
-} from "@/lib/engine/schemas"
 import { ActionsDesigner } from "./actions-designer"
-import { PrintSettingsPanel } from "./print-settings-panel"
+import { ConditionalFormatPanel } from "./conditional-format-panel"
 import { FieldSettingsPanel, StaticSettingsPanel } from "./field-settings-panel"
+import { PrintSettingsPanel } from "./print-settings-panel"
 
 /* R1·UP-3 M2+M3 2D 格線畫布(OQ-FD2-7=A)。layout metadata → CSS grid;dnd-kit 拖曳重定位;
    欄位設定 / 靜態元素(文字·圖片)/ 分段 皆 layout 草稿;「儲存版面」PUT(純 metadata,零 DDL)。 */
@@ -81,6 +83,10 @@ export function DesignCanvas({
   const [msg, setMsg] = useState<string | null>(null)
   const [showActions, setShowActions] = useState(false)
   const [showPrint, setShowPrint] = useState(false)
+  const [showFormats, setShowFormats] = useState(false)
+  /* 即時預覽只需一筆:取第一頁第一筆(無記錄時面板顯示提示) */
+  const { data: sampleData } = useRecords(formId)
+  const sampleRecord = sampleData?.records[0]
   const histRef = useRef<Layout[]>([])
   histRef.current = hist
 
@@ -227,6 +233,9 @@ export function DesignCanvas({
           <TB onClick={() => setShowPrint((v) => !v)} icon={<Printer size={13} />}>
             列印
           </TB>
+          <TB onClick={() => setShowFormats((v) => !v)} icon={<Palette size={13} />}>
+            條件式格式
+          </TB>
           <div className="ml-1 flex items-center gap-0.5">
             <button
               type="button"
@@ -345,6 +354,15 @@ export function DesignCanvas({
       ) : null}
       {showActions ? (
         <ActionsDesigner formId={formId} form={form} onClose={() => setShowActions(false)} />
+      ) : null}
+      {showFormats ? (
+        <ConditionalFormatPanel
+          fields={form.fields}
+          formats={effective.conditionalFormats}
+          sample={sampleRecord}
+          onChange={(conditionalFormats) => edit({ ...effective, conditionalFormats })}
+          onClose={() => setShowFormats(false)}
+        />
       ) : null}
       {showPrint ? (
         <PrintSettingsPanel
