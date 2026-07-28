@@ -6,6 +6,7 @@ import { ActionsModule } from "./actions/actions.module.js"
 import { ApprovalLockInterceptor } from "./actions/approval-lock.interceptor.js"
 import { AuthModule } from "./auth/auth.module.js"
 import { BillingModule } from "./billing/billing.module.js"
+import { UsageModule } from "./billing/usage.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
 import { validateEnv } from "./config/env.js"
 import { DbModule } from "./db/db.module.js"
@@ -26,6 +27,7 @@ import { ViewsModule } from "./views/views.module.js"
     DbModule,
     /* F-8:@Global,須早於 AuthModule(TenantGuard 注入 EntitlementService)*/
     BillingModule,
+    UsageModule,
     StorageModule,
     AuthzModule,
     AuthModule,
