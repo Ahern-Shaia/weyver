@@ -221,7 +221,16 @@ function RecordDetail({
       {formPending ? (
         <div className="flex-1 bg-surface p-6 text-[12px] text-ink-3">載入…</div>
       ) : selected && form ? (
-        <ObjectPage form={form} record={selected} childForm={childForm} formId={formId} />
+        <ObjectPage
+          /* 🔴 `key` 不可省:ObjectPage 內的 editing/draft 為 local state。
+             無 key 時切換記錄不重掛 → 編輯 A 未存、點 B、按儲存會把 A 的值寫進 B
+             (且帶 B 的 version,樂觀鎖擋不住)。master-detail 版型特有的失效。 */
+          key={selected.id}
+          form={form}
+          record={selected}
+          childForm={childForm}
+          formId={formId}
+        />
       ) : (
         <div className="flex flex-1 items-center justify-center bg-surface p-8 text-center">
           <div className="max-w-[320px]">

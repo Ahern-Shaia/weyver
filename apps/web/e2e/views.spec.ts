@@ -56,3 +56,42 @@ test("雙模式:列表 → 記錄(Object Page)", async ({ page }) => {
   await expect(page.getByRole("button", { name: "複製" })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText("基本資料").first()).toBeVisible()
 })
+
+test("🔴 切換記錄必須重置編輯狀態 —— 否則 A 的值會寫進 B", async ({ page, request }) => {
+  const uniq = Date.now().toString().slice(-6)
+  const DEV = { "x-dev-tenant": "1", "x-dev-actor": "1" }
+
+  const form = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: { name: `E2E切換_${uniq}`, fields: [{ name: "品名", type: "text", required: true }] },
+  })
+  const formId = (await form.json()).id as number
+  for (const name of ["記錄甲", "記錄乙"]) {
+    await request.post(`/api/engine/forms/${formId}/records`, {
+      headers: DEV,
+      data: { values: { 品名: name } },
+    })
+  }
+
+  await page.goto(`/app/forms/${formId}?mode=record`)
+  await expect(page.getByRole("button", { name: "編輯" })).toBeVisible({ timeout: 30_000 })
+
+  // 在第一筆進入編輯並改值,但**不儲存**
+  await page.getByRole("button", { name: "編輯" }).click()
+  const input = page.getByRole("textbox").first()
+  await input.fill("被汙染的值")
+
+  // 切到第二筆
+  await page.getByText("記錄乙").first().click()
+
+  /* 關鍵斷言:切換後必須回到唯讀(編輯狀態已重置),
+     且畫面顯示的是記錄乙的值而非殘留的草稿。
+     無 key 時 ObjectPage 不重掛 → 仍在編輯模式且草稿殘留 → 按儲存即寫錯記錄。 */
+  await expect(page.getByRole("button", { name: "編輯" })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText("被汙染的值")).toHaveCount(0)
+
+  // 資料庫端確認兩筆都沒被汙染
+  const list = await request.get(`/api/engine/forms/${formId}/records?limit=50`, { headers: DEV })
+  const names = (await list.json()).records.map((r: { values: Record<string, string> }) => r.values.品名)
+  expect(names.sort()).toEqual(["記錄乙", "記錄甲"])
+})
