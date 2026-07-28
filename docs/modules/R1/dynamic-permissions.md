@@ -1,6 +1,6 @@
 # [E-1] 動態權限(記錄範圍 + 指派)
 
-> ⏳ **狀態:M0 DRAFT v0.1 — OQ-DP-1..8 待裁定(2026-07-28)**
+> ⏳ **狀態:M0 DRAFT v0.2 — OQ-DP-1..10 待裁定(2026-07-28)**|**v0.2 三路補研究(含 30 萬列實測)推翻 v0.1 的核心架構決定**,見 §0.6
 > **上游**|docs/04 §E「動態權限(依欄位值判斷)| ✅ | ✅(業務只能看自己客戶)| 4 人月」· docs/25 §E(⬜)· 承 P0-4a 三層權限 + authz-resource-inheritance
 > **緣由**|docs/25 v1.5 覆蓋率彙總後定為下一批第一順位 —— 「業務只看自己負責的客戶」是 Ragic 客戶普遍在用的能力,而 Weyver **目前完全沒有**:表單可見即該表**所有記錄**可見。
 
@@ -60,17 +60,93 @@ docs/04 E 段把它記為「動態權限(**依欄位值判斷**)」,聽起來像
 **對 Weyver 的判斷**|表單與欄位皆為使用者動態建立、租戶數十家、單表數萬至數十萬列 →
 **採查詢時注入,不做預計算**。預計算需要 Salesforce 等級的非同步重算基礎設施(defer 開關 / 完成通知 / 傾斜監控)才撐得住,對 solo 維運是負債。
 
-### 0.4 PostgreSQL RLS 能不能表達動態規則?
+### 0.4 ~~PostgreSQL RLS 能不能表達動態規則?~~ ⚠️ **v0.2 已被 §0.6 實測推翻**
 
 - **可以但不該**|RLS policy 適合**簡單等值**(`tenant_id = current_setting(...)`,可 pushdown 到索引,實測成本近乎零)。
 - **已知地雷**|policy 內的**子查詢會每列執行一次**;policy 呼叫**非 `LEAKPROOF`** 的函數會讓 planner 不敢 pushdown → **退化成 seq scan**;缺 `tenant_id` 為首欄的複合索引 → 慢兩個數量級。
-- **結論**|**RLS 維持只做租戶兜底,動態述詞放應用層**。這與既有架構一致,不需改動 RLS 設計。
+- ~~**結論**|RLS 維持只做租戶兜底,動態述詞放應用層。~~ **⚠️ 此結論錯誤**:上述地雷對**複雜** policy 成立,對本模組的**簡單述詞**不成立。§0.6 實測顯示 `AS RESTRICTIVE` policy 與應用層注入**執行計畫完全相同、零效能代價**,且結構上更安全。**以 §0.6 為準。**
 
 ### 0.5 真實外洩案例:規則對了,但管理員理解錯
 
 2023 年 Krebs / Varonis 揭露大量 Salesforce Community 因 guest user 的記錄分享設定錯誤而外洩 SSN 與銀行帳號(含佛蒙特州 PUA)。Salesforce 定調為**客戶端設定錯誤而非產品漏洞**。
 
 > **這對本模組的直接意涵**:語意正確不等於安全。**必須提供「以某使用者身分預覽:這張表他看得到幾筆」的模擬器** —— 那正是上述案例缺的東西。列為 P0,不是 nice-to-have。
+
+### 0.6 ⚠️ v0.2 補研究:**強制點應該放在 RLS,不是應用層** —— 這推翻 v0.1 的 OQ-DP-7
+
+v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown」推論 RLS 不適合,**該推論對複雜 policy 成立,對本模組要用的簡單述詞不成立**。
+研究於**本機 PostgreSQL 16.13 建 30 萬列(20 租戶 × 15k)實測**:
+
+| 作法 | 執行計畫 | 熱查詢 |
+|---|---|---|
+| 應用層注入 WHERE | BitmapOr(btree + GIN) | 0.16 ms |
+| **`AS RESTRICTIVE` RLS policy** | **完全相同** | **0.169 ms** |
+
+**零效能代價**,因為 `current_setting()` 是 `STABLE`,planner 能把它推進 index cond。
+
+**而 RESTRICTIVE 在安全性上結構性更強**:
+- 語意上**恆為 AND**,使用者自訂篩選的 OR **在語法上不可能逃出**權限邊界
+- **應用層漏注入也不外洩** —— 防線不依賴「記得要注入」
+
+> **實測的洩漏規模**|同一查詢少一層括號,`AND f_num>9000 OR f_num<10` 回 **309 列** vs 正確 **3 列** —— **103 倍外洩且含他人記錄**。這正是 RESTRICTIVE 能從結構上消除的那類錯誤。
+
+**代價與化解**|`CREATE POLICY` 是 DDL、表名不可參數化 → 若 policy 需引用「這張表的指派欄」,每次規則變更都變成 DDL。
+**化解:把指派反正規化成固定的系統欄** `assignees bigint[]` —— 則**所有動態表共用同一份靜態 policy**,建表時一次寫入(沿用既有 `ddl.service` 三段式 provision,消除「新表忘了套」),日後規則變更是**資料變更不是 DDL**。
+
+### 0.7 多值指派的儲存與索引(實測三方對照)
+
+同一查詢、actor 命中 70/15000 列:
+
+| 方案 | 索引大小 | 查詢時間 |
+|---|---|---|
+| **`bigint[]` + GIN** | **2552 kB** | **0.16 ms** |
+| `jsonb` + GIN(jsonb_path_ops) | 2552 kB | 計畫**完全相同**,無優勢且多一層型別轉換 |
+| junction 表 + `OR EXISTS` | 59 MB 表 + 36 MB 索引 | **265 ms** |
+
+> **junction 的 265 ms 是關鍵地雷**:`created_by = X OR EXISTS(...)` 讓 planner 產生 `hashed SubPlan`,退化成掃全租戶 15000 列。改寫成 UNION 才回到 0.31 ms,但那時 junction 相對 GIN 只是多花 37 倍儲存。
+> **對照**:Baserow 用 M2M 關聯表、Teable 用 JSONB —— 兩者都有生產前例,但**都不是本場景的最佳解**。
+
+**寫入放大實測**(INSERT 30 萬列)|無 GIN 1.56 s / GIN 預設 2.05 s(**+31%**)/ `fastupdate=off` 5.03 s(**+222%**)→ **保留 fastupdate 預設**。
+**OR 的 planner 行為**|`tenant_id = ? AND (created_by = ? OR assignees @> ARRAY[?])` → 實測產生 **`BitmapOr`,兩個索引同時用**,不退化。**驗收判準:EXPLAIN 必須出現 `BitmapOr`。**
+**唯一真實風險**|planner 誤估而不選 bitmap 時 0.16 ms → **51.7 ms(320 倍)**。靠 ANALYZE 頻率 + 慢查詢告警守。
+**明確不要做**|「每個 actor 一個 partial index」(actor 數 × 動態表數爆炸)。
+
+### 0.8 OSS 同儕:**開源版幾乎都沒有記錄級權限**(且授權多已變更)
+
+| 系統 | 授權(2026 現況) | 記錄級權限 |
+|---|---|---|
+| **Baserow** | 根 MIT;`enterprise/` **專有** | 只有 **Restricted Views**(view filter + 限定該 view),實作在 enterprise/ → **不可 fork** |
+| **Teable** | `apps/*` **AGPL-3.0**;`packages/*` MIT | 官方文件有 Authority Matrix(Business 以上);**OSS repo 的 `record-permission.service.ts` 是 35 行 stub** |
+| **NocoDB** | ⚠️ **2026-01-29 起 Sustainable Use License,已非 OSS** | 有 Record-Level Security(Scale 方案)|
+| **Directus** | ⚠️ 2026 起 **MSCL-1.0-GPL**,非 OSS | 有,且 `$CURRENT_USER` 動態變數架構最值得學 |
+| **Hasura** | Apache-2.0(非 MIT)| row filter 為 boolean expression + session variable |
+
+> **clean-room 影響**|NocoDB 與 Directus **已非 OSS**、Baserow enterprise 為專有、Teable apps 為 AGPL → **一律只讀公開文件與介面形狀,不看實作原始碼**。可安全參考的只有 Teable `packages/*`(MIT)與 Hasura 的公開設計文件。
+> **另一個判讀**|開源版普遍不給記錄級權限,是**商業取捨而非技術不可行**;但也證實這是企業級分野。
+
+**兩個值得借鑑的設計手法**(只取公開介面 / 文件所述之形狀):
+1. **變數 late-binding 三段式**(Directus 公開文件):規則存成含 `$CURRENT_USER` 的結構 → 請求時才解析所需欄位 → 代換 → 編譯。**不要在存規則時就展開**,否則調整組織結構要重算全部規則。
+2. **不發明新 DSL**|Teable / Baserow / NocoDB 的共通 UX 慣例是**直接復用使用者已經會用的「檢視篩選器」**,只多一個「目前使用者」的值來源。Weyver 已有 `view_def` 的 filter 模型 → 日後若真要做條件規則(OQ-DP-1 的 B),應復用它而非另造。
+
+### 0.9 管理員 UX:業界把「預覽」拆成三個不同功能
+
+| 功能類別 | 回答的問題 | 前例 |
+|---|---|---|
+| **Effective access / 檢查存取權** | 「**現在**這個人看得到什麼?為什麼?」 | SharePoint **Check Permissions**(回「有無權限 + 經由哪條途徑」)· Windows **Effective Access** 分頁 · Salesforce **Sharing Hierarchy**(逐筆反查誰看得到) |
+| **Simulator / what-if** | 「我**如果**這樣改,誰會受影響?」 | **GCP Policy Simulator**(列出 access **changes 差異**)· **AWS IAM Policy Simulator**(逐 action 回 allow/deny **並指出是哪條 statement 決定的**)|
+| **Report-only / 演練** | 「先上線但不強制,看看**會擋下什麼**」 | **Azure Conditional Access report-only 模式** |
+
+> **Salesforce 的結構性缺陷**|設定 sharing rule 時**沒有任何「會影響幾筆」的事前回饋**,唯一驗證管道是**事後**在單筆記錄上看 Sharing Hierarchy。**這正是 2023 外洩的成因:語意可設、效果不可見。**
+
+**Impersonation 的安全風險**|「Login as user」被指出**觀測性不足、易被濫用**(Varonis)。
+→ **不做真 impersonation**,改做**唯讀試算**:以目標使用者的權限條件跑同一查詢,只回「**筆數 + 標題欄**」、敏感欄遮蔽、**全程 audit 且被查者可見**。
+
+**預設值該偏嚴還偏寬 —— 最強證據是 Salesforce 自己的修正動作**|Summer '20 推出 Secure guest user record access,**Winter '21 起強制且不可關閉**,訪客 OWD 固定 Private。
+→ **偏嚴,並把危險開關直接移除,而不是加警告。** 代價(「東西不見了」)用好用的例外機制與可見性補償。
+**但對本模組要注意方向**:Weyver 既有租戶目前是「表單可見 = 全部記錄可見」,**收緊會讓既有資料突然消失** → 預設維持 `all`(加法擴充),嚴格預設只套用於**新建的範圍設定**。
+
+**文案前例**|monday.com Enterprise:「Only items they created and items assigned to them in any people column」;Ragic:「可查看及編輯自己新增及被指派的資料」。
+→ 建議中文:**「只看得到自己建立或被指派給自己的記錄」**,並固定附一行「不受此限:系統管理員」。
 
 ---
 
@@ -130,8 +206,10 @@ docs/04 E 段把它記為「動態權限(**依欄位值判斷**)」,聽起來像
 | **OQ-DP-4** ⭐ | 範圍是否逐動作獨立 | A. **逐動作**(可設「view=all、edit=own」= Ragic 佈告欄式)<br>B. 整組一個範圍 | **A** — 這正是 Ragic 佈告欄式使用者的語意(**看全部但只能改自己的**),是很常見的真實需求。實作上是 `actions` 之外再一個 `scoped_actions` 集合(列在其中者受 own 限制),語意仍簡單 |
 | **OQ-DP-5** ⭐ | 指派如何表達 | A. **`member` 欄位選項 `grantsAccess: true`**(承 Ragic:欄位上一個勾選)<br>B. 獨立的 `record_assignment` 表<br>C. 固定用某個系統欄 | **A** — 承 Ragic 且**資料即權限**:負責業務就寫在那個欄位,不必另外維護一份指派表(兩者會不同步)。**代價**:欄位被刪 / 改型別要處理(見 FMEA)。**前提**:`member` 欄前端必須補完(M2)|
 | **OQ-DP-6** | 主管是否自動看到部屬的記錄 | A. **不做**(Ragic 無此語意)<br>B. 沿角色階層閉包自動繼承(Salesforce 有)| **A** — Ragic 沒有這個語意,做了就超出 parity;且它會讓「own」的定義變成遞迴查詢(角色閉包 × 成員),是效能與理解成本的雙重負擔。**需要主管看全部時,就把主管角色設 `all`** —— 更明確也更好稽核 |
-| **OQ-DP-7** ⭐ | 述詞在哪裡強制 | A. **應用層編譯 WHERE 注入**(所有記錄路徑)<br>B. RLS policy<br>C. 兩者都做 | **A** — §0.4:RLS policy 內的子查詢**每列執行一次**、非 LEAKPROOF 函數會讓 planner 退化成 seq scan。RLS 維持只做**租戶**兜底(簡單等值、可 pushdown)。**代價**:應用層漏注入 = 外洩 → 以「單一查詢建構點」+ e2e 斷言緩解(FMEA)|
+| **OQ-DP-7** ⭐⭐ | 述詞在哪裡強制 | A. ~~應用層編譯 WHERE 注入~~<br>**B(v0.2 依實測改採)**|**`AS RESTRICTIVE` RLS policy** 為強制點,應用層只做 UX(提示 / 預覽)<br>C. 兩者都做 | **B(v0.1 建議 A 已被推翻)** — §0.6 於 **PG 16.13 / 30 萬列實測**:RESTRICTIVE policy 與應用層注入**執行計畫完全相同**(BitmapOr + GIN,0.169 ms vs 0.16 ms),**零效能代價**;而 RESTRICTIVE **語意恆為 AND**,使用者自訂篩選的 OR **在語法上不可能逃出**,且**應用層漏注入也不外洩** —— 防線不依賴「記得要注入」。實測的反例規模:少一層括號即 **103 倍外洩**。**前提**:policy 只准簡單述詞 + `current_setting`,**不得呼叫非 LEAKPROOF 的自訂函數**(會讓 planner 放棄 pushdown → 全表掃)|
 | **OQ-DP-8** ⭐ | 預覽模擬器是否 P0 | A. **是**(§0.5 事故教訓)<br>B. P1 | **A** — Salesforce 外洩案例的根因正是「規則語意正確但管理員理解錯」,而該產品**無法預覽實際效果**。此功能成本低(以目標使用者身分跑一次計數查詢),但它是**唯一能讓管理員在設定當下就看見後果**的東西。權限功能的預設失效模式是「以為設對了」 |
+| **OQ-DP-9** ⭐⭐ | 指派怎麼存 | A. **固定系統欄 `assignees bigint[]` + GIN**,由引擎自 member 欄同步<br>B. 直接讀該表的 member 欄(欄名因表而異)<br>C. junction 關聯表 | **A** — 兩個理由:(1) **效能**:§0.7 實測 `bigint[]`+GIN 為 0.16 ms、junction + `OR EXISTS` 為 **265 ms**(planner 產生 hashed SubPlan 退化成掃全租戶);jsonb 計畫相同但多一層轉換。(2) **更關鍵的是它讓 policy 靜態化** —— B 會使 policy 需引用「這張表的指派欄」,而 `CREATE POLICY` 是 DDL 且表名不可參數化 → 每次規則變更都變 DDL;A 讓**所有動態表共用同一份靜態 policy**,建表時一次寫入(沿用既有三段式 provision,消除「新表忘了套」),規則變更是**資料變更**。**代價**:需在記錄寫入時同步 member 欄 → `assignees`(單一同步點,見 FMEA)|
+| **OQ-DP-10** ⭐ | 預覽做到什麼程度 | A. **唯讀試算**:選人 → 回筆數 + 前 N 筆標題 + 每筆「為何看得到」<br>B. 真 impersonation(以該使用者身分瀏覽)<br>C. 只顯示筆數 | **A** — B 的「Login as user」被指出**觀測性不足、易被濫用**(Varonis);A 給了管理員判斷所需的一切,又不讓他藉此翻閱他人資料。**設計要點**(承 §0.9 三分類):P0 先做 **effective access**(「現在這個人看得到什麼、為什麼」,對標 SharePoint Check Permissions);**存檔前的影響差異**(GCP Policy Simulator 式「3,394 筆將被遮蔽」)價值最高但需算兩次,列 P1;report-only 演練模式列 P2。**A 本身仍需 audit 且敏感欄遮蔽** |
 
 ---
 
@@ -139,14 +217,20 @@ docs/04 E 段把它記為「動態權限(**依欄位值判斷**)」,聽起來像
 
 | # | 場景 | 預定緩解 | Sev |
 |---|---|---|---|
-| D1 | **漏注入即外洩**:某條記錄查詢路徑未套範圍述詞 | **單一查詢建構點**(所有記錄讀寫都經同一個 `applyScope()`);e2e 斷言「業務 A 看不到業務 B 的客戶」涵蓋列表 / 單筆 / 更新 / 刪除 / 匯出 / 搜尋**全部路徑** | **P0** |
+| D1 | **漏注入即外洩**:某條記錄查詢路徑未套範圍述詞 | **v0.2 改為結構性消除**:強制點下沉到 `AS RESTRICTIVE` RLS policy(OQ-DP-7=B)→ 漏注入也不外洩。policy 於建表 provision 時一併建立,消除「新表忘了套」。e2e 仍斷言「業務 A 看不到業務 B 的客戶」涵蓋列表 / 單筆 / 更新 / 刪除 / 匯出 / 搜尋全路徑 | **P0** |
 | D2 | **匯出繞過**:列表有限制但匯出全撈 | 匯出走同一建構點;測試單獨斷言匯出路徑 | **P0** |
 | D3 | **關聯 / lookup 繞過**:A 表看不到的記錄,經 B 表的 lookup 被帶出值 | 明確定義:lookup 顯示值是否受來源表範圍管?**P0 必須裁定並測試**(Salesforce 明文禁止 lookup 欄當條件,即因衍生值難以追蹤)| **P0** |
 | D4 | member 欄被刪 / 改型別 → 指派失效,原本看得到的人突然看不到(或反之) | 欄位刪除時檢查 `grantsAccess`,警告並要求確認;改型別走既有白名單(不允許 member → 其他) | P1 |
 | D5 | **管理員誤設導致全員看不到自己的資料** | 預覽模擬器(OQ-DP-8);範圍預設為 `all`(**加法擴充**,不主動收緊既有租戶) | P1 |
 | D6 | 大表下 `created_by` / member 欄無索引 → 全表掃描 | 範圍述詞所涉欄位建 `(tenant_id, <欄>)` 複合索引,`tenant_id` 為首欄(§0.4)| P1 |
-| D7 | 指派欄為 jsonb 陣列(多人指派)→ 無法用一般索引 | 若採陣列,需 GIN 索引;或限制單值。**M1 前須定案** | P1 |
+| D7 | ~~指派欄索引~~ **v0.2 已定案**|`assignees bigint[]` + GIN(§0.7 實測);寫入放大 +31%(保留 `fastupdate` 預設) | P1 | ✅ 已定案 |
+| D9 | **planner 誤估不選 BitmapOr** → 0.16 ms 變 **51.7 ms(320 倍)** | 驗收判準:EXPLAIN 必須出現 `BitmapOr`;ANALYZE 頻率 + 慢查詢告警 | P1 |
+| D10 | member 欄 → `assignees` 系統欄不同步 → 權限與畫面不一致 | 單一同步點(記錄寫入路徑);整合測斷言「改 member 欄後可見性立即改變」 | **P0** |
 | D8 | 範圍與既有 owner 短路 / 敏感旗標 / 分類繼承交互作用產生意外放寬 | 解析順序明文化並測試矩陣;**敏感表不得因指派而放寬**(承 OQ-ARI-5 精神)| P1 |
+
+### 12.3 不在本模組 scope 修的 pre-existing 問題
+
+- 🔴 **keyset 分頁在非 id 排序時會跳列 / 重複**|`record.service.ts:425-434` 以 `orderBy(<欄>)` 排序卻只用 `id > cursor` 當 cursor(已對程式碼確認)。**與本模組無關但同一檔案**,且**加上權限述詞後症狀會更明顯**(可見列變少 → 跳頁更容易露餡)。應另立小項修為複合 cursor `(sort_val, id) > (:v, :id)`。
 
 ---
 
@@ -154,4 +238,5 @@ docs/04 E 段把它記為「動態權限(**依欄位值判斷**)」,聽起來像
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | **v0.2** | **決策方追問「有站在巨人的肩膀上嗎」** —— 誠實檢視後確認 v0.1 標準低於通知模組(只 1 路研究 + 2 頁 Ragic),遂補三路研究,**其中一路於本機 PG 16.13 建 30 萬列實測**。**推翻 v0.1 的核心架構決定**:(a) **OQ-DP-7 由「應用層注入」翻為「`AS RESTRICTIVE` RLS policy」** —— 實測兩者**執行計畫完全相同、零效能代價**,但 RESTRICTIVE **語意恆為 AND**,使用者篩選的 OR 語法上不可能逃出,且**漏注入也不外洩**;實測反例:少一層括號即 **103 倍外洩**。v0.1 §0.4 的推論對複雜 policy 成立、對簡單述詞不成立,已標 SUPERSEDED。(b) **新增 OQ-DP-9**:指派存成**固定系統欄 `assignees bigint[]` + GIN** —— 實測 0.16 ms vs junction 的 **265 ms**(planner hashed SubPlan 退化);更關鍵是它讓**所有動態表共用同一份靜態 policy**,規則變更是資料變更而非 DDL。(c) **新增 OQ-DP-10**:預覽採**唯讀試算不做 impersonation**(「Login as user」觀測性不足易濫用);承 §0.9 三分類(effective access / simulator / report-only)分階段。**§0.8 授權警訊**:NocoDB 與 Directus **2026 起已非 OSS**、Baserow enterprise 專有、Teable apps 為 AGPL → 一律只讀公開文件不看實作。**§12.3 記錄一個 pre-existing bug**:keyset 分頁在非 id 排序時會跳列/重複(已對碼確認)| Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT。**§0.1 推翻本模組原本的假設**:docs/04 記為「動態權限(依欄位值判斷)」暗示 Salesforce 式規則引擎,但翻 Ragic 文件確認**它根本沒有條件規則引擎** —— 而是「**有序存取層級**(內建『自己新增及被指派的』述詞)+ **member 欄位值驅動的指派**」兩機制組合;「業務只看自己客戶」= 問卷式使用者 + 選擇使用者欄位。**§0.2 企業級對照**:Salesforce criteria-based 上限 50 條且**禁 lookup/公式/衍生欄位**、預計算 `__Share` 表非同步重算;Odoo `ir.rule` 查詢時注入且 **global AND / group OR**;**Airtable 完全沒有此能力**(Interface 過濾非安全邊界);**Notion 只綁 Person 型屬性** —— 與 Ragic 獨立收斂到同一受限模型,為強訊號。**§0.3/§0.4**:採查詢時注入不預計算;RLS 維持只做租戶兜底(policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown)。**§0.5**:Krebs/Varonis 揭露之 Salesforce Community 外洩案例根因為「規則正確但管理員理解錯」且產品**無法預覽效果** → **預覽模擬器列 P0**。OQ-DP-1..8 待裁定;FMEA D1–D8,其中 D3(lookup 繞過)須於 M1 前裁定 | Claude Code |
