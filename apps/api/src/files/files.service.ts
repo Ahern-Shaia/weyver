@@ -19,7 +19,7 @@ import { APP_KNEX, TenantDb } from "../db/db.module.js"
 import { fieldDefs } from "../db/schema.js"
 import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
-import { detectType } from "../storage/file-type.js"
+import { detectType, hasSpreadsheetFormula, sanitizeFilename } from "../storage/file-type.js"
 import { ImageProcessor } from "../storage/image-processor.js"
 import {
   STORAGE_DRIVER,
@@ -141,6 +141,16 @@ export class FilesService implements OnModuleInit {
         message: "不支援的檔案類型(以檔案內容判定,非副檔名)",
       })
     }
+    /* 🔴 儲存型 CSV 公式注入:合法的 CSV 也可能是攻擊載體
+       (`=cmd|'/c calc'!A1` → 同事以 Excel 開啟即觸發 DDE)。
+       型別白名單擋不住,必須看內容。**拒收而非靜默改寫** —— 上傳的是使用者的
+       原始檔案,改內容會破壞資料。 */
+    if (detected.mime === "text/csv" && hasSpreadsheetFormula(body)) {
+      throw new UnsupportedMediaTypeException({
+        code: "CSV_FORMULA_REJECTED",
+        message: "CSV 內含以 = + - @ 開頭的儲存格,可能在試算表軟體中被當成公式執行,故不接受。請改用 Excel(.xlsx)格式上傳。",
+      })
+    }
     // 欄型再收斂(R1·UP-4b):影像欄只收影像
     if (!isMimeAllowedForField(field.cellValueType, detected.mime)) {
       throw new UnsupportedMediaTypeException({
@@ -171,7 +181,7 @@ export class FilesService implements OnModuleInit {
         tenant_id: tenant.tenantId,
         form_id: formId,
         field_id: fieldId,
-        name: filename.slice(0, 255),
+        name: sanitizeFilename(filename),
         mime: detected.mime,
         size: storedSize,
         status: "pending" satisfies FileStatus,
@@ -179,7 +189,7 @@ export class FilesService implements OnModuleInit {
       }),
     )
 
-    return { key, name: filename.slice(0, 255), mime: detected.mime, size: storedSize }
+    return { key, name: sanitizeFilename(filename), mime: detected.mime, size: storedSize }
   }
 
   /* 下載:回查 metadata → 表單 view → 欄位非 hidden → 記錄未刪 → 串流(FMEA S1/S2/S7)。 */

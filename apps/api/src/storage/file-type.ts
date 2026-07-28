@@ -67,3 +67,45 @@ export function detectType(buf: Buffer, filename: string): DetectedType | null {
   }
   return null
 }
+
+/* 🔴 CSV / 試算表公式注入(OWASP CSV Injection)。
+
+   儲存型攻擊:上傳一份首格為 `=cmd|'/c calc'!A1` 的 CSV,同租戶同事下載後
+   用 Excel 開啟即觸發 DDE。型別白名單擋不住 —— 它是合法的 CSV。
+   本平台客戶天天用 Excel,這條路徑是實的。
+
+   偵測而非改寫:上傳的是**使用者的原始檔案**,靜默改內容會破壞資料。
+   由呼叫端決定拒收或標警示。 */
+const FORMULA_LEAD = /^[\s\uFEFF]*[=+\-@\t\r]/
+
+export function hasSpreadsheetFormula(buf: Buffer): boolean {
+  /* 只看前 64KB —— 攻擊要生效必須在使用者會看到的前幾列 */
+  const head = buf.subarray(0, 65_536).toString("utf8")
+  return head.split(/\r?\n/).some((line) =>
+    line.split(",").some((cell) => FORMULA_LEAD.test(cell.replace(/^"/, ""))),
+  )
+}
+
+/* 🔴 顯示用檔名淨化。
+
+   **RTL 覆寫偽裝**:含 `U+202E`(RIGHT-TO-LEFT OVERRIDE)的 `發票\u202Egpj.exe`
+   在下載清單與檔案總管中**顯示為** `發票exe.jpg` —— 使用者以為是圖片而執行。
+   header 注入本身已由百分比編碼擋住,但**顯示層的偽裝沒擋**。
+
+   一併處理:Unicode 正規化(避免同形異碼)、控制字元、Windows 保留名、
+   尾端點與空白(Windows 會靜默去除,導致副檔名判定與實際落差)。 */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: 剝除控制字元正是本函式的目的
+const BIDI_AND_CONTROL = /[\u202A-\u202E\u2066-\u2069\u200E\u200F\u0000-\u001F\u007F]/g
+const WINDOWS_RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i
+
+export function sanitizeFilename(raw: string): string {
+  const cleaned = raw
+    .normalize("NFC")
+    .replace(BIDI_AND_CONTROL, "")
+    /* 路徑分隔字元:key 由伺服器生成故無穿越風險,但顯示名不該帶路徑 */
+    .replace(/[/\\]/g, "_")
+    .replace(/[\s.]+$/, "")
+    .slice(0, 255)
+  if (cleaned === "") return "未命名檔案"
+  return WINDOWS_RESERVED.test(cleaned) ? `_${cleaned}` : cleaned
+}

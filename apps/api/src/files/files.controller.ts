@@ -16,6 +16,7 @@ import {
   UseGuards,
 } from "@nestjs/common"
 import type { FastifyReply, FastifyRequest } from "fastify"
+import { Throttle } from "@nestjs/throttler"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { Permissions, RequiresFormAction } from "../authz/authz-http.js"
@@ -42,6 +43,17 @@ type MultipartRequest = FastifyRequest & {
 export class FormFilesController {
   constructor(@Inject(FilesService) private readonly files: FilesService) {}
 
+  /* 🔴 上傳專用限流。
+
+     全域 throttler 為 300 req/60s,而本端點以 `part.toBuffer()` 把**整檔讀進記憶體**
+     (為了在落儲存前驗 magic bytes,OQ-FS-2)。單一 IP 一分鐘即可推
+     300 × 20MB ≈ 6GB 進堆積體 → 容器 OOM。
+
+     **60/min 是校準過的值,不是隨手取的**:圖片欄本身允許每欄 20 張、
+     Ragic 亦有「多筆檔案上傳」,批次附檔是正常操作 —— 初版設 20/min 立刻
+     打到既有整合測(剛好 20 次上傳),證明對真實使用過緊。
+     60/min 仍把單 IP 最壞情況由 ~6GB/min 壓到 ~1.2GB/min。 */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Post()
   @RequiresFormAction("edit")
   async upload(

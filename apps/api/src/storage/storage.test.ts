@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { detectType, extensionOf } from "./file-type.js"
+import { detectType, extensionOf, sanitizeFilename } from "./file-type.js"
 import { LocalStorageDriver } from "./local-storage.driver.js"
 import { isValidKey } from "./storage-driver.js"
 
@@ -90,5 +90,36 @@ describe("LocalStorageDriver 往返", () => {
 
   it("非法 key 直接拋(不觸及檔案系統)", async () => {
     await expect(driver.put("../evil", Buffer.from("x"), { mime: "text/plain" })).rejects.toThrow()
+  })
+})
+
+describe("🔴 檔名淨化(追溯稽核)", () => {
+  it("**剝除 RTL 覆寫** —— 否則 exe 可偽裝成 jpg", () => {
+    /* U+202E RIGHT-TO-LEFT OVERRIDE:此字串在檔案總管顯示為「發票exe.jpg」 */
+    const evil = "發票\u202Egpj.exe"
+    const safe = sanitizeFilename(evil)
+    expect(safe).not.toContain("\u202E")
+    expect(safe).toBe("發票gpj.exe")
+  })
+
+  it("剝除控制字元與雙向標記", () => {
+    expect(sanitizeFilename("a\u0001b\u200Ec.txt")).toBe("abc.txt")
+  })
+
+  it("Windows 保留名加前綴", () => {
+    expect(sanitizeFilename("CON.txt")).toBe("_CON.txt")
+    expect(sanitizeFilename("報表.txt")).toBe("報表.txt")
+  })
+
+  it("去尾端點與空白(Windows 會靜默去除造成副檔名落差)", () => {
+    expect(sanitizeFilename("a.txt. ")).toBe("a.txt")
+  })
+
+  it("路徑分隔字元不進顯示名", () => {
+    expect(sanitizeFilename("../../etc/passwd")).toBe(".._.._etc_passwd")
+  })
+
+  it("全被剝光時給預設名", () => {
+    expect(sanitizeFilename("\u202E ")).toBe("未命名檔案")
   })
 })

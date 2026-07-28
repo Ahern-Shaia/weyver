@@ -593,3 +593,18 @@ describe("F-5 M2 欄位級授權(非 admin;dev header 恆為 super admin 故直�
     ).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe("🔴 追溯稽核:儲存型 CSV 公式注入", () => {
+  it("**含公式起首字元的 CSV → 拒收** —— 同事以 Excel 開啟即觸發 DDE", async () => {
+    const evil = Buffer.from('姓名,備註\n王小明,=cmd|\'/c calc\'!A1\n', "utf8")
+    const res = await upload(A(), "報表.csv", evil)
+    expect(res.statusCode).toBe(415)
+    expect((res.body as { code: string }).code).toBe("CSV_FORMULA_REJECTED")
+  })
+
+  it("一般 CSV 正常放行(不誤傷)", async () => {
+    const ok = Buffer.from("姓名,備註\n王小明,正常內容\n", "utf8")
+    const res = await upload(A(), "正常.csv", ok)
+    expect(res.statusCode).toBe(201)
+  })
+})
