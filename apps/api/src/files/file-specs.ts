@@ -9,8 +9,22 @@ export interface FileDto {
 
 export type FileStatus = "pending" | "bound" | "orphaned"
 
-/* 可掛附件的欄位型別。image / signature 為 field-types-parity P1(解鎖後加入)。 */
-export const ATTACHMENT_FIELD_TYPES: ReadonlySet<string> = new Set(["attachment"])
+/* 可掛檔案的欄位型別(R1·UP-4b 加入 image / signature)。 */
+export const ATTACHMENT_FIELD_TYPES: ReadonlySet<string> = new Set([
+  "attachment",
+  "image",
+  "signature",
+])
+
+/* R1·UP-4b|**依欄型收斂可接受之 MIME**(OQ-IS-1 之安全面):
+   影像類欄位只收影像 —— 圖片欄收到 PDF 會在 UI 破圖,且無謂擴大該欄攻擊面。
+   attachment 維持完整白名單。 */
+const IMAGE_ONLY_FIELD_TYPES: ReadonlySet<string> = new Set(["image", "signature"])
+
+export function isMimeAllowedForField(fieldType: string, mime: string): boolean {
+  if (!IMAGE_ONLY_FIELD_TYPES.has(fieldType)) return true
+  return mime.startsWith("image/")
+}
 
 /* RFC 5987:原始檔名以 UTF-8 百分比編碼帶出(檔名不入路徑,只入標頭)。 */
 export function contentDisposition(name: string): string {

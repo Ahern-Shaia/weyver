@@ -23,6 +23,9 @@ export const CELL_VALUE_TYPES = [
   "member",
   "link",
   "attachment",
+  // R1·UP-4b 影像類欄型(jsonb,與 attachment 同契約 → 零 migration;OQ-IS-1/2)
+  "image",
+  "signature",
   "formula",
   // R1·UP-4 讀時計算 virtual 型別(無物理欄,systemManaged;值讀時注入)
   "createdAt",
@@ -307,6 +310,37 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     buildColumn: (t, col) => void t.jsonb(col),
     valueSchema: () =>
       z.array(z.object({ key: z.string().max(500), name: z.string().max(255) })).max(50),
+    filterOperators: EMPTINESS,
+    systemManaged: false,
+  }),
+  /* R1·UP-4b 圖片欄(OQ-IS-1=A 獨立於 attachment:Ragic 明載為獨立欄型,客戶心智模型如此)。
+     契約與 attachment 相同 → file-storage 之綁定 / 配額 / 孤兒回收 / 下載權限鏈零改動即適用。
+     張數上限 20(低於 attachment 的 50:圖片單檔大、列表要能掃視)。 */
+  image: def({
+    cellValueType: "image",
+    dbFieldType: "jsonb",
+    optionsSchema: z.object({ maxHeightPx: z.number().int().min(40).max(600).optional() }).strict(),
+    buildColumn: (t, col) => void t.jsonb(col),
+    valueSchema: () =>
+      z.array(z.object({ key: z.string().max(500), name: z.string().max(255) })).max(20),
+    filterOperators: EMPTINESS,
+    systemManaged: false,
+  }),
+  /* R1·UP-4b 簽名欄(OQ-IS-5=A canvas→PNG 走既有上傳管線)。
+     **單張**以 max 1 表達,不另立契約。OQ-IS-8=A:這是「畫押圖片」,不宣稱不可否認性 ——
+     合規電子簽章(TWCA)為 R2(docs/23 v6.1 C2);簽核流程另見 actions-approval。 */
+  signature: def({
+    cellValueType: "signature",
+    dbFieldType: "jsonb",
+    optionsSchema: z
+      .object({
+        penColor: z.enum(["ink", "primary"]).optional(),
+        heightPx: z.number().int().min(80).max(400).optional(),
+      })
+      .strict(),
+    buildColumn: (t, col) => void t.jsonb(col),
+    valueSchema: () =>
+      z.array(z.object({ key: z.string().max(500), name: z.string().max(255) })).max(1),
     filterOperators: EMPTINESS,
     systemManaged: false,
   }),

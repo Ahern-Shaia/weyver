@@ -21,7 +21,12 @@ import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { detectType } from "../storage/file-type.js"
 import { STORAGE_DRIVER, type StorageDriver, isValidKey } from "../storage/storage-driver.js"
-import { ATTACHMENT_FIELD_TYPES, type FileDto, type FileStatus } from "./file-specs.js"
+import {
+  ATTACHMENT_FIELD_TYPES,
+  type FileDto,
+  type FileStatus,
+  isMimeAllowedForField,
+} from "./file-specs.js"
 
 /* F-5 M2/M3|檔案上傳/下載/刪除 + 兩階段綁定。file_object 走 **RLS 車道**(APP_KNEX + set_config,
    與 records 同級;OQ-FS-7)—— 檔案 metadata 是租戶記錄資料而非表單定義。
@@ -127,6 +132,13 @@ export class FilesService implements OnModuleInit {
       throw new UnsupportedMediaTypeException({
         code: "UNSUPPORTED_FILE_TYPE",
         message: "不支援的檔案類型(以檔案內容判定,非副檔名)",
+      })
+    }
+    // 欄型再收斂(R1·UP-4b):影像欄只收影像
+    if (!isMimeAllowedForField(field.cellValueType, detected.mime)) {
+      throw new UnsupportedMediaTypeException({
+        code: "UNSUPPORTED_FILE_TYPE",
+        message: "此欄位只接受影像檔(PNG / JPEG / GIF / WebP)",
       })
     }
 
@@ -261,16 +273,16 @@ export class FilesService implements OnModuleInit {
     tenantId: number,
     formId: number,
     fieldId: number,
-  ): Promise<{ readonly id: number } | undefined> {
+  ): Promise<{ readonly id: number; readonly cellValueType: string } | undefined> {
     const rows = await this.tenantDb.withTenant(tenantId, (tx) =>
       tx
         .select({ id: fieldDefs.id, cellValueType: fieldDefs.cellValueType })
         .from(fieldDefs)
         .where(
-        and(
-          eq(fieldDefs.tenantId, tenantId),
-          eq(fieldDefs.formId, formId),
-          eq(fieldDefs.id, fieldId),
+          and(
+            eq(fieldDefs.tenantId, tenantId),
+            eq(fieldDefs.formId, formId),
+            eq(fieldDefs.id, fieldId),
             isNull(fieldDefs.deletedAt),
           ),
         )

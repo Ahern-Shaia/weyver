@@ -1,6 +1,7 @@
 # image-signature-fields.md — [R1·UP-4b] 圖片欄 + 簽名欄(field-types-parity P1 解鎖)設計文件
 
-> ⏳ **狀態:DRAFT — OQ-IS-1..8 待裁定**
+> ✅ **狀態:APPROVED — OQ-IS-1..8 已裁定(2026-07-28;全採建議 = 全 A);進入 M1**
+> **裁定摘要**|1=A 獨立 image 欄型 · 2=A 沿用 `[{key,name}]` · 3=A fetch→blob 預覽 · 4=A P0 不做 Sharp 縮圖 · 5=A canvas→PNG 走上傳管線 · 6=A 自建 Pointer Events 簽名板 · 7=A 最小選項集 · 8=A 只做畫押圖片不宣稱效力。
 >
 > **這是 field-types-parity 的 P1 子件,阻塞已除。** 該模組 SHIPPED 時記錄:
 > > **OQ-FTP-6**|image / signature / attachment 上傳「依賴檔案儲存基礎設施(上傳端點 + 物件儲存抽象 + 大小/數量限制)」→ 排除 P0,自成 P1。
@@ -117,9 +118,9 @@ canvas + Pointer Events(滑鼠/觸控/手寫筆統一事件模型)→ `canvas.to
 
 ---
 
-## 10. 開放問題(OQ-IS-N)— 待裁定
+## 10. 開放問題(OQ-IS-N)— ✅ 已裁定 2026-07-28(全採建議)
 
-| # | 議題 | 選項 | 建議 |
+| # | 議題 | 選項 | 建議 = 裁定 |
 |---|---|---|---|
 | **OQ-IS-1** | 圖片欄是否獨立於 attachment | A. **獨立 `image` 欄型**<br>B. `attachment` + `options.imageOnly` | **A** — Ragic 明載為獨立欄型,客戶心智模型即如此(遷移時欄型要對得上);且 docs/27 §2 已寫「圖片欄(獨立於附件)」。Airtable 用統一 attachment,但它的 grid **自動預覽**圖片;我們用 Glide 網格無此自動性 → 統一型別會失去圖片欄的意義。**證據**:Ragic doc/27 |
 | **OQ-IS-2** | 值契約 | A. **沿用 `[{key,name}]`**(同 attachment)<br>B. 新契約含 `width/height/thumbKey` | **A** — file-storage 的綁定 / 配額 / 孤兒回收 / 下載鏈全部吃這個契約,沿用即**零後端改動**;尺寸資訊在做伺服器縮圖(P1)前無來源,先放進契約會是空欄位 |

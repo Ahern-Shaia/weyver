@@ -847,9 +847,11 @@ export class RecordService {
     return `${prefix}${datePart}${String(seq).padStart(width, "0")}`
   }
 
+  /* jsonb 欄需顯式序列化(pg driver 不會把 JS 陣列當 JSON 送)。
+     以 dbFieldType 判定而非列舉型別名 —— 日後新增 jsonb 欄型自動涵蓋
+     (R1·UP-4b 之 image/signature 即因原本硬編 "attachment" 而漏,已由此修正)。 */
   private toDbValue(type: CellValueType, value: unknown): unknown {
-    if (type === "attachment") return JSON.stringify(value)
-    return value
+    return fieldType(type).dbFieldType === "jsonb" ? JSON.stringify(value) : value
   }
 
   private applyFilter(

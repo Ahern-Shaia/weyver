@@ -311,6 +311,112 @@ describe("F-5 M3 兩階段綁定 / 孤兒 / 配額", () => {
   })
 })
 
+describe("R1·UP-4b image / signature 欄型", () => {
+  let imageFieldId = 0
+  let signatureFieldId = 0
+  let mediaFormId = 0
+
+  const uploadTo = async (
+    fieldId: number,
+    filename: string,
+    content: Buffer,
+  ): Promise<{ statusCode: number; body: Record<string, unknown> }> => {
+    const { payload, contentType } = multipart(filename, content)
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${mediaFormId}/files?fieldId=${fieldId}`,
+      headers: { ...A(), "content-type": contentType },
+      payload,
+    })
+    return { statusCode: res.statusCode, body: res.json() as Record<string, unknown> }
+  }
+
+  beforeAll(async () => {
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: "驗收拍照單",
+        fields: [
+          { name: "品名", type: "text", required: true },
+          { name: "現場照片", type: "image" },
+          { name: "簽收", type: "signature" },
+        ],
+      },
+    })
+    expect(form.statusCode).toBe(201)
+    mediaFormId = (form.json() as { id: number }).id
+    const detail = await app.inject({
+      method: "GET",
+      url: `/api/forms/${mediaFormId}`,
+      headers: A(),
+    })
+    const list = (detail.json() as { fields: { id: number; name: string }[] }).fields
+    imageFieldId = list.find((f) => f.name === "現場照片")?.id ?? 0
+    signatureFieldId = list.find((f) => f.name === "簽收")?.id ?? 0
+  })
+
+  it("image / signature 欄可建立(jsonb,零 migration)", () => {
+    expect(imageFieldId).toBeGreaterThan(0)
+    expect(signatureFieldId).toBeGreaterThan(0)
+  })
+
+  it("影像可上傳至 image 欄", async () => {
+    const { statusCode, body } = await uploadTo(imageFieldId, "現場.png", PNG)
+    expect(statusCode).toBe(201)
+    expect(body.mime).toBe("image/png")
+  })
+
+  it("FMEA S1:PDF 上傳到 image 欄 → 415(欄型收斂,非只靠全域白名單)", async () => {
+    const { statusCode, body } = await uploadTo(
+      imageFieldId,
+      "規格書.pdf",
+      Buffer.from("%PDF-1.7\nx"),
+    )
+    expect(statusCode).toBe(415)
+    expect(String(body.message)).toContain("影像檔")
+  })
+
+  it("PDF 上傳到 attachment 欄仍可(收斂只針對影像欄)", async () => {
+    const { statusCode } = await upload(A(), "一般附件.pdf", Buffer.from("%PDF-1.7\ny"))
+    expect(statusCode).toBe(201)
+  })
+
+  it("簽名欄單張語意:存兩張 → 422", async () => {
+    const first = await uploadTo(signatureFieldId, "sig1.png", PNG)
+    const second = await uploadTo(signatureFieldId, "sig2.png", PNG)
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${mediaFormId}/records`,
+      headers: A(),
+      payload: {
+        values: {
+          品名: "雙簽",
+          簽收: [
+            { key: first.body.key, name: "sig1.png" },
+            { key: second.body.key, name: "sig2.png" },
+          ],
+        },
+      },
+    })
+    expect(res.statusCode).toBe(422)
+  })
+
+  it("簽名欄單張 → 存檔成功並綁定", async () => {
+    const sig = await uploadTo(signatureFieldId, "簽名.png", PNG)
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${mediaFormId}/records`,
+      headers: A(),
+      payload: {
+        values: { 品名: "單簽", 簽收: [{ key: sig.body.key, name: "簽名.png" }] },
+      },
+    })
+    expect(res.statusCode).toBe(201)
+  })
+})
+
 describe("F-5 v1.1 P1 殘留補強", () => {
   it("FMEA S7:記錄 soft-delete 後,已綁附件不可再下載", async () => {
     const { body } = await upload(A(), "隨記錄.pdf", Buffer.from("%PDF-1.7\nrec"))
