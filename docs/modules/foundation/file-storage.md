@@ -209,6 +209,50 @@ interface StorageDriver {
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-28)— **本模組原無競品證據,事後補**
+
+> 原設計已對照 docs/22 上傳鐵則,但**未對照 OWASP File Upload Cheat Sheet 或任何競品**。
+
+### 已修(commit `26c4c11`)
+
+| # | 發現 | 修法 |
+|---|---|---|
+| 1 | **儲存型 CSV 公式注入** —— `file-type.ts` 只要副檔名 csv/txt 且無 NUL 即放行;`=cmd\|'/c calc'!A1` 是**合法 CSV**,同事下載以 Excel 開啟即觸發 DDE。客戶天天用 Excel,這條路徑是實的 | 偵測並拒收(**不靜默改寫** —— 上傳的是使用者原始檔案,改內容會破壞資料),訊息引導改用 .xlsx |
+| 2 | **上傳端點無專用限流 + 全檔進記憶體** —— `part.toBuffer()` 讀整檔,全域 throttler 僅 300/60s → 單 IP 一分鐘可推 ~6GB 進堆積體,Cloud Run 直接 OOM | `@Throttle` 60/min。**60 是校準過的**:初版 20/min 立刻打到既有整合測(剛好 20 次上傳),證明對真實使用過緊 —— 圖片欄本身允許每欄 20 張、Ragic 亦有多筆檔案上傳 |
+| 3 | **RTL 覆寫檔名偽裝** —— 含 `U+202E` 的 `發票<RLO>gpj.exe` 顯示為 `發票exe.jpg`。header 注入原已擋住,**顯示層偽裝沒擋** | `sanitizeFilename()`:NFC 正規化 + 剝除雙向標記與控制字元 + Windows 保留名前綴 + 去尾端點空白 + 路徑分隔字元 |
+
+> **順帶修正一個既有的錯誤假設**|原以為 Excel 匯出有 CSV injection 風險 —— **實際上是安全的**:
+> SheetJS `json_to_sheet` 把值寫成共用字串 cell(`t="s"`)而非公式 cell,Excel 開啟顯示為字面文字。
+> 風險在**上傳側**,以及未來若有人加 `bookType: "csv"` 或手拼 CSV。
+
+### 未修(已立 task #102)
+
+| 嚴重度 | 發現 |
+|---|---|
+| 🔴 | **Fastify 4.28.1 已 EOL 不再收安全修補**(當初為避型別重複而釘)。CVE-2026-33806(Content-Type 前導空白繞過 body 驗證)只修在 5.8.5 |
+| 🔴 | **無防毒掃描會卡 ISO 27001 A.8.7** —— 食品業做 GFSI / 客戶稽核必問「附件是否掃毒」。低 ops 解:ClamAV 打成 Cloud Run 容器**非同步**掃(零常駐)+ `scan_status` 欄 + 只掃高風險型別(PDF/OOXML/CSV;影像已由 sharp 解碼驗證,可跳過 → 掃描量降 ~80%)。純 OSS 無 daemon 替代:`yara-x`(BSD-3,單 binary) |
+| 🟠 | **Polyglot 存活** —— PNG/WebP 未旋轉時位元組原封、`stripJpegMetadata` 在 SOS 後原樣保留 → **尾部附加的 ZIP 完整存活**(zip 讀取器從檔尾找中央目錄)。目前靠 `octet-stream + attachment + nosniff` 擋住觸發。**應把「不得 inline 提供 / 不得直出 CDN / 不得解壓範本」寫成模組不變量** |
+| 🟠 | **PDF 與 OOXML 零內容驗證** —— `.docm` 改名 `.docx` 仍是巨集檔。最省做法:把 OOXML 當 zip 讀 `[Content_Types].xml` 拒 macroEnabled + 拒 `word/vbaProject.bin`(只讀中央目錄不解壓);PDF regex 掃 `/JavaScript|/OpenAction|/Launch|/EmbeddedFile` |
+| 🟠 | **代理下載擴展天花板** —— 瓶頸不是事件迴圈(`StreamableFile` 是串流)而是**出口頻寬與並發**:Cloud Run 每實例並發 80 × 20MB 即塞滿,單實例約 100–200 Mbps;R2 零 egress 的優勢被 Cloud Run 出口吃掉一半。**兩全模式**:每次下載仍打 API 做權威授權,通過後回 302 到 **TTL 30–60 秒**的 presigned URL,簽章時帶 `response-content-disposition` 與 `response-content-type` 覆寫(S3/R2 皆支援)→ 授權每次重新求值、header 仍受控、位元組不經應用層 |
+| 🟠 | **SheetJS 由 CDN tarball 安裝** —— `xlsx` 走 `https://cdn.sheetjs.com/...`,OSV / npm advisory / Dependabot 依 npm 座標比對,**URL 依賴掃不到**,牴觸 AGENTS 供應鏈 P0。lockfile 有 integrity(竄改可偵測)但無漏洞通報。**目前無 CI 可掛 gate** |
+
+### ✅ 稽核確認已擋
+
+SVG 改名 `.png`(簽章不匹配 → 415)· 路徑穿越 / key 注入(server 生成 uuid + `KEY_RE` 雙驗 + local driver 前綴比對)· 跨租戶 key 偽造(key 非憑證,`requireFile` 回查 + RLS 兜底)· 內容嗅探 XSS(`octet-stream + attachment + nosniff`;HTML/SVG 進不了白名單)· Content-Disposition header 注入(`encodeURIComponent` + ASCII 過濾)· 影像解壓縮炸彈(`limitInputPixels` 50MP)· multipart parts 炸彈(`files:1, fields:8`)· zip slip / zip bomb(**不解壓 → 對伺服器不適用**)。
+
+### 來源
+
+- [File Upload — OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)
+- [CSV Injection — OWASP](https://owasp.org/www-community/attacks/CSV_Injection) · [OWASP WSTG — Testing for CSV Injection](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/21-Testing_for_CSV_Injection)
+- [PolyShell: unrestricted file upload in Magento — Sansec](https://sansec.io/research/magento-polyshell)
+- [CVE-2026-33806 — Fastify body schema validation bypass](https://github.com/advisories/GHSA-247c-9743-5963) · [Fastify LTS / EOL policy](https://fastify.dev/docs/latest/Reference/LTS/)
+- [CVE-2025-24033 — @fastify/multipart unlimited resource consumption](https://advisories.gitlab.com/pkg/npm/@fastify/multipart/CVE-2025-24033)
+- [ISO 27001:2022 Annex A 8.7 — Protection Against Malware](https://www.isms.online/iso-27001/annex-a-2022/8-7-protection-against-malware-2022/)
+- [Automate malware scanning for uploaded files — Google Cloud](https://docs.cloud.google.com/architecture/automate-malware-scanning-for-documents-uploaded-to-cloud-storage)
+- [Serving Private S3 Objects: Backend Proxy vs Presigned URLs](https://georg-schwarz.com/blog/serving-private-s3-objects-backend-proxy-gateway-auth-presigned-urls/)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

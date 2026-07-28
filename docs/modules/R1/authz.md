@@ -284,6 +284,72 @@ resolveForActor(tenantId, actorId):
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-28)— **本模組原無證據段,事後補**
+
+> **背景**|本模組設計時未對照任何競品,純憑推理。2026-07-28 全庫稽核發現 24 份 module doc
+> 中 13 份無證據錨定,本檔為其一。以下為補做的向上設計研究與其結論。
+> **產出形式**|已修者記於此並附 commit;未修者另開 task。
+
+### 七個既有決定的裁決
+
+| # | 決定 | 裁決 | 依據 |
+|---|---|---|---|
+| 1 | 完整角色樹(parent_id + recursive CTE) | ⚠️ **應調整** | Salesforce 官方建議階層「越平越好、3–4 層幾乎永遠夠、勿超 10 層」,深階層拖慢 sharing recalculation。**Airtable / Baserow / NocoDB / Ragic 完全沒有角色樹**,只有平面角色 + 資源層級覆寫。→ schema 保留(成本已付),但**預設 UI 應收成平面角色 + 群組**,樹降為進階功能。客戶是行政兼職,理解成本才是瓶頸 |
+| 2 | 欄位級權限在應用層強制 | ✅ **維持** | Salesforce FLS、Odoo 欄位 `groups=`、Baserow 欄位權限**全部在應用/ORM 層**。DB column privilege 綁 DB role,無法對應每租戶動態欄位。**層級選對了,風險在旁路(見下)** |
+| 3 | 記錄級權限當初不做 | 🔴 **必補** | 取代 ERP 必然要「業務只看自己的單」。已立 [E-1 dynamic-permissions](dynamic-permissions.md) |
+| 4 | 新表 deny-by-default | ⚠️ **應調整** | Confluence 官方明文「open by default,需要才限制」;Airtable base 協作者預設看得到所有 table;Salesforce 新自訂物件 OWD 預設 Public Read/Write。**Salesforce 2021 強制 Private 只針對 Guest User**,內部同事場景業界預設是「繼承 / 開放」。建議加租戶級 `new_form_default`(deny / 繼承分類 / 全員可檢視),**預設繼承分類**;欄位與外部使用者維持 deny |
+| 5 | org owner → 租戶 admin | ✅ **維持** | NocoDB 建立者自動成為 workspace Owner,同型。補 break-glass 稽核即可 |
+| 6 | 只做 per-request 權限快取 | ✅ **維持** | SpiceDB/Zanzibar 的跨請求快取是為「每秒百萬次檢查」而生,並需 zookie 解 new-enemy problem。本專案量級不需要。**查無**可公開引用的「快取導致已撤銷權限仍生效」具名事故 |
+| 7 | 動作集(非 4 級) | ⚠️ **應調整為並用** | **SharePoint 是兩者並用的教科書**:33 個細粒度 permission,組成 View Only < Read < Contribute < Edit < Design < Full Control 有序預設。**Jira 亦按受眾複雜度分流**(team-managed 固定三角色;company-managed 才細粒度)。**Salesforce 分層並用**:物件層動作集、記錄層有序。→ **動作集是對的底層,錯在直接曝露給行政人員**;應內建具名預設(檢視者/填單者/編輯者/核准者/設計者)為主控件,「自訂」才展開勾選 |
+
+> **反面校正**|Ragic 那五級(無權限/問卷式/僅閱覽/佈告欄式/管理者)**不是嚴格全序** ——
+> 問卷式能新增但只見自己、僅閱覽見全部但不能新增,兩者不可比較。所以它本質是
+> 「具名預設」而非有序 enum。**這反而支持動作集為底層的選擇。**
+
+### 🔴 應用層遮罩的旁路清單(最重要的產出)
+
+原實作為「查完再遮」—— 只擋回傳值,擋不住**用查詢反推值**。
+
+**廠商已承認 / 有 CVE 者:**
+
+| 旁路 | 證據 | 本專案狀態 |
+|---|---|---|
+| WHERE 篩選反推 | Salesforce `WITH SECURITY_ENFORCED` 官方明載**只檢查 SELECT/FROM,不含 WHERE 與 ORDER BY** | ✅ **已修**(commit `41155c4`) |
+| ORDER BY 排序反推 | 同上 | ✅ **已修** |
+| 快速搜尋掃隱藏欄 | — | ✅ **已修** |
+| 公式 / 計算欄引用隱藏欄 | **CVE-2019-11780**(Odoo:可觸發 non-stored computed field 繞過存取權) | ⚠️ 待查 |
+| **匯出路徑漏檢** | **CVE-2024-12368**(Odoo:export 未限制敏感欄,任何內部使用者可匯出他人 OAuth token) | ✅ **結構上安全** —— 匯出由前端以已遮罩之 records 產生,不另走後端查詢 |
+| yes/no oracle 盲推 | **CVE-2024-36259**(Odoo mail) | ⚠️ 待查 |
+| **變更歷史 / 通知洩漏** | **Ragic 官方明載**:Hidden 欄「只隱藏版面介面,資料仍會出現在**變更歷史與記錄更新通知**」 | ✅ **通知已安全**(H-1 `safeTitle()` 型別上不接受欄位值);⚠️ 變更歷史待查 |
+| 報表 / 列表視圖 / 搜尋 / API 繞過 | Salesforce Help 000232772、000324731 | ⚠️ 待查 |
+| 寫入面 mass-assignment | Odoo 官方:欄位設 readonly 不足 | ✅ 已有 `assertWritable` 白名單 |
+
+**推斷但必防(尚未查核)**:聚合 SUM/COUNT 洩值 + **tracker attack**(兩個差一筆的聚合相減鎖定單筆)· GROUP BY 洩基數 · 唯一性驗證訊息反推(「此編號已存在」)· Link&Load / Lookup / Rollup 帶出隱藏欄 · **metadata endpoint 回傳欄名本身即情報**(「離職原因」「毛利率」)· 分頁 total count · 條件式格式規則殘留欄名 · 錯誤訊息(PG 非 leakproof 函數可經錯誤訊息洩漏參數)。
+
+→ **建議終局形態**:欄位權限**在 query builder 層強制**(拒絕無權欄進 select/where/order/group/aggregate),而非查完才遮。
+
+### 來源
+
+- [SharePoint user permissions and permission levels — Microsoft Learn](https://learn.microsoft.com/en-us/sharepoint/sites/user-permissions-and-permission-levels)
+- [Types of permissions in Jira — Atlassian](https://support.atlassian.com/jira-cloud-administration/docs/types-of-permissions-in-jira/)
+- [Security in Odoo — 官方開發文件](https://www.odoo.com/documentation/19.0/developer/reference/backend/security.html)
+- [CVE-2019-11780](https://github.com/odoo/odoo/issues/42196) · [CVE-2024-12368](https://github.com/odoo/odoo/issues/193854) · [Odoo CVE 列表](https://www.cvedetails.com/vulnerability-list/vendor_id-16543/product_id-38140/Odoo-Odoo.html)
+- [Salesforce stripInaccessible / WITH SECURITY_ENFORCED](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_with_security_stripInaccessible.htm)
+- [Salesforce: Report Displays a Hidden Field(000232772)](https://help.salesforce.com/HTViewSolution?id=000232772)
+- [Salesforce: Guest User Security Policies and Timelines](https://help.salesforce.com/apex/HTViewHelpDoc?id=sf.networks_guest_policies_timelines.htm)
+- [Ragic 存取權限(官方)](https://www.ragic.com/intl/zh-TW/doc/32/access-rights) · [Ragic 欄位進階設定(hidden 語意)](https://www.ragic.com/intl/en/doc/64/additional-field-settings)
+- [Confluence permissions best practices — Atlassian](https://confluence.atlassian.com/security/permissions-best-practices-1409093142.html)
+- [Baserow field-level permissions](https://baserow.io/user-docs/field-level-permissions) · [Baserow role levels](https://baserow.io/user-docs/set-permission-level)
+- [NocoDB roles & permissions](https://nocodb.com/docs/product-docs/roles-and-permissions/roles-permissions-overview)
+- [Zanzibar / zookie — Authzed](https://authzed.com/learn/google-zanzibar)
+- [Cybertec: when is a function leakproof](https://www.cybertec-postgresql.com/en/when-is-a-function-leakproof/)
+- 遷移期放寬之既有做法:[Tealium Permissions Enforcement](https://docs.tealium.com/administration/permissions-system-migration-guide/permissions-enforcement/) · [Cloudinary Roles & Permissions 遷移](https://cloudinary.com/documentation/dam_permissions_migration)
+
+### 後續 task
+[#100 已完成](#) 三條查詢旁路已修;角色樹 UI 收斂 / deny-by-default 調整 / 具名預設 UI / 其餘旁路查核 **尚未開 task**。
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

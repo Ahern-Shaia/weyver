@@ -193,6 +193,71 @@ Input validation：新 options（colors/parent/lookup/rollup/link/autoNumber pat
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-28)— **本模組原無證據段,事後補**
+
+> 當初實作 28 種型別時只確認「有沒有這個型別」,**未對照任何競品的行為細節**。
+> 以下依**毀資料風險**排序。已立 [task #105]。
+> **可逐條對照的機器級文件**:**Airtable Web API「Field model」**(34 型別 × cell value
+> 讀寫格式 / null 表示 / webhook 差異)—— 業界唯一可當 checklist 的行為規格。
+> Ragic 只有設計手冊 + KB 問答,行為散落需反推;**兩家皆無正式行為規格文件**。
+
+### 🔴 三項毀資料風險
+
+**1|select 選項「值即名稱」+ 刪除即清空**
+Airtable multiSelect 存 **array of strings**(值即字串非 id)→ **改名 = 既有值全變**;
+刪除選項則**直接清空既有記錄該格**(社群一致,官方文件未載),官方 FAQ 只給「先複製到另一欄」的 workaround。
+本專案 `choicesSchema = {choices: string[]}` 是同一形狀。
+→ **這裡應該贏 Airtable**:選項存 **stable option id**(顯示名另存)使改名零風險;
+刪除改 **soft-retire**(標 archived、新記錄不可選、既有值保留為灰底孤兒值),刪除對話框顯示「N 筆記錄使用中」。
+**是遷移期就該修的結構債。**
+
+**2|lookup 的 live vs snapshot 未顯式化 —— ERP 的經典分歧**
+- **Ragic 官方說得最透**:**連結與載入 = 需要觸發(快照)**,只在選連結欄位時帶入。理由原文:
+  「不必讓本月商品的變動內容影響**去年的舊訂單**」
+- **Airtable 官方**:lookup = **即時**(「always be up-to-date in all tables」)
+- ⚠️ Ragic 另有官方文件專門教「不小心觸發同步/重算導致手動值遺失,**如何從備份找回**」—— 業界已知事故
+
+→ **兩者都要,升為欄位層顯式設定**:`lookup(live)` 供主檔參照(客戶電話),
+`snapshot`(link&load)供單據凍結(訂單上的地址 / 單價),**ERP 單據預設 snapshot**。
+重算時機維持「讀時算」(N+1 已由 rollupBatch 處理),但 **snapshot 欄必須寫時定值**。
+
+**3|型別轉換缺 lossy 層**
+- **Airtable 官方**:「works to convert…some conversions may not be possible—like text→attachment **clears the text values**」——**盡力轉、轉不動直接清空,無預覽無警告**
+- **Salesforce 官方(企業級對照)**:「**To avoid losing data, only convert custom fields that have no data**」;明列 →Number 一律 lossy;**picklist→multi-picklist 保留值但不在定義內的值會被刪**
+- **無公認相容矩陣**(查無),各家自訂
+
+本專案 `type-conversions.ts` 只允許 5 條「物理不變 + 語意放寬」,其餘拒絕 ——
+**方向正確**(比 Airtable 安全、貼近 Salesforce),但缺 parity 常用路徑。
+→ **三態取代二態**:safe(直通)/ **lossy**(dry-run 預覽「N 筆將被清空」+ 二次確認 + 轉換前自動快照原值到影子欄保留 30 天)/ forbidden。
+優先補 `singleSelect→multiSelect`(Salesforce 有先例)、`text→number/date`、`number/date→text`。**絕不做盡力轉直接清空。**
+
+### 🟡 其餘落差
+
+| 項 | 業界 | 建議 |
+|---|---|---|
+| `""` vs NULL | Airtable **數值欄的 0 與空等價**(`{Number}=BLANK()` 對 0 回 true);Ragic 相反且更粗糙(數值欄套公式一律回 0)。**兩家都不嚴格區分,是已知的爛設計不是慣例** | 寫入端統一把 `""` normalize 成 NULL,避免 text 欄出現「兩種空」導致 `IS NULL` 篩選漏抓;checkbox 建議 `NOT NULL DEFAULT false` |
+| money 精度 | Airtable **每欄設定小數位與符號**,且「不支援同一欄多幣別」 | 現行 `numeric(19,4)` 儲存 + 每欄 `precision` 顯示已兩者兼得。但 R2 需 **ISO 4217 minor unit 依幣別捨入** → 現在就把「顯示精度(每欄)」與「結算捨入精度(每幣別)」拆成兩個 metadata 欄,別共用一個 `precision` |
+| 計算欄依賴 | Airtable 有 **Field Manager「Dependencies」面板**,刪除前可查誰依賴;官方承認「referenced condition field 被刪或改型別 → **can blank the field's values entirely**」 | 拓撲排序偵測環(建立時拒)+ 被引用欄改軟刪除並列依賴清單阻擋 |
+| autoNumber | **Airtable 官方**:「record 刪除後其餘**不重新編號**,留下 gap」——**不回收**;Ragic 同,另提供「設定下一筆序號」與「空值自動填入序號」 | **不回收(維持)**。補 Ragic 有的兩項(遷移必用);**reset 邊界改用租戶時區**算 reset_key —— 用 UTC 會跨年/跨月早幾小時歸零 |
+
+### ✅ 已優於或等同業界(維持不動)
+
+- **NULLS LAST**|Airtable 官方:「in almost all cases, sorting **ascending** will place **blank values first**」,要空值墊底得靠反轉排序方向 hack。**本專案的預設較佳**
+- **date 用 PG `date`、dateTime 用 `timestamptz`**|**Airtable「stores dates in GMT」正是位移 bug 的來源**;本專案沒犯這個錯
+- `numeric(19,4)` · autoNumber 不回收
+
+### 來源
+
+- [Airtable — Web API Field model(唯一可逐條對照的機器級規格)](https://airtable.com/developers/web/api/field-model)
+- [Airtable — Sorting & Record Ordering](https://support.airtable.com/docs/sorting-records-in-airtable-views) · [Identifying Blank Values](https://support.airtable.com/docs/identifying-blank-values) · [Field Type overview](https://support.airtable.com/docs/field-type-overview) · [Number-Based Fields](https://support.airtable.com/docs/number-based-fields-in-airtable) · [Timezones and Locales](https://support.airtable.com/docs/timezones-and-locales) · [Lookup Field Overview](https://support.airtable.com/docs/lookup-field-overview)
+- [Airtable Community — removing a select option clears cells](https://community.airtable.com/t5/other-questions/how-do-you-remove-an-option-from-a-select-list/td-p/134010)
+- [Ragic — 哪些功能能自動同步、哪些需要觸發(link&load = 快照之權威來源)](https://www.ragic.com/intl/zh-TW/doc-kb/which-features-sync-data-automatically-and-which-require-triggering)
+- [Ragic — 自動產生欄位值](https://www.ragic.com/intl/zh-TW/doc/auto-generated-field-values) · [連結與載入](https://www.ragic.com/intl/zh-TW/doc/link-and-load) · [數值欄公式回傳空值而非 0](https://www.ragic.com/intl/zh-TW/doc-kb/How-to-make-calculated-fields-empty-instead-of-zero)
+- [Salesforce — Considerations for Converting the Field Type of a Custom Field](https://help.salesforce.com/s/articleView?id=platform.notes_on_changing_custom_field_types.htm)
+- [Baserow — Field converter](https://baserow.io/docs/plugins/field-converter)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

@@ -224,6 +224,74 @@
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-28)— **本模組原無證據段,事後補**
+
+> 對照 OWASP Multi-Tenant Security / Session Management / Password Storage cheat sheets
+> 與 GitHub Advisory DB。**研究者另讀了 better-auth 1.6.23 的 dist 原始碼確認行為**;
+> 三項高風險發現皆由本人對照本專案程式碼再次驗證。
+
+### 🔴 P0-1|成員被移除後仍保有完整存取(**已修**,commit `6bc366d`)
+
+`auth-guard.ts` 原本只做 `activeOrganizationId → tenantId` 查表,**從不驗此人此刻是否仍為該 org 成員**。
+而 better-auth 的 `removeMember` **只在「使用者移除自己且正是當前 session」時**清 `activeOrganizationId`
+—— 管理員移除他人時,被移除者的 session 完全不受影響。session 預設 7 天且未設 `expiresIn`。
+
+> **結論:移除成員原本是 no-op。** 被解僱員工到 session 過期前仍可讀寫該租戶全部資料。
+> 這正是 OWASP Multi-Tenant Security Cheat Sheet 點名的「tenant context 未逐請求重驗」。
+
+**修法**|`IdentityService.isOrgMember()` 逐請求查 `member` 表,查無即 403 `NOT_ORG_MEMBER`。
+**驗證**|回歸測斷言移除前 200 / 移除後 403;並**反向驗證** —— 拿掉修正後該測試回到 200,證明測試有鑑別力。
+**殘留**|未補 `afterRemoveMember` hook 同步清 `role_members`;未設 `session.expiresIn`;無 `revokeOtherSessions`。
+
+### 🔴 P0-2|`NODE_ENV` 未設時靜默降級為 dev 旁路(**已修**,同 commit)
+
+`env.ts` 的 `NODE_ENV` 有 `.default("development")`,而**兩道防線都掛在 `NODE_ENV === "production"`**:
+(a) `TenantGuard` 的認證強制 → 降級為 `DevTenantGuard`,任何人送 `x-dev-tenant: N` 即取得該租戶且 `isSuperAdmin`;
+(b) `BETTER_AUTH_SECRET` 的 fail-fast → 回退成硬編碼 dev secret。
+**單一環境變數遺漏即全開,且無任何錯誤訊息。** 同類事故有前例(OAuth2-proxy CVE-2025-64484 header smuggling、Traefik CVE-2026-35051)。
+
+**修法**|新增**無預設、prod 須顯式設定**的 `WEYVER_ENFORCE_PROD_SECURITY`,與 `NODE_ENV` 取「或」——只能加嚴不能放寬。
+**業界更佳做法(未做)**|編譯期排除 —— 把 `DevTenantGuard` 移到只在非 prod build 引入的模組;CI 對 prod 映像跑 `curl -H 'x-dev-tenant: 1'` 斷言 401/403。
+
+### 🔴 P0-3|邀請可被未驗證 email 冒領(**已修**,commit `41155c4`)
+
+**CVE-2026-53514 / GHSA-fmh4-wcc4-5jm3** 於 better-auth 1.6.11 修好,但其 fallback 邏輯是:
+未顯式設 `requireEmailVerificationOnInvitation`、且使用內建 opaque invitation id 時**判定為 false(不要求驗證)**。
+本專案未設該選項、亦無 email 驗證流程(`emailVerified` 恆為 false)→ 攻擊路徑重開:
+知道受邀 email → 搶註冊該 email → 接受邀請 → 進入他人租戶。
+
+**修法**|顯式開啟該選項。
+⚠️ **開啟後 email 驗證流程即為必要前置** —— `sendVerificationEmail` 尚未實作,
+**邀請功能在該流程完成前不可對外開放**(目前亦未接入任何 UI,不影響既有流程)。
+
+### 其餘發現(未修)
+
+| 項 | 內容 |
+|---|---|
+| P2 | `setActive` 不重發 session token(ASVS 3.2.1「權限變更須換 session id」之精神未滿足);切換 org 是全域的,同一使用者開兩分頁操作不同 org 會互相污染。**建議改由 client 每請求送 `X-Org-Id` 並對 `member` 表驗證** —— 比 session 全域狀態安全且無競態 |
+| P2 | `allowUserToCreateOrganization` 預設 true → 任何註冊者可無限建 org,經 hook 無限建 tenant |
+| P2 | `getFullOrganization` 預設對全體成員曝露完整成員名單含 email(社群 issue #6038,未修) |
+| — | **`pnpm audit` 目前有 critical + high**(@fastify/middie 中介層繞過、fastify Content-Type、@nestjs/platform-fastify URL 編碼繞過)—— **比 better-auth 本身更急**,見 task #102 |
+
+### ✅ 確認無問題
+
+- **Argon2id 參數**|`@node-rs/argon2` 預設實測輸出 `$argon2id$v=19$m=19456,t=2,p=1`,**正好等於 OWASP Password Storage Cheat Sheet 最低建議**。已正確覆寫 better-auth 預設的 scrypt
+- **better-auth 1.6.23 對已知 advisory 全數已修**(共 25 筆);未使用 sso / api-key / oidc-provider / mcp plugin,故 CVE-2026-53513(SSRF, CVSS 9.6)、CVE-2025-61928 等不適用
+- **公開第三方安全審計報告:查無**。該專案靠社群回報 + GitHub Advisory 流程(2025-02 起 25 筆,節奏密集)→ `^1.6.23` 的 caret 範圍應搭配 Renovate + `pnpm audit` CI gate
+
+### 來源
+
+- [Multi Tenant Security — OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)
+- [Password Storage — OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [Session Management — OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+- [GHSA-fmh4-wcc4-5jm3 — unauthorized invitation acceptance via unverified email](https://github.com/advisories/GHSA-fmh4-wcc4-5jm3)
+- [Better Auth SSRF CVE-2026-53513](https://securityonline.info/better-auth-ssrf-cve-2026-53513/) · [CVE-2025-61928](https://www.esecurityplanet.com/threats/better-auth-flaw-allows-unauthenticated-api-key-creation/)
+- [better-auth issue #6038 — get-full-organization 曝露成員名單](https://github.com/better-auth/better-auth/issues/6038)
+- [OAuth2-proxy header smuggling bypass](https://appsecuritystandards.org/blog/oauth2-proxy-authentication-bypass-a-header-smuggling-breakdown) · [Traefik ForwardAuth bypass CVE-2026-35051](https://www.systemshardening.com/articles/network/traefik-forwardauth-bypass/)
+- [Preventing cross tenant access — AWS SaaS Lens](https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/preventing-cross-tenant-access.html)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

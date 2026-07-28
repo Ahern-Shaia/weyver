@@ -185,6 +185,64 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-28)— **本模組原無證據段,事後補**
+
+> **最重要的一句**|**parity 對象 Ragic 官方文件本身就有本檔列為 P1 的絕大多數功能**
+> (會簽 / 擇辦 N-of-M、代理人簽核、三種加簽、動態簽核人)。**這不是「進階」,是基準線。**
+
+### 七個既有決定的裁決
+
+| # | 決定 | 裁決 | 依據 |
+|---|---|---|---|
+| 1 | 不用 durable execution | ✅ **維持** | **Odoo 自 v11 移除 workflow engine**,改 state field + button 觸發(官方 forum);Temporal 官方 blog 主張的價值全在 durable timer / SLA / 自動 escalation / 跨系統 exactly-once,**並未反駁「純人工等待用 DB 狀態機」**。⚠️ 但一旦做逾期提醒即需 scheduler —— BullMQ repeatable job 即可,仍不需 Temporal |
+| 2 | 按鈕動作只有 updateSelf + pushTo | ✅ **維持** | 無反證;通知模組已 SHIPPED,原「Email/SMS 依通知 infra」之缺口自然癒合 |
+| 3 | 階層順序簽 / 並簽排 P1 | 🔴 **應改(兩處)** | (a) **簽核者只能是靜態 `approverRoleId`**,沒有「直屬主管 / 直屬主管的主管 / 前一簽核人的主管」動態解析 —— **Ragic 官方三者皆原生**。沒有它這不是「階層簽」而是「靜態多關角色簽」,行政人員得為每個部門建一組 role + 一份 approval_def,**維護不了**。(b) 會簽/擇辦在 Power Automate 是**兩個一級 action**(everyone must approve / first to respond),Ragic 有「會簽/擇辦人數/單人指定」,Odoo 有 minimum approvers。食品廠「品保 + 生產雙簽」是典型場景 |
+| 4 | ZEN 決策表 | ✅ **維持,但價值未兌現** | DMN 界共識:決策表可由 business 自行維護,BPMN gateway 需 BA;GoRules 官方明列 approval workflows 為 JDM 用例。⚠️ **但目前 condition 只由程式結構化組出**,**沒把決策表 UI 曝露給管理員** —— ZEN 的價值(非工程師自己改規則)尚未兌現,等於付了依賴成本沒拿到報酬 |
+| 5 | 定義 metadata / instance RLS | ✅ **維持** | 與 view_def 一致,無反證 |
+| 6 | 整筆鎖 | ⚠️ **應調整** | 鎖本身正確 —— **Salesforce 提交即自動鎖定整筆**,是業界慣例。但 Salesforce 同時給**三條逃生路徑**:admin 永遠可編輯、allowed users 白名單、Unlock action。本專案只有 withdraw,**簽核人離職會導致記錄永久鎖死** |
+| 7 | 「簽核完自動執行」為首選延後件 | ⚠️ **優先序錯** | 它已做完,但排在代理簽核 / 會簽之前是錯的 —— 前者是便利,後者是**流程卡死** |
+
+### 🔴 漏掉的必備語意(依優先序)
+
+**P0(上線即會痛)** → 已立 [task #103]
+
+1. **代理簽核 / 職務代理人**|Salesforce 有標準 `Delegated Approver` 欄位;SAP 分計畫/非計畫代理 + 起訖日;Ragic 使用者表單有「啟用及通知代理人」。**台灣企業職務代理人是內控慣例**。缺 → 經理請假整條線卡死,唯一解是 admin withdraw 重送
+2. **動態簽核人解析**(直屬主管 / 上上層 / 前一簽核人的主管)—— 與 1 是同一組修補
+3. **逾期提醒 + 升級**|SAP S/4 2020+ Deadline Monitoring 為標配。**但不要做「逾期自動核准」** —— SOX 內控文獻一致主張升級到主管或備援簽核人,而非自動放行
+4. **禁止自簽(self-approval)**|SOX checkpoint 明列「financial transactions 不得自簽」。目前 `decide()` 只驗角色成員,**送簽者若在該角色內即可核准自己的單**。**最便宜的高價值修補**
+5. **駁回強制填理由**|目前 `comment` 為 optional。退回重工與稽核都需要
+6. **送簽前空簽核者防呆**(既有 FMEA A8 殘留)
+
+**P1** → 已立 [task #104]
+
+7. **會簽 / 擇辦(N-of-M)**|實務上「全部同意」用於責任分擔(品保+生產),「任一同意」用於加速與代理,**兩者都常用**
+8. **加簽 / 轉簽**|Ragic 三型:向前(前一關加人並暫停自己)/ 臨時(同關)/ 向後(下一關);Power Automate 的 Reassign 是一級按鈕
+9. **退回到指定關**|Salesforce 每個 step 可選 reject behavior:「終審駁回」vs「只退這關」。目前只有終審駁回 + 重送從頭 —— **這是 SAP/ServiceNow 的合法預設**(ServiceNow 社群甚至偏好 cancel-and-resubmit,理由是複雜度低、指標乾淨),**可維持但需列為已知取捨並補「重送時帶回原值」**
+10. **鎖定逃生路徑**|allowed-users 白名單 / admin 強制解鎖 / 改派簽核人
+11. **簽核歷史 append-only 強制**|**21 CFR Part 11 要求 audit trail「不得遮蔽先前記錄」且「連系統管理員都不應能改」**;食品廠 ISO 22000 / HACCP 稽核同源。目前只是「不去改」,**沒有機制保證**
+
+> **已實作但本檔原未列**|撤回(withdraw)✅ 對應 Salesforce Recall,無需補。
+
+### 資料模型
+
+`approval_def` + `approval_instance` + `approval_step_log` **就是公認形狀** ——
+「mutable summary 供畫面 + append-only event log 為真相」。**不需要事件溯源**;但 log 必須真 append-only(見 P1-11)。
+⚠️ 並發雙簽:`decide()` 先讀後寫有 race window,應改**條件式 UPDATE**(`WHERE status='pending' AND current_step=N`)或唯一約束。
+
+### 來源
+
+- [Ragic 設定簽核(官方)](https://www.ragic.com/intl/zh-TW/doc/15/approval-flow-configuration) · [Ragic 使用簽核流程(官方)](https://www.ragic.com/intl/zh-TW/doc-user/13/approval-flow)
+- [Salesforce: Record Locking in Approval Processes](https://help.salesforce.com/s/articleView?id=platform.automate_automated_approvals_concept_record_locking.htm) · [Withdraw/Recall Approval Request](https://help.salesforce.com/s/articleView?id=sf.approvals_users_recall.htm) · [Delegated Approver(社群)](https://patrik-js.medium.com/setting-a-delegated-approver-in-salesforce-356702b201f)
+- [Power Automate: Get started with approvals](https://learn.microsoft.com/en-us/power-automate/get-started-approvals)
+- [Odoo 18 Studio Approval rules](https://www.odoo.com/documentation/18.0/applications/studio/approval_rules.html) · [Odoo: exec_workflow removed in v11/v12(官方 forum)](https://www.odoo.com/forum/help-1/migration-from-odoo-8-to-odoo-12-removed-functionality-exec-workflow-162368)
+- [SAP Flexible Workflow 代理 / forwarding / deadline(社群)](https://community.sap.com/t5/enterprise-resource-planning-q-a/workflow-delegation-when-the-normal-recipient-is-not-available/qaq-p/12374500)
+- [Temporal: Human-in-the-Loop Approval Workflows](https://temporal.io/blog/human-in-the-loop-approvals)
+- [ServiceNow: 駁回後重送策略(社群)](https://www.servicenow.com/community/developer-forum/restart-approval-workflow-after-rejection/td-p/3310744)
+- [Camunda DMN vs BPMN gateway](https://camunda.com/dmn/) · [GoRules ZEN JDM](https://docs.gorules.io/reference/json-decision-model-jdm)
+- [SOX approval flow checkpoints](https://ocd-tech.com/sox/how-to-make-your-approval-flows-comply-with-sox-audit-checkpoints) · [21 CFR Part 11](https://www.ecfr.gov/current/title-21/chapter-I/subchapter-A/part-11)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

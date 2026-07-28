@@ -192,6 +192,76 @@
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-29)— **本模組原無證據段,事後補**
+
+### 🔴 已修:型別推斷吃掉前導零(commit `ae5d2bb`)
+
+**實測確認為真 bug 而非取捨**(`node -e` 直接跑):
+
+| 輸入 | 原本判定 | 匯入後 |
+|---|---|---|
+| `00123`(郵遞區號 / 舊料號)| number | **`123`** —— 前導零永久消失 |
+| `0912345678`(台灣手機)| number | **`912345678`** |
+| 15 位以上純數字 | number | 超過 `MAX_SAFE_INTEGER`,**精度損毀** |
+
+客戶手上的舊 Excel 幾乎必有電話 / 統編 / 郵遞區號欄,**而匯入正是 onboarding 第一線**。
+
+**修法**|一票否決規則(前導零 / 超精度 / 8–14 位純數字 / 含電話分隔符),
+且**只要有一格命中就整欄退 text** —— 寧可讓使用者手動改成數字(可改),也不能讓前導零消失(不可逆)。
+欄名為量值時(數量/金額/單價…)不誤擋。
+**踩點**|初版把否決放在最前面,結果 `2026-07-22` 也被擋(`6-0` 命中電話分隔規則)→ 移到日期判定之後。
+
+**Flatfile / Dromo(廠商文件)明示**:「前導零有語意的欄(郵遞區號 / 員工編號)**就該定為 Text**」。
+
+### 🔴 已修:批次匯入只回第一個錯誤列(commit `3ddea8a`)
+
+原本 `createManyRecords` 逐列 `throw BulkRowError` → **5000 列有 30 個錯要來回試 30 次**。
+業界一律一次回報完整清單:**Salesforce Data Loader** 產 success/error 兩份 CSV、**Ragic** 逐列處理可跳過。
+**修法**|交易內先全列預檢(不插入)→ 收集所有失敗 → `BulkValidationError` 帶完整清單;原子性維持。
+
+> **業界共識**:all-or-nothing 是 **PostgreSQL `COPY` 的資料庫預設,不是 UX 預設**。
+> CSVBox / Integrate.io:「a few bad rows blocks progress and frustrates customers」。
+> **Salesforce NPSP 有明確 Dry Run 兩階段。**
+
+### 🔴 未修:parity 破口 —— 已立 [task #106]
+
+> **Ragic 官方的匯入主入口是「既有 sheet 的列表頁 → Tools → Import Data From File」**
+> —— 遷移後客戶每天在做的是這件事,不是建表。而 OQ-GEI-4 裁定只做「Excel→新表單」。
+
+| 項 | 內容 |
+|---|---|
+| **匯入既有表 + 欄位對映** | Airtable 策略:欄名完全相符自動配對,其餘下拉手動;多出的欄 →「建立新欄位 / 忽略」;**模糊比對只做建議不自動套(誤配比未配更貴)** |
+| **upsert by key** | 無此功能則重覆匯入必產生重複資料。**Ragic 官方三政策**:新增 / 更新既有 / 只更新不新增;Airtable 有「Merge with existing records」 |
+| **匯入撤銷** | **Ragic 官方有** Recent Changes → Revert 整批還原。已有 soft delete 地基 → 加 `import_batch_id` 即可,低成本高價值 |
+| **大檔** | 目前主執行緒同步讀、無 Worker、無 `dense`、**硬上限 5000 列直接截斷**。SheetJS 官方要求大檔用 `dense:true` + Web Worker,>100M cells 撞 V8 字串上限,官方明說「處理很大的檔應在伺服器端」。**客戶 3 萬列的舊 Excel 現在無解 —— 對「既有客戶遷移」定位是硬傷** |
+| 靜默錯誤 | **多工作表寫死 `SheetNames[0]` → 靜默吃錯表**;標題列寫死 `matrix[0]`;合併儲存格 SheetJS 只左上格有值 → 靜默空值 |
+
+### 推斷規則的其餘改進(未修)
+
+- 取樣改 **200 列且分層**(頭 50 / 中 100 / 尾 50)—— 目前只取前 50,舊資料常集中檔頭。**Power Query 官方即取前 200 列**
+- 命中門檻由 100%(`allMatch`)改 **≥95%**,離群列列入預檢報告
+- 日期改用 `cellDates:true` 取 **Excel 序列值**(序列值本身無地區歧義),文字才走 regex;`x/y/z` 且無任一段 >12 時標「歧義」要使用者選 MDY/DMY(對齊 Excel 匯入精靈)
+- 面板加「自動推斷 開/關」+「全部設為文字」逃生鍵(**對齊 Airtable 的可關閉開關**)
+
+### ✅ 產品方向確認
+
+**Ragic 建表時是引導使用者逐欄指定型別、不靜默猜**;Airtable 的自動推斷可關閉。
+→ 本專案的「**猜 + 預覽可覆寫**」其實比 Ragic 前進,方向對,值得保留為差異化;
+要補的只有推斷規則的三個經典坑(已修其一)與逃生鍵。
+**前端解析(SheetJS in browser)的取捨也正確**(隱私 + 零 infra),只需加 Worker/dense + 後端補一條超大檔路徑。
+
+### 來源
+
+- [Ragic — Importing and Exporting(官方)](https://www.ragic.com/intl/en/doc/41/importing-and-exporting) · [Mass Update by Importing](https://www.ragic.com/intl/en/doc-kb/65/Mass-Update-by-Importing) · [Migrate Excel Data](https://www.ragic.com/intl/en/doc-kb/54/migrate-excel-data-to-ragic)
+- [Airtable — Creating a new base via CSV import](https://support.airtable.com/hc/en-us/articles/202579399-Creating-a-new-base-via-CSV-import) · [CSV Import Extension](https://support.airtable.com/docs/csv-import-extension)
+- [Microsoft — Data types in Power Query(前 200 列推斷)](https://learn.microsoft.com/en-us/power-query/data-types)
+- [SheetJS — Large Datasets / dense mode](https://docs.sheetjs.com/docs/demos/bigdata/stream/) · [Web Workers](https://docs.sheetjs.com/docs/demos/bigdata/worker/) · [issue #1136 — 90MB 檔案](https://github.com/SheetJS/sheetjs/issues/1136)
+- [Salesforce Trailhead — Import Dry Run](https://trailhead.salesforce.com/content/learn/projects/import-your-data-using-npsp-data-importer/perform-an-import-dry-run)
+- [CSVBox — Support partial imports with valid rows only](https://blog.csvbox.io/partial-import-valid-rows/) · [Dromo — Common data import errors](https://dromo.io/blog/common-data-import-errors-and-how-to-fix-them) · [Flatfile — Top 6 CSV import errors](https://flatfile.com/blog/top-6-csv-import-errors-and-how-to-fix-them/)
+- [Airtable Community — Undo an import](https://community.airtable.com/other-questions-13/undo-an-import-16986)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
