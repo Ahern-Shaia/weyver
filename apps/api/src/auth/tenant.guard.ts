@@ -29,8 +29,12 @@ export class TenantGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    /* 三個來源取「或」—— 只能加嚴不能放寬。
+       `WEYVER_ENFORCE_PROD_SECURITY` 為無預設之顯式旗標:NODE_ENV 有 `.default("development")`,
+       prod 漏設時會靜默降級為 dev 旁路(任何人送 x-dev-tenant 即得 isSuperAdmin)。 */
     const enforce =
       this.config.get<string>("NODE_ENV") === "production" ||
+      this.config.get<string>("WEYVER_ENFORCE_PROD_SECURITY") === "1" ||
       this.config.get<string>("ENFORCE_AUTH") === "1"
     const resolved = await (enforce
       ? this.authGuard.canActivate(context)

@@ -44,6 +44,16 @@ export class AuthGuard implements CanActivate {
       })
     }
 
+    /* 🔴 逐請求重驗成員資格 —— session 的 activeOrganizationId 是登入當下的快照,
+       管理員移除他人不會使其失效(見 IdentityService.isOrgMember 註解)。
+       不驗 = 移除成員形同 no-op。 */
+    if (!(await this.identity.isOrgMember(session.user.id, orgId))) {
+      throw new ForbiddenException({
+        code: "NOT_ORG_MEMBER",
+        message: "not a member of the active organization",
+      })
+    }
+
     const tenantId = await this.identity.getTenantIdByOrg(orgId)
     if (tenantId === null) {
       throw new ForbiddenException({

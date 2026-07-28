@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { and, eq, isNull } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
 import { tenants, users } from "../db/schema.js"
 
@@ -66,6 +66,23 @@ export class IdentityService {
       .where(eq(tenants.authOrgId, authOrgId))
       .limit(1)
     return rows[0]?.id ?? null
+  }
+
+  /* 🔴 逐請求重驗組織成員資格。
+
+     **為什麼必須每次查**|session 裡的 `activeOrganizationId` 是**登入當下**寫入的快照。
+     Better Auth 的 `removeMember` 只在「使用者移除自己且正是當前 session」時清該欄 ——
+     管理員移除他人時,**被移除者的既有 session 完全不受影響**。
+     若只憑 session 解析租戶,移除成員實質上是 no-op:被解僱員工到 session 過期前
+     (預設 7 天)仍可讀寫該租戶全部資料。這正是 OWASP Multi-Tenant Security
+     Cheat Sheet 點名的「tenant context 未逐請求重驗」。
+
+     `member` 為 Better Auth 的表(Tier-1 系統表,非 RLS)→ 走特權車道。 */
+  async isOrgMember(authUserId: string, authOrgId: string): Promise<boolean> {
+    const result = await this.db.execute(
+      sql`SELECT 1 AS ok FROM "member" WHERE "userId" = ${authUserId} AND "organizationId" = ${authOrgId} LIMIT 1`,
+    )
+    return result.rows.length > 0
   }
 
   async getActorIdByUser(authUserId: string): Promise<number | null> {

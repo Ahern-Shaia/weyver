@@ -136,3 +136,29 @@ describe("AuthGuard 租戶隔離(F-2 M3;prod session)", () => {
     expect((res.json() as { code: string }).code).toBe("NO_ACTIVE_ORG")
   })
 })
+
+describe("🔴 成員撤銷必須立即生效(追溯稽核 P0)", () => {
+  it("**被移出組織後,舊 session 立刻失效** —— 不驗成員資格則移除成員形同 no-op", async () => {
+    const cookie = await onboard("revoked@w.test", "待撤銷", "revoke-co", "撤銷測試公司")
+
+    // 撤銷前:可正常存取
+    const before = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie } })
+    expect(before.statusCode).toBe(200)
+
+    /* 直接從 member 表移除 —— 等同管理員移除他人。
+       Better Auth 的 removeMember 只在「使用者移除自己且正是當前 session」時清
+       activeOrganizationId,故被移除者的 session cookie 依然有效且仍帶著 activeOrg。 */
+    const org = await pool.query<{ id: string }>(
+      `SELECT o.id FROM "organization" o WHERE o.slug = 'revoke-co'`,
+    )
+    const orgId = org.rows[0]?.id ?? ""
+    expect(orgId).not.toBe("")
+    const del = await pool.query(`DELETE FROM "member" WHERE "organizationId" = $1`, [orgId])
+    expect(del.rowCount).toBeGreaterThan(0)
+
+    // 撤銷後:同一個 cookie 必須被拒
+    const after = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie } })
+    expect(after.statusCode).toBe(403)
+    expect((after.json() as { code: string }).code).toBe("NOT_ORG_MEMBER")
+  })
+})

@@ -12,6 +12,17 @@ export const envSchema = z
     APP_DATABASE_URL: z.string().optional(),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    /* 🔴 部署環境的**顯式**宣告,無預設值。
+
+       **為什麼不能只靠 NODE_ENV**|它有 `.default("development")`,而兩道防線都掛在
+       `NODE_ENV === "production"` 上:(a) TenantGuard 的認證強制、(b) BETTER_AUTH_SECRET
+       的 fail-fast。prod 部署漏設 NODE_ENV 時**兩者同時靜默失效** ——
+       任何人送 `x-dev-tenant: N` 即取得該租戶且 isSuperAdmin,同時 secret 回退成硬編碼值。
+       單一環境變數遺漏即全開,且不會有任何錯誤訊息。
+
+       故另立一個**無預設、prod 必須顯式設定**的旗標:設為 "1" 即進入強制模式,
+       且與 NODE_ENV 取「或」—— 任一為 prod 語意即強制,只能加嚴不能放寬。 */
+    WEYVER_ENFORCE_PROD_SECURITY: z.enum(["0", "1"]).optional(),
     // dev/test 開關:設 "1" 則即使非 prod 也走真實 session 認證(測 auth-gate 用)。
     // prod 一律強制認證,不受此旗標影響(見 TenantGuard)。預設關 → dev 免登入(x-dev-tenant)。
     ENFORCE_AUTH: z.enum(["0", "1"]).default("0"),
@@ -39,7 +50,9 @@ export const envSchema = z
     STORAGE_TENANT_QUOTA_MB: z.coerce.number().int().min(0).default(2048),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === "production" && !env.BETTER_AUTH_SECRET) {
+    const prodSecurity =
+      env.NODE_ENV === "production" || env.WEYVER_ENFORCE_PROD_SECURITY === "1"
+    if (prodSecurity && !env.BETTER_AUTH_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["BETTER_AUTH_SECRET"],
