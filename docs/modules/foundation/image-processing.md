@@ -1,6 +1,7 @@
 # image-processing.md — [F-7] 影像處理(EXIF 剝除 / 縮圖 / HEIC)設計文件
 
-> ✅ **狀態:APPROVED — OQ-IP-1..9 已裁定(2026-07-28;全採建議);進入 M1**
+> ✅ **狀態:SHIPPED v1.0(2026-07-28)** — M1–M4 完成。EXIF 無損剝除 / 320px webp 縮圖 / 50MP 炸彈防護 / 前端 HEIC 路徑皆已上線,api 9 單元 + 4 整合 + web 3 e2e 綠。
+> **已知殘留**|(a) 既有影像未回溯剝除 EXIF(OQ-IP-6=A);(b) PNG/WebP 之 metadata 未剝(僅 JPEG 有無損切段實作);(c) **iOS Safari 自動轉檔前提未實機驗證**(桌面 harness 無法測,見 FMEA P9)。
 > **裁定摘要**|1=A 前端轉檔 · 2=A 同步縮圖 · 3=A 衍生 key · **4=C 無損切段優先** · 5=A 50MP 上限 · 6=A 不回溯 · 7=A 單一 320px webp 永不放大 · 8=B WASM 留 P1(**M3 須實測 iOS 自動轉檔前提**)· 9=A 不建重生工具,缺縮圖退回原圖。
 >
 > **收斂三個模組共同記錄的 P1 殘留**(皆註明「需影像處理相依,同批補」):
@@ -159,20 +160,22 @@
 
 ---
 
-## 12. 失效場景反思(FMEA)— M4 收尾必填;pre-mortem 預列
+## 12. 失效場景反思(FMEA)— ✅ M4 確認(2026-07-28)
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| P1 | **解壓縮炸彈**:小檔宣告巨大尺寸 → 解碼 OOM | 顯式 `limitInputPixels`(OQ-IP-5);**已實測 sharp 預設擋不住 1.6 MB / 149.8 MP** | P0 |
-| P2 | 誤用 `withMetadata()` / `keepExif()` → GPS 被放回 | 程式碼註解明載禁用;測試斷言輸出**無** EXIF | P0 |
-| P3 | 剝 EXIF 後照片方向跑掉(橫躺) | `.rotate()`(= autoOrient)先把方向燒進像素;測試以帶 orientation 的圖驗證 | P1 |
-| P4 | 縮圖 key 後綴破壞既有 key 形狀白名單 → 下載被擋 | `KEY_RE` 同步放寬並補測;衍生 key 一律由伺服器生成 | P1 |
-| P5 | 處理失敗(損毀檔 / 不支援)導致整個上傳失敗 | 處理失敗 → 明確 415/422 訊息;**不**落半成品到儲存 | P1 |
-| P6 | 同步處理拖慢上傳 / 併發吃滿 CPU | 實測 28 ms;`sharp.concurrency` 設限 + 既有 throttler;Cloud Run 另設 `MALLOC_ARENA_MAX` 防 glibc 碎片化 | P1 |
-| P7 | 既有已上傳影像仍含 EXIF | **已知殘留**(OQ-IP-6=A);doc 明列,不假裝已解決。**先例警示**:Partiful 事故中修補後**有回溯清洗既有照片** —— 若 pilot 上線前影像量仍少,應考慮補做 | P1 |
-| P10 | 縮圖產生失敗或缺漏 → 版面破圖 | 前端缺縮圖時**自動退回原圖**(OQ-IP-9=A),行為上永不壞 | P2 |
-| P8 | 跨平台 lockfile 缺目標平台二進位 → 部署失敗 | pnpm `supportedArchitectures` 明列 linux-x64-glibc;CI 驗證 | P1 |
-| P9 | iOS 自動轉檔的前提不成立 → iPhone 使用者仍被擋 | **證據強度僅為社群回報** → M3 必須實測;不成立則啟用 OQ-IP-8=A(WASM) | P1 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| P1 | **解壓縮炸彈**:小檔宣告巨大尺寸 → 解碼 OOM | `limitInputPixels = 50 MP` 於**每一次** sharp 建構(metadata / 主檔 / 縮圖三處皆帶);超限回 **413 `IMAGE_TOO_LARGE`** 明確訊息 | P0 | ✅ 已緩解(單元測以 8000×8000 PNG 斷言 413) |
+| P2 | 誤用 `withMetadata()` / `keepExif()` → GPS 被放回 | `image-processor.ts` 檔頭以 ⚠️ 明載禁用;單元測直接斷言輸出 `metadata().exif` 為 `undefined`(測試圖刻意寫入 GPS) | P0 | ✅ 已緩解 |
+| P3 | 剝 EXIF 後照片方向跑掉(橫躺) | orientation > 1 → `.rotate()` 重編碼把方向燒進像素;縮圖**一律** `.rotate()`。單元測以 orientation 6 之圖斷言「寬高互換 + 標籤消失」 | P1 | ✅ 已緩解 |
+| P4 | 縮圖 key 後綴破壞既有 key 形狀白名單 → 下載被擋 | `KEY_RE` 放寬為 `…(\.thumb)?(\.[A-Za-z0-9]{1,8})?$`;`thumbnailKeyOf()` 為唯一產生處(伺服器端),並補測「衍生 key 仍符合白名單」 | P1 | ✅ 已緩解 |
+| P5 | 處理失敗(損毀檔 / 不支援)導致整個上傳失敗或落半成品 | 解碼失敗 → **422 `IMAGE_UNREADABLE`**,**不**落儲存(先處理再落地);縮圖失敗僅 warn 不阻斷 | P1 | ✅ 已緩解(實作期由假 PNG fixture 觸發而補齊) |
+| P6 | 同步處理拖慢上傳 / 併發吃滿 CPU | 實測 28 ms;既有 20 MB 上傳上限 + throttler 為前置閘 | P1 | ⚠️ **部分**|`sharp.concurrency` 與 Cloud Run `MALLOC_ARENA_MAX` **尚未設定** → 併入部署硬化(docs/11 §16),pilot 前補 |
+| P7 | 既有已上傳影像仍含 EXIF | **不回溯**(OQ-IP-6=A) | P1 | ⚠️ **已知殘留,刻意接受**。Partiful 事故先例中修補方**有**回溯清洗 → **pilot 上線前應複查影像量並考慮補做** |
+| P8 | 跨平台 lockfile 缺目標平台二進位 → 部署失敗 | — | P1 | ⚠️ **未緩解**|`supportedArchitectures` 尚未設定(目前僅本機 darwin-arm64)。**首次容器化部署必踩** → 列入部署前置 |
+| P9 | iOS 自動轉檔的前提不成立 → iPhone 使用者仍被擋 | `accept` 不含 `image/heic`(觸發 iOS 自動轉 JPEG);**若不成立**則啟用 OQ-IP-8=A(WASM `heic-to`) | P1 | ⚠️ **前提仍未驗證** —— 桌面 Playwright harness 無法測 iOS Safari 的檔案選擇器行為,**只能實機驗**。降級路徑已備妥:後端 `UNSUPPORTED_FILE_TYPE` 訊息已明確指引 iPhone 使用者(不是「不支援的檔案類型」一句),即使前提不成立也不會無所適從 |
+| P10 | 縮圖產生失敗或缺漏 → 版面破圖 | `?variant=thumb` 取不到縮圖時後端**回原檔**;前端無分支邏輯 | P2 | ✅ 已緩解(e2e 斷言縮圖端點恆 200) |
+
+**P0 全數緩解**;殘留 4 項均為 P1/P2 且歸屬明確(P6/P8 → 部署硬化、P7 → pilot 前決策、P9 → 實機驗證)。
 
 ---
 
@@ -180,5 +183,6 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | **v1.0 SHIPPED** | M1–M4 完成。**M1** `ImageProcessor`(無損切段 `stripJpegMetadata` + `.rotate()` 正規化 + 320px webp 縮圖 + 50MP 上限)+ 9 單元測;**M2** `thumbnailKeyOf` 衍生 key + `?variant=thumb` 端點(無縮圖回原檔)+ 孤兒回收涵蓋縮圖 + `KEY_RE` 放寬;**M3** `useFilePreview` 預設取縮圖、`accept` 排除 HEIC、`describeEngineError` 三則可行動訊息;**M4** `image-processing.spec` 3 e2e + FMEA 確認。**實作期兩個發現**:(a) 假 PNG fixture 觸發 500 → 補齊設計中已列但未實作的 **422 `IMAGE_UNREADABLE`**;(b) `Content-Length` 誤用 `file_object.size`(已含縮圖之配額)導致下載截斷 → 改取 `storage.stat()`。**未做**:OQ-IP-8 WASM(P1)、P6/P8 部署硬化、P7 回溯 | Claude Code |
 | 2026-07-28 | **v0.2** | **競品研究後改寫**(站在巨人肩膀上)。§0.3 加競品實作對照:Ragic **1 個縮圖 / 預設高 120px / 永不放大**;Airtable **官方明載不改原檔**、3 縮圖、URL 2 小時過期;Teable 2 縮圖且 **changelog 實證「縮圖忽略 EXIF orientation」之坑**與「預生成必須自建重生」之代價;Dropbox 提供**客戶端以 JPG 上傳**(支持前端轉檔路線);**Partiful 2025-10 GPS 外洩事故**(TechCrunch,兩日修補並回溯清洗)。§0.4 實測重編碼 vs 無損切段。**推翻原 OQ-IP-4 建議**:改採**無損切除 metadata 段**(像素位元組不動,等同 Airtable「不改檔案」精神又消除 GPS);OQ-IP-7 以 Ragic 規格錨定(單一尺寸、永不放大);新增 OQ-IP-9(不建重生工具,改以「缺縮圖退回原圖」)| Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT — 收斂 image-signature-fields S3/S4/HEIC 與 file-storage 之縮圖殘留。**§0.1 本機實測**推翻兩項前提:(a) HEIC **不是**加相依就能解 —— 我們的 sharp 預建版無 HEVC 解碼器,且維護者已表態永不內含(專利);(b) 縮圖**不需背景 job** —— 實測 24MP→240px 僅 28ms。另實測發現 **1.6MB 檔案可宣告 149.8MP**,sharp 預設 pixel 上限擋不住(解碼約需 450MB)→ 列 P0。**§0.2 網路研究**:授權可解(LGPL,decode-only 避開 x265 GPL)但**專利不可解**(HEVC 池明文涵蓋雲端服務按用戶計費)→ HEIC 走前端轉檔。P0 = EXIF 剝除 + 同步縮圖 + 炸彈防護 + 前端 HEIC 路徑。OQ-IP-1..8 待裁定 | Claude Code |

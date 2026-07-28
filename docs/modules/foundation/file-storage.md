@@ -41,7 +41,7 @@
 - ❌ **presigned URL 直傳 / 直下**|P0 走伺服器代理(可集中驗型別/權限、正確設 header);大檔直傳與 CDN 簽名 URL → P1(OQ-FS-2/3)。
 - ❌ **image / signature 欄型**|本模組只解「基礎設施 + attachment 欄」;image/signature 為 field-types-parity 之 P1 子件(解鎖後另行落地)。
 - ❌ **合併列印範本上傳 + Carbone**|print-merge P1(解鎖後另行落地);本模組只提供儲存能力。
-- ❌ **縮圖 / 影像處理(Sharp)、CDN 快取、浮水印**|P1(docs/11 §3.6 已列 Sharp self-host 為選項)。
+- ❌ **縮圖 / 影像處理(Sharp)、CDN 快取、浮水印**|P1(docs/11 §3.6 已列 Sharp self-host 為選項)。**(2026-07-28:縮圖與影像處理已由 [F-7 image-processing](image-processing.md) v1.0 結清 —— 縮圖以 `{key}.thumb.webp` 衍生 key 存放、`?variant=thumb` 讀取、孤兒回收一併涵蓋;CDN 快取與浮水印仍為 P1。)**
 - ❌ **版本化 / 復原、跨區複製**|P2。
 
 ---

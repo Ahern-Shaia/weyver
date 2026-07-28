@@ -45,7 +45,7 @@
 - ❌ **EXIF 剝除**|需影像處理相依,與縮圖同批 → P1(§12 S4 明列隱私殘留)。
 - ❌ **合規電子簽章(TWCA / 不可否認性 / 時戳)**|docs/23 v6.1 C2 已裁定 → **R2**。本模組只做「畫押圖片」,**不宣稱法律效力**(OQ-IS-8)。
 - ❌ **Ragic 之簽名背景圖 / 載入預製簽名 / 移除邊界空白**|OQ-IS-7 → P1。
-- ❌ **HEIC/TIFF**|magic bytes 白名單未含(iPhone 原生格式需轉檔相依)→ P1,與縮圖同批。
+- ❌ **HEIC/TIFF**|magic bytes 白名單未含(iPhone 原生格式需轉檔相依)→ P1,與縮圖同批。**(2026-07-28 更新:F-7 裁定伺服器端**永不**支援 HEIC —— HEVC 專利池明文對雲端服務按用戶計費;改以前端 `accept` 觸發 iOS Safari 自動轉 JPEG,並提供明確錯誤指引。)**
 - ❌ **Glide 網格內編輯圖片/簽名**|同 attachment,網格不可 inline 編輯(僅顯示有無)。
 
 ---
@@ -135,14 +135,14 @@ canvas + Pointer Events(滑鼠/觸控/手寫筆統一事件模型)→ `canvas.to
 
 ## 12. 失效場景反思(FMEA)— ✅ M4 收尾確認(2026-07-28)
 
-> **結論**|P0(S1/S2)已緩解且有測試斷言;S3/S4 為 OQ-IS-4 之已知取捨(誠實殘留)。
+> **結論**|P0(S1/S2)已緩解且有測試斷言;S3/S4 原為 OQ-IS-4 之已知取捨,**2026-07-28 由 F-7 image-processing v1.0 結清**(伺服器縮圖 + EXIF 無損剝除);HEIC 亦由 F-7 改走前端轉檔路徑。
 
 | # | 場景 | 落地緩解 | Sev | 狀態 |
 |---|---|---|---|---|
 | S1 | 圖片欄被上傳可執行檔 / 偽裝影像 | ✅ magic bytes 判型(全域)+ **`isMimeAllowedForField` 依欄型再收斂為僅 `image/*`**,不符 415。測:PDF→image 欄 415、PDF→attachment 欄仍 201(收斂只針對影像欄)| P0 | ✅ |
 | S2 | 簽名圖被當成法律效力憑證 | ✅ UI 全程無「已簽署 / 具法律效力」字樣;簽名可清除重簽;元件註解與本 doc 明載合規簽章屬 R2(docs/23 v6.1 C2)| P0 | ✅ |
-| S3 | 大量大圖拖慢列表 / 記錄頁 | 顯示尺寸限制(`maxHeightPx`,預設 96)+ 每欄 20 張 + 單檔 20MB + 租戶配額。**殘留:無伺服器縮圖**(OQ-IS-4=A 之取捨;原圖直出)| P1 | ⚠️ 已知 |
-| S4 | 照片 EXIF 含 GPS / 裝置資訊外流 | **殘留**:P0 無剝除能力(需影像處理相依)。**隱私影響須知**:手機拍攝之照片可能含 GPS,下載者可讀取 → 與縮圖同批(Sharp)補 | P1 | ⚠️ 未做 |
+| S3 | 大量大圖拖慢列表 / 記錄頁 | 顯示尺寸限制(`maxHeightPx`,預設 96)+ 每欄 20 張 + 單檔 20MB + 租戶配額。**✅ 已由 F-7 image-processing v1.0 結清**:上傳時同步產 320px webp 縮圖,前端預覽預設取縮圖(實測 11.2 KB 原圖 → 0.21 KB 縮圖)| P1 | ✅ 已緩解(F-7)|
+| S4 | 照片 EXIF 含 GPS / 裝置資訊外流 | **✅ 已由 F-7 image-processing v1.0 結清**:JPEG 於上傳時**無損切除** APP1/APP13 段(像素位元組不動),GPS/Make/Model 一併消失。**殘留**:(a) 本模組 v1.0 前已上傳之影像不回溯(F-7 OQ-IP-6=A);(b) PNG/WebP 之 metadata 未剝 | P1 | ✅ 已緩解(F-7;兩項殘留見 F-7 FMEA P7)|
 | S5 | 簽名 canvas 在觸控裝置畫線時頁面捲動 | ✅ `touch-action: none` + Pointer Events(統一滑鼠/觸控/手寫筆)| P1 | ✅ |
 | S6 | 高 DPI 螢幕簽名模糊 | ✅ canvas 依 `devicePixelRatio` 放大再以 CSS 縮回;瀏覽器實測 CSS 278×140 → 位圖 556×280 | P2 | ✅ |
 | S7 | 簽名未存檔即離開 → 產生孤兒檔 | ✅ 沿用 file-storage 兩階段綁定(未綁 24h → orphaned、72h 實體回收,F-6 M4 排程)| P2 | ✅ |
@@ -154,5 +154,6 @@ canvas + Pointer Events(滑鼠/觸控/手寫筆統一事件模型)→ `canvas.to
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | v1.0(殘留結清)| **S3 / S4 / HEIC 三項殘留由 [F-7 image-processing](../foundation/image-processing.md) v1.0 結清** —— 伺服器縮圖(320px webp,預覽自動取用)、EXIF 無損剝除(JPEG APP1/APP13 切段)、HEIC 改前端轉檔。本模組程式碼未動 | Claude Code |
 | 2026-07-28 | **v1.0** | **SHIPPED** — M1 後端(registry 兩型 + 上傳閘門 + 影像 MIME 收斂;**順帶修既有隱性缺陷**:`toDbValue` 原硬編 `"attachment"` 才序列化 → 改以 `dbFieldType === "jsonb"` 判定,否則新 jsonb 欄型存檔必 PG 22P02)· M2 `ImageInput`(多張 + 縮圖 + 移除)· M3 `SignatureInput`(自建 canvas + Pointer Events)· M4 顯示面 + `image-signature.spec` 3 測 + FMEA。api 317 + web 45 + e2e 31 全綠。commit `a057008`(後端)+ `0247c68`(前端)。**殘留**:S4 EXIF 剝除 / S3 伺服器縮圖(Sharp,同批)/ HEIC·TIFF / Ragic 之簽名背景圖·移除邊界空白 / 合規簽章(R2)| Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT — field-types-parity OQ-FTP-6 之 P1 子件,阻塞由 F-5 file-storage v1.1 解除。**§0 競品證據**(clean-room):Ragic 明載圖片欄與簽名欄皆為獨立型別、且明確區分簽名(欄位)與簽核(流程);Airtable/Teable 無簽名欄。P0 = 兩欄型 + 影像 MIME 收斂 + 上傳/預覽 UI + 顯示面;縮圖 / EXIF 剝除 / HEIC / 合規簽章 明確排除並附理由。零 migration、零新端點。OQ-IS-1..8 待裁定 | Claude Code |
