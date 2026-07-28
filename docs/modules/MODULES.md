@@ -3,6 +3,7 @@
 > **分類依據**|對齊 `docs/23 產品功能發布藍圖`(R1 完整 Ragic → R2 ERP+計算層 → R3 MES+ISO → R4 對標+AI)+ Foundation(Phase -1 基礎/橫切)。sprint 代號沿用 `docs/13`(P0-x=Phase 1、P1-x=Phase 2,歷史代號)。
 > **檔案組織**|各模組 design doc 依所屬 release 置於子資料夾 `docs/modules/<R1|R2|R3|R4|foundation>/`;`_template.md`(骨架)與本索引留在根層。**新模組動工前先寫 M0 design doc,依 release 放對資料夾,並在本表登錄。**
 > **流程**(每模組)|M0 DRAFT → OQ 裁定 APPROVED → M1..MN 實作(每 milestone 一 commit)→ FMEA 收尾 SHIPPED。詳見 `_template.md` + `memory/rule_module_design_flow`。
+> **[P0] 收尾必回填 `docs/25`**|模組 SHIPPED 時,除本表標 ✅ 外**必須**同步更新 `docs/25 功能完整對照清單` 之對應子功能列(✅ / 🟡 並註明界線)並重算覆蓋率 —— docs/25 是「仿 Ragic 進度」唯一權威,不回填則該數字失真(2026-07-28 實例:只落後四天即嚴重失真,須整份重查)。
 > **狀態圖例**|✅ SHIPPED · 🚧 進行中(APPROVED / 實作)· 📝 M0 DRAFT · ⬜ 未起(規劃中)
 
 ---
@@ -25,6 +26,7 @@
 
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
+| **通知系統(訂閱 / 提醒 / 通道)** | H-1 | 📝 **M0 DRAFT v0.1 — OQ-NT-1..9 待裁定(2026-07-28)**|**緣由**:docs/25 v1.5 覆蓋率彙總指出 H 段僅 12%,且**簽核已 SHIPPED 卻無機制告知下一關簽核人** —— 做完的功能因缺另一功能而不可用,為當前最大功能斷裂。**§0 Ragic 證據**:通知三層結構(全域開關 / 逐表單四開關 / **事件×通道矩陣**)全由終端使用者自設;「跟我相關」官方定義 = 新增 + 指派 + 回應;共通篩選訂閱有**進入 / 離開**兩種觸發;**批次匯入與大量修改刻意不通知**(風暴防護,明載);提醒為宣告式(日期欄 + N 天前後 + **收件人來自欄位值** + 每日排程 + 同天同收件人**預設合併**)。**競品分歧**:Airtable 把通知做成 automation 的 action 且 **Editors 只能檢視設定** → 與本專案自助化命門衝突,故採 Ragic 訂閱模型。**§0.3 實查出改 scope 的相依**:「跟我相關」三要素中 Weyver 僅 `createdBy` 成立 —— **member 欄型無前端渲染、註解功能完全不存在** → OQ-NT-2。P0 = 站內通知中心 + Email + 三層訂閱設定 + 簽核接通 + 風暴防護;**提醒 / LINE 等通道 / 註解 明確排除並附理由**(提醒需 cron 地基,C 段整項未起)。≈0.33 mo | [R1/notifications.md](R1/notifications.md) |
 | **表單引擎動態 schema 核心** | P0-1 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M7,59 tests,FMEA P0 全清)| [R1/form-engine-core.md](R1/form-engine-core.md) |
 | **表單設計器 + 填單 接引擎 API** | P0-1·UI | ✅ **SHIPPED v1.0**(2026-07-19;M0–M5,Playwright golden path 固化;**Gate P0-1 全數達成**)| [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | Grid 主檢視 + Excel 建表 onboarding | P0-2 | ✅ **SHIPPED v1.0**(2026-07-19;M0–M4;Glide 網格改格 + xlsx 推斷建表 bulk 灌資料;e2e 固化 + FMEA P0 全清)| [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
