@@ -225,6 +225,77 @@
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-29)— **本模組原無證據段,事後補**
+
+### 互動模型
+
+- **Ragic(官方 doc/37、72)**|建表 = 命名 → **直接進入該表單頁的設計模式**,在空儲存格打字建欄 → 點「儲存」離開。
+  **新建與既有是同一個設計器**,官方還建議「每改一些就存」。
+- **Airtable**|欄位在網格 `+` 即時生效、無發布;Interface / Form 才有 Draft → Publish。
+- **判斷**|業界慣例 = **schema 即時、版面 / 對外表單才 draft-publish**。
+  本專案的「layout 草稿 + 批次 Save」✅ 與 Ragic 一致;
+  但 🔴 **「新建 / 編輯兩套 UI」是自創** → 應收斂成單一設計器,新建僅為空白畫布 + 命名。
+
+### 2D 版面(最重要)
+
+> 🔴 **Ragic 的 2D 不是 12 欄格線,是 Excel。** 官方 kb/306:預設 **105 列 × 21 欄**、存檔時自動延伸;
+> 一個欄位佔兩格(標頭 + 值)、跨欄靠**合併儲存格**、拖邊線調欄寬「和 Excel 一樣」(doc/21)。
+> **目標使用者的心智模型是 Excel,不是 bootstrap 12 欄。**
+
+- **企業級對照**|Salesforce Page Layout、Zoho Creator 都是**區段 + 1–3 等寬欄、拖進 slot,不能自由定位**
+- **可用性研究**|CXL(n=702)單欄比多欄平均**快 15.4 秒**;Baymard:多欄易漏填易錯
+  → **2D 只在「複刻既有紙本 / ERP 單據」時有價值,不該當通用預設**
+- 🔴 **實作缺口**|`onDragEnd` 只 clamp col 邊界,**無重疊偵測 / 推擠 / 對齊輔助線**;
+  sensors 僅 `PointerSensor`,**無鍵盤或點擊定位 → 違反 WCAG 2.2 SC 2.5.7 拖曳替代(AA)**。
+  業界(react-grid-layout)必須明示 `preventCollision` / `compactType` / `allowOverlap` 三擇一
+- **Ragic 官方已知坑(kb/250)**|**子表向下擴展會把下方欄位擠跑版** —— 2D 的真實災難,插入子表時須自動保護整列
+
+### 欄位型別 palette(28 種)
+
+Airtable / Notion 官方皆提供**欄位搜尋**(Cmd+F / Find a field);本專案 `field-palette.tsx` 只有「基本 / 進階」兩組,
+**無搜尋、無常用置頂**。28 項觸 Hick's law,NN/g 漸進揭露適用。
+⚠️ 加搜尋 + 常用 6–8 置頂 + 其餘收合;⚠️ 把既有 `excel-import-panel` **升為第一建表入口**(自助建表最短路徑)。
+> Ragic 官方列 5 種建表入口:空白 / 應用商店 / 快速範本 / **匯入試算表** / **AI 設計表單** —— 「猜型別」有前例 ✅
+
+### 破壞性改型別
+
+- **Airtable**|幾乎任意轉,轉不掉的值**直接清掉**;官方建議先「複製欄位含資料」
+- **Baserow**|找不到 converter 就用 lenient `alter_field`,盡量轉、轉不動就丟,**但有完整 undo/redo Action 模型**
+- **Ragic**|刪除**被他表參照**的欄位**系統阻擋**
+- ⚠️ **判斷**|純白名單過嚴會讓行政人員卡死。改**三層**:安全轉換直接做 / 有損轉換 → 影響預覽 + 二次確認 + 自動備份原欄 / 破壞相依(公式・關聯・視圖)才阻擋並列相依清單(對照 Airtable **Field manager 依賴檢視**)。**與 [task #105] 同一件事**
+
+### 🔴 我可能想錯的
+
+1. **設計器與填單的關係** —— Ragic 官方 = **同一畫面切設計模式**;Airtable / Notion = 在資料網格就地改 schema;
+   只有 Jotform / Google Forms 這類「對外表單」才獨立 builder。
+   本專案 canvas = 填單畫面本身 ✅,但 `/builder` 與 `/app` 記錄工作台**仍是兩個入口** ⚠️
+   → **記錄頁應直接放「設計」切換鈕**
+2. 🔴 **協作** —— layout 是**整表 PUT 覆寫** → 兩人同改**後寫者覆蓋整張版面**。
+   Airtable 官方明言欄位設定不可鎖;Figma 為 server-authoritative last-writer-wins **per property**。
+   至少加樂觀鎖(version / If-Match)+ 衝突提示
+3. ⚠️ **版本 / 預覽** —— **Ragic 官方有設計版本紀錄可還原 + 變更總覽**(doc/72),
+   並要求正式環境重大改動走「測試帳號 → 匯出定義檔 → 還原」(kb/286);
+   Airtable Business+ 有 **App sandbox**(結構變更在 sandbox 做、Review changes 後 apply)。
+   本專案兩者皆無 → 先做 layout + field_def 版本快照還原,sandbox 排 R2
+4. Ragic 設計模式有 **Ctrl+K 搜尋欄位**(doc/167)與 Ctrl+Z(明列不可復原清單,doc/143)。
+   本專案 Ctrl+Z ✅ 對齊,**Ctrl+K 仍缺**
+
+### 優先序
+
+🔴 重疊策略 + 拖曳替代(WCAG)→ 🔴 layout 並發覆寫 → 🔴 雙模式收斂 → ⚠️ 型別轉換三層化 → ⚠️ palette 搜尋 / 常用 → ⚠️ 版本史
+
+### 來源
+
+- [調整表單及頁籤版面設計 — Ragic 官方 doc/21](https://www.ragic.com/intl/zh-TW/doc/21/tuning-the-layout-of-your-forms-and-tabs) · [建立新的 Ragic 表單 doc/37](https://www.ragic.com/intl/zh-TW/doc/37/creating-a-ragic-sheet) · [正式環境重大設計調整 kb/286](https://www.ragic.com/intl/zh-TW/doc-kb/286/major-design-changes-live-production-systems)
+- [Field Type overview — Airtable](https://support.airtable.com/docs/field-type-overview) · [App sandbox — Airtable](https://support.airtable.com/docs/app-sandbox-in-airtable) · [Field manager and field dependencies — Airtable](https://support.airtable.com/docs/field-manager-and-field-dependencies)
+- [Form Field Usability: Single vs Multi-Column — CXL(n=702)](https://cxl.com/research-study/form-field-usability/) · [Avoid Extensive Multicolumn Layouts — Baymard](https://baymard.com/blog/avoid-multi-column-forms)
+- [Understanding SC 2.5.7 Dragging Movements — W3C WAI](https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html)
+- [react-grid-layout(preventCollision / allowOverlap)](https://github.com/react-grid-layout/react-grid-layout)
+- [Rearrange Fields in a Form — Zoho Creator](https://help.zoho.com/portal/en/kb/creator/developer-guide/forms/add-and-manage-fields/articles/rearrange-fields)
+- [Progressive Disclosure — NN/g](https://www.nngroup.com/articles/progressive-disclosure/)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

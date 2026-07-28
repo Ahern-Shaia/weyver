@@ -233,6 +233,56 @@
 
 ---
 
+---
+
+## 0-bis. 追溯稽核(2026-07-29)— **借了 SAP Fiori 的名字卻沒對照其規範**
+
+> 本模組把右側詳情稱為「Object Page」—— 那是 **SAP Fiori 的既有語彙**。
+> 本次對照 SAP Fiori Design Guidelines 官方文件檢驗是否誤用。
+
+### 🔴 已修:切換記錄不重置編輯狀態(commit 見下)
+
+`form-workspace.tsx` 的 `<ObjectPage>` **未帶 `key={selected.id}`**,`object-page.tsx` 亦無以
+`record.id` 為依賴的 reset effect。而 `editing` / `draft` 是元件的 local state。
+→ **編輯 A 未儲存 → 點左側 B → 按儲存會把 A 的值寫進 B**,且帶的是 B 的 `expectedVersion`,
+**樂觀鎖擋不住**。這是 master-detail 版型特有的失效,Fiori 以 draft handling + 未儲存提示處理。
+**已加 `key` + e2e 回歸測**(反向驗證過:拿掉 `key` 該測試即紅)。
+
+### Fiori Object Page 官方規範對照
+
+| 項目 | 判斷 | 官方規範 |
+|---|---|---|
+| 借用「Object Page」名稱 | ✅ **站得住** | header / anchor / sections / display↔edit 四要件齊備 |
+| display 與 edit **同版面不移位** | ✅ **完全合規** | 官方原文「切換模式時內容不得改變位置」—— 這是最像 Fiori 的一點 |
+| Save / 取消放 header,**無 footer toolbar** | ⚠️ **應調整** | 官方分工明文:**Edit / Delete / Copy 在 header,Save / Post / Accept / Reject 在 footer**;簽核動作更該在 footer |
+| anchor bar **未涵蓋全部區段**(摘要 facet、關聯記錄未列入 `sections`)| 🔴 **違反** | 官方硬規則:**section 一律直接反映在導覽列** |
+| 狀態章 + 金額擠在 title 列,**header content 不可收合** | ⚠️ | 官方為 **key value facet** 置於 header content,捲動時 snap 收合 |
+| 缺 FCL 的展開 / 全螢幕 / 關閉 + 上下筆 paging | ⚠️ | **flexible column layout** 為官方標配 |
+
+> **一個重要澄清**|**List Report → Object Page 不等於「左清單右詳情」** ——
+> 兩者是各自獨立的 floorplan,靠 **flexible column layout(1/2/3 欄可展開全螢幕)** 才並置。
+> 亦即本模組的版型對應的是 **FCL**,不是 List Report + Object Page 的原生配對。
+
+### 其餘發現
+
+| 項 | 判斷 |
+|---|---|
+| **響應式** | 🔴 `form-workspace.tsx` **全無斷點**(無 `md:` / `lg:`),平板 / 手機必爆版。Material 官方 list-detail 降級:窄螢幕時清單與詳情各佔一畫面。詳情欄亦應隨寬度 4/3/2/1 欄降級(現固定 `sm:grid-cols-2`)|
+| **行內編輯** | ✅ **事實澄清** —— 實作**不是**「點欄位即編輯 + 自動儲存」,而是 **global edit + 明確儲存 + `expectedVersion` 樂觀鎖**,正是企業慣例與 Fiori 正解。⚠️ 建議補「依狀態切換」:已核准 → 唯讀(Salesforce 對簽核鎖定記錄**直接禁止 inline edit**)|
+| **關聯 rail** | ✅ 已分組、後端截斷 20 筆並標示。⚠️ 缺**筆數計數**與 **Show All (x)** 導向該表已篩選檢視 —— Fiori 對 >400 筆明文此解;Salesforce **Related Lists** 同構 |
+| **「審一批不換頁」** | ✅ 訴求成立,但 Fiori 官方明說**「需同時編輯多筆」不該用 object page** → 真要批次審應在列表模式做**多選 + 批次動作**。⚠️ 目前缺批次動作,兩者應並存 |
+| 清單列「標題 + 狀態章 + 金額」 | ✅ **不算過載** —— 與 Fiori key value facet 同構,是「不點進去就能決策」的最小集合 |
+
+### 來源
+
+- [Object Page Floorplan — SAP Fiori Design Guidelines(官方存檔 v1.82)](https://2227428884-files.gitbook.io/~/files/v0/b/gitbook-legacy-files/o/assets%2F-M7nTCCM8rifZ18NJbqH%2F-MMOwyS3Jyav-BwaYztJ%2F-MMPA_OvyQwePPa5LNQJ%2FObject%20Page%20Floorplan%20_%20SAP%20Fiori%20Design%20Guidelines.pdf?alt=media&token=e9efe194-7155-4635-bff3-7eddd96e0671)
+- [Object page floorplan — SAP Design System(現行 v1-136)](https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/floorplans/object-page/usage)
+- [Flexible column layout — SAP Design System](https://www.sap.com/design-system/fiori-design-web/v1-84/page-types/page-layouts/flexible-column-layout/usage)
+- [List-Detail Overview — SAP Fiori for Android](https://www.sap.com/design-system/fiori-design-android/v25-8/layouts/list-detail/list-detail-overview)
+- [Design an Adaptive Layout with Material Design](https://developer.android.com/codelabs/adaptive-material-guidance)
+- [Work with Related Lists on Records — Salesforce](https://help.salesforce.com/s/articleView?id=xcloud.basics_understanding_related_lists_lex.htm)
+- [Considerations for Inline Editing in a List View — Salesforce](https://help.salesforce.com/s/articleView?id=xcloud.basics_customviews_lv_lex_considerations.htm)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |

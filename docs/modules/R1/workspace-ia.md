@@ -140,6 +140,66 @@
 | W5 | rail 改版破壞既有路由 active 態 | RailLink isActive(pathname 前綴)沿用 + e2e 導航斷言 | P1 | ✅ builder/permissions/mfa/auth spec 全過 |
 | W6 | status bar 訂閱 query cache → 他元件 render 期同步 setState(React 警告)| 改 1s 輪詢(非訂閱)+ `setLastOk(prev⇒相等則不變)` | P1 | ✅ 瀏覽器 console 淨(僅基準 auth 401) |
 
+---
+
+## 0-bis. 追溯稽核(2026-07-29)— **IA 前提「不是全錯,但排序錯了」**
+
+### 🔴 最關鍵的發現:我選的首頁形態,正是 SAP 與微軟都已離開的形態
+
+**兩個明確的公開「功能導覽 → 任務導覽」轉向紀錄:**
+
+- **Dynamics 365(Microsoft Learn 官方)**|AX 2012 的 Role Center **已被 activity-oriented workspaces 取代**,
+  官方定義為「回答目標使用者最迫切的活動問題、並讓其發起最頻繁的任務」
+- **SAP S/4HANA(官方)**|新 **My Home** 取代舊 launchpad 首頁,內含 **To-Dos 區塊**聚合 My Inbox 任務與 situations
+
+> 對食品廠現場人員,「**今天要出貨什麼、哪張單等我簽**」比「有哪些表」更貼近登入意圖。
+> 而 OQ-WIA-5 把「工作項目中心」切成獨立模組、首頁刻意不留位置 —— **等於把最高價值元素排到最後**。
+
+### 首頁對照
+
+| 產品 | 登入後首頁 |
+|---|---|
+| **Ragic**(官方 doc/90)| **可客製多欄首頁,10 種區塊**:表單列表 / 行事曆 / **工作項目(待辦)** / 星號資料 / 圖表…;**左側列固定有「常用功能」+「最近使用」** |
+| Airtable | 最近開啟置頂 + 星號 + 全域搜尋 |
+| Notion | 預設開「上次造訪頁面」;Home = Recents / Favorites / Upcoming |
+| monday | **My Work = 指派給我的任務** |
+| Smartsheet | 建議項目 + workspaces;左欄 Recents(可釘 20)+ Favorites |
+
+**「純分類目錄」當唯一首頁,查不到任何主流產品這樣做。** 最接近的 Ragic 也只是把目錄當其中一個區塊,並列待辦與行事曆。
+
+### 逐項判斷
+
+| # | 決定 | 判斷 | 依據 |
+|---|---|---|---|
+| 首頁 = 分類目錄 | ⚠️ **方向對但缺一半** | 分類**有實證支持**:個人檔案檢索研究顯示使用者以 navigation 取回 **56–68%** 檔案、search 僅 4–15%,且資料夾導覽動用與實體空間導航相同腦區。**但「最近使用 / 我的最愛」不是分類的替代品而是加速器** —— 五家全有、Ragic 也有,**目前完全缺席**。表單破百時它才是主要入口 |
+| icon rail(無文字標籤) | 🔴 **應改** | **NN/g:圖示必須永遠伴隨可見文字標籤**,無標籤圖示語意極不穩定。**Material 3**:rail 適用 3–7 個目的地,4+ 至少顯示選中項標籤。目前 rail 塞了 Logo + 主導覽 + 設定群 + 主題 + 通知 + 登出,**已超載且異質**(導覽與帳號動作混在一起)。對現場人員 / 品保 / 行政,icon-only 是最高風險選擇 |
+| ⌘K 為搜尋主入口 | ⚠️ **保留但不可當主入口** | Google 研究員 Dan Russell 田野調查:**90% 使用者不知道 Ctrl+F**。command palette 是「已熟悉此 app 者的快捷路徑」,對第一天的使用者無效 |
+| ⌘K **不搜記錄內容** | 🔴 | 取代 ERP 後使用者要找的是「**那張採購單**」而非表單定義。Ragic 有全庫全文檢索。目前推到 P1-I,對現場情境偏晚 |
+| 目錄不顯示記錄數 | ✅ **維持** | **NocoDB 有明確實證**:大表 `count` 需數分鐘甚至 timeout,**導致整個列表卡住不顯示**。若日後要,走 `pg_class.reltuples` 近似值或非阻塞延後載入,不進主查詢路徑 |
+| 多租戶不放切換工作區 | ✅ **維持** | Airtable / Smartsheet 的切換是「一人多容器」場景,本產品不是 |
+| 全域 status bar | ✅ | 無反例,屬信任訊號合理加分 |
+
+### 建議的首頁形態
+
+**雙軌**:主欄 = 我的待辦 / 待簽核 / 最近使用;次欄或下方 = 分類目錄。
+在有真實事件源之前先放「**最近使用 + 星號**」(零造假),同時解掉 recents 缺口。
+
+### 查不到
+
+台灣中小企業 / 現場人員登入首動作的在地量化研究;Ragic 官方對「首頁預設區塊組合」的預設值定義(僅確認 10 種區塊可選)。
+
+### 來源
+
+- [Ragic 客製化資料庫首頁 doc/90(官方)](https://www.ragic.com/intl/zh-TW/doc/90)
+- [Airtable Home Screen(官方)](https://support.airtable.com/docs/airtable-home-screen) · [Notion — Navigate with the sidebar](https://www.notion.com/help/navigate-with-the-sidebar) · [monday.com — My Work](https://support.monday.com/hc/en-us/articles/360019300579-My-Work) · [Smartsheet — Personalize your Home](https://help.smartsheet.com/articles/2482308-navigate-your-work-from-home)
+- [NN/g — Icon Usability](https://www.nngroup.com/articles/icon-usability/) · [NN/g — Intranet IA Trends](https://www.nngroup.com/articles/intranet-information-architecture-ia/)
+- [Material 3 — Navigation rail guidelines](https://m3.material.io/components/navigation-rail/guidelines)
+- [Microsoft Learn — Workspace form pattern(D365 F&O)](https://learn.microsoft.com/en-us/dynamics365/fin-ops-core/dev-itpro/user-interface/workspace-form-pattern)
+- [SAP — Enabling My Home for S/4HANA](https://community.sap.com/t5/technology-blog-posts-by-sap/sap-fiori-for-sap-s-4hana-empowering-your-homepage-enabling-my-home-for-sap/ba-p/13672904)
+- [Navigating through digital folders uses the same brain structures(Scientific Reports)](https://www.nature.com/articles/srep14719) · [Improved search engines and navigation preference in PIM(ACM TOIS)](https://dl.acm.org/doi/10.1145/1402256.1402259)
+- [NocoDB — 大表 count 效能 issue](https://github.com/nocodb/nocodb/issues/4287)
+- [90% of people don't know Ctrl+F(Dan Russell / Google)](https://www.villagevoice.com/2011/08/20/90-percent-of-people-dont-know-what-ctrlf-does-on-their-keyboards/)
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
