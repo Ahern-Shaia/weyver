@@ -1,6 +1,6 @@
 # [H-1] 通知系統(訂閱 / 提醒 / 通道)
 
-> ✅ **狀態:APPROVED v0.3 — OQ-NT-1..14 已裁定(2026-07-28;全採建議);進入 M1**
+> ✅ **狀態:APPROVED v0.4 — OQ-NT-1..14 已裁定;**§0.4 四路研究推翻其中四項,已就地改寫**(2026-07-28)**
 > **裁定摘要**|1=A Ragic 訂閱制 · 2=A 「跟我相關」P0 只認 createdBy · 3=A service 層顯式 emit · 4=A 通知表兼作佇列(不引 Redis)· 5=A P0 只做站內 + Email · 6=A 提醒不進 P0(待 cron 地基)· 7=A 平台級 SMTP · 8=A 不做摘要合併 · 9=A 通知不含欄位值 · 10=A 租戶自帶通道憑證 · 11=A 綁定鍵含 tenant_id · 12=A inbound 納入抽象但不實作。
 > **UI 四項裁定(2026-07-28 mockup review)**|① LINE 欄 P0 **不顯示**(P0 既無 driver 也無連接設定頁 → 該列無法由任何操作變成「已連接」,是死控件;與同稿「不做假開關」一致)· ② 「查看全部通知」P0 **只做面板 + 最近 50 則**,獨立頁後續 · ③ 通知設定放**個人設定**底下 · ④ 簽核逾期**豁免總開關仍送**(流程阻塞風險高於使用者意願;設定頁須明白告知此例外)。
 > **權威 UI 稿**|[`docs/mockups/notification-flow.html`](../../mockups/notification-flow.html)
@@ -64,6 +64,90 @@ Ragic 的「跟我相關」三要素,Weyver 只有一項成立:
 | 我**回應**過的資料 | ❌ **不存在** | 全庫無註解 / 回應功能。唯一的 `comment` 是簽核意見(`approval_step_logs`),語意不同 |
 
 **意涵**|直接照抄 Ragic 的「跟我相關」語意,會發現三分之二的定義**沒有資料來源**。這不是實作細節,是 scope 決策 → 見 **OQ-NT-2**。
+
+### 0.4 站在巨人的肩膀上(v0.4 補;**本節推翻了 v0.3 的四個決定**)
+
+> v0.1–v0.3 幾乎只站在 Ragic 一個肩膀上(本機文件 7 頁),Airtable 只讀 1 頁、Teable 只 grep changelog。
+> 本節補四路研究:訂閱層級模型 / OSS 通知基礎設施 / 內容洩漏事故 / 送達率硬要求。
+
+#### 0.4.1 ⚠️ 訂閱模型:**幾乎所有大型協作系統都用「單一有序 enum」,不是獨立布林開關**
+
+| 系統 | 模型 | 證據 |
+|---|---|---|
+| **GitHub** | `Participating and @mentions`(預設)/ `All Activity` / `Ignore` / `Custom` | 官方文件 |
+| **GitLab** | Global / Watch / Participate / On mention / Disabled / Custom;**Custom = Participate 之上「加選」**(非自由組合) | 官方文件 |
+| **Discourse** | Watching / Tracking / Watching First Post / Normal / Muted 五級 | 官方 |
+| **Zulip** | topic 層序數 enum(None/Muted/Unmuted/Followed);**8.0 由二元 mute 演進成四檔** | 官方 API 文件 |
+| **Notion**(型態最接近 Weyver) | database page:All updates / Important updates / Replies and @mentions | 官方 help |
+| Slack / Teams / Linear | 同為單選層級 + 自動訂閱 | 官方 |
+| **Ragic** | **4 個獨立布林開關** | 官方文件 |
+
+**三個關鍵發現**:
+
+1. **「與我相關」在成熟系統裡是自動訂閱的**地板**,不是可關的並列開關。** GitHub 明載取消 watch 後「仍會收到你參與的對話」,只有 `Ignore` 全靜音;Zulip 8.0 以 auto-follow 規則(你開的 topic、被提及)自動升級。→ **v0.3 把它做成第一個 checkbox 是錯的維度。**
+2. **有序才可繼承。** enum 可比較、可用 sentinel 表達「繼承上層」(GitLab `Global`);GitLab 官方例明載**最具體者勝**(全域 Watch + 子群組 Participate → 取 Participate)。一組獨立布林沒有自然的繼承定義。
+3. **方向性是單向的。** Zulip 二元 → 四檔 enum;GitHub enum → enum + 受控 Custom。**查不到任何大型系統從 enum 退回純獨立開關。**
+
+**Ragic 4 開關 = 16 種組合**,其中「勾新增、不勾與我相關」= 別人建的會通知、自己建的不通知 —— 沒人想要卻可表達。
+**Discourse 的反證也要記下**:enum 好懂,但 category × tag × topic 三維 precedence 官方未文件化,meta 上長年爭論 —— **維度一多照樣失控**,所以繼承規則必須寫進文件。
+
+#### 0.4.2 ⚠️ **通知與寄送必須分兩張表** —— v0.3 的「通知表兼佇列」是已知反模式
+
+Discourse / GitLab / Novu **三家都把 notification 與 delivery 分開**,理由是結構性的:
+
+| | `notifications`(使用者可見) | `deliveries`(寄送) |
+|---|---|---|
+| 生命週期 | 留數月 | 數天 |
+| 寫入模式 | 寫一次 | **反覆 UPDATE → 產生 dead tuple** |
+| 扇出 | 1 則 | **N 個通道各一列** |
+| 保留策略 | 上限式(Discourse:`rank() OVER (PARTITION BY user_id)` 只留每人最新 N 筆)| 短期清理 |
+
+- **Discourse 未讀計數**用部分索引:`(user_id, notification_type) WHERE NOT read` —— 直接可抄。
+- **GitLab** 明確**拒絕 STI 與 polymorphic association**,改「每資源型別一張 link table」以保外鍵完整性。
+- **Mattermost 反例**:高頻訊息流改用 read-state 指標(`LastViewedAt` + 計數器)不存每則一列。判準:**高頻訊息流用指標,低頻可操作事件用每則一列** —— ERP 場景屬後者,故仍每則一列。
+
+**「PostgreSQL 當佇列」本身是對的**(`SELECT … FOR UPDATE SKIP LOCKED`,pg-boss / graphile-worker / pgmq 皆建於此);**錯的是把兩者塞同一張表**。
+**量級判準(PlanetScale 於 PG18 實測,非理論)**:800 jobs/s + 併發長查詢 → 15 分鐘內 155,000 積壓、383,000 dead tuples 死亡螺旋;**pilot 規模 < 50 msg/s 遠低於危險區**。升級訊號:`n_dead_tup` 持續 > `n_live_tup`、表實體大小 / live 資料 > 5x、sustained > 100–200 msg/s。升級順序:拆表 → 分區 `DROP`(不要 `DELETE`)→ pg-boss → 最後才 Redis。
+
+#### 0.4.3 內容洩漏:**決定成立,但理由要換,且揪出一個 P0 漏洞**
+
+**真實事故(官方來源)**|CVE-2019-11544(GitLab:非成員訂閱 internal project 後收到受限事件通知信)· CVE-2021-39119(Jira:watcher 帳號被撤銷後仍持續收到更新)· CONFSERVER-52560(Confluence workbox 通知內含留言內容,送給無權檢視者)· CVE-2021-41312(Jira webhook 送出不在 JQL 範圍內的變更)。
+→ 「訂閱者集合」與「有權檢視集合」會漂移,這是**重複發生的一整類 bug**,不是單一疏失。
+
+**⚠️ 業界主流解法對 Weyver 無效** —— Jira 的做法是**過濾收件人**(需具 Browse Projects + 該 security level),**不是過濾內容**;GitLab 選擇帶內容,而「精簡通知」是 **2016 年提出、至今仍 open 的 feature request**。
+**原因**:Jira/GitLab **沒有欄位級權限**,過濾收件人就夠了。**Weyver 有** —— 同一收件人可能「可看記錄但不可看金額欄」,收件人過濾在此模型下**根本不足**。
+→ **OQ-NT-9 的理由應從「Email 會被轉寄」改為「欄位級權限使業界主流的收件人過濾失效」**,這才是真正的論據。
+
+**🔴 新揪出的 P0 漏洞(已對程式碼驗證)**|我原本說「只帶記錄標題」是安全的 —— **不成立**。`record-list.tsx:11` 的 `titleOf()` 取 **`fields[0]`,即使用者自建表單的第一個欄位**。客戶若把「金額」「身分證字號」放第一欄,通知標題就是洩漏。→ 見 FMEA N14。
+
+#### 0.4.4 ⚠️ digest 與**去抖動是兩件事** —— v0.3 把它們混為一談
+
+| | v0.3 決定 | 研究結論 |
+|---|---|---|
+| **跨記錄摘要(digest)** | 不做 | ✅ **成立**,P0 可不做 |
+| **同記錄去抖動(coalescing)** | 未區分,等於不做 | ❌ **必須做** —— 一筆記錄連續編輯 10 次 = 10 封信 |
+
+**Jira Cloud 官方**:預設批次為 **per(收件人 + issue),3 分鐘 idle window / 10 分鐘 max window**,每次新變更重置 idle;**但「被 @mention、被指派」等關鍵更新一律 bypass 立即送**。
+→ **我的「事件型通知該即時獨立」訴求,靠「例外清單」保住即可,不必靠「全部不合併」。** 簽核走 bypass,一般欄位變更走去抖動視窗。
+
+**GitHub 的低成本招數**:不做伺服器端合併,改用 `Message-Id` / `References` / `In-Reply-To` 讓同一 issue 的通知在**郵件客戶端**收攏成一條 thread —— 幾乎零成本就能拿到 Ragic「同收件人同日串成一封」的視覺效果。
+**Slack**:使用者不活躍時 email 每 15 分鐘或每小時 bundle。**Discourse**:寄信延遲視窗的目的之一是**讓作者有機會先編輯**,避免寄出已被修正的內容。
+
+#### 0.4.5 ⚠️ Email 送達率:**「我們量小」是錯的推理**
+
+- **bulk sender 門檻**|同一 primary domain 24 小時內接近 **5,000 封至個人 Gmail**;**子網域併入母網域計算**,且**bulk 身分一旦取得永不失效**。單一平台網域 × 17 家租戶 × 每人多封簽核通知 —— 跨過只是時間問題,跨過就回不去。**→ 直接照 bulk 規格建,不要照現況量級建。**
+- **交易信只豁免退訂,不豁免認證**|SPF / DKIM / DMARC / PTR / TLS / 垃圾率**一體適用**。Google 2025-11 起加重執法(550-5.7.26 未認證 / 421-4.7.26 限流);**Microsoft 消費者信箱 2025-05-05 起直接拒收**(`550 5.7.515`)。
+- **垃圾投訴率**|Google **每日**計算,目標 <0.1%,**≥0.3% 即喪失 mitigation 資格,須連續 7 天 <0.3% 才恢復**。
+- **🔴 自架 SMTP 在雲主機上基本不可行**|AWS/GCP/Azure/DO 的 IP 段預設落在 Spamhaus PBL 或被主要收件方封鎖,多數雲商**預設封鎖對外 port 25**;新 IP 需 2–4 週 warm-up,而**幾百封/日的低量根本養不熱一個專用 IP**。
+  → **應用層自建(outbox + Nodemailer),對外走 relay 的共用 IP pool**;或自架 **Postal(MIT)** 當內部 MTA + smarthost 轉 relay ——「程式資產仍 OSS,只買 IP 信譽」。成本量級:SES 約 US$0.10/千封 → 月成本個位數美元,對 ACV NT$400K 可忽略(採購時須複核)。
+- **suppression list 是 P0 不是 P1**|5xx 硬退**立即永久 suppress**;4xx 退避重試,連續失敗(3–5 次 / 72hr)升硬退;**投訴 = 零重試立即永久 suppress**。收 bounce 需 **VERP**(envelope from 內嵌 token)+ RFC 3464 DSN 解析,且 Return-Path 用**與 From 不同的專屬 bounce 子網域**。
+- **FBL 現實**|Gmail **沒有**逐封 ARF 回報,只有 Postmaster Tools 聚合式,需自加 `Feedback-ID` 標頭且該標頭須被自有網域 DKIM 簽章;Yahoo 才有真正 CFL 且須逐 DKIM 網域註冊。→ **不能倚賴 FBL 當唯一投訴訊號**,須自建 in-app 回饋。
+- **台灣**|HiNet / hiBox 實務上封鎖動態 IP 來源(典型退信 `550 Your access IP … has been rejected`),申訴白名單走 0800-080365;中華電信「郵件守門員」分級過濾使同一封信在不同租戶端結果不同。**「濫發商業電子郵件管理條例」查無完成三讀之證據,至今仍為草案**;交易型通知本非商業電子郵件。客戶多為中小製造/食品廠、自架 mail server 比例高且無 FBL → **簽核流程的可用性不得押在 email 上,必須有 in-app 備援**。
+
+#### 0.4.6 🔴 兩個 Weyver 專屬地雷(最容易實作到一半才炸)
+
+1. **`LISTEN/NOTIFY` 在 PgBouncer transaction mode 下不可用** —— 而 AGENTS.md P0 鐵則正是要求 PgBouncer tx mode。→ 只能**輪詢**,或給 worker 獨立直連。
+2. **RLS FORCE 會擋住 worker 的跨租戶掃描**,而 app 角色**禁 `BYPASSRLS`**。→ 必須在 M1 就決定:按租戶迭代 + 每 tx `SET LOCAL app.tenant_id`,或把 delivery queue 設為 Tier-1 系統表配專用角色。**沿用 F-8 `UsageService` 的既有解**(特權車道 + advisory lock)即可。
 
 ---
 
@@ -219,17 +303,18 @@ LINE 文件(經 Ragic KB 300 轉述)明載:UID 經 Provider 加密,**只有該 P
 | **OQ-NT-1** ⭐ | 通知的本質:訂閱制 vs 自動化產物 | A. **Ragic 訂閱制**(人人可訂,設定在使用者身上)<br>B. Airtable 式(通知是 automation 的 action,只有 Creator 能設) | **A** — 客戶是 Ragic 範式思考者(docs/24);且 Airtable 明載 Editors **只能檢視** automation 設定,等於一般使用者無法自訂收不收通知,與本專案「自助化」命門相衝 |
 | **OQ-NT-2** ⭐⭐ | 「跟我相關」在缺 member 欄與註解下怎麼定義 | A. **P0 先只認 `createdBy`**(我新增的),member / 註解到位後**加法擴充**<br>B. P0 順帶補完 member 欄前端(+0.05)<br>C. P0 連註解功能一起做(+0.15) | **A** — 「跟我相關」是**一個布林述詞**,新增來源是純加法、無 migration。C 會把通知模組膨脹成兩個模組(註解本身要 @提及 / 權限 / 通知,是獨立 M0 題目)。**誠實代價**:P0 的「跟我相關」比 Ragic 窄,只涵蓋三分之一定義 → §12 明列,且**設定 UI 上要寫清楚**,不能讓使用者以為指派會通知 |
 | **OQ-NT-3** | 事件從哪裡發出 | A. **service 層顯式 emit**<br>B. DB trigger / CDC<br>C. repository 層攔截所有寫入 | **A** — B/C 看似「不漏」,實則**分不出批次與單筆**,而 Ragic 明載批次不通知;顯式 emit 讓「這個路徑要不要通知」成為程式碼裡看得見的決定。代價:新寫入路徑可能漏 emit → 以測試斷言涵蓋 |
-| **OQ-NT-4** | 送信是否進佇列 | A. **先同進程 + DB 佇列表**(`notification` 表本身當 outbox,背景 tick 掃未送)<br>B. 立刻引入 BullMQ + Redis | **A** — Redis 目前**不在部署拓撲裡**,為送信引入一個新的 stateful 相依,對 pilot 規模不成比例;`notification` 表已必須存在(站內通知要查),兼作寄送佇列是零額外設施。**達到什麼規模該換 B** 於 doc 明列(單租戶日通知量 > 10K 或多實例部署時) |
+| **OQ-NT-4** ⭐ | 送信是否進佇列 / 通知與寄送同表否 | A. ~~通知表兼作佇列~~<br>**A′(v0.4 改寫)**|**PostgreSQL-only 但拆兩張表**:`notifications`(使用者可見、`read`、部分索引算未讀、上限式保留)+ `deliveries`(每通道一列、`status`/`attempts`/`next_attempt_at`)<br>B. 立刻引入 BullMQ + Redis | **A′** — 「PostgreSQL 當佇列」本身正確(`FOR UPDATE SKIP LOCKED`,pg-boss / graphile-worker 皆建於此),**但 v0.3 的「同一張表」是已知反模式**:Discourse / GitLab / Novu **三家都分開**,因生命週期(數月 vs 數天)、寫入模式(寫一次 vs 反覆 UPDATE 產 dead tuple)、扇出(1 則 → N 通道)、保留策略**四者皆衝突**。Redis 仍不引入(pilot < 50 msg/s 遠低於 PlanetScale 實測的 800 jobs/s 死亡螺旋區)。**升級訊號寫入 doc**:`n_dead_tup` > `n_live_tup`、表膨脹 > 5x、sustained > 100–200 msg/s → 依序 分區 `DROP` → pg-boss → Redis |
 | **OQ-NT-5** ⭐ | 外部通道範圍 | A. **P0 只做站內 + Email**;LINE 為獨立後續模組<br>B. P0 併 LINE | **A(v0.2 理由已改寫)** — v0.1 曾寫「加 LINE 是獨立小批,約 +0.1 mo」,**研究後確認該估計錯誤**:LINE 的成本在綁定流程(§4.2 三步驟 + 15 分鐘時限 + Email 往返驗證)、inbound webhook + 簽章驗證、租戶憑證管理,合計遠超 0.1 mo,且 docs/04 另列「通道連接設定 UI 1 人月」為其硬前提。**但結論的理由變了**:不是「LINE 不重要」(對台灣中小企業它可能比 Email 重要),而是**它大到應該自成一個模組**。**代價明列**:P0 出貨時台灣客戶拿不到他們最習慣的通道。**條件**:§4.5 五項抽象約束必須在 M3 落實,否則後續加 LINE 要拆掉重做 |
 | **OQ-NT-6** | 提醒(日期驅動)是否進 P0 | A. **不進**,待 cron 排程模組<br>B. 進 P0,自建每日 tick | **A** — 提醒需要「每天掃全表每一筆」的排程器,而 docs/25 C 段「排程任務 cron per tenant」整項未起。在沒有排程地基時自建一個一次性 tick,會變成日後排程模組要拆掉的技術債。**代價**:Ragic 客戶熟悉的「出貨日前三天提醒業務」P0 不可用 → 明列 |
-| **OQ-NT-7** | 寄件設定放哪一層 | A. **平台級 SMTP**(env),租戶自訂寄件網域為 P1<br>B. P0 即做租戶級 SMTP 設定 UI | **A** — pilot 期單一寄件網域即可運作;租戶自接 SMTP 涉及 SPF/DKIM 驗證與憑證加密存放(docs/04 H「通知通道連接設定 UI」獨立列 1 人月),是設定中心的題目不是通知核心的 |
-| **OQ-NT-8** | 是否做摘要 / 合併 | A. **P0 不做**,一事件一通知<br>B. 承 Ragic 提醒之「同天同收件人合併」 | **A** — Ragic 的合併是**提醒專屬**行為(同表單同天多筆),而提醒不在 P0(OQ-NT-6)。事件型通知(簽核)本來就該即時且獨立。**但風暴防護仍必做**(批次不觸發),那是另一回事 |
-| **OQ-NT-9** | 通知內容是否含記錄欄位值 | A. **只含表單名 + 記錄標題 + 事件**,點進去才看內容<br>B. 郵件內嵌欄位值 | **A** — **這是資安決定不是體驗決定**:通知的收件人是「訂閱者」,但欄位級權限(P0-4a)可能讓他看不到某些欄。把欄位值塞進 Email 等於**繞過欄位級權限且送到系統外**。A 讓權限檢查回到點擊進入時。Ragic 支援自訂範本帶欄位值,但那是**設計者明確指定**的外寄郵件(`doc/94`),語意不同 |
+| **OQ-NT-7** ⭐ | 寄件基礎設施 | A. ~~平台級自架 SMTP~~<br>**A′(v0.4 改寫)**|**應用層自建 outbox + 對外走 relay 共用 IP pool**(或自架 Postal MIT 當內部 MTA + smarthost);專屬寄件子網域 + 專屬 bounce 子網域<br>B. 租戶級 SMTP 設定 UI | **A′** — v0.3 未查證即假設可自架。**自架 SMTP 在雲主機上基本不可行**:雲 IP 段落在 Spamhaus PBL 或被封鎖、多數雲商預設封鎖 port 25、新 IP 需 2–4 週 warm-up,而**幾百封/日的低量根本養不熱專用 IP**。**與 OSS-only 不衝突**:程式資產仍全 OSS,relay 買的是 **IP 信譽**屬基礎設施(同 docs/11 §16 managed-OSS 之判準)。月成本個位數美元,對 ACV 可忽略。**P0 另含 suppression list**(見 OQ-NT-15)|
+| **OQ-NT-8** ⭐ | 摘要 / 合併 | A. ~~一事件一通知,完全不合併~~<br>**A′(v0.4 改寫)**|**跨記錄 digest 不做**,但**同記錄去抖動必做**:per(收件人 + 記錄)3 分鐘 idle / 10 分鐘上限,**簽核等關鍵事件 bypass 立即送**<br>B. 全套 digest | **A′** — v0.3 把兩件事混為一談。Jira Cloud 官方即為此設計,且明列 @mention / 指派 **bypass 批次**。**不做去抖動的後果**:一筆記錄連續編輯 10 次 = 10 封信 → 使用者關掉全部通知(43% 使用者曾因通知過度而直接關閉,社群引用之調查)。我原本「事件型通知該即時獨立」的訴求**靠例外清單即可保住**,不必靠全部不合併。**另加零成本招數**:`Message-Id`/`References`/`In-Reply-To` 讓郵件客戶端自行收攏成 thread(GitHub 作法),即可得到 Ragic「同收件人同日串成一封」的視覺效果 |
+| **OQ-NT-9** ⭐⭐ | 通知內容是否含記錄欄位值 | A. **只含表單名 + 事件 + 記錄識別**,點進去才看內容<br>B. 郵件內嵌欄位值 | **A(v0.4 理由改寫並強化)** — v0.3 的理由「Email 會被轉寄」不是真正的論據。**真論據**:業界主流(Jira)靠**過濾收件人**解決此問題而非過濾內容,但那是因為 **Jira/GitLab 沒有欄位級權限**;**Weyver 有** —— 同一收件人可能「可看記錄但不可看金額欄」,**收件人過濾在此模型下根本不足**。實證這是一整類重複發生的 bug:**CVE-2019-11544**(GitLab)· **CVE-2021-39119**(Jira watcher 撤銷後仍收通知)· **CONFSERVER-52560**(Confluence 通知含留言內容送給無權者)· CVE-2021-41312。GitLab 的「精簡通知」需求 **2016 年提出至今仍 open**。**⚠️ v0.4 揪出自身漏洞**:原以為「只帶記錄標題」安全,但 `titleOf()` 取 `fields[0]` = 使用者自建的任意首欄 → 見 FMEA N14 |
 | **OQ-NT-10** ⭐ | 通道憑證歸屬 | A. **租戶自帶**(自己的 LINE 官方帳號 / SMTP)<br>B. 平台統一代發 + 計費轉嫁 | **A** — B 需要計費載體,而訂閱計費在 docs/04 明列 **Phase 2**;且 Ragic 雲端版正是 B 模式(每則 NT$0.2 扣點),其前提是它有付費系統。A 同時契合 OSS-only 與 on-prem 形態。**平台級 SMTP 保留為 fallback**(OQ-NT-7),但不作為唯一路徑 |
 | **OQ-NT-11** | 通道綁定的鍵 | A. **`(tenant_id, user_id, channel)`**<br>B. `(user_id, channel)` 全域 | **A** — §4.4:LINE userId 是 **Provider 作用域**,租戶各自帶官方帳號則同一人在不同租戶的 userId 不同。做成 B 會讓同一人在 A、B 兩租戶互相覆蓋 → **跨租戶通知洩漏**。即使 P0 只有 Email 也採 A,避免日後改鍵要動資料 |
 | **OQ-NT-12** | inbound webhook 是否納入 P0 抽象 | A. **納入抽象但不實作**(預留 driver 介面 + 綁定表)<br>B. 完全不預留,加通道時再說<br>C. P0 即實作 inbound 端點 | **A** — B 會讓 Email-only 的抽象只有 outbound 形狀,加 LINE 時整層要翻(§4.5 第 5 點);C 在沒有任何 inbound 通道時是空轉。A 的成本只是「介面留一個方法 + 建一張綁定表」。**另須明列風險**:on-prem 防火牆後的部署可能收不到 LINE webhook → 該情境下 LINE 通道不可用,非程式缺陷 |
 | **OQ-NT-13** ⭐ | LINE 群組通知歸屬哪個概念 | A. **獨立於個人訂閱之「事件廣播」**,設定在表單 / 租戶層(管理者)<br>B. 併入三層訂閱矩陣,當成 LINE 的一種收件位址 | **A** — B 會產生語意錯亂:三層設定是「**我**要不要收」,而使用者無法替一個群組決定訂閱;且群組成員未必是 Weyver 使用者,「跟我相關」對群組無意義。A 亦對齊 docs/04 已編列之**通知路由引擎(3 人月)**。**代價**:兩套設定入口(個人設定 / 表單設定),需在 UI 上講清楚差別 |
 | **OQ-NT-14** ⭐ | 收件人模型 | A. **多型 recipient**(`user` / `channelTarget`)自 M1 起即如此<br>B. 先只做 `recipient_user_id`,做群組時再改 | **A** — 這正是 §4.5 所警告「被 Email 形狀鎖死」的具體案例。M1 立即採多型的成本是一個欄位加一個判別欄;B 的成本是日後改資料模型 + 回填既有通知。**且 P0 不做群組不代表模型可以不支援** —— 模型錯了,做群組時整層要翻 |
+| **OQ-NT-15** ⭐⭐ | 訂閱模型的形狀 | A. ~~沿用 Ragic 4 個獨立布林開關~~<br>**B(v0.4 依研究改採)**|**單一有序 enum + 受控 Custom**;「與我相關」改為**自動訂閱規則**非開關 | **B** — 查證 GitHub / GitLab / Discourse / Zulip / Notion / Slack / Teams / Linear **無一例外皆用單一 enum**,且**查不到任何大型系統從 enum 退回獨立開關**(Zulip 反而由二元 → 四檔)。三個理由:(1) **有序才可繼承** —— enum 可用 sentinel 表達「繼承上層」,GitLab 官方明載**最具體者勝**;(2) **互斥消除無意義組合** —— Ragic 4 開關 = 16 組,含「別人建的通知、自己建的不通知」這種沒人要的組合;(3) 可溝通(一個詞能進 UI / 摘要信 / 管理報表)。**「與我相關」是地板不是開關**:GitHub 明載取消 watch 後仍收到你參與的對話,只有 Ignore 全靜音。**建議六檔(嚴格包含)**:靜音 < 只有被提及 < **與我相關(預設)** < 新資料 + 與我相關 < 全部 < 自訂;Custom 採 GitLab 式「Participate 之上加選」保持有序。**資料模型**:`level smallint NULL`(NULL = 繼承上層)+ `custom_events jsonb`。**Discourse 的教訓**:多維度 precedence 未文件化 = 永久客服 → 繼承規則必須寫進文件 |
 
 ---
 
@@ -249,6 +334,10 @@ LINE 文件(經 Ragic KB 300 轉述)明載:UID 經 Provider 加密,**只有該 P
 | N11 | on-prem 防火牆後收不到 inbound webhook → LINE 綁定永遠卡住 | 部署文件明列可達性需求;連接設定 UI 提供**測試發送 / webhook 連通檢查**,讓失敗在設定當下就看得見,而非上線後才發現沒人收到 | P1 |
 | N12 | **群組廣播洩漏**:通知送進 LINE 群組,群內含對該表單無權限者(外部廠商 / 離職員工) | OQ-NT-9 對群組升級為**不可協商**:只帶表單名 + 事件 + 記錄標題,連標題都須確認非敏感;群組設定限管理者;**設定頁明示「群組內所有人都會看到」** | **P0**(群組上線時) |
 | N13 | 群組被解散 / bot 被踢出 → 通知靜默消失 | LINE 推送失敗須記錄並在設定頁顯示該群組為**失效**(不可只寫入 log);承 N4 之寄送狀態機 | P1 |
+| N14 | 🔴 **記錄標題本身洩漏受保護欄位** —— `titleOf()` 取 `fields[0]`,而首欄是使用者自建的任意欄位(可能是金額 / 身分證號) | 通知標題**不得直接用首欄值**。三選一(M1 定):(a) 只用 `記錄 #id` + autoNumber 類系統欄;(b) 對首欄做欄位級權限檢查,無權則退回 `#id`;(c) 讓表單設計者明指「通知標題欄」並在設定時警示其內容會出現在通知中 | **P0** |
+| N15 | 硬退信 / 投訴未處理 → 網域信譽崩壞 → **全體租戶的通知都進垃圾信** | **suppression list 為 P0**:5xx 立即永久 suppress、投訴零重試永久 suppress、4xx 退避重試連續失敗升硬退;寄送前必查。收 bounce 需 VERP + RFC 3464 DSN 解析 | **P0** |
+| N16 | 同一筆記錄連續編輯 → 通知風暴 → 使用者關掉全部通知 | per(收件人 + 記錄)3 分鐘 idle / 10 分鐘上限去抖動;簽核類 bypass(OQ-NT-8) | P1 |
+| N17 | `LISTEN/NOTIFY` 在 PgBouncer tx mode 不可用 / RLS FORCE 擋 worker 跨租戶掃描 | 改用**輪詢**(不用 LISTEN/NOTIFY);跨租戶掃描沿用 F-8 `UsageService` 既有解(特權車道 + advisory lock + 按租戶迭代)。**M1 第一件事就要確認**,否則實作到一半才炸 | P1 |
 | N9 | 通知累積無上限 → 表膨脹 | 保留期政策 + 清理 job(復用 F-6 `cleanup.service`) | P2 |
 
 ---
@@ -257,6 +346,7 @@ LINE 文件(經 Ragic KB 300 轉述)明載:UID 經 Provider 加密,**只有該 P
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | **v0.4** | **決策方問「站在哪些巨人的肩膀上設計」** —— 誠實檢視後確認 v0.1–v0.3 幾乎只站在 Ragic 一個肩膀(本機 7 頁),遂補四路研究成 **§0.4**,**推翻自身四個決定**:(a) **OQ-NT-15 新增/改採 enum** —— GitHub/GitLab/Discourse/Zulip/Notion/Slack/Teams/Linear **無一例外用單一有序 enum**,查不到任何系統從 enum 退回獨立開關;Ragic 4 開關 = 16 組含無意義組合;「與我相關」在成熟系統是**自動訂閱地板非開關**;(b) **OQ-NT-4 改寫** —— 「通知表兼佇列」是已知反模式,Discourse/GitLab/Novu **三家皆分表**(生命週期 / 寫入模式 / 扇出 / 保留策略四者衝突);PostgreSQL-only 仍正確,pilot < 50 msg/s 遠低於實測死亡螺旋區;(c) **OQ-NT-8 改寫** —— 混淆了 digest 與**去抖動**,後者**必須做**(Jira 3min idle / 10min max,關鍵事件 bypass),否則連續編輯 10 次 = 10 封信;(d) **OQ-NT-7 改寫** —— **自架 SMTP 在雲主機上基本不可行**(IP 段被封、port 25 封鎖、低量養不熱 IP),改 relay 共用 pool,且**與 OSS-only 不衝突**(買的是 IP 信譽非軟體授權);suppression list 升 P0。**OQ-NT-9 決定不變但理由改寫**:真論據是「**欄位級權限使業界主流的收件人過濾失效**」(Jira/GitLab 無欄位級權限故過濾收件人即可),並以 CVE-2019-11544 / CVE-2021-39119 / CONFSERVER-52560 佐證此為重複發生的一整類 bug。**新增 FMEA N14(P0,已對程式碼驗證)**:`titleOf()` 取 `fields[0]`,首欄為使用者自建任意欄位 → 標題本身即可能洩漏金額 / 身分證號。另 N15 suppression / N16 去抖動 / N17 **PgBouncer tx mode 下 LISTEN/NOTIFY 不可用 + RLS FORCE 擋 worker 跨租戶掃描**(M1 第一件事確認)| Claude Code |
 | 2026-07-28 | **v0.3** | **決策方指出 v0.2 漏了「LINE 個人 vs 群組」** —— 查證屬實:**docs/04 §H 早已明載「個人 1:1 + 群組」且註明「台灣 SMB 日常 LINE 群組通知」**,而 v0.2 §4.1 只把 LINE 收件人寫成 userId,群組完全未涵蓋。新增 **§4.6**:個人與群組是**兩種不同的功能**非同一功能的兩種位址(收件人 / 訂閱者 / 權限模型 / 退訂 / 審計語意五面皆異)。**三個後果**:(a) 群組屬「事件廣播」不屬「通知訂閱」,設定入口在表單 / 租戶層,歸 docs/04 通知路由引擎;(b) OQ-NT-9 對群組**升級為不可協商**(群組廣播無任何權限模型可依靠);(c) **§4.5 第 1 條修正為多型 recipient** —— v0.2 原寫「記錄 `recipient_user_id`」**是錯的**,群組通知沒有收件使用者,該模型根本無法表示。新增 OQ-NT-13(群組歸屬)· OQ-NT-14(多型 recipient 自 M1 起)+ FMEA N12(群組廣播洩漏,P0)· N13(群組失效靜默)。另記錄 mockup review 四項 UI 裁定 | Claude Code |
 | 2026-07-28 | **v0.2** | **補 §4 外部通知通道設計**(v0.1 僅有「通道抽象」一行,不足以做決策)。**推翻 v0.1 自身之一條判斷**:原 OQ-NT-5 寫「加 LINE 是獨立小批 +0.1 mo」,研究後確認錯誤 —— LINE 的成本不在送訊息 API,而在 **綁定流程 + inbound webhook + 租戶憑證管理**;結論(P0 不做 LINE)不變但**理由改為「它大到應自成模組」**而非「它不重要」。**§4.2 Ragic 綁定流程**(加官方帳號好友 → LINE 內傳 `/validate|信箱` → **寄驗證信** → 15 分鐘內點連結完成綁定;同一 userId 短期不可重複申請);**驗證刻意繞回 Email** 以防冒用。**§4.3 部署模式**:Ragic 雲端版平台代發 + 每則 NT$0.2 扣點,**Weyver 無計費載體(Phase 2)→ 只能走租戶自帶憑證**,確認 docs/04「通道連接設定 UI 1 人月」為 LINE 之硬前提。**§4.4 多租戶陷阱**:LINE userId 為 **Provider 作用域**,租戶各自帶官方帳號 ⇒ 綁定鍵必須含 `tenant_id`,否則跨租戶洩漏。**§4.5 五項抽象約束**(收件人存 user_id 非位址 / 綁定為獨立概念 / 憑證屬租戶 / 內容結構化不存已渲染 HTML / inbound 為一等公民)。新增 OQ-NT-10..12 + FMEA N10(綁定錯人,P0)· N11(on-prem 收不到 webhook)| Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT。**§0 證據**:Ragic 通知三層結構(全域 / 逐表單四開關 / 事件×通道矩陣)+ 「跟我相關」官方定義(新增 + 指派 + 回應)+ 共通篩選訂閱(進入 / 離開兩種觸發)+ **批次匯入與大量修改刻意不通知**(風暴防護)+ 提醒為宣告式(日期欄 + N 天 + **收件人來自欄位值** + 每日排程 + 預設合併)+ 排程管理集中設定。**競品分歧**:Airtable 把通知做成 automation 的 action 且 **Editors 只能檢視**,與自助化命門衝突 → 採 Ragic 訂閱模型。**§0.3 實查出會改 scope 的相依**:「跟我相關」三要素中,Weyver 只有 `createdBy` 成立 —— **member 欄型無前端渲染、註解功能完全不存在** → OQ-NT-2。P0 = 站內通知中心 + Email + 訂閱設定 + 簽核接通 + 風暴防護;提醒 / 其餘通道 / 註解 明確排除並附理由。OQ-NT-1..9 待裁定 | Claude Code |
