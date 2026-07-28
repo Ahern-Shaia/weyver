@@ -95,7 +95,9 @@ test("附件:非白名單內容(偽副檔名)於 UI 明示拒絕", async ({ page
     mimeType: "application/pdf",
     buffer: Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01]),
   })
-  await expect(page.getByText("不支援的檔案類型", { exact: false })).toBeVisible({
+  /* F-7 起 UNSUPPORTED_FILE_TYPE 的訊息改為可行動的指引(含 iPhone HEIC 說明),
+     不再是「不支援的檔案類型」一句;此處驗關鍵字而非全句。 */
+  await expect(page.getByText("不支援的檔案格式", { exact: false })).toBeVisible({
     timeout: 30_000,
   })
 })

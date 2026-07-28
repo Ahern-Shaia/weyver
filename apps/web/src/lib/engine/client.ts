@@ -30,6 +30,13 @@ export function describeEngineError(error: unknown): string {
     if (error.code === "VERSION_CONFLICT") return "資料已被其他人修改,請重新載入後再試。"
     if (error.code === "TENANT_REQUIRED") return "缺少租戶識別,請重新整理頁面。"
     if (error.status === 404) return "找不到資料(可能已被移除)。"
+    /* F-7:HEIC(iPhone 預設格式)伺服器端無法解碼 —— HEVC 專利池將雲端服務納入收費範圍,
+       故不在伺服器轉檔。給可行動的指引,而非只說「不支援」。 */
+    if (error.code === "UNSUPPORTED_FILE_TYPE") {
+      return "不支援的檔案格式。若為 iPhone 照片(HEIC),請於 iPhone 設定 →相機 →格式 選「最相容」後重拍,或改用截圖 / 匯出成 JPEG。"
+    }
+    if (error.code === "IMAGE_UNREADABLE") return "影像檔無法解析,可能在傳輸中損毀,請重新上傳。"
+    if (error.code === "IMAGE_TOO_LARGE") return "影像尺寸過大,請縮小後再上傳。"
     return error.message
   }
   if (error instanceof Error) return error.message
@@ -94,9 +101,11 @@ export async function uploadFile(
   return fileDtoSchema.parse(await response.json())
 }
 
-/* 取檔案位元組(下載與影像預覽共用;預覽見 use-file-preview) */
-export async function fetchFileBlob(key: string): Promise<Blob> {
-  const response = await fetch(`${BASE}/files/${key}`, {
+/* 取檔案位元組(下載與影像預覽共用;預覽見 use-file-preview)。
+   `variant="thumb"` 取縮圖 —— 後端取不到縮圖會自動回原檔,故前端永不破圖(F-7 OQ-IP-9=A)。 */
+export async function fetchFileBlob(key: string, variant?: "thumb"): Promise<Blob> {
+  const query = variant === undefined ? "" : `?variant=${variant}`
+  const response = await fetch(`${BASE}/files/${key}${query}`, {
     headers: { "x-dev-tenant": getDevTenant() },
   })
   if (!response.ok) {

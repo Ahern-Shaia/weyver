@@ -142,6 +142,8 @@ export function ImageInput({
         id={inputId}
         ref={inputRef}
         type="file"
+        /* F-7 OQ-IP-1=A:accept **刻意不含 image/heic** —— iOS Safari 在此情況下會自動把
+           HEIC 轉成 JPEG 才送出,把解碼移到使用者裝置(伺服器端不碰 HEVC,避開專利池)。 */
         accept="image/png,image/jpeg,image/gif,image/webp"
         multiple
         disabled={busy}
