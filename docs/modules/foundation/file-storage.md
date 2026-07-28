@@ -238,6 +238,28 @@ interface StorageDriver {
 | 🟠 | **代理下載擴展天花板** —— 瓶頸不是事件迴圈(`StreamableFile` 是串流)而是**出口頻寬與並發**:Cloud Run 每實例並發 80 × 20MB 即塞滿,單實例約 100–200 Mbps;R2 零 egress 的優勢被 Cloud Run 出口吃掉一半。**兩全模式**:每次下載仍打 API 做權威授權,通過後回 302 到 **TTL 30–60 秒**的 presigned URL,簽章時帶 `response-content-disposition` 與 `response-content-type` 覆寫(S3/R2 皆支援)→ 授權每次重新求值、header 仍受控、位元組不經應用層 |
 | 🟠 | **SheetJS 由 CDN tarball 安裝** —— `xlsx` 走 `https://cdn.sheetjs.com/...`,OSV / npm advisory / Dependabot 依 npm 座標比對,**URL 依賴掃不到**,牴觸 AGENTS 供應鏈 P0。lockfile 有 integrity(竄改可偵測)但無漏洞通報。**目前無 CI 可掛 gate** |
 
+### 匯出側的防禦寫法(**目前安全,但屬易碎的安全**)
+
+匯出之所以安全,是因為 SheetJS `json_to_sheet` 產生 `t="s"` 共用字串 cell —— 這是**實作細節**,
+不是刻意的防禦。任何人改用 `bookType: "csv"`、手拼 CSV、或換掉函式庫,防護立刻歸零。
+
+建議加一個共用 helper 並以 lint 規則禁止 CSV 匯出:
+
+```ts
+const RISKY = /^[\s\uFEFF]*[=+\-@\t\r]/
+export const csvSafe = (v: string): string =>
+  RISKY.test(v) ? `'${v.replace(/[\r\n]/g, " ")}` : v
+```
+
+⚠️ **OWASP 明載**:單引號前綴在 Excel「另存後重開」會失效 ——
+故**匯出優先 XLSX(現況),CSV 是妥協路徑**,不是等價選項。
+
+### 其餘 P2(未做)
+
+- **附件走獨立來源網域**(如 `files.weyver.app`)隔離 origin —— OWASP 建議;與 presigned 混合模式一起做較划算
+- **無 `Range` 支援** —— 大檔下載不可續傳,行動網路體驗差
+- **CSRF on upload** 推斷已擋(session cookie 為 SameSite),但**建議補斷言測試**
+
 ### ✅ 稽核確認已擋
 
 SVG 改名 `.png`(簽章不匹配 → 415)· 路徑穿越 / key 注入(server 生成 uuid + `KEY_RE` 雙驗 + local driver 前綴比對)· 跨租戶 key 偽造(key 非憑證,`requireFile` 回查 + RLS 兜底)· 內容嗅探 XSS(`octet-stream + attachment + nosniff`;HTML/SVG 進不了白名單)· Content-Disposition header 注入(`encodeURIComponent` + ASCII 過濾)· 影像解壓縮炸彈(`limitInputPixels` 50MP)· multipart parts 炸彈(`files:1, fields:8`)· zip slip / zip bomb(**不解壓 → 對伺服器不適用**)。

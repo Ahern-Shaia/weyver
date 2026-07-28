@@ -281,6 +281,19 @@
 - **better-auth 1.6.23 對已知 advisory 全數已修**(共 25 筆);未使用 sso / api-key / oidc-provider / mcp plugin,故 CVE-2026-53513(SSRF, CVSS 9.6)、CVE-2025-61928 等不適用
 - **公開第三方安全審計報告:查無**。該專案靠社群回報 + GitHub Advisory 流程(2025-02 起 25 筆,節奏密集)→ `^1.6.23` 的 caret 範圍應搭配 Renovate + `pnpm audit` CI gate
 
+### 逐項驗證清單(可直接拿去跑)
+
+| # | 檢查 | 現況 |
+|---|---|---|
+| 1 | AuthGuard 是否對 `member` 表查 `(user_id, organization_id)`? | ✅ 已補(`isOrgMember`)|
+| 2 | 移除成員 → 用其舊 cookie 打 API,應 401/403 | ✅ 回歸測已固化 |
+| 3 | 移除成員 → `role_members` 是否還有列? | ⚠️ **仍有** —— 未補 `afterRemoveMember` hook |
+| 4 | 未驗證 email 帳號能否 accept-invitation? | ✅ 已擋(旗標已開);⚠️ 但 email 驗證流程未實作 → 邀請暫不可對外開放 |
+| 5 | prod 映像設 `NODE_ENV=` 空值啟動 → 應**拒絕開機**而非降級 | ⚠️ **未達成** —— 目前是「另一個旗標可補救」,尚非 fail-fast |
+| 6 | prod 打 `x-dev-tenant: 1` → 應 401/403 | ⚠️ 需部署後實測(**無 CI 可自動 gate**)|
+| 7 | 兩分頁切不同 org → 是否互相污染? | ⚠️ **會**(`setActive` 為全域 session 狀態)|
+| 8 | `pnpm audit` critical/high 清零 | ❌ **未清** —— 見 task #102 |
+
 ### 來源
 
 - [Multi Tenant Security — OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multi_Tenant_Security_Cheat_Sheet.html)
