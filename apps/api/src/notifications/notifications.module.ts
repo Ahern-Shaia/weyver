@@ -1,4 +1,5 @@
 import { Global, Module } from "@nestjs/common"
+import { NotificationsController } from "./notifications.controller.js"
 import { NotificationRepository } from "./notification.repository.js"
 import { NotificationService } from "./notification.service.js"
 
@@ -10,6 +11,7 @@ import { NotificationService } from "./notification.service.js"
    且不會造成 dependency-cruiser 的跨模組違規。 */
 @Global()
 @Module({
+  controllers: [NotificationsController],
   providers: [NotificationRepository, NotificationService],
   exports: [NotificationService, NotificationRepository],
 })

@@ -100,23 +100,30 @@ export class NotificationService {
     return this.repo.createMany(rows, ["inapp"])
   }
 
-  /* 指名收件人(簽核)→ 用之;否則取全租戶有角色且未停用者。
-     **未停用檢查**:離職者不該繼續收通知(FMEA N7)。 */
+  /* 收件人解析。**未停用檢查**:離職者不該繼續收通知(FMEA N7)。
+
+     **指名收件人不經 role_members 過濾**(實作期發現的缺陷):
+     指名來源(簽核關卡成員 / 送簽者)其查詢本身已是租戶範圍,再加一層角色過濾
+     是多餘的,且會**silently 丟掉沒有任何角色的人** —— 使用者可憑 owner 短路
+     或租戶預設權限建單送簽,卻因無角色而永遠收不到核准/駁回結果。
+     租戶安全由「來源查詢已 tenant-scoped」+「notification 列帶 tenant_id + RLS」保證。
+
+     未指名時才用 role_members 列舉全租戶 —— 那是唯一能枚舉「這個租戶有誰」的來源。 */
   private async candidates(input: EmitInput): Promise<number[]> {
     const explicit = input.recipientActorIds
+    if (explicit !== undefined) {
+      if (explicit.length === 0) return []
+      const rows = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(inArray(users.id, [...explicit]), isNull(users.deletedAt)))
+      return rows.map((r) => r.id)
+    }
     const rows = await this.db
       .selectDistinct({ actorId: roleMembers.actorId })
       .from(roleMembers)
       .innerJoin(users, eq(users.id, roleMembers.actorId))
-      .where(
-        explicit === undefined
-          ? and(eq(roleMembers.tenantId, input.tenantId), isNull(users.deletedAt))
-          : and(
-              eq(roleMembers.tenantId, input.tenantId),
-              inArray(roleMembers.actorId, [...explicit]),
-              isNull(users.deletedAt),
-            ),
-      )
+      .where(and(eq(roleMembers.tenantId, input.tenantId), isNull(users.deletedAt)))
     return rows.map((r) => r.actorId)
   }
 

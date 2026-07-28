@@ -252,6 +252,22 @@ describe("H-1 通知與寄送分表 + 非關鍵路徑", () => {
     ).resolves.toBe(0)
   })
 
+  it("**無角色者仍收得到指名通知** —— 憑 owner / 租戶預設權限送簽者不該被靜默丟掉", async () => {
+    const orphan = await pool.query<{ id: number }>(
+      "INSERT INTO users (auth_user_id, email, name) VALUES ('orphan','orphan@w.test','無角色') RETURNING id",
+    )
+    const orphanId = orphan.rows[0]?.id ?? 0
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.approvalApproved,
+      formId,
+      recordId,
+      actorId: null,
+      recipientActorIds: [orphanId],
+    })
+    expect(await inbox(orphanId)).toContain(NOTIFICATION_EVENTS.approvalApproved)
+  })
+
   it("已停用使用者不收通知(FMEA N7)", async () => {
     await pool.query("UPDATE users SET deleted_at = now() WHERE id=$1", [bystander])
     await repo.setSettings({ tenantId: tenantA, actorId: bystander, enabled: true, channels: null })
