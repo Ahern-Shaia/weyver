@@ -245,12 +245,15 @@ td.off{background:var(--field);}
         <div class="sect-h"><span class="lvl">3</span>各事件的接收方式</div>
         <div class="sect-b">
           <table>
-            <tr><th>事件</th><th class="ch">站內</th><th class="ch">Email</th><th class="ch">LINE</th></tr>
-            <tr><td>待我簽核</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid off"><span class="na">尚未連接</span></td></tr>
-            <tr><td>簽核結果(核准 / 駁回)</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid off"><span class="na">尚未連接</span></td></tr>
-            <tr><td>與我相關的資料變更</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb" style="display:inline-block"></span></td><td class="mid off"><span class="na">尚未連接</span></td></tr>
-            <tr><td>新資料建立</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb" style="display:inline-block"></span></td><td class="mid off"><span class="na">尚未連接</span></td></tr>
+            <tr><th>事件</th><th class="ch">站內</th><th class="ch">Email</th></tr>
+            <tr><td>待我簽核</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb on" style="display:inline-block"></span></td></tr>
+            <tr><td>簽核結果(核准 / 駁回)</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb on" style="display:inline-block"></span></td></tr>
+            <tr><td>與我相關的資料變更</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb" style="display:inline-block"></span></td></tr>
+            <tr><td>新資料建立</td><td class="mid"><span class="cb on" style="display:inline-block"></span></td><td class="mid"><span class="cb" style="display:inline-block"></span></td></tr>
           </table>
+          <div style="margin-top:8px;padding:6px 9px;border:1px solid var(--wn-line);background:var(--wn-t);font-size:11px;color:var(--wn);">
+            簽核逾期提醒不受上方設定影響,一律發送。
+          </div>
           <div style="margin-top:8px;display:flex;justify-content:flex-end;"><span class="btn pri">儲存</span></div>
         </div>
       </div>
@@ -258,7 +261,8 @@ td.off{background:var(--field);}
     </div>
   </div>
   <div class="note"><b>三層是 Ragic 的原結構,不是我發明的</b>|① 總開關 ② 逐表單四個開關 ③ 事件 × 通道矩陣。Ragic 明載總開關關閉時「無法調整下面兩個部分」—— 這裡用整段 disabled 表達(見步驟 5)。</div>
-  <div class="note"><b>LINE 欄現在就畫出來但標「尚未連接」</b>|不是佔位裝飾 —— 通道抽象已設計(綁定鍵含租戶、inbound webhook 介面預留),欄位存在能讓使用者知道系統支援、且租戶接上憑證後即可用。<b>待你確認</b>:或者 P0 乾脆整欄不顯示?顯示的風險是「看得到用不到」的挫折感。</div>
+  <div class="note"><b>P0 不顯示 LINE 欄(已裁定)</b>|P0 既無 LINE driver 也無通道連接設定頁 —— 該列<b>無法由任何操作變成「已連接」</b>,是死控件。與本稿「不做假開關」同一原則。LINE 模組上線(含連接設定頁)時整欄再出現。</div>
+  <div class="note"><b>簽核逾期豁免總開關(已裁定)</b>|流程無限期卡住的風險高於使用者意願,故逾期提醒一律送。<b>但必須在設定頁明白告知</b> —— 靜默的例外會讓使用者以為設定失效。</div>
   <div class="note"><b>Ragic 第 2 層有第四個開關「有人回應跟我相關的資料時通知我」</b> —— 這裡少一個,因為 Weyver 還沒有註解功能。不做假開關。</div>
 </div>
 
@@ -270,7 +274,8 @@ td.off{background:var(--field);}
       <div class="sect">
         <div class="sect-h"><span class="lvl">1</span>接收通知</div>
         <div class="sect-b"><div class="master"><span class="sw"></span><span class="st" style="color:var(--ink3)">已停止</span>
-          <span style="margin-left:auto;"><span class="chip nt">不會收到任何通知</span></span></div></div>
+          <span style="margin-left:auto;"><span class="chip nt">不會收到任何通知</span></span></div>
+          <div style="margin-top:8px;padding:6px 9px;border:1px solid var(--wn-line);background:var(--wn-t);font-size:11px;color:var(--wn);">簽核逾期提醒為例外,停止接收期間仍會發送。</div></div>
       </div>
       <div class="sect disabled">
         <div class="sect-h"><span class="lvl">2</span>各表單通知</div>
@@ -333,6 +338,44 @@ td.off{background:var(--field);}
   <div class="note">這條規則也決定了架構:事件必須從 service 層<b>顯式發出</b>,不能用 DB trigger 或攔截所有寫入 —— 後兩者分不出批次與單筆(OQ-NT-3)。</div>
 </div>
 
+<!-- 8 -->
+<div class="step">
+  <div class="step-h"><span class="step-n">8</span><span class="step-t">LINE 個人 vs 群組 — 兩種不同的功能</span><span class="step-d">非 P0,但模型現在就要對</span></div>
+  <div class="two">
+    <div class="app">
+      <div class="bar"><span class="t">個人 1:1</span><span class="sp"></span><span class="chip c1">通知訂閱</span></div>
+      <div class="pane">
+        <div style="font-size:11.5px;line-height:1.8;color:var(--ink2);">
+          收件人|<b>一位已驗證身分的使用者</b><br>
+          誰決定收不收|<b>使用者自己</b>(三層設定)<br>
+          權限|收件人的 —— 點進去時檢查<br>
+          「跟我相關」|成立<br>
+          身分怎麼來|本人驗證(加好友 → 傳信箱 → 收驗證信 → 點連結)<br>
+          退訂|使用者自己關<br>
+          審計|「已送達<b>某人</b>」
+        </div>
+      </div>
+    </div>
+    <div class="app">
+      <div class="bar"><span class="t">群組</span><span class="sp"></span><span class="chip wn">事件廣播</span></div>
+      <div class="pane">
+        <div style="font-size:11.5px;line-height:1.8;color:var(--ink2);">
+          收件人|<b>不特定多數人</b> —— 可能含非 Weyver 使用者、外部廠商<br>
+          誰決定收不收|<b>沒有訂閱者</b>,由管理者設定<br>
+          權限|<b>無人的權限適用</b><br>
+          「跟我相關」|<b>無意義</b>(群組不是「我」)<br>
+          身分怎麼來|管理者邀 bot 進群 → 取得 groupId → 清單選定<br>
+          退訂|只能管理者移除或踢出 bot<br>
+          審計|「已廣播至<b>某群組</b>」—— 無法宣稱任何個人已知悉
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><b>所以群組設定不在個人設定裡</b>|三層訂閱回答的是「<b>我</b>要不要收」,而使用者無法替一個群組決定訂閱。群組屬「表單設定 / 租戶通道設定」(管理者權限),歸 docs/04 已編列的<b>通知路由引擎</b>。</div>
+  <div class="note"><b>群組讓「通知不含欄位值」從偏好變成不可協商</b>|個人通知至少收件人明確、點進去還有權限把關;群組廣播<b>沒有任何權限模型可依靠</b>。帶欄位值等於把資料推給一群系統從未驗證過的人。設定頁必須明示「群組內所有人都會看到」。</div>
+  <div class="note"><b>對 P0 的實際影響:收件人模型必須是多型的</b>|若通知只記 <code style="font-family:'IBM Plex Mono';font-size:11px;background:var(--field);border:1px solid var(--line2);padding:0 3px;">recipient_user_id</code>,群組通知<b>根本無法表示</b>。P0 不做群組,不代表模型可以不支援 —— 這正是「被 Email 形狀鎖死」的具體案例,M1 就要改對。</div>
+</div>
+
 <!-- 排除 -->
 <div class="step">
   <div class="step-h"><span class="step-n">—</span><span class="step-t">本稿刻意不含(各有理由)</span></div>
@@ -347,17 +390,18 @@ td.off{background:var(--field);}
   </div>
 </div>
 
-<!-- 待確認 -->
+<!-- 已裁定 -->
 <div class="step">
-  <div class="step-h"><span class="step-n">?</span><span class="step-t">要你確認的四件事</span></div>
-  <div class="excl" style="border-color:var(--wn-line);background:var(--wn-t);">
-    <ul style="color:var(--ink2);">
-      <li><b>LINE 欄要不要現在就顯示?</b> 顯示能讓人知道系統支援,但也可能造成「看得到用不到」的挫折。(步驟 4)</li>
-      <li><b>「查看全部通知」獨立頁 P0 要不要做?</b> 或先只有面板 + 最近 50 則。(步驟 2)</li>
-      <li><b>通知設定放哪裡?</b> 本稿放「個人設定」底下。另一選項是收在鈴鐺面板的齒輪。</li>
-      <li><b>簽核逾期是否豁免總開關?</b> 使用者關閉全部通知後,「逾期未簽」還要不要送?偏向「仍送」但需你拍板 —— 這是流程阻塞風險 vs 使用者意願的取捨。(FMEA N6)</li>
+  <div class="step-h"><span class="step-n">✓</span><span class="step-t">Review 裁定(2026-07-28)</span></div>
+  <div class="excl">
+    <ul>
+      <li><b>LINE 欄 P0 不顯示</b> —— P0 既無 driver 也無連接設定頁,該列無法由任何操作變成「已連接」,是死控件。與「不做假開關」同一原則。</li>
+      <li><b>「查看全部通知」P0 只做面板 + 最近 50 則</b>,獨立頁後續。</li>
+      <li><b>通知設定放個人設定底下。</b></li>
+      <li><b>簽核逾期豁免總開關,一律發送</b> —— 流程無限期卡住的風險高於使用者意願。<b>但必須在設定頁明白告知</b>(步驟 4、5 已加告示),靜默的例外會讓使用者以為設定壞了。</li>
     </ul>
   </div>
+  <div class="note"><b>Review 另揪出一個設計缺漏</b>|決策方指出 LINE 有個人與群組之分,查證後確認 docs/04 §H 早已明載「個人 1:1 + 群組」且註明「台灣 SMB 日常 LINE 群組通知」,而 M0 v0.2 只設計了個人綁定。已補為 §4.6 + OQ-NT-13/14 + FMEA N12/N13(見步驟 8)。</div>
 </div>
 
 </div>
