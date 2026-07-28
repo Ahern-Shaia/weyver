@@ -1,6 +1,7 @@
 # [F-8] 訂閱計費(**地基預留**,非實作)
 
-> ✅ **狀態:APPROVED — OQ-SB-1..8 已裁定(2026-07-28;全採建議);進入 M1**
+> ✅ **狀態:SHIPPED v1.0(2026-07-28)** — M1–M3 完成,**零行為變化**(所有租戶皆 `active` / `plan_code` NULL,與加欄前完全相同)。api 360 綠(+21)。
+> **本模組刻意不含**|金流 / 帳單 / 發票 / 催繳 / 自助升降級 —— 待 docs/04 A7 之營運觸發條件(付費客戶 > 10 家 或 手工開帳單月耗 > 8 小時)。
 > **裁定摘要**|1=C 觸發條件非硬編階段 · 2=A 地基現在做 · 3=A seat 語意(另記 MAU 不計費)· 4=A 外部使用者不佔 seat · 5=A 停權唯讀 · 6=A 能力碼粒度 · 7=A 每日快照 · 8=A 只立結構不填方案內容。
 > **範圍再確認(決策方 2026-07-28)**|「**先把功能預留,日後再補實際支付流程**」—— 本模組不含金流 / 帳單 / 發票 / 催繳。
 > **上游**|docs/05 §2 定價模型(三段式)· docs/04 A7(訂閱計費 Phase 2、MVP 期手工對帳)· docs/13 §Phase 4 · docs/23 R4 · docs/11 §16(部署成本)
@@ -141,18 +142,26 @@ seatLimit(tenantId): Promise<number | null>      // P0: null(不限)
 
 ---
 
-## 12. 失效場景反思(FMEA)— pre-mortem 預列
+## 12. 失效場景反思(FMEA)— ✅ M3 確認(2026-07-28)
 
-| # | 場景 | 預定緩解 | Sev |
-|---|---|---|---|
-| B1 | **停權邏輯誤傷正常租戶**(status 預設值錯 / 判斷反向)→ 全客戶無法使用 | `status` 預設 `'active'`;停權檢查採**白名單式**(只有明確 `suspended`/`cancelled` 才擋)而非黑名單;測試斷言「NULL / 未知值一律放行」 | **P0** |
-| B2 | entitlement 誤擋已付費客戶功能 | P0 一律回 `true`;日後填內容時,**未知能力碼預設放行**(fail-open)—— 計費是商業邊界不是安全邊界,**不可與 authz 的 deny-by-default 混用** | **P0** |
-| B3 | 用量記錄跨租戶錯置 → 帳單算到別人頭上 | `tenant_usage_daily` 帶 `tenant_id` + RLS;每日 job 逐租戶獨立交易;測試斷言隔離 | **P0** |
-| B4 | 用量 job 漏跑一天 → 該日永久空缺 | job 冪等(唯一鍵 `(tenant_id, date, metric)`)+ 可補算指定日期;**缺漏可觀測**(管理端顯示最後成功日) | P1 |
-| B5 | 計費使用者定義變更 → 歷史數字語意不一致 | `tenant_usage_daily` 存**指標碼**而非單一數字,新定義用新指標碼並存,不改寫歷史(承「不可變」) | P1 |
-| B6 | 停權後客戶無法取回資料 → 商業 / 法律爭議 | OQ-SB-5=A 唯讀;**但匯出功能目前 ⬜ 未起** → 停權功能實際啟用前,匯出必須先具備,否則 A 的承諾是空的 | P1 |
-| B7 | 手工開帳單期間無用量佐證 → 收費爭議 | 本模組 M2 即開始採集,**早於**自動化計費上線,使切換時已有歷史 | P1 |
-| B8 | 用量表無限成長 | 每日 × 租戶 × 指標,量極小(百家租戶 × 10 指標 × 365 ≈ 36 萬列/年),**不需清理**;明列以免日後誤加清理 job 砍掉計費憑據 | P2 |
+| # | 場景 | 緩解 | Sev | 狀態 |
+|---|---|---|---|---|
+| B1 | **停權邏輯誤傷正常租戶** → 全客戶無法使用 | `status` 預設 `'active'`;`isReadOnlyStatus()` 為**白名單式**(只有 `suspended`/`cancelled` 回 true);單元測逐一斷言 `trial`/`past_due`/未知值/空字串/`null`/`undefined` **全部放行** | **P0** | ✅ 已緩解 |
+| B2 | entitlement 誤擋已付費客戶功能 | `canUse()` 一律回 `true`;檔頭以 ⚠️ 明載 **fail-open,不可與 authz 的 deny-by-default 混用**;測試以「根本不存在的能力碼」斷言放行;`planFor()` 查無租戶亦回 `active` | **P0** | ✅ 已緩解 |
+| B3 | 用量記錄跨租戶錯置 → 帳單算到別人頭上 | `tenant_usage_daily` 帶 `tenant_id` + RLS FORCE + policy;整合測以兩租戶斷言互不汙染(A 2 席 / B 1 席、A 1 表 / B 0 表) | **P0** | ✅ 已緩解 |
+| B4 | 用量 job 漏跑一天 → 該日永久空缺 | 唯一鍵 `(tenant_id, day, metric)` + `onConflict().merge()` → 冪等;`run(day)` 可補算任意日期;整合測斷言「重跑不產生重複列」與「補算不影響其他日」 | P1 | ✅ 已緩解 |
+| B5 | 計費使用者定義變更 → 歷史數字語意不一致 | 存**指標碼**而非固定欄位;檔頭明載「新定義用新碼並存(如 `billable_users_v2`),舊碼原樣保留」 | P1 | ✅ 已緩解 |
+| B6 | 停權後客戶無法取回資料 → 商業 / 法律爭議 | `TenantGuard` 只擋寫入方法,**GET/HEAD/OPTIONS 一律放行**(且不查 DB,不為每個讀取加 round-trip);測試斷言 suspended 租戶 GET 仍 200 | P1 | ⚠️ **部分**|唯讀路徑已保證,但 **docs/04 I「匯出所有資料」仍 ⬜ 未起** → **停權功能實際啟用前必須先具備匯出**,否則「可取回資料」的承諾是空的 |
+| B7 | 手工開帳單期間無用量佐證 → 收費爭議 | M2 即開始每日採集,**早於**自動化計費上線 | P1 | ✅ 已緩解 |
+| B8 | 用量表無限成長 / 被誤刪 | app 車道**只授 SELECT**,不給 UPDATE/DELETE —— append-only 由**權限**保證不靠自律;整合測以 `SET ROLE weyver_app` 斷言兩者皆 permission denied。量極小(百家租戶 × 4 指標 × 365 ≈ 15 萬列/年)**刻意不設清理 job** | P2 | ✅ 已緩解 |
+
+**P0 全數緩解**;殘留 1 項(B6)且**阻塞條件明確**:停權功能不得在「匯出所有資料」具備前啟用。
+
+### 12.1 已知未做(刻意)
+
+- **停權沒有觸發者** —— `status` 目前只能人工改 DB。自動轉 `past_due`/`suspended` 屬計費自動化範圍(OQ-SB-1 觸發條件)。
+- **方案內容為空** —— `PLAN_QUOTAS` 與 `canUse()` 皆未填(OQ-SB-8=A),待商業決策。
+- **無管理端 UI** —— `UsageService.history()` 為服務層方法,尚無 HTTP 端點與畫面。手工開帳單期間可直接查 DB。
 
 ---
 
@@ -160,4 +169,5 @@ seatLimit(tenantId): Promise<number | null>      // P0: null(不限)
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-28 | **v1.0 SHIPPED** | M1–M3 完成,**零行為變化**。**M1** `tenants` 三欄(status/plan_code/trial_ends_at)+ `tenant_usage_daily`(RLS + **app 車道只授 SELECT**,append-only 由權限保證)+ `EntitlementService`(全放行 / fail-open)+ `QuotaService` 四層 fallback + `TenantGuard` 停權唯讀檢查;**M2** `UsageService` 每日快照(席位 / MAU / 表單數 / 儲存位元組)+ advisory lock + 冪等可補算;**M3** FMEA 確認 + docs/25 回填。**實作期三個修正**:(a) `records` 指標宣告卻未採集 → 移除並說明理由(逐張動態表 count 成本不成比例、定價亦不以此計);(b) `UsageModule` 自 `@Global` BillingModule 拆出 —— `UsageService` 相依 `DDL_KNEX`,放進全域會讓每個只想測 auth 的測試模組圖被迫提供 Knex;(c) 測試以顯式 `undefined` 傳參會觸發預設參數 → 改用 `null` 當哨兵。api 360 綠(+21)。migration 0017。**未做**:金流 / 帳單 / 發票 / 催繳 / 方案內容 / 管理端 UI / 停權自動觸發 | Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT —— 應決策方「先規劃預留,避免最後商業化有問題」。**核心主張:分開「計費自動化」(可延,手工可撐)與「計費地基」(不可延)**,分界線為「成本是否隨時間上升」。**§0.1 查出文件不一致**:docs/04 A7 說 Phase 2、docs/13 說 Phase 4、docs/23 說 R4,排期差兩階段 → OQ-SB-1。**§0.3 程式碼現況**:entitlement / 用量 / 生命週期**三者全缺**,但 `QuotaService` 單一檢查點、`tenants.parent_tenant_id`、`TenantGuard` 已是可用的縫。**§1.2 不可延三項**:用量歷史(**晚做就永久失去**)· 生命週期狀態(在 `TenantGuard` 熱路徑)· entitlement 檢查點(成本隨模組數線性成長)。**§2 預留為零行為變化**:三個 nullable 欄 + append-only 用量表 + P0 全放行的 `EntitlementService`。**§4 台灣在地**:自家開發票 ≠ 模組 O(不同租戶脈絡)· 年繳非月循環 · onboarding 費為專案收入不入 ARR。OQ-SB-1..8 待裁定;FMEA B1/B2 點出**計費須 fail-open,不可與 authz 的 deny-by-default 混用** | Claude Code |
