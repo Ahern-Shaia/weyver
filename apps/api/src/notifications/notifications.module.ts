@@ -1,4 +1,7 @@
 import { Global, Module } from "@nestjs/common"
+import { ScheduleModule } from "@nestjs/schedule"
+import { EmailChannel } from "./email.channel.js"
+import { NotificationDispatcher } from "./notification-dispatcher.service.js"
 import { NotificationsController } from "./notifications.controller.js"
 import { NotificationRepository } from "./notification.repository.js"
 import { NotificationService } from "./notification.service.js"
@@ -11,8 +14,9 @@ import { NotificationService } from "./notification.service.js"
    且不會造成 dependency-cruiser 的跨模組違規。 */
 @Global()
 @Module({
+  imports: [ScheduleModule.forRoot()],
   controllers: [NotificationsController],
-  providers: [NotificationRepository, NotificationService],
-  exports: [NotificationService, NotificationRepository],
+  providers: [NotificationRepository, NotificationService, EmailChannel, NotificationDispatcher],
+  exports: [NotificationService, NotificationRepository, NotificationDispatcher],
 })
 export class NotificationsModule {}

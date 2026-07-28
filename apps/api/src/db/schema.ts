@@ -719,3 +719,23 @@ export const notificationSettings = pgTable(
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.actorId] })],
 )
+
+/* H-1 M3|寄送抑制清單(P0,非 P1)。
+
+   **不處理退信與投訴 = 網域信譽崩壞 = 全體租戶的通知都進垃圾信**(FMEA N15)。
+   Google 每日計算投訴率,**≥0.3% 即喪失 mitigation 資格**,須連續 7 天 <0.3% 才恢復。
+
+   5xx 硬退 → 立即永久 suppress;投訴 → 零重試立即永久 suppress;
+   4xx 軟退 → 退避重試,連續失敗升硬退。**寄送前必查**。
+   跨租戶共用(信譽是平台層資產,非租戶層)→ 刻意**不帶 tenant_id**。 */
+export const emailSuppressions = pgTable(
+  "email_suppression",
+  {
+    email: text("email").primaryKey(),
+    /* hard_bounce / complaint / unsubscribe / manual */
+    reason: text("reason").notNull(),
+    detail: text("detail"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("email_suppression_reason_idx").on(t.reason)],
+)

@@ -7,6 +7,7 @@ import {
   notificationSettings,
   notifications,
 } from "../db/schema.js"
+import { emailDelayMinutes } from "./notification-dispatcher.service.js"
 import { DEFAULT_LEVEL, type NotificationLevel } from "./notification-specs.js"
 
 /* H-1 M1 資料存取。通知類為 Tier-1 metadata 性質 → 特權 DRIZZLE 車道 + app 層 tenant scope
@@ -38,6 +39,8 @@ export interface NewNotification {
   readonly recordId: number | null
   readonly title: string
   readonly actorId: number | null
+  /* 通道**逐人決定**(每個使用者的通道偏好不同),不是整批共用 */
+  readonly channels: readonly string[]
 }
 
 @Injectable()
@@ -45,17 +48,33 @@ export class NotificationRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
   /* 批次插入 + 對應通道 delivery。**通知與寄送分兩張表**(§0.4.2)。 */
-  async createMany(rows: readonly NewNotification[], channels: readonly string[]): Promise<number> {
+  async createMany(rows: readonly NewNotification[]): Promise<number> {
     if (rows.length === 0) return 0
+    /* 一併 RETURNING event 與收件人 —— **不依賴 INSERT ... RETURNING 的列序**
+       與輸入陣列對齊(PG 未形式保證) */
     const inserted = await this.db
       .insert(notifications)
-      .values(rows.map((r) => ({ ...r })))
-      .returning({ id: notifications.id, tenantId: notifications.tenantId })
+      .values(rows.map(({ channels: _c, ...r }) => r))
+      .returning({
+        id: notifications.id,
+        tenantId: notifications.tenantId,
+        event: notifications.event,
+        recipientActorId: notifications.recipientActorId,
+      })
+    const channelsOf = new Map(rows.map((r) => [`${r.recipientActorId}:${r.event}`, r.channels]))
+    /* email 之派送時刻依事件分流:簽核類立即,一般資料異動等去抖動視窗
+       (OQ-NT-8:一筆記錄連續編輯 10 次不該是 10 封信)。
+       時刻以 **DB 的 now()** 計算,不用應用時鐘(見 emailDelayMinutes 註解)。 */
     const deliveries = inserted.flatMap((n) =>
-      channels.map((channel) => ({
+      (channelsOf.get(`${n.recipientActorId}:${n.event}`) ?? ["inapp"]).map((channel) => ({
         tenantId: n.tenantId,
         notificationId: n.id,
         channel,
+        ...(channel === "email"
+          ? {
+              nextAttemptAt: sql`now() + make_interval(mins => ${emailDelayMinutes(n.event)})`,
+            }
+          : {}),
       })),
     )
     if (deliveries.length > 0) await this.db.insert(notificationDeliveries).values(deliveries)

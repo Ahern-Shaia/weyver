@@ -86,6 +86,8 @@ export class NotificationService {
       if (!levelAllows(resolved.level, input.event, involved.has(actorId), resolved.customEvents)) {
         continue
       }
+      /* 軸 2 通道:**逐人決定**。缺設定 = 站內 + Email 皆開(既有使用者零遷移)。 */
+      const chosen = setting?.channels?.[input.event]
       rows.push({
         tenantId: input.tenantId,
         recipientActorId: actorId,
@@ -94,10 +96,10 @@ export class NotificationService {
         recordId: input.recordId,
         title,
         actorId: input.actorId,
+        channels: chosen === undefined ? ["inapp", "email"] : ["inapp", ...(chosen.includes("email") ? ["email"] : [])],
       })
     }
-    /* M1 只落站內;Email delivery 於 M3 接上驅動後開啟 */
-    return this.repo.createMany(rows, ["inapp"])
+    return this.repo.createMany(rows)
   }
 
   /* 收件人解析。**未停用檢查**:離職者不該繼續收通知(FMEA N7)。

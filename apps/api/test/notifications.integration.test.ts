@@ -8,6 +8,7 @@ import { runMigrations } from "../src/db/migrate.js"
 import { roleMembers, roles, tenants, users } from "../src/db/schema.js"
 import { LEVEL, NOTIFICATION_EVENTS } from "../src/notifications/notification-specs.js"
 import type { NotificationRepository } from "../src/notifications/notification.repository.js"
+import type { NotificationDispatcher } from "../src/notifications/notification-dispatcher.service.js"
 import type { NotificationService } from "../src/notifications/notification.service.js"
 
 /* H-1 M1|重點:簽核接通(本模組存在的理由)· 跨租戶隔離 · 風暴防護 · 標題不洩漏。 */
@@ -17,6 +18,7 @@ let pool: pg.Pool
 let app: NestFastifyApplication
 let notify: NotificationService
 let repo: NotificationRepository
+let dispatcher: NotificationDispatcher
 let tenantA = 0
 let tenantB = 0
 let formId = 0
@@ -100,6 +102,10 @@ beforeAll(async () => {
   await app.getHttpAdapter().getInstance().ready()
   notify = app.get(NS)
   repo = app.get(NR)
+  const { NotificationDispatcher: ND } = await import(
+    "../src/notifications/notification-dispatcher.service.js"
+  )
+  dispatcher = app.get(ND)
 
   const form = await app.inject({
     method: "POST",
@@ -281,5 +287,105 @@ describe("H-1 通知與寄送分表 + 非關鍵路徑", () => {
     })
     expect((await inbox(bystander)).length).toBe(before)
     await pool.query("UPDATE users SET deleted_at = NULL WHERE id=$1", [bystander])
+  })
+})
+
+describe("H-1 M3 Email 派工", () => {
+  it("**SMTP 未設定 → skipped 而非 failed** —— 「還沒設定」不是「寄送失敗」", async () => {
+    await pool.query("UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'")
+    await dispatcher.run()
+    const rows = await pool.query<{ status: string; n: string }>(
+      "SELECT status, count(*) AS n FROM notification_delivery WHERE channel='email' GROUP BY status",
+    )
+    const byStatus = Object.fromEntries(rows.rows.map((r) => [r.status, Number(r.n)]))
+    expect(byStatus.failed ?? 0).toBe(0)
+    expect((byStatus.skipped ?? 0) + (byStatus.pending ?? 0)).toBeGreaterThan(0)
+  })
+
+  it("**去抖動**:簽核類立即可送,一般資料異動排到視窗之後", async () => {
+    await pool.query("DELETE FROM notification_delivery; DELETE FROM notification")
+    /* 一般資料異動須層級到「全部」才會產生通知(預設「與我相關」不含旁人) */
+    await repo.setPref({
+      tenantId: tenantA,
+      actorId: approver,
+      scope: "form",
+      scopeId: formId,
+      level: LEVEL.all,
+      customEvents: null,
+    })
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.approvalPending,
+      formId,
+      recordId,
+      actorId: null,
+      recipientActorIds: [approver],
+    })
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.recordUpdated,
+      formId,
+      recordId,
+      actorId: null,
+      recipientActorIds: [approver],
+    })
+    const rows = await pool.query<{ event: string; due: boolean }>(
+      `SELECT n.event, (d.next_attempt_at <= now()) AS due
+         FROM notification_delivery d JOIN notification n ON n.id=d.notification_id
+        WHERE d.channel='email' ORDER BY n.id`,
+    )
+    const byEvent = Object.fromEntries(rows.rows.map((r) => [r.event, r.due]))
+    expect(byEvent[NOTIFICATION_EVENTS.approvalPending]).toBe(true)
+    expect(byEvent[NOTIFICATION_EVENTS.recordUpdated]).toBe(false)
+  })
+
+  it("**FMEA N15 抑制清單**:已抑制的位址不再寄送", async () => {
+    const email = "app@w.test"
+    await pool.query(
+      "INSERT INTO email_suppression (email, reason) VALUES ($1,'hard_bounce') ON CONFLICT DO NOTHING",
+      [email],
+    )
+    await pool.query("UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'")
+    await dispatcher.run()
+    const rows = await pool.query<{ last_error: string | null }>(
+      `SELECT d.last_error FROM notification_delivery d
+         JOIN notification n ON n.id=d.notification_id
+        WHERE d.channel='email' AND n.recipient_actor_id=$1 LIMIT 1`,
+      [approver],
+    )
+    expect(rows.rows[0]?.last_error ?? "").toContain("已抑制")
+    await pool.query("DELETE FROM email_suppression WHERE email=$1", [email])
+  })
+
+  it("通道偏好**逐人生效**:關掉 email 者只產生站內 delivery", async () => {
+    await pool.query("DELETE FROM notification_delivery; DELETE FROM notification")
+    await repo.setSettings({
+      tenantId: tenantA,
+      actorId: approver,
+      enabled: true,
+      channels: { "record.created": ["inapp"] },
+    })
+    await repo.setPref({
+      tenantId: tenantA,
+      actorId: approver,
+      scope: "form",
+      scopeId: formId,
+      level: LEVEL.all,
+      customEvents: null,
+    })
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.recordCreated,
+      formId,
+      recordId,
+      actorId: null,
+      recipientActorIds: [approver],
+    })
+    const rows = await pool.query<{ channel: string }>(
+      `SELECT d.channel FROM notification_delivery d JOIN notification n ON n.id=d.notification_id
+        WHERE n.recipient_actor_id=$1`,
+      [approver],
+    )
+    expect(rows.rows.map((r) => r.channel)).toEqual(["inapp"])
   })
 })
