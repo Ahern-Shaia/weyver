@@ -245,6 +245,35 @@
 - 日期改用 `cellDates:true` 取 **Excel 序列值**(序列值本身無地區歧義),文字才走 regex;`x/y/z` 且無任一段 >12 時標「歧義」要使用者選 MDY/DMY(對齊 Excel 匯入精靈)
 - 面板加「自動推斷 開/關」+「全部設為文字」逃生鍵(**對齊 Airtable 的可關閉開關**)
 
+#### 推斷規則 v2 完整規格(可直接實作)
+
+```
+取樣:分層 200 個非空值(頭 50 / 中 100 / 尾 50)
+門檻:命中 ≥95%(未達 → text,離群列列入預檢報告)
+
+【一票否決 —— 先於所有數值判定,任一格命中即整欄 text】   ← 已實作(ae5d2bb)
+  A. /^0\d/                    前導零(郵遞區號 / 舊料號)
+  B. /^-?\d{15,}$/             超 MAX_SAFE_INTEGER
+  C. /^\d{8,14}$/ 且無小數無千分位  統編 8 / 身分證 10 / 手機 10
+                               —— 除非欄名含 數量|金額|單價|重量|qty|amount
+  D. 含 - + ( ) 的數字串          電話 02-1234-5678、+886
+
+【正判定順序】
+  1 checkbox      全為 true/false/是/否/Y/N
+  2 date/dateTime 優先取 cellDates 的 Date 物件;純文字僅認 ISO;
+                  x/y/z 且無任一段 >12 → 標「歧義」要使用者選 MDY/DMY
+  3 money         欄名含 金額|價|費|成本|amount|price|cost,或含貨幣符號
+                  ⚠️ **單靠「兩位小數」不足** —— 0.25 是比率不是金額
+  4 number        其餘數值
+  5 singleSelect  distinct ≤ min(50, rowCount × 0.1)
+                  且 rowCount ≥ 20 且 distinct ≥ 2
+  6 text          其餘
+```
+
+> **與現行實作的差距**|一票否決(A–D)已實作;**取樣仍為前 50 列、門檻仍為 100%
+> (`allMatch`)、日期仍走文字 regex 而非 `cellDates`、singleSelect 門檻為
+> `min(10, rowCount × 0.3)` 且 `rowCount ≥ 5`(較上表寬鬆,易在小樣本誤判)**。
+
 ### ✅ 產品方向確認
 
 **Ragic 建表時是引導使用者逐欄指定型別、不靜默猜**;Airtable 的自動推斷可關閉。
