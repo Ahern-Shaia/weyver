@@ -97,16 +97,56 @@ export interface FieldTypeDefinition {
 
 /* R1·UP-4 M2 選項顏色 + 連動:加法擴充(colors/parentField/optionParents 皆 optional)。
    valueSchema 仍 z.enum(choices) → 既有表零遷移;連動為前端過濾導引 + 後端仍驗 enum。 */
+/* R1·UP-4c 選項配色:**受控 tone 白名單**(非任意字串/hex)。
+   狀態色 ok/warn/error/neutral 承載語意;c1–c8 為不帶語意之類別色(docs/14 §0.2)。
+   後端收斂為 enum = 縱深第二道:前端另有查表白名單,兩側皆不接受任意值。 */
+const CHIP_TONES = [
+  "ok",
+  "warn",
+  "error",
+  "neutral",
+  "c1",
+  "c2",
+  "c3",
+  "c4",
+  "c5",
+  "c6",
+  "c7",
+  "c8",
+] as const
+
 const choicesSchema = z
   .object({
     choices: z.array(z.string().min(1).max(100)).min(1).max(200),
-    // 選項 → 語意色 token(非 raw hex,對齊 docs/14)
-    colors: z.record(z.string(), z.string().max(40)).optional(),
+    // 選項 → 色 token(非 raw hex,對齊 docs/14 §0.2 受控色盤)
+    colors: z.record(z.string(), z.enum(CHIP_TONES)).optional(),
     // 連動:依 parentField 當前值過濾本欄可選項(optionParents: 子選項 → 允許之父選項清單)
     parentField: z.string().max(100).optional(),
     optionParents: z.record(z.string(), z.array(z.string().max(100)).max(200)).optional(),
   })
   .strict()
+  /* colors 之 key 必須是現存選項:否則選項改名後,舊色會「借屍還魂」套到同名新選項上,
+     產生難查的錯色(FMEA C3)。連動選項之 optionParents 同理。 */
+  .superRefine((value, ctx) => {
+    if (value.colors === undefined) return
+    const known = new Set(value.choices)
+    for (const key of Object.keys(value.colors)) {
+      if (!known.has(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["colors", key],
+          message: `colors 指向不存在的選項:${key}`,
+        })
+      }
+    }
+  })
+
+/* 記錄寫入只需要 choices —— **呈現用設定(顏色 / 連動)不得有能力擋住資料輸入**。
+   若此處沿用完整 choicesSchema,一個壞掉的顏色值會讓整張表無法存記錄(潛在缺陷,
+   於 R1·UP-4c 收緊 colors 為 enum 時發現並修正)。 */
+const choicesOnlySchema = z
+  .object({ choices: z.array(z.string().min(1).max(100)).min(1).max(200) })
+  .loose()
 
 function def(entry: FieldTypeDefinition): FieldTypeDefinition {
   return entry
@@ -221,7 +261,7 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     optionsSchema: choicesSchema,
     buildColumn: (t, col) => void t.text(col),
     valueSchema: (options) => {
-      const parsed = choicesSchema.parse(options)
+      const parsed = choicesOnlySchema.parse(options)
       return z.enum(parsed.choices as [string, ...string[]])
     },
     filterOperators: [...EQUALITY, "anyOf"],
@@ -233,7 +273,7 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     optionsSchema: choicesSchema,
     buildColumn: (t, col) => void t.specificType(col, "text[]"),
     valueSchema: (options) => {
-      const parsed = choicesSchema.parse(options)
+      const parsed = choicesOnlySchema.parse(options)
       return z.array(z.enum(parsed.choices as [string, ...string[]])).max(200)
     },
     filterOperators: [...EMPTINESS, "anyOf"],

@@ -45,6 +45,37 @@
   --color-nt-line: #d6dbe0;
   --color-nt-t: #eef0f2;
 
+  /* ── 類別色(R1·UP-4c 選項配色;帶框章三值:字 / 框 / 底)──────────
+     **狀態色 ≠ 類別色**:上面四組承載語意(該行動 / 已了結);以下八組**不帶語意**,
+     只做類別編碼(如 北區/中區/南區),等同圖表之 categorical color。
+     刻意避開 綠/琥珀/紅 三個色相,以免與 ok/wn/er 的語意混淆。
+     統一去飽和 + 一致明度(字 ~L40% / 框 ~L82% / 底 ~L95%),避免糖果色;
+     章體恆含文字 → 色盲與黑白列印下資訊不失(FMEA C2)。 */
+  --color-c1: #1f5f9e; /* 藍 */
+  --color-c1-line: #c2d6e8;
+  --color-c1-t: #eaf1f8;
+  --color-c2: #4a4fa8; /* 靛 */
+  --color-c2-line: #ccceea;
+  --color-c2-t: #eeeff9;
+  --color-c3: #6b46a8; /* 紫 */
+  --color-c3-line: #d6cbe9;
+  --color-c3-t: #f2edf9;
+  --color-c4: #8f3a76; /* 梅 */
+  --color-c4-line: #e3c8dc;
+  --color-c4-t: #f7ecf3;
+  --color-c5: #0f6b6b; /* 松綠 */
+  --color-c5-line: #bcdcdc;
+  --color-c5-t: #e8f4f4;
+  --color-c6: #1a6a86; /* 青 */
+  --color-c6-line: #c0dbe6;
+  --color-c6-t: #e9f3f7;
+  --color-c7: #5e6b1f; /* 橄欖 */
+  --color-c7-line: #d5dcb8;
+  --color-c7-t: #f0f3e4;
+  --color-c8: #8a4b2a; /* 陶土 */
+  --color-c8-line: #e2cbbd;
+  --color-c8-t: #f7eee8;
+
   /* ── 形狀(容器/控件 4–6px 柔角:非線框、非 pill;狀態章 3px)──── */
   --radius-xs: 3px; /* 狀態章 / inline */
   --radius-sm: 4px; /* 控件 / 按鈕 / 輸入 */

@@ -1,7 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
+import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
@@ -117,7 +117,7 @@ describe("R1·UP-4 M2 autoNumber pattern + 選項擴充", () => {
           {
             name: "狀態",
             type: "singleSelect",
-            options: { choices: ["新", "結"], colors: { 新: "info", 結: "ok" } },
+            options: { choices: ["新", "結"], colors: { 新: "c1", 結: "ok" } },
           },
           {
             name: "細項",
@@ -135,7 +135,7 @@ describe("R1·UP-4 M2 autoNumber pattern + 選項擴充", () => {
     const st = got.fields.find((f) => f.name === "狀態")
     const detail = got.fields.find((f) => f.name === "細項")
     expect((st?.options as { colors?: Record<string, string> }).colors).toEqual({
-      新: "info",
+      新: "c1",
       結: "ok",
     })
     expect((detail?.options as { parentField?: string }).parentField).toBe("狀態")
@@ -173,5 +173,46 @@ describe("R1·UP-4 M2 autoNumber pattern + 選項擴充", () => {
     const got = await metadata.getForm(tenantA, form.id)
     const link = got.fields.find((f) => f.name === "供應商")
     expect((link?.options as { displayFields?: string[] }).displayFields).toEqual(["名稱", "電話"])
+  })
+})
+
+/* R1·UP-4c 選項配色:受控 tone 白名單 + colors↔choices 交叉驗證 */
+describe("選項配色(option colors)", () => {
+  // async 包裝:createFormSpecSchema.parse 為同步拋出,不包裝則 rejects 接不到
+  const createSelectForm = async (options: Record<string, unknown>) =>
+    ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `配色_${Date.now().toString().slice(-6)}_${Math.random().toString(36).slice(2, 6)}`,
+        fields: [{ name: "區域", type: "singleSelect", options }],
+      }),
+    )
+
+  it("合法 tone(語意色 + 類別色)可存", async () => {
+    const { fields } = await createSelectForm({
+      choices: ["北區", "中區", "待審"],
+      colors: { 北區: "c1", 中區: "c5", 待審: "warn" },
+    })
+    expect((fields[0]?.options as { colors: Record<string, string> }).colors.北區).toBe("c1")
+  })
+
+  it("任意字串 / hex 被拒(受控色盤,非自由選色)", async () => {
+    await expect(
+      createSelectForm({ choices: ["北區"], colors: { 北區: "#ff0000" } }),
+    ).rejects.toThrow()
+    await expect(
+      createSelectForm({ choices: ["北區"], colors: { 北區: "sparkle" } }),
+    ).rejects.toThrow()
+  })
+
+  it("FMEA C3:colors 指向不存在的選項 → 拒(防改名後借屍還魂)", async () => {
+    await expect(
+      createSelectForm({ choices: ["北區"], colors: { 已刪除的選項: "c2" } }),
+    ).rejects.toThrow()
+  })
+
+  it("未設 colors 仍可建(向後相容,既有欄位零遷移)", async () => {
+    const { fields } = await createSelectForm({ choices: ["甲", "乙"] })
+    expect((fields[0]?.options as { colors?: unknown }).colors).toBeUndefined()
   })
 })
