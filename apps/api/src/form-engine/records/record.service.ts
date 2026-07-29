@@ -111,6 +111,19 @@ interface ResolvedForm {
   readonly layout: Layout | null
 }
 
+/* 🔴 「沒填」在使用者眼中只有一種,JSON 卻可以傳三種:`null` / `""` / `[]`。
+   不在**寫入端**收斂成 NULL,會有兩個都很難查的後果:
+   (a) required 只擋 null → 空字串直通,必填形同虛設
+   (b) isEmpty 篩選是 `IS NULL` → 存成 `""` 的列查不到,使用者以為資料齊全
+   順帶修好一個既有 UX 缺陷:optional 的 email / url 欄原本無法用 `""` 清空
+   (zod 會判 `""` 不是合法 email 而擋下)。
+   不動的:`false` / `0` 是真值,不在此列;非空字串也**不 trim**,免得改動使用者資料。 */
+function normalizeEmpty(raw: unknown): unknown {
+  if (typeof raw === "string" && raw.trim() === "") return null
+  if (Array.isArray(raw) && raw.length === 0) return null
+  return raw
+}
+
 const BULK_MAX_ROWS = 5000
 
 function escapeLike(value: string): string {
@@ -798,7 +811,7 @@ export class RecordService {
     }
   }
 
-  /* 值驗證:name whitelist → systemManaged 拒寫 → required(create)→ 型別 Zod → DB 值轉換 */
+  /* 值驗證:name whitelist → systemManaged 拒寫 → 空值正規化 → required → 型別 Zod → DB 值轉換 */
   private async validateValues(
     trx: Knex.Transaction,
     tenantId: number,
@@ -812,14 +825,15 @@ export class RecordService {
       if (field === undefined) throw new UnknownFieldError(name)
       const definition = fieldType(field.type)
       if (definition.systemManaged) throw new SystemManagedFieldError(name)
-      if (raw === null) {
+      const value = normalizeEmpty(raw)
+      if (value === null) {
         if (field.row.required) throw new RequiredFieldError(name)
         columns[field.column] = null
         continue
       }
       const parsed = definition
         .valueSchema(field.row.options as Record<string, unknown>)
-        .safeParse(raw)
+        .safeParse(value)
       if (!parsed.success) {
         throw new FieldValueError(name, z.prettifyError(parsed.error))
       }
