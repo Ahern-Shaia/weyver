@@ -106,9 +106,10 @@ export class AuthzAdminService {
     roleId: number,
     formId: number,
     actions: readonly FormAction[],
+    scopedActions: readonly FormAction[] = [],
   ): Promise<void> {
     await this.mustRole(tenantId, roleId)
-    await this.repo.setFormActions(roleId, formId, actions)
+    await this.repo.setFormActions(roleId, formId, actions, scopedActions)
   }
 
   async setFieldPermission(

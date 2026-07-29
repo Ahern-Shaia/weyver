@@ -208,6 +208,7 @@ export class AuthzRepository {
     roleId: number,
     formId: number,
     actions: readonly FormAction[],
+    scopedActions: readonly FormAction[] = [],
   ): Promise<void> {
     if (actions.length === 0) {
       await this.db
@@ -216,12 +217,15 @@ export class AuthzRepository {
       return
     }
     const unique = [...new Set(actions)]
+    /* 範圍只對「有給的動作」有意義 —— 標了沒授予的動作是設定者的誤解,靜默留著會讓
+       日後解讀權限的人困惑。收斂到交集,不報錯(這不是錯誤,是無意義)。 */
+    const scoped = [...new Set(scopedActions)].filter((a) => unique.includes(a))
     await this.db
       .insert(formPermissions)
-      .values({ roleId, formId, actions: unique })
+      .values({ roleId, formId, actions: unique, scopedActions: scoped })
       .onConflictDoUpdate({
         target: [formPermissions.roleId, formPermissions.formId],
-        set: { actions: unique },
+        set: { actions: unique, scopedActions: scoped },
       })
   }
 

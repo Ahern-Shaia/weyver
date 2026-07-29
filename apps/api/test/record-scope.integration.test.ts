@@ -4,7 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
+import { AccessPreviewService } from "../src/form-engine/access/access-preview.service.js"
+import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
+import { PermissionService } from "../src/authz/permission.service.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
@@ -23,6 +26,7 @@ let ddl: DdlService
 /* 建表走特權 DDL 車道(需 CREATE);記錄讀寫走 **app 角色**車道 ——
    superuser 一律 bypass RLS,用它測範圍等於什麼都沒測。 */
 let records: RecordService
+let preview: AccessPreviewService
 const destroyers: (() => Promise<void>)[] = []
 let tenantA = 0
 
@@ -47,6 +51,9 @@ beforeAll(async () => {
   const appKnex = createDdlKnex(uri.toString())
   destroyers.push(() => appKnex.destroy())
   records = new RecordService(appKnex, metadata)
+
+  const repo = new AuthzRepository(db, new TenantDb(db))
+  preview = new AccessPreviewService(appKnex, new PermissionService(repo))
 }, 120_000)
 
 afterAll(async () => {
@@ -168,5 +175,109 @@ describe("🔴 記錄範圍:業務只看自己的客戶(#96)", () => {
       "A的客戶2",
       "B的客戶",
     ])
+  })
+})
+
+describe("🔴 指派同步:member 欄勾 grantsAccess(#96 M2)", () => {
+  it("**寫入時同步到 assignees** —— 資料即權限,不另維護一份指派表", async () => {
+    const { form, fields } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `指派_${String(Date.now()).slice(-6)}`,
+        fields: [
+          { name: "客戶名稱", type: "text" },
+          { name: "負責業務", type: "member", options: { grantsAccess: true } },
+        ],
+      }),
+      ALICE,
+    )
+    void fields
+    const rec = await records.createRecord(
+      tenantA,
+      form.id,
+      { 客戶名稱: "指派給 BOB", 負責業務: BOB },
+      ALICE,
+    )
+
+    const { rows } = await pool.query<{ assignees: string[] | null }>(
+      `SELECT assignees FROM data.t${form.id} WHERE id = $1`,
+      [rec.id],
+    )
+    expect(rows[0]?.assignees?.map(Number)).toEqual([BOB])
+
+    // BOB 因為被指派而看得到(他不是建立者)
+    expect(await names(form.id, ownScoped(form.id), BOB)).toEqual(["指派給 BOB"])
+  })
+
+  it("**改指派後舊的人就看不到了** —— 權限不得留在被移除的人身上", async () => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `改派_${String(Date.now()).slice(-6)}`,
+        fields: [
+          { name: "客戶名稱", type: "text" },
+          { name: "負責業務", type: "member", options: { grantsAccess: true } },
+        ],
+      }),
+      ALICE,
+    )
+    const rec = await records.createRecord(
+      tenantA,
+      form.id,
+      { 客戶名稱: "轉手客戶", 負責業務: BOB },
+      ALICE,
+    )
+    expect(await names(form.id, ownScoped(form.id), BOB)).toEqual(["轉手客戶"])
+
+    const CAROL = 303
+    const current = await records.getRecord(tenantA, form.id, rec.id)
+    await records.updateRecord(
+      tenantA,
+      form.id,
+      rec.id,
+      current.version,
+      { 負責業務: CAROL },
+      ALICE,
+    )
+    expect(await names(form.id, ownScoped(form.id), BOB)).toEqual([])
+    expect(await names(form.id, ownScoped(form.id), CAROL)).toEqual(["轉手客戶"])
+  })
+
+  it("沒勾 grantsAccess 的 member 欄不影響權限", async () => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `未勾_${String(Date.now()).slice(-6)}`,
+        fields: [
+          { name: "客戶名稱", type: "text" },
+          { name: "聯絡人", type: "member" },
+        ],
+      }),
+      ALICE,
+    )
+    await records.createRecord(tenantA, form.id, { 客戶名稱: "X", 聯絡人: BOB }, ALICE)
+    expect(await names(form.id, ownScoped(form.id), BOB)).toEqual([])
+  })
+})
+
+
+describe("🔴 預覽模擬器(#96 M3)", () => {
+  it("**回「看得到幾筆 / 全部幾筆 + 每筆為什麼」** —— 只給一個數字管理員無從判斷對錯", async () => {
+    const formId = await seed()
+    const result = await preview.preview(tenantA, formId, ALICE)
+    expect(result.totalCount).toBe(3)
+    for (const s of result.samples) {
+      expect(["owner", "assigned", "unrestricted"]).toContain(s.reason)
+    }
+  })
+
+  it("**預覽與實際一致** —— 兩者若各寫一套判斷,管理員會相信一個錯的東西", async () => {
+    const formId = await seed()
+    // 沒有任何角色授權 → 看不到(deny-by-default),預覽也必須這樣說
+    const result = await preview.preview(tenantA, formId, BOB)
+    expect(result.visibleCount).toBe(0)
+    expect(result.samples).toHaveLength(0)
+    // 總數仍照實回報,讓管理員知道「這張表有 3 筆,但這個人一筆都看不到」
+    expect(result.totalCount).toBe(3)
   })
 })

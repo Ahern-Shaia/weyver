@@ -966,6 +966,23 @@ export class RecordService {
       columns[field.column] = this.toDbValue(field.type, parsed.data)
     }
 
+    /* 🔴 E-1 指派同步(#96):勾了 grantsAccess 的 member 欄 → 系統欄 assignees。
+       **單一同步點** —— RLS policy 只讀 assignees,若各處各自維護必然漂移。
+       欄位被清空時 assignees 也要跟著清,否則權限會留在被移除的人身上。 */
+    const grantFields = resolved.fields.filter(
+      (f) =>
+        f.type === "member" &&
+        (f.row.options as { grantsAccess?: boolean }).grantsAccess === true,
+    )
+    if (grantFields.length > 0) {
+      const ids = grantFields
+        .map((f) => columns[f.column])
+        .filter((v): v is number => typeof v === "number")
+      /* 只在本次有動到任一指派欄時才寫 —— 否則部分更新會把既有指派清掉 */
+      const touched = grantFields.some((f) => f.column in columns)
+      if (touched) columns.assignees = ids.length > 0 ? ids : null
+    }
+
     if (mode === "create") {
       for (const field of resolved.fields) {
         const definition = fieldType(field.type)

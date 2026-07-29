@@ -409,7 +409,10 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
   member: def({
     cellValueType: "member",
     dbFieldType: "bigint",
-    optionsSchema: emptyOptions,
+    /* 🔴 E-1 指派(OQ-DP-5=A):承 Ragic —— 欄位上一個勾選,**資料即權限**。
+       負責業務就寫在這個欄位,不必另外維護一份指派表(兩者必然不同步)。
+       勾了之後,寫入記錄時該欄的值會同步到系統欄 assignees(RLS policy 讀那個)。 */
+    optionsSchema: z.object({ grantsAccess: z.boolean().optional() }).strict(),
     buildColumn: (t, col) => void t.bigint(col),
     valueSchema: () => z.number().int().positive(),
     filterOperators: EQUALITY,

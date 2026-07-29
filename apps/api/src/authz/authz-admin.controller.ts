@@ -30,7 +30,11 @@ const createRoleSchema = z.object({
 })
 const reparentSchema = z.object({ parentId: z.number().int().positive().nullable() })
 const memberSchema = z.object({ actorId: z.number().int().positive() })
-const formActionsSchema = z.object({ actions: z.array(z.enum(FORM_ACTIONS)) })
+const formActionsSchema = z.object({
+  actions: z.array(z.enum(FORM_ACTIONS)),
+  /* E-1 記錄範圍(#96):列在此者只及於「自己的」記錄。空 = 全部 all(既有行為) */
+  scopedActions: z.array(z.enum(FORM_ACTIONS)).default([]),
+})
 const fieldVisibilitySchema = z.object({ visibility: z.enum(FIELD_VISIBILITIES) })
 
 /* P0-4a M5|權限管理後台 API(admin only)。薄 controller → AuthzAdminService。
@@ -108,7 +112,13 @@ export class AuthzAdminController {
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(formActionsSchema)) body: z.infer<typeof formActionsSchema>,
   ): Promise<void> {
-    await this.admin.setFormActions(tenant.tenantId, roleId, formId, body.actions)
+    await this.admin.setFormActions(
+      tenant.tenantId,
+      roleId,
+      formId,
+      body.actions,
+      body.scopedActions,
+    )
   }
 
   @Put(":roleId/fields/:fieldId")

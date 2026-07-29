@@ -8,6 +8,7 @@ import { DdlService } from "./ddl/ddl.service.js"
 import { FormulaService } from "./formula/formula.service.js"
 import { LayoutService } from "./layout/layout.service.js"
 import { MetadataService } from "./metadata/metadata.service.js"
+import { AccessPreviewService } from "./access/access-preview.service.js"
 import { OptionService } from "./field-types/option.service.js"
 import { ImportService } from "./import/import.service.js"
 import { RecordService } from "./records/record.service.js"
@@ -21,6 +22,7 @@ import { RollupService } from "./relations/rollup.service.js"
   controllers: [FormsController, RecordsController],
   providers: [
     MetadataService,
+    AccessPreviewService,
     DdlService,
     OptionService,
     ImportService,
@@ -33,6 +35,7 @@ import { RollupService } from "./relations/rollup.service.js"
   ],
   exports: [
     MetadataService,
+    AccessPreviewService,
     DdlService,
     OptionService,
     ImportService,

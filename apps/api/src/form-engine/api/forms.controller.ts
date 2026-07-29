@@ -25,6 +25,7 @@ import { Throttle } from "@nestjs/throttler"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
 import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
+import { AccessPreviewService } from "../access/access-preview.service.js"
 import { OptionService } from "../field-types/option.service.js"
 import { ImportService } from "../import/import.service.js"
 import { commitImportSchema, importPlanSchema } from "../import/import-specs.js"
@@ -63,6 +64,7 @@ export class FormsController {
     @Inject(LayoutService) private readonly layout: LayoutService,
     @Inject(OptionService) private readonly options: OptionService,
     @Inject(ImportService) private readonly imports: ImportService,
+    @Inject(AccessPreviewService) private readonly preview: AccessPreviewService,
   ) {}
 
   @Post()
@@ -181,6 +183,18 @@ export class FormsController {
     body: z.infer<typeof alterFieldTypeBodySchema>,
   ): Promise<void> {
     await this.ddl.alterFieldType(tenant.tenantId, formId, fieldId, body.type, body.options)
+  }
+
+  /* 🔴 E-1 存取預覽(#96)。Salesforce 外洩案例的根因是「規則對了但管理員理解錯」,
+     而該產品無法在設定當下看見效果。唯讀試算,不做 impersonation。 */
+  @Get(":formId/access-preview/:actorId")
+  @RequiresFormAction("design")
+  previewAccess(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("actorId", ParseIntPipe) actorId: number,
+  ): Promise<unknown> {
+    return this.preview.preview(tenant.tenantId, formId, actorId)
   }
 
   /* 🔴 型別轉換(#105 四態)。preview 是唯讀 dry-run,**回兩個數字**
