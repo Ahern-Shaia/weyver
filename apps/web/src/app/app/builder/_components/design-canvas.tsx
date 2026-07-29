@@ -21,6 +21,8 @@ import type {
 import {
   DndContext,
   type DragEndEvent,
+  KeyboardSensor,
+  type KeyboardCoordinateGetter,
   PointerSensor,
   useDraggable,
   useSensor,
@@ -52,6 +54,23 @@ const COL_W = 52
 const ROW_H = 60
 const DEFAULT_SPAN = 6
 const EMPTY_LAYOUT: Layout = { grid: { cols: 12 }, fields: {}, statics: [], sections: [] }
+
+/* 方向鍵一次移動一格(而非 dnd-kit 預設的固定像素)—— 格線上「一格」才是使用者的心智單位。 */
+const gridCoordinateGetter: KeyboardCoordinateGetter = (event, { currentCoordinates }) => {
+  const step = { x: COL_W, y: ROW_H }
+  switch (event.code) {
+    case "ArrowRight":
+      return { ...currentCoordinates, x: currentCoordinates.x + step.x }
+    case "ArrowLeft":
+      return { ...currentCoordinates, x: currentCoordinates.x - step.x }
+    case "ArrowDown":
+      return { ...currentCoordinates, y: currentCoordinates.y + step.y }
+    case "ArrowUp":
+      return { ...currentCoordinates, y: currentCoordinates.y - step.y }
+    default:
+      return undefined
+  }
+}
 
 type Selected = { type: "field"; id: string } | { type: "static"; id: string } | null
 
@@ -107,7 +126,14 @@ export function DesignCanvas({
   const dirty = idx >= 0
   const canRedo = idx < hist.length - 1
   const cols = effective.grid.cols
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    /* 🔴 WCAG 2.1.1 Keyboard(Level A):功能必須可由鍵盤操作。
+       原本只有 PointerSensor —— 沒有滑鼠就完全不能排版面,這是 A 級失敗不是體驗問題。
+       空白/Enter 拿起 → 方向鍵一次移一格 → 再按空白放下(dnd-kit 內建語意)。
+       coordinateGetter 依本畫布的格線尺寸走,而非預設的固定像素。 */
+    useSensor(KeyboardSensor, { coordinateGetter: gridCoordinateGetter }),
+  )
 
   const edit = (next: Layout): void => {
     setHist((h) => [...h.slice(0, idx + 1), next])
@@ -356,6 +382,7 @@ export function DesignCanvas({
         <FieldSettingsPanel
           field={selField}
           formId={formId}
+          cols={cols}
           layout={effective.fields[selected.id] ?? { row: 0, col: 0 }}
           onChange={(patch) => patchField(selected.id, patch)}
           onClose={() => setSelected(null)}
@@ -428,7 +455,9 @@ function FieldCard({
   readonly onSelect: () => void
   readonly onDrop: () => void
 }): ReactNode {
-  const { listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `f:${field.id}` })
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `f:${field.id}`,
+  })
   const span = layout.colSpan ?? DEFAULT_SPAN
   const meta = fieldTypeMeta(field.type)
   return (
@@ -458,6 +487,7 @@ function FieldCard({
     >
       <button
         type="button"
+        {...attributes}
         {...listeners}
         className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 bg-head text-ink-4 hover:text-primary active:cursor-grabbing"
         aria-label={`拖曳 ${field.name}`}
@@ -502,7 +532,9 @@ function StaticCard({
   readonly selected: boolean
   readonly onSelect: () => void
 }): ReactNode {
-  const { listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `s:${element.id}` })
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `s:${element.id}`,
+  })
   const span = element.colSpan ?? 4
   return (
     // biome-ignore lint/a11y/useSemanticElements: 卡片內含 grip 子 button,根不可為 button(巢狀);用 role
@@ -526,6 +558,7 @@ function StaticCard({
     >
       <button
         type="button"
+        {...attributes}
         {...listeners}
         className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 text-ink-4 hover:text-primary"
         aria-label={`拖曳元素 ${element.id}`}

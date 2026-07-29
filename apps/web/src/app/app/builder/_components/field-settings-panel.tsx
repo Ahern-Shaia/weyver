@@ -1,6 +1,6 @@
 "use client"
 
-import { Trash2, X } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, X } from "lucide-react"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
@@ -16,9 +16,76 @@ import {
 
 /* R1·UP-3 M3 欄位設定面板(placeholder/help/readonly/hidden/colSpan/預設值)。編輯 layout 草稿;
    hidden 為排版層(≠權限 D4)。預設值變數對映 M1 後端 create-time 解析。 */
+/* 🔴 WCAG 2.2 SC 2.5.7 拖曳替代(AA):所有用拖曳完成的功能,
+   都必須能以**單一指標且不需拖曳**完成。鍵盤可操作(2.1.1)是另一條,不能互相取代 ——
+   手部精細動作受限但使用滑鼠的人,兩者都需要。 */
+function MoveButtons({
+  layout,
+  cols,
+  onChange,
+}: {
+  readonly layout: FieldLayout
+  readonly cols: number
+  readonly onChange: (patch: Partial<FieldLayout>) => void
+}): ReactNode {
+  const span = layout.colSpan ?? 6
+  const move = (dCol: number, dRow: number): void =>
+    onChange({
+      col: Math.max(0, Math.min(cols - span, layout.col + dCol)),
+      row: Math.max(0, layout.row + dRow),
+    })
+  const atLeft = layout.col <= 0
+  const atRight = layout.col >= cols - span
+  const atTop = layout.row <= 0
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-ink-3">位置(第 {layout.row + 1} 列、第 {layout.col + 1} 欄)</span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => move(-1, 0)}
+          disabled={atLeft}
+          aria-label="左移一欄"
+          className="flex size-7 items-center justify-center rounded-xs border border-line text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+        >
+          <ChevronLeft size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => move(0, -1)}
+          disabled={atTop}
+          aria-label="上移一列"
+          className="flex size-7 items-center justify-center rounded-xs border border-line text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+        >
+          <ChevronUp size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => move(0, 1)}
+          aria-label="下移一列"
+          className="flex size-7 items-center justify-center rounded-xs border border-line text-ink-3 hover:border-primary hover:text-primary"
+        >
+          <ChevronDown size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={() => move(1, 0)}
+          disabled={atRight}
+          aria-label="右移一欄"
+          className="flex size-7 items-center justify-center rounded-xs border border-line text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+        >
+          <ChevronRight size={13} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function FieldSettingsPanel({
   field,
   formId,
+  cols,
   layout,
   onChange,
   onClose,
@@ -26,6 +93,7 @@ export function FieldSettingsPanel({
 }: {
   readonly field: FieldDto
   readonly formId: number
+  readonly cols: number
   readonly layout: FieldLayout
   readonly onChange: (patch: Partial<FieldLayout>) => void
   readonly onClose: () => void
@@ -76,6 +144,7 @@ export function FieldSettingsPanel({
               onChange={(e) => onChange({ help: e.target.value || undefined })}
             />
           </label>
+          <MoveButtons layout={layout} cols={cols} onChange={onChange} />
           <label className="flex flex-col gap-1">
             <span className="text-ink-3">跨欄數(colSpan)</span>
             <Input
