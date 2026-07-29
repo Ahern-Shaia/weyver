@@ -38,7 +38,7 @@ import {
 import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
 import { applyKeyset, decodeCursor, encodeCursor, type SortKey } from "./keyset.js"
 import { GROUP_DATE_UNITS } from "./record-specs.js"
-import type { GroupAggregateFn } from "./record-specs.js"
+import type { CalendarQuery, GroupAggregateFn } from "./record-specs.js"
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 
 interface ResolvedField {
@@ -448,6 +448,78 @@ export class RecordService {
       },
       scope,
     )
+  }
+
+  /* 🔴 F-1 M4 行事曆:區間重疊查詢。
+     **與 group-by 不同**:一筆記錄可橫跨多天(佔多格),故不能用分組那套「一筆屬一組」。
+
+     重疊條件:`start < to AND coalesce(end, start) >= from`
+     —— `to` 排他(半開區間,RFC 5545 之 DTEND 語意);無結束欄時視為單日事件。
+
+     `date` 欄無時區(floating),直接以 date 比較,任何路徑禁 timestamptz cast;
+     `dateTime` 欄先轉租戶時區再取日期,否則同一筆在不同人畫面上會落在不同天。 */
+  async calendarRange(
+    tenantId: number,
+    formId: number,
+    q: CalendarQuery,
+    policy?: FieldAccessPolicy,
+    actorId: number | null = null,
+  ): Promise<{ records: RecordRow[]; truncated: boolean }> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    const start = resolved.byName.get(q.startField)
+    if (start === undefined) throw new UnknownFieldError(q.startField)
+    this.assertReadable(resolved, formId, q.startField, policy)
+    if (start.type !== "date" && start.type !== "dateTime") {
+      throw new UnknownFieldError(q.startField)
+    }
+    const end = q.endField === undefined ? undefined : resolved.byName.get(q.endField)
+    if (q.endField !== undefined) {
+      if (end === undefined) throw new UnknownFieldError(q.endField)
+      this.assertReadable(resolved, formId, q.endField, policy)
+    }
+
+    const asDate = (f: ResolvedField): string =>
+      f.type === "date"
+        ? `"${f.column}"`
+        : `("${f.column}" at time zone coalesce(nullif(current_setting('app.tenant_tz', true), ''), 'UTC'))::date`
+    const startExpr = asDate(start)
+    const endExpr = end === undefined ? startExpr : `coalesce(${asDate(end)}, ${startExpr})`
+
+    const result = await this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        let builder = this.baseQuery(trx, tenantId, resolved)
+        builder = this.applyQueryPredicates(
+          builder,
+          resolved,
+          formId,
+          { ...q, sort: [], limit: q.limit } as unknown as ListQuery,
+          policy,
+        )
+        builder = builder
+          .whereRaw(`${startExpr} < ?::date`, [q.to])
+          .whereRaw(`${endExpr} >= ?::date`, [q.from])
+          .orderByRaw(`${startExpr} asc nulls last`)
+          .orderBy(`${resolved.table}.id`, "asc")
+        const rows = (await builder.limit(q.limit + 1)) as Record<string, unknown>[]
+        const truncated = rows.length > q.limit
+        return {
+          records: (truncated ? rows.slice(0, q.limit) : rows).map((r) => this.toRecord(resolved, r)),
+          truncated,
+        }
+      },
+      { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
+    )
+    const enriched = await this.withComputed(
+      tenantId,
+      formId,
+      resolved,
+      result.records,
+      policy,
+      actorId ?? undefined,
+    )
+    const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
+    return { records: this.maskRead(resolved, formId, computed, policy), truncated: result.truncated }
   }
 
   /* filter + 快速搜尋的共用述詞(列表 / 分組統計同源)。 */

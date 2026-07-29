@@ -20,7 +20,7 @@ import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
-import { listQuerySchema } from "../records/record-specs.js"
+import { calendarQuerySchema, listQuerySchema } from "../records/record-specs.js"
 import type { RecordRow } from "../records/record-specs.js"
 import { RecordService } from "../records/record.service.js"
 import {
@@ -104,6 +104,21 @@ export class RecordsController {
       permissions,
       tenant.actorId,
     )
+  }
+
+  /* 🔴 F-1 行事曆:區間重疊查詢(非 group-by —— 一筆可佔多格)。
+     半開區間 [from, to),to 排他,對齊 RFC 5545 / Google Calendar。 */
+  @Post("calendar")
+  @HttpCode(200)
+  @RequiresFormAction("view")
+  async calendar(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(calendarQuerySchema))
+    body: z.infer<typeof calendarQuerySchema>,
+  ): Promise<unknown> {
+    return this.records.calendarRange(tenant.tenantId, formId, body, permissions, tenant.actorId)
   }
 
   @Post()

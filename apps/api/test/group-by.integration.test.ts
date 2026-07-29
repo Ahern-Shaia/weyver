@@ -346,3 +346,137 @@ describe("F-1 折疊與日期粒度", () => {
     expect(stats.groups[1]?.count).toBe(1)
   })
 })
+
+/* 🔴 F-1 M4 行事曆:區間重疊查詢。
+   **與 group-by 不同** —— 一筆記錄可橫跨多天(佔多格),group-by 假設一筆屬一組。
+   時區以 RFC 5545 為錨:全天事件無時區(floating)、DTEND 排他。 */
+describe("F-1 行事曆區間查詢", () => {
+  async function leaveForm(name: string): Promise<number> {
+    const created = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name,
+        fields: [
+          { name: "事由", type: "text" },
+          { name: "開始", type: "date" },
+          { name: "結束", type: "date" },
+          { name: "時點", type: "dateTime" },
+        ],
+      }),
+      ALICE,
+    )
+    return created.form.id
+  }
+
+  it("**跨月事件在兩個月都查得到**(一筆佔多格,group-by 做不到)", async () => {
+    const formId = await leaveForm(`跨月_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(
+      tenantA,
+      formId,
+      { 事由: "長假", 開始: "2026-01-28", 結束: "2026-02-03" },
+      ALICE,
+    )
+    const jan = await records.calendarRange(tenantA, formId, {
+      startField: "開始",
+      endField: "結束",
+      from: "2026-01-01",
+      to: "2026-02-01",
+      filters: [],
+      limit: 100,
+    })
+    const feb = await records.calendarRange(tenantA, formId, {
+      startField: "開始",
+      endField: "結束",
+      from: "2026-02-01",
+      to: "2026-03-01",
+      filters: [],
+      limit: 100,
+    })
+    expect(jan.records).toHaveLength(1)
+    expect(feb.records).toHaveLength(1)
+  })
+
+  it("**to 為排他** —— 落在 to 當天的事件不算在範圍內(RFC 5545 DTEND 語意)", async () => {
+    const formId = await leaveForm(`排他_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 事由: "邊界", 開始: "2026-02-01" }, ALICE)
+    const jan = await records.calendarRange(tenantA, formId, {
+      startField: "開始",
+      from: "2026-01-01",
+      to: "2026-02-01",
+      filters: [],
+      limit: 100,
+    })
+    expect(jan.records).toHaveLength(0)
+  })
+
+  it("無結束欄時視為單日事件", async () => {
+    const formId = await leaveForm(`單日_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 事由: "會議", 開始: "2026-02-10" }, ALICE)
+    const inRange = await records.calendarRange(tenantA, formId, {
+      startField: "開始",
+      from: "2026-02-10",
+      to: "2026-02-11",
+      filters: [],
+      limit: 100,
+    })
+    const outRange = await records.calendarRange(tenantA, formId, {
+      startField: "開始",
+      from: "2026-02-11",
+      to: "2026-02-12",
+      filters: [],
+      limit: 100,
+    })
+    expect(inRange.records).toHaveLength(1)
+    expect(outRange.records).toHaveLength(0)
+  })
+
+  it("🔴 dateTime 依租戶時區判定日期(UTC+8 邊界,否則會差一天)", async () => {
+    const formId = await leaveForm(`時區_${String(Date.now()).slice(-6)}`)
+    /* 2026-02-10T23:00Z = 台北時間 2026-02-11 07:00
+       依 UTC 判定會落在 2/10、依租戶時區(Asia/Taipei)應落在 2/11。
+       Airtable 依瀏覽器時區導致的「差一天」正是這個形狀。 */
+    await records.createRecord(
+      tenantA,
+      formId,
+      { 事由: "跨時區", 時點: "2026-02-10T23:00:00.000Z" },
+      ALICE,
+    )
+    const feb11 = await records.calendarRange(tenantA, formId, {
+      startField: "時點",
+      from: "2026-02-11",
+      to: "2026-02-12",
+      filters: [],
+      limit: 100,
+    })
+    expect(feb11.records).toHaveLength(1)
+  })
+
+  it("非日期欄不得作為行事曆欄位", async () => {
+    const formId = await leaveForm(`非日期_${String(Date.now()).slice(-6)}`)
+    await expect(
+      records.calendarRange(tenantA, formId, {
+        startField: "事由",
+        from: "2026-02-01",
+        to: "2026-03-01",
+        filters: [],
+        limit: 100,
+      }),
+    ).rejects.toThrow()
+  })
+
+  it("超過上限時明示截斷(不靜默丟棄)", async () => {
+    const formId = await leaveForm(`截斷_${String(Date.now()).slice(-6)}`)
+    for (let i = 0; i < 4; i++) {
+      await records.createRecord(tenantA, formId, { 事由: `E${String(i)}`, 開始: "2026-02-05" }, ALICE)
+    }
+    const res = await records.calendarRange(tenantA, formId, {
+      startField: "開始",
+      from: "2026-02-01",
+      to: "2026-03-01",
+      filters: [],
+      limit: 2,
+    })
+    expect(res.records).toHaveLength(2)
+    expect(res.truncated).toBe(true)
+  })
+})

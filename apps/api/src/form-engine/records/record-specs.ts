@@ -94,3 +94,22 @@ export interface LineInput {
   readonly id?: number | undefined
   readonly values: RecordValues
 }
+
+/* 🔴 F-1 M4 行事曆(OQ-VG-7=A:單一日期欄 + 選填結束欄)。
+   **Calendar 不是 group-by** —— 是區間重疊查詢,一筆可佔多格,而 group-by 假設一筆屬一組。
+
+   時區以 RFC 5545 為錨:全天事件(`date` 欄)無時區(floating),`DTEND` 排他。
+   Google Calendar API 同構。Airtable 依瀏覽器時區導致「差一天」是經典抱怨。 */
+export const calendarQuerySchema = z.object({
+  startField: z.string().min(1).max(100),
+  endField: z.string().min(1).max(100).optional(),
+  /* 可見範圍,半開區間 [from, to) —— to 排他(RFC 5545 / Google Calendar 同構) */
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  filters: listQuerySchema.shape.filters,
+  combinator: z.enum(["and", "or"]).optional(),
+  q: z.string().max(200).optional(),
+  /* 每次載入上限(Airtable 每日展開上限 1000;此處為整個範圍的上限) */
+  limit: z.coerce.number().int().min(1).max(2000).default(1000),
+})
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>
