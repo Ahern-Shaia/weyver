@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,8 +10,11 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
+  Req,
   UseGuards,
 } from "@nestjs/common"
+import type { FastifyRequest } from "fastify"
 import { TenantGuard } from "../../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../../authz/authz-effective.js"
 import { Permissions, RequiresFormAction } from "../../authz/authz-http.js"
@@ -20,9 +24,14 @@ import { Tenant } from "../../http/tenant.decorator.js"
 import { Throttle } from "@nestjs/throttler"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
+import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
 import { OptionService } from "../field-types/option.service.js"
 import { ImportService } from "../import/import.service.js"
 import { commitImportSchema, importPlanSchema } from "../import/import-specs.js"
+import { MAX_IMPORT_ROWS, parseSheet, sheetNames, suggestMapping } from "../import/workbook.js"
+
+/* 5 萬列的 xlsx 壓縮後約 5–10MB;20MB 留餘裕且與既有檔案上傳同量級 */
+const IMPORT_MAX_BYTES = 20 * 1024 * 1024
 import { LayoutService } from "../layout/layout.service.js"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { MetadataService } from "../metadata/metadata.service.js"
@@ -195,6 +204,60 @@ export class FormsController {
       body.deleteMode,
       body.replaceWith,
     )
+  }
+
+  /* 🔴 解析在後端(OQ-IMP-6,推翻既有的前端解析裁定)。
+     前端只上傳 + 顯示預覽與對映 —— Airtable 的 25,000 列上限正是前端解析的代價。
+     沿用檔案上傳端點的限流理由:此路徑同樣把整檔讀進記憶體。 */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post(":formId/import/analyze")
+  @RequiresFormAction("create")
+  async analyzeImport(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Query("sheet") sheet: string | undefined,
+    @Req() request: FastifyRequest,
+  ): Promise<unknown> {
+    const multipart = request as unknown as {
+      isMultipart: () => boolean
+      file: (opts?: { limits?: { fileSize?: number } }) => Promise<
+        { filename: string; file: { truncated: boolean }; toBuffer: () => Promise<Buffer> } | undefined
+      >
+    }
+    if (!multipart.isMultipart()) {
+      throw new BadRequestException({ code: "NOT_MULTIPART", message: "需以 multipart 上傳" })
+    }
+    const part = await multipart.file({ limits: { fileSize: IMPORT_MAX_BYTES } })
+    if (part === undefined) {
+      throw new BadRequestException({ code: "NO_FILE", message: "未附檔案" })
+    }
+    const buffer = await part.toBuffer()
+    // multipart 超限時是**截斷**而非拋錯 → 不明示拒絕就會解析出半截資料
+    if (part.file.truncated) {
+      throw new BadRequestException({
+        code: "FILE_TOO_LARGE",
+        message: `檔案超過上限 ${String(IMPORT_MAX_BYTES / 1024 / 1024)} MB`,
+      })
+    }
+
+    const form = await this.metadata.getForm(tenant.tenantId, formId)
+    const parsed = parseSheet(buffer, sheet)
+    const writable = form.fields
+      .filter((f) => !fieldType(f.cellValueType as CellValueType).systemManaged)
+      .map((f) => f.name)
+    return {
+      sheetNames: sheetNames(buffer),
+      sheetName: parsed.sheetName,
+      headerRowIndex: parsed.headerRowIndex,
+      columns: parsed.columns,
+      totalRows: parsed.totalRows,
+      truncated: parsed.truncated,
+      maxRows: MAX_IMPORT_ROWS,
+      preview: parsed.rows.slice(0, 20),
+      rows: parsed.rows,
+      suggestedMapping: suggestMapping(parsed.columns, writable),
+      fields: writable,
+    }
   }
 
   /* 匯入既有表單(#106)。plan 是 dry-run 不寫任何資料;commit 必須帶回 planHash */
