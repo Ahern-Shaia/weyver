@@ -119,3 +119,20 @@ describe("🔴 識別碼一票否決(追溯稽核:匯入即毀資料)", () => {
     expect(inferColumnType(["123", "456", "00789"], 3).type).toBe("text")
   })
 })
+
+describe("🔴 分層取樣(追溯稽核 #106)", () => {
+  it("**尾端的異常值要看得到** —— 只取前 50 列會把整欄推成 number,匯入時 N/A 靜默變空", () => {
+    const values = [...Array.from({ length: 900 }, (_, i) => String(i + 1)), "N/A", "待確認"]
+    expect(inferColumnType(values, values.length, "數量").type).toBe("text")
+  })
+
+  it("中段的異常值同樣要看到", () => {
+    const values = Array.from({ length: 900 }, (_, i) => (i === 450 ? "未提供" : String(i + 1)))
+    expect(inferColumnType(values, values.length, "數量").type).toBe("text")
+  })
+
+  it("整欄乾淨的大檔仍正確判為 number(不因取樣改動而過度保守)", () => {
+    const values = Array.from({ length: 900 }, (_, i) => String(i + 1))
+    expect(inferColumnType(values, values.length, "數量").type).toBe("number")
+  })
+})

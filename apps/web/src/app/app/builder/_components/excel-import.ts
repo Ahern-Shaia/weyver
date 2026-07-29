@@ -3,7 +3,24 @@ import type { CellValueType } from "@/lib/engine/schemas"
 /* 純 Excel 匯入核心(無 SheetJS / JSX,可單元測):型別推斷 heuristic + 逐列值轉換。
    推斷為輔助,使用者於預覽可覆寫;信心邊界一律保守 fallback text(可改不可壞;docs A4)。 */
 
-const SAMPLE_LIMIT = 50
+/* 🔴 分層取樣(#106)。原本只取**前 50 列**,但舊 Excel 的異常值往往不在檔頭:
+   前面幾百列是規規矩矩的舊資料,後面才出現「N/A」「待確認」或格式不同的新資料。
+   只看頭部會推出一個對尾部完全不成立的型別,而匯入是**單向**的。
+   改為頭 50 / 中 100 / 尾 50,總量仍小、成本可忽略。 */
+const SAMPLE_HEAD = 50
+const SAMPLE_MID = 100
+const SAMPLE_TAIL = 50
+
+function stratifiedSample(values: readonly string[]): string[] {
+  const total = values.length
+  if (total <= SAMPLE_HEAD + SAMPLE_MID + SAMPLE_TAIL) return [...values]
+  const midStart = Math.floor((total - SAMPLE_MID) / 2)
+  return [
+    ...values.slice(0, SAMPLE_HEAD),
+    ...values.slice(midStart, midStart + SAMPLE_MID),
+    ...values.slice(total - SAMPLE_TAIL),
+  ]
+}
 
 const BOOL_TRUE = new Set(["true", "是", "y", "yes", "1", "v", "✓"])
 const BOOL_FALSE = new Set(["false", "否", "n", "no", "0", "x"])
@@ -73,7 +90,7 @@ export function inferColumnType(
   rowCount: number,
   columnName = "",
 ): InferredColumn {
-  const samples = nonEmpty(rawValues).slice(0, SAMPLE_LIMIT)
+  const samples = stratifiedSample(nonEmpty(rawValues))
   if (samples.length === 0) return { type: "text" }
 
   if (allMatch(samples, isBooleanish)) return { type: "checkbox" }

@@ -11,7 +11,13 @@ import { useCreateForm } from "@/lib/engine/hooks"
 import type { CellValueType, CreateFormInput } from "@/lib/engine/schemas"
 import { z } from "zod"
 import { inferColumnType, toImportValue } from "./excel-import"
-import { columnValues, MAX_IMPORT_ROWS, parseFirstSheet, type ParsedSheet } from "./excel-parse"
+import {
+  columnValues,
+  MAX_IMPORT_ROWS,
+  type ParsedSheet,
+  parseSheet,
+  readWorkbook,
+} from "./excel-parse"
 
 const IMPORT_TYPES = BUILDABLE_TYPES.filter((t) => t !== "autoNumber")
 const PREVIEW_ROWS = 8
@@ -63,6 +69,8 @@ export function ExcelImportPanel({
   onCancel: () => void
 }) {
   const [sheet, setSheet] = useState<ParsedSheet | null>(null)
+  /* 多工作表:原本寫死首張,客戶檔案常有「說明」「範本」在前 → 靜默吃錯表 */
+  const [book, setBook] = useState<{ names: readonly string[]; data: ArrayBuffer } | null>(null)
   const [fileName, setFileName] = useState("")
   const [name, setName] = useState("")
   const [drafts, setDrafts] = useState<ColumnDraft[]>([])
@@ -77,15 +85,31 @@ export function ExcelImportPanel({
   const onFile = async (file: File): Promise<void> => {
     setError(null)
     try {
-      const parsed = parseFirstSheet(await file.arrayBuffer())
+      const data = await file.arrayBuffer()
+      const wb = readWorkbook(data)
+      setBook({ names: wb.sheetNames, data })
+      const parsed = parseSheet(data)
       if (parsed.columns.length === 0) {
-        setError("找不到欄位(首列為空)")
+        setError("找不到欄位(標題列為空)")
         return
       }
       setSheet(parsed)
       setFileName(file.name)
       setName(parsed.sheetName || file.name.replace(/\.(xlsx|xls)$/i, ""))
       setDrafts(buildDrafts(parsed))
+    } catch (e) {
+      setError(e instanceof Error ? `解析失敗:${e.message}` : "解析失敗")
+    }
+  }
+
+  const switchSheet = (nextName: string): void => {
+    if (book === null) return
+    try {
+      const parsed = parseSheet(book.data, nextName)
+      setSheet(parsed)
+      setName(parsed.sheetName)
+      setDrafts(buildDrafts(parsed))
+      setError(parsed.columns.length === 0 ? "找不到欄位(標題列為空)" : null)
     } catch (e) {
       setError(e instanceof Error ? `解析失敗:${e.message}` : "解析失敗")
     }
@@ -193,10 +217,35 @@ export function ExcelImportPanel({
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mx-auto max-w-[900px]">
-            <label className="mb-3 flex max-w-[360px] flex-col gap-1 text-[11px] text-ink-2">
-              表單名稱
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
+            <div className="mb-3 flex flex-wrap items-end gap-3">
+              <label className="flex max-w-[360px] flex-1 flex-col gap-1 text-[11px] text-ink-2">
+                表單名稱
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </label>
+              {book !== null && book.names.length > 1 ? (
+                <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+                  工作表
+                  <Select
+                    value={sheet.sheetName}
+                    onChange={(e) => switchSheet(e.target.value)}
+                    className="h-7 w-48"
+                  >
+                    {book.names.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              ) : null}
+            </div>
+
+            {sheet.headerRowIndex > 1 ? (
+              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-4">
+                偵測到標題在第 {sheet.headerRowIndex} 列,已略過前面
+                {sheet.headerRowIndex - 1} 列。
+              </div>
+            ) : null}
 
             {sheet.truncated ? (
               <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-4">
