@@ -64,9 +64,29 @@ export function sheetNames(buffer: Buffer): string[] {
   return wb.SheetNames
 }
 
+/* 🔴 預設工作表取**資料列最多的那張**,不是第一張(瀏覽器實走時發現)。
+   客戶的舊 Excel 常把「使用說明 / 範本」放在前面 —— 取第一張會讓使用者
+   一上傳就看到「共 0 列」,以為軟體壞了。選擇器仍在,使用者可覆寫。 */
+function pickDefaultSheet(wb: ReturnType<typeof read>): string | undefined {
+  let best: string | undefined
+  let bestRows = -1
+  for (const name of wb.SheetNames) {
+    const sheet = wb.Sheets[name]
+    if (sheet === undefined) continue
+    const rows = utils
+      .sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" })
+      .filter((row) => row.some((c) => String(c ?? "").trim() !== "")).length
+    if (rows > bestRows) {
+      bestRows = rows
+      best = name
+    }
+  }
+  return best
+}
+
 export function parseSheet(buffer: Buffer, wanted?: string): ParsedSheet {
   const wb = read(buffer, { type: "buffer", dense: true, cellDates: true })
-  const name = wanted ?? wb.SheetNames[0]
+  const name = wanted ?? pickDefaultSheet(wb)
   if (name === undefined) throw new WorkbookError("活頁簿沒有工作表")
   const sheet = wb.Sheets[name]
   if (sheet === undefined) throw new WorkbookError(`找不到工作表「${name}」`)

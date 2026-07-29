@@ -88,3 +88,27 @@ describe("對映建議:只做完全相符(#106)", () => {
     expect(Object.values(out)).toEqual(["編號"])
   })
 })
+
+describe("🔴 預設工作表(瀏覽器實走時發現,#106)", () => {
+  it("**預設取資料最多的那張,不是第一張** —— 客戶檔案常把「使用說明」放前面", () => {
+    const buf = book({
+      使用說明: [["請勿修改本表"]],
+      客戶資料: [
+        ["客戶編號", "客戶名稱"],
+        ["A001", "王先生"],
+        ["A002", "李小姐"],
+      ],
+    })
+    const parsed = parseSheet(buf)
+    expect(parsed.sheetName).toBe("客戶資料")
+    expect(parsed.rows).toHaveLength(2)
+  })
+
+  it("顯式指定工作表時不受影響", () => {
+    const buf = book({
+      說明: [["a"], ["b"]],
+      資料: [["欄"], ["1"], ["2"], ["3"]],
+    })
+    expect(parseSheet(buf, "說明").sheetName).toBe("說明")
+  })
+})
