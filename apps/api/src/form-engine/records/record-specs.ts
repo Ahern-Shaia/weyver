@@ -37,7 +37,10 @@ export const listQuerySchema = z.object({
     )
     .max(5)
     .default([]),
-  cursor: z.number().int().positive().optional(),
+  /* 🔴 不透明續頁權杖(#95)。原本是 record id,但排序鍵非 id 時
+     `WHERE id > cursor` 與 `ORDER BY sortCol, id` 對不起來,整頁會被跳過。
+     權杖需帶上「最後一列的各排序值 + id」才能正確續頁,故不再是單一數字。 */
+  cursor: z.string().max(4000).optional(),
   limit: z.number().int().min(1).max(200).default(50),
 })
 

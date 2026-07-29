@@ -32,6 +32,7 @@ import {
   MetadataService,
 } from "../metadata/metadata.service.js"
 import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
+import { applyKeyset, decodeCursor, encodeCursor, type SortKey } from "./keyset.js"
 import type { LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 
 interface ResolvedField {
@@ -516,7 +517,7 @@ export class RecordService {
     formId: number,
     query: ListQuery,
     policy?: FieldAccessPolicy,
-  ): Promise<{ records: RecordRow[]; nextCursor: number | null }> {
+  ): Promise<{ records: RecordRow[]; nextCursor: string | null }> {
     const resolved = await this.resolveForm(tenantId, formId)
     const result = await this.inTenantTx(tenantId, async (trx) => {
       let builder = this.baseQuery(trx, tenantId, resolved)
@@ -558,6 +559,7 @@ export class RecordService {
           })
         }
       }
+      const sortKeys: SortKey[] = []
       for (const sort of query.sort) {
         const field = resolved.byName.get(sort.field)
         if (field === undefined) throw new UnknownFieldError(sort.field)
@@ -565,18 +567,32 @@ export class RecordService {
         this.assertReadable(resolved, formId, sort.field, policy)
         // 空值一律沉底(PG DESC 預設 NULLS FIRST,對使用者不直覺)
         builder = builder.orderBy(field.column, sort.dir, "last")
+        sortKeys.push({ column: field.column, dir: sort.dir })
       }
-      builder = builder.orderBy(`${resolved.table}.id`, "asc")
+      const idColumn = `${resolved.table}.id`
+      builder = builder.orderBy(idColumn, "asc")
+
+      /* 🔴 續頁條件必須與排序鍵一致(#95)。原本恆為 `id > cursor`,
+         排序欄非 id 時會整頁跳過 —— 且使用者看不出少了東西。 */
       if (query.cursor !== undefined) {
-        builder = builder.where(`${resolved.table}.id`, ">", query.cursor)
+        const decoded = decodeCursor(query.cursor)
+        if (decoded !== null) builder = applyKeyset(builder, sortKeys, decoded, idColumn)
       }
       const rows = (await builder.limit(query.limit + 1)) as Record<string, unknown>[]
 
       const hasMore = rows.length > query.limit
       const page = hasMore ? rows.slice(0, query.limit) : rows
       const records = page.map((row) => this.toRecord(resolved, row))
+      const lastRow = page[page.length - 1]
       const last = records[records.length - 1]
-      return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
+      const nextCursor =
+        hasMore && last !== undefined && lastRow !== undefined
+          ? encodeCursor({
+              v: sortKeys.map((k) => lastRow[k.column.split(".").pop() ?? k.column] ?? null),
+              id: last.id,
+            })
+          : null
+      return { records, nextCursor }
     })
     const enriched = await this.withComputed(tenantId, formId, resolved, result.records)
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)

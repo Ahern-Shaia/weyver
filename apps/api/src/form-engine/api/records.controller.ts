@@ -41,7 +41,8 @@ const simpleListQuerySchema = z.object({
 
 interface ListResponse {
   readonly records: readonly RecordRow[]
-  readonly nextCursor: number | null
+  /* 不透明續頁權杖(#95)—— 呼叫端原樣傳回即可,不得自行解讀 */
+  readonly nextCursor: string | null
 }
 
 /* 薄 controller:記錄 CRUD + 複合查詢 + 子表單據;values 形狀由 RecordService 依 metadata 驗證 */
