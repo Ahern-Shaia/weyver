@@ -118,7 +118,13 @@ export class ButtonService {
     const config = button.config
     if (config.actionType === "openUrl") return { outcome: "openUrl", url: config.url }
 
-    const source = await this.records.getRecord(tenant.tenantId, formId, recordId, permissions)
+    const source = await this.records.getRecord(
+      tenant.tenantId,
+      formId,
+      recordId,
+      permissions,
+      tenant.actorId,
+    )
 
     if (config.actionType === "updateSelf") {
       const values = compileValues(config.setFields, source, tenant.actorId)

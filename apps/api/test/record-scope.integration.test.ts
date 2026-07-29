@@ -281,3 +281,236 @@ describe("🔴 預覽模擬器(#96 M3)", () => {
     expect(result.totalCount).toBe(3)
   })
 })
+
+/* 🔴 #113 sweep:範圍原本只接在列表路徑上。列表擋住了,但單筆讀 / 更新 / 刪除
+   只要知道 id 就能繞過 —— 這正是「橫向防護只掛在一種路由形狀上」的老問題。 */
+describe("🔴 記錄範圍必須涵蓋所有記錄路徑,不只列表", () => {
+  const scopedFor = (formId: number, actions: readonly ("view" | "edit" | "delete")[]) =>
+    new EffectivePermissions(
+      false,
+      new Map([[formId, new Set(["view", "edit", "delete"] as const)]]),
+      new Map(),
+      new Set(),
+      new Map([[formId, new Set(actions)]]),
+    )
+
+  it("單筆讀取:BOB 用 id 直接讀 ALICE 的記錄 → 讀不到", async () => {
+    const formId = await seed()
+    const alicesOwn = await records.listRecords(
+      tenantA,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      allScoped(formId),
+      ALICE,
+    )
+    const target = alicesOwn.records.find((r) => r.values.客戶名稱 === "A的客戶1")
+    expect(target).toBeDefined()
+    await expect(
+      records.getRecord(tenantA, formId, target?.id ?? 0, scopedFor(formId, ["view"]), BOB),
+    ).rejects.toThrow()
+    // 自己的仍讀得到(證明不是把單筆讀取整個鎖死)
+    const bobs = alicesOwn.records.find((r) => r.values.客戶名稱 === "B的客戶")
+    const mine = await records.getRecord(
+      tenantA,
+      formId,
+      bobs?.id ?? 0,
+      scopedFor(formId, ["view"]),
+      BOB,
+    )
+    expect(mine.values.客戶名稱).toBe("B的客戶")
+  })
+
+  it("更新:BOB 改不到 ALICE 的記錄", async () => {
+    const formId = await seed()
+    const all = await records.listRecords(
+      tenantA,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      allScoped(formId),
+      ALICE,
+    )
+    const target = all.records.find((r) => r.values.客戶名稱 === "A的客戶1")
+    await expect(
+      records.updateRecord(
+        tenantA,
+        formId,
+        target?.id ?? 0,
+        target?.version ?? 1,
+        { 客戶名稱: "被BOB改掉" },
+        BOB,
+        scopedFor(formId, ["edit"]),
+      ),
+    ).rejects.toThrow()
+    // 值沒被動到
+    const after = await records.getRecord(tenantA, formId, target?.id ?? 0, allScoped(formId))
+    expect(after.values.客戶名稱).toBe("A的客戶1")
+  })
+
+  it("刪除:BOB 刪不掉 ALICE 的記錄", async () => {
+    const formId = await seed()
+    const all = await records.listRecords(
+      tenantA,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      allScoped(formId),
+      ALICE,
+    )
+    const target = all.records.find((r) => r.values.客戶名稱 === "A的客戶2")
+    await expect(
+      records.softDeleteRecord(tenantA, formId, target?.id ?? 0, BOB, scopedFor(formId, ["delete"])),
+    ).rejects.toThrow()
+    const after = await records.getRecord(tenantA, formId, target?.id ?? 0, allScoped(formId))
+    expect(after.values.客戶名稱).toBe("A的客戶2")
+  })
+})
+
+/* 🔴 FMEA D3(#96 遺留):帶入欄把**另一張表**的資料顯示在這張表上。
+   權限若只看本表,沒有客戶主檔權限的人就能透過訂單上的帶入欄把客戶資料整批讀出來。 */
+describe("🔴 帶入(lookup)不得成為越權讀取的側門", () => {
+  const SOURCE_RESTRICTED = "__source_restricted__"
+
+  async function seedOrderWithLookup(): Promise<{
+    customerFormId: number
+    orderFormId: number
+    customerFieldId: number
+  }> {
+    const stamp = String(Date.now()).slice(-6)
+    const { form: customer } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `客戶主檔_${stamp}`,
+        fields: [{ name: "客戶名稱", type: "text" }],
+      }),
+      ALICE,
+    )
+    const cust = await records.createRecord(tenantA, customer.id, { 客戶名稱: "機密客戶" }, ALICE)
+    const { form: order } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `訂單_${stamp}`,
+        fields: [
+          { name: "客戶", type: "link", options: { targetFormId: customer.id } },
+          {
+            name: "客戶名",
+            type: "lookup",
+            options: { linkFieldName: "客戶", targetFieldName: "客戶名稱" },
+          },
+        ],
+      }),
+      BOB,
+    )
+    await records.createRecord(tenantA, order.id, { 客戶: cust.id }, BOB)
+    const custFields = await records.getRecord(tenantA, customer.id, cust.id, allScoped(customer.id))
+    void custFields
+    return { customerFormId: customer.id, orderFormId: order.id, customerFieldId: cust.id }
+  }
+
+  const readOrderLookup = async (
+    orderFormId: number,
+    perms: EffectivePermissions,
+    actorId: number,
+  ): Promise<unknown> => {
+    const page = await records.listRecords(
+      tenantA,
+      orderFormId,
+      { filters: [], sort: [], limit: 10 },
+      perms,
+      actorId,
+    )
+    return page.records[0]?.values.客戶名
+  }
+
+  it("有訂單權、**沒有客戶主檔權** → 帶入值標記為無權,不外洩", async () => {
+    const { orderFormId } = await seedOrderWithLookup()
+    const onlyOrder = new EffectivePermissions(
+      false,
+      new Map([[orderFormId, new Set(["view"] as const)]]),
+      new Map(),
+      new Set(),
+    )
+    expect(await readOrderLookup(orderFormId, onlyOrder, BOB)).toBe(SOURCE_RESTRICTED)
+  })
+
+  it("兩張表都有權 → 正常帶出值(不是把帶入鎖死)", async () => {
+    const { orderFormId, customerFormId } = await seedOrderWithLookup()
+    const both = new EffectivePermissions(
+      false,
+      new Map([
+        [orderFormId, new Set(["view"] as const)],
+        [customerFormId, new Set(["view"] as const)],
+      ]),
+      new Map(),
+      new Set(),
+    )
+    expect(await readOrderLookup(orderFormId, both, BOB)).toBe("機密客戶")
+  })
+
+  it("客戶主檔的記錄範圍為 own → 帶不出別人的客戶", async () => {
+    const { orderFormId, customerFormId } = await seedOrderWithLookup()
+    // 客戶由 ALICE 建立,BOB 對客戶主檔只看得到自己的
+    const scopedOnCustomer = new EffectivePermissions(
+      false,
+      new Map([
+        [orderFormId, new Set(["view"] as const)],
+        [customerFormId, new Set(["view"] as const)],
+      ]),
+      new Map(),
+      new Set(),
+      new Map([[customerFormId, new Set(["view"] as const)]]),
+    )
+    expect(await readOrderLookup(orderFormId, scopedOnCustomer, BOB)).toBe(SOURCE_RESTRICTED)
+  })
+})
+
+/* 欄位級閘單獨隔離:對來源表**有** view,但該欄被明確設為 hidden。
+   這是 #100 那類破口的帶入版本 —— 表上遮住了,經由別張表的帶入欄又露出來。 */
+describe("🔴 來源表上被隱藏的欄,不得經由帶入繞出來", () => {
+  it("有來源表 view、目標欄 hidden → 帶入標記為無權", async () => {
+    const stamp = String(Date.now()).slice(-6)
+    const created = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `客戶_欄遮_${stamp}`,
+        fields: [{ name: "客戶名稱", type: "text" }],
+      }),
+      ALICE,
+    )
+    const customer = created.form
+    const secretFieldId = created.fields[0]?.id ?? 0
+    const cust = await records.createRecord(tenantA, customer.id, { 客戶名稱: "不可見客戶" }, ALICE)
+    const { form: order } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `訂單_欄遮_${stamp}`,
+        fields: [
+          { name: "客戶", type: "link", options: { targetFormId: customer.id } },
+          {
+            name: "客戶名",
+            type: "lookup",
+            options: { linkFieldName: "客戶", targetFieldName: "客戶名稱" },
+          },
+        ],
+      }),
+      BOB,
+    )
+    await records.createRecord(tenantA, order.id, { 客戶: cust.id }, BOB)
+
+    const perms = new EffectivePermissions(
+      false,
+      new Map([
+        [order.id, new Set(["view"] as const)],
+        [customer.id, new Set(["view"] as const)],
+      ]),
+      new Map([[secretFieldId, "hidden" as const]]),
+      new Set(),
+    )
+    const page = await records.listRecords(
+      tenantA,
+      order.id,
+      { filters: [], sort: [], limit: 10 },
+      perms,
+      BOB,
+    )
+    expect(page.records[0]?.values.客戶名).toBe("__source_restricted__")
+  })
+})

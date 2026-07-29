@@ -126,7 +126,7 @@ export class RecordsController {
     @Param("formId", ParseIntPipe) formId: number,
     @Param("recordId", ParseIntPipe) recordId: number,
   ): Promise<RecordRow> {
-    return this.records.getRecord(tenant.tenantId, formId, recordId, permissions)
+    return this.records.getRecord(tenant.tenantId, formId, recordId, permissions, tenant.actorId)
   }
 
   /* R1·workbench-uplift A3|反向關聯:本筆被哪些記錄引用(唯讀導航用) */
@@ -164,10 +164,17 @@ export class RecordsController {
   @HttpCode(204)
   async remove(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
     @Param("recordId", ParseIntPipe) recordId: number,
   ): Promise<void> {
-    await this.records.softDeleteRecord(tenant.tenantId, formId, recordId, tenant.actorId)
+    await this.records.softDeleteRecord(
+      tenant.tenantId,
+      formId,
+      recordId,
+      tenant.actorId,
+      permissions,
+    )
   }
 
   /* 子表單據(header + lines 單一交易,A5) */

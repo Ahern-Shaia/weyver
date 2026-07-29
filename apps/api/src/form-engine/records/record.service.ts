@@ -53,6 +53,11 @@ const SYSTEM_FIELD_TYPES: ReadonlySet<CellValueType> = new Set([
    在單據上長得一模一樣 —— 後者是資料遺失,必須看得出來。 */
 export const SOURCE_DELETED = "__source_deleted__"
 
+/* 🔴 帶入來源無權檢視時的標記值(FMEA D3)。與 SOURCE_DELETED 分開:
+   「你不能看」和「資料不見了」對使用者是完全不同的兩件事,合成一個會讓真正的資料遺失被當成權限問題忽略。
+   受記錄範圍限制時,「查不到」在應用層無法與「已刪除」區分 → 一律回本標記(不揭露存在性)。 */
+export const SOURCE_RESTRICTED = "__source_restricted__"
+
 /* link/bigint 值經 pg 回傳為字串 → 統一轉數值 id(lookup 用) */
 function toId(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isSafeInteger(v)) return v
@@ -199,6 +204,8 @@ export class RecordService {
     formId: number,
     resolved: ResolvedForm,
     records: readonly RecordRow[],
+    policy?: FieldAccessPolicy,
+    actorId?: number,
   ): Promise<RecordRow[]> {
     const systemFields = resolved.fields.filter((f) => SYSTEM_FIELD_TYPES.has(f.type))
     const lookupFields = resolved.fields.filter((f) => f.type === "lookup")
@@ -231,12 +238,37 @@ export class RecordService {
       }
       const linkName = opts.linkFieldName
       const targetName = opts.targetFieldName
+
+      /* 🔴 帶入欄是「另一張表的資料出現在這張表上」,權限必須依**來源表**判斷 ——
+         否則沒有客戶主檔權限的人可經由訂單上的帶入欄把客戶資料整批讀出來(FMEA D3)。
+         表單級閘為粗網:完全無權時 defaultFieldVisibility 已回 hidden,下面的欄位級閘
+         就會擋下;留著是為了「目標欄名解不出來」時仍 fail-closed,並省一次 resolveForm。 */
+      if (policy?.canRead !== undefined && !policy.canRead(targetFormId)) {
+        for (const rec of out) rec.values[lf.row.name] = SOURCE_RESTRICTED
+        continue
+      }
+      /* 欄位級閘:來源表上被隱藏的欄不得經由帶入繞出來(#100 同一破口類型)。 */
+      const targetForm = await this.resolveForm(tenantId, targetFormId)
+      const targetField = targetForm.byName.get(targetName)
+      if (
+        targetField !== undefined &&
+        policy?.fieldVisibility(targetField.row.id, targetFormId) === "hidden"
+      ) {
+        for (const rec of out) rec.values[lf.row.name] = SOURCE_RESTRICTED
+        continue
+      }
+      // 記錄級閘:來源表檢視受 own 限制時,帶入也只能帶自己看得到的記錄
+      const targetScoped = policy?.isScopedToOwn?.(targetFormId, "view") === true
+
       const ids = [
         ...new Set(
           out.map((r) => toId(r.values[linkName])).filter((v): v is number => v !== undefined),
         ),
       ]
-      const targets = await this.getRecordsByIds(tenantId, targetFormId, ids)
+      const targets = await this.getRecordsByIds(tenantId, targetFormId, ids, {
+        actorId: actorId ?? null,
+        own: targetScoped,
+      })
       for (const rec of out) {
         const linkedId = toId(rec.values[linkName])
         const target = linkedId !== undefined ? targets.get(linkedId) : undefined
@@ -244,7 +276,8 @@ export class RecordService {
            兩者原本都是 null —— 單據上看起來就是「這欄空的」,而實際是資料遺失。
            已凍結的記錄不受影響:快照值會在最後覆蓋回來,這正是 snapshot 的價值。 */
         if (linkedId !== undefined && target === undefined) {
-          rec.values[lf.row.name] = SOURCE_DELETED
+          // 受範圍限制時「查不到」可能只是看不到 → 標記為無權而非資料遺失
+          rec.values[lf.row.name] = targetScoped ? SOURCE_RESTRICTED : SOURCE_DELETED
           continue
         }
         rec.values[lf.row.name] = target?.values[targetName] ?? null
@@ -360,20 +393,26 @@ export class RecordService {
     tenantId: number,
     formId: number,
     ids: readonly number[],
+    scope?: { actorId: number | null; own: boolean },
   ): Promise<Map<number, RecordRow>> {
     if (ids.length === 0) return new Map()
     const resolved = await this.resolveForm(tenantId, formId)
-    return this.inTenantTx(tenantId, async (trx) => {
-      const rows = (await this.baseQuery(trx, tenantId, resolved).whereIn(`${resolved.table}.id`, [
-        ...ids,
-      ])) as Record<string, unknown>[]
-      const map = new Map<number, RecordRow>()
-      for (const row of rows) {
-        const rec = this.toRecord(resolved, row)
-        map.set(rec.id, rec)
-      }
-      return map
-    })
+    return this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        const rows = (await this.baseQuery(trx, tenantId, resolved).whereIn(
+          `${resolved.table}.id`,
+          [...ids],
+        )) as Record<string, unknown>[]
+        const map = new Map<number, RecordRow>()
+        for (const row of rows) {
+          const rec = this.toRecord(resolved, row)
+          map.set(rec.id, rec)
+        }
+        return map
+      },
+      scope,
+    )
   }
 
   /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(M1 spike S3) */
@@ -412,7 +451,14 @@ export class RecordService {
       this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null),
     )
     await this.bindFiles(tenantId, formId, resolved, record.id, withDefaults)
-    const [enriched] = await this.withComputed(tenantId, formId, resolved, [record])
+    const [enriched] = await this.withComputed(
+      tenantId,
+      formId,
+      resolved,
+      [record],
+      policy,
+      actorId,
+    )
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
     return masked ?? injected ?? record
@@ -472,7 +518,9 @@ export class RecordService {
     })
   }
 
-  /* F-6 M2 配額用:單次 count(僅 bulk 路徑呼叫,非每列)。 */
+  /* F-6 M2 配額用:單次 count(僅 bulk 路徑呼叫,非每列)。
+     🔴 **刻意不套記錄範圍**:配額是租戶層的量,不是使用者看得到多少 ——
+     若在此套 own,受限使用者會以為額度沒用完而一路寫到爆。 */
   private async countRecords(tenantId: number, resolved: ResolvedForm): Promise<number> {
     return this.inTenantTx(tenantId, async (trx) => {
       const rows = (await trx
@@ -486,21 +534,36 @@ export class RecordService {
     })
   }
 
+  /* 🔴 actorId 為記錄範圍所需(#96 sweep):單筆讀取原本沒帶範圍 → 受 own 限制的人
+     照樣能用 id 直接讀到別人的記錄(列表擋住了,單筆沒擋)。 */
   async getRecord(
     tenantId: number,
     formId: number,
     recordId: number,
     policy?: FieldAccessPolicy,
+    actorId: number | null = null,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    const record = await this.inTenantTx(tenantId, async (trx) => {
-      const row = await this.baseQuery(trx, tenantId, resolved)
-        .where(`${resolved.table}.id`, recordId)
-        .first()
-      if (row === undefined) throw new RecordNotFoundError(recordId)
-      return this.toRecord(resolved, row as Record<string, unknown>)
-    })
-    const [enriched] = await this.withComputed(tenantId, formId, resolved, [record])
+    const record = await this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        const row = await this.baseQuery(trx, tenantId, resolved)
+          .where(`${resolved.table}.id`, recordId)
+          .first()
+        if (row === undefined) throw new RecordNotFoundError(recordId)
+        return this.toRecord(resolved, row as Record<string, unknown>)
+      },
+      { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
+    )
+    const enrichedList = await this.withComputed(
+      tenantId,
+      formId,
+      resolved,
+      [record],
+      policy,
+      actorId ?? undefined,
+    )
+    const [enriched] = enrichedList
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
     return masked ?? injected ?? record
@@ -612,7 +675,14 @@ export class RecordService {
          這裡只是把身分與範圍講清楚 —— 就算這行漏了,policy 仍是 fail-closed。 */
       { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
     )
-    const enriched = await this.withComputed(tenantId, formId, resolved, result.records)
+    const enriched = await this.withComputed(
+      tenantId,
+      formId,
+      resolved,
+      result.records,
+      policy,
+      actorId ?? undefined,
+    )
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
     return {
       records: this.maskRead(resolved, formId, computed, policy),
@@ -631,11 +701,16 @@ export class RecordService {
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
     this.assertWritable(resolved, formId, values, policy)
-    await this.inTenantTx(tenantId, async (trx) => {
-      await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
-    })
+    await this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
+      },
+      /* 範圍受限時只能改自己的:RESTRICTIVE policy 的 USING 同樣管 UPDATE 的選列 */
+      { actorId, own: policy?.isScopedToOwn?.(formId, "edit") === true },
+    )
     await this.bindFiles(tenantId, formId, resolved, recordId, values)
-    return this.getRecord(tenantId, formId, recordId, policy)
+    return this.getRecord(tenantId, formId, recordId, policy, actorId)
   }
 
   async softDeleteRecord(
@@ -643,17 +718,22 @@ export class RecordService {
     formId: number,
     recordId: number,
     actorId: number,
+    policy?: FieldAccessPolicy,
   ): Promise<void> {
     const resolved = await this.resolveForm(tenantId, formId)
-    await this.inTenantTx(tenantId, async (trx) => {
-      const count = await trx
-        .withSchema(DATA_SCHEMA)
-        .table(resolved.table)
-        .where({ tenant_id: tenantId, id: recordId })
-        .whereNull("deleted_at")
-        .update({ deleted_at: trx.fn.now(), updated_by: actorId })
-      if (count === 0) throw new RecordNotFoundError(recordId)
-    })
+    await this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        const count = await trx
+          .withSchema(DATA_SCHEMA)
+          .table(resolved.table)
+          .where({ tenant_id: tenantId, id: recordId })
+          .whereNull("deleted_at")
+          .update({ deleted_at: trx.fn.now(), updated_by: actorId })
+        if (count === 0) throw new RecordNotFoundError(recordId)
+      },
+      { actorId, own: policy?.isScopedToOwn?.(formId, "delete") === true },
+    )
   }
 
   /* A5|header + lines 單一 transaction(ERP 單據骨架):

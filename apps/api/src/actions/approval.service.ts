@@ -91,7 +91,14 @@ export class ApprovalService {
     if (def === undefined) {
       throw new BadRequestException({ code: "NO_APPROVAL_DEF", message: "此表單未設定簽核流程" })
     }
-    const record = await this.records.getRecord(tenant.tenantId, formId, recordId, permissions)
+    /* 記錄範圍(#96 sweep):送簽者對這筆沒有可見權時直接擋 —— 送簽本質是對記錄動作 */
+    const record = await this.records.getRecord(
+      tenant.tenantId,
+      formId,
+      recordId,
+      permissions,
+      tenant.actorId,
+    )
     const firstStep = nextActiveStep(def.steps, 0, record.values)
     if (firstStep === null) {
       throw new BadRequestException({
@@ -191,6 +198,7 @@ export class ApprovalService {
       instance.formId,
       instance.recordId,
       permissions,
+      tenant.actorId,
     )
     const next = nextActiveStep(def.steps, step.stepNo, record.values)
     if (next !== null) {

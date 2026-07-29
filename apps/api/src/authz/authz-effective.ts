@@ -19,6 +19,9 @@ export interface FieldAccessPolicy {
   fieldVisibility(fieldId: number, formId: number): FieldVisibility
   /* E-1 記錄範圍(#96)。optional —— 既有以純 FieldAccessPolicy 呼叫的測試不受影響。 */
   isScopedToOwn?(formId: number, action: FormAction): boolean
+  /* 🔴 lookup 越權(FMEA D3):帶入值來自**另一張表**,必須以讀取者對該表的權限判斷,
+     否則沒有客戶主檔權限的人可以透過訂單上的帶入欄把客戶資料整批讀出來。 */
+  canRead?(formId: number): boolean
 }
 
 /* 清單三態(OQ-ARI-8=折衷):可讀完整 / 非敏感無權=鎖定 stub(顯示+申請)/ 敏感無權=隱藏(不入任一)。 */
