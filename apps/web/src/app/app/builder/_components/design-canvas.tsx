@@ -56,6 +56,44 @@ const DEFAULT_SPAN = 6
 const EMPTY_LAYOUT: Layout = { grid: { cols: 12 }, fields: {}, statics: [], sections: [] }
 
 /* 方向鍵一次移動一格(而非 dnd-kit 預設的固定像素)—— 格線上「一格」才是使用者的心智單位。 */
+/* 🔴 重疊偵測(#109)。原本 onDragEnd 只 clamp col 邊界,兩個欄位可以疊在一起 ——
+   疊上去之後版面看起來就是壞的,而且**存下去也不會有人擋**。
+
+   react-grid-layout 要求 preventCollision / compactType / allowOverlap 三擇一;
+   此處採 **preventCollision**:擋住會疊到的移動,而不是把別人推開。
+   推擠在 2D 自由排版下很難預期(推一個會連鎖推一排),對「複刻既有紙本單據」
+   這個使用情境反而更糟 —— 使用者要的是「放在我指定的位置」。
+
+   ⚠️ 拖曳與鍵盤兩條路徑都經過 patchField/patchStatic,故防線放在這裡而非 onDragEnd。 */
+interface Box {
+  readonly row: number
+  readonly col: number
+  readonly colSpan: number
+  readonly rowSpan: number
+}
+
+function overlaps(a: Box, b: Box): boolean {
+  const colHit = a.col < b.col + b.colSpan && b.col < a.col + a.colSpan
+  const rowHit = a.row < b.row + b.rowSpan && b.row < a.row + a.rowSpan
+  return colHit && rowHit
+}
+
+function boxesOf(
+  layout: Layout,
+  exclude: { kind: "field" | "static"; id: string },
+): Box[] {
+  const out: Box[] = []
+  for (const [id, f] of Object.entries(layout.fields)) {
+    if (exclude.kind === "field" && id === exclude.id) continue
+    out.push({ row: f.row, col: f.col, colSpan: f.colSpan ?? DEFAULT_SPAN, rowSpan: 1 })
+  }
+  for (const s of layout.statics) {
+    if (exclude.kind === "static" && s.id === exclude.id) continue
+    out.push({ row: s.row, col: s.col, colSpan: s.colSpan ?? 4, rowSpan: 1 })
+  }
+  return out
+}
+
 const gridCoordinateGetter: KeyboardCoordinateGetter = (event, { currentCoordinates }) => {
   const step = { x: COL_W, y: ROW_H }
   switch (event.code) {
@@ -167,13 +205,38 @@ export function DesignCanvas({
   const patchField = (id: string, patch: Partial<FieldLayout>): void => {
     const cur = effective.fields[id]
     if (cur === undefined) return
-    edit({ ...effective, fields: { ...effective.fields, [id]: { ...cur, ...patch } } })
+    const next = { ...cur, ...patch }
+    const box: Box = {
+      row: next.row,
+      col: next.col,
+      colSpan: next.colSpan ?? DEFAULT_SPAN,
+      rowSpan: 1,
+    }
+    if (boxesOf(effective, { kind: "field", id }).some((b) => overlaps(box, b))) {
+      setMsg("那個位置已被其他欄位佔用")
+      return
+    }
+    edit({ ...effective, fields: { ...effective.fields, [id]: next } })
   }
-  const patchStatic = (id: string, patch: Partial<StaticElement>): void =>
+  const patchStatic = (id: string, patch: Partial<StaticElement>): void => {
+    const cur = effective.statics.find((s) => s.id === id)
+    if (cur === undefined) return
+    const next = { ...cur, ...patch }
+    const box: Box = {
+      row: next.row,
+      col: next.col,
+      colSpan: next.colSpan ?? 4,
+      rowSpan: 1,
+    }
+    if (boxesOf(effective, { kind: "static", id }).some((b) => overlaps(box, b))) {
+      setMsg("那個位置已被其他元素佔用")
+      return
+    }
     edit({
       ...effective,
-      statics: effective.statics.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      statics: effective.statics.map((s) => (s.id === id ? next : s)),
     })
+  }
   const addStatic = (kind: "text" | "image"): void => {
     const maxRow = Object.values(effective.fields).reduce((m, f) => Math.max(m, f.row), -1)
     const id = nextStaticId(effective.statics)
@@ -205,7 +268,8 @@ export function DesignCanvas({
 
   const save = (): void => {
     if (idx < 0) return
-    putLayout.mutate(effective, {
+    /* 🔴 帶上載入時的版本(#109):整表覆寫下,不帶就是「後寫者蓋掉整張版面」 */
+    putLayout.mutate({ ...effective, expectedVersion: layoutResp?.version }, {
       onSuccess: () => {
         setHist([])
         setIdx(-1)

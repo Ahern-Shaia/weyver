@@ -237,7 +237,11 @@ export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, page
 }
 
 /* R1·UP-3 2D 設計器版面 */
-const layoutResponseSchema = z.object({ layout: layoutSchema.nullable() })
+const layoutResponseSchema = z.object({
+  layout: layoutSchema.nullable(),
+  /* 樂觀鎖用(#109):與 layout 同源讀出,存檔時原樣帶回 */
+  version: z.number().int(),
+})
 
 export function useLayout(formId: number | null) {
   return useQuery({
@@ -251,8 +255,8 @@ export function useLayout(formId: number | null) {
 export function usePutLayout(formId: number) {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: (layout: Layout): Promise<Layout> =>
-      engineFetch(`/forms/${formId}/layout`, layoutSchema, { method: "PATCH", body: layout }),
+    mutationFn: (input: Layout & { expectedVersion?: number | undefined }): Promise<Layout> =>
+      engineFetch(`/forms/${formId}/layout`, layoutSchema, { method: "PATCH", body: input }),
     onSuccess: () =>
       invalidate([["forms", formId, "layout"], formKeys.detail(formId), formKeys.all]),
   })
