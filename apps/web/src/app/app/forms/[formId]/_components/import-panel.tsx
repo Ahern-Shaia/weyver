@@ -41,7 +41,12 @@ const planSchema = z.object({
     errors: z.number(),
     skipped: z.number(),
   }),
-  impact: z.object({ fieldsToClear: z.number(), recordsAffected: z.number() }),
+  impact: z.object({
+    fieldsToClear: z.number(),
+    recordsAffected: z.number(),
+    existingTotal: z.number(),
+    needsConfirm: z.boolean(),
+  }),
   blockers: z.array(z.object({ code: z.string(), message: z.string() })),
   warnings: z.array(z.object({ code: z.string(), message: z.string() })),
   rowErrors: z.array(
@@ -81,6 +86,7 @@ export function ImportPanel({
   const [matchField, setMatchField] = useState("")
   const [blankPolicy, setBlankPolicy] = useState<"keep" | "clear">("keep")
   const [clearConfirm, setClearConfirm] = useState("")
+  const [impactAck, setImpactAck] = useState(false)
   const [planned, setPlanned] = useState<Planned | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +123,7 @@ export function ImportPanel({
     setBusy(true)
     setError(null)
     try {
+      setImpactAck(false)
       setPlanned(
         planSchema.parse(
           await engineFetch(`/forms/${formId}/import/plan`, z.unknown(), {
@@ -139,7 +146,14 @@ export function ImportPanel({
     try {
       const done = (await engineFetch(`/forms/${formId}/import/commit`, z.unknown(), {
         method: "POST",
-        body: { planHash: planned.planHash, plan: buildPlan() },
+        /* confirmFormName 後端也驗 —— 前端的確認對話框擋不住直接打 API 的人。
+           idempotencyKey:網路重試不該匯入兩次(planHash 相同即同一份計畫)。 */
+        body: {
+          planHash: planned.planHash,
+          plan: buildPlan(),
+          ...(blankPolicy === "clear" ? { confirmFormName: clearConfirm } : {}),
+        },
+        idempotencyKey: `import:${String(formId)}:${planned.planHash}`,
       })) as { inserted: number; updated: number; unchanged: number }
       setResult(
         `完成:新增 ${String(done.inserted)} 筆、更新 ${String(done.updated)} 筆、未變動 ${String(done.unchanged)} 筆`,
@@ -155,8 +169,16 @@ export function ImportPanel({
   /* 🔴 清空既有值需打字輸入表單名稱(OQ-IMP-2)。
      Shopify 無任何確認就把空白欄覆蓋掉,是其商家大量中招的來源。 */
   const clearBlocked = blankPolicy === "clear" && clearConfirm.trim() !== formName
+  /* §4.2「更新影響 >20% 或 >1000 筆 → 警 + 二次確認」。
+     大量更新與少量更新在畫面上長得一模一樣,不擋一下使用者不會發現動到了大半張表。 */
+  const impactBlocked = planned?.impact.needsConfirm === true && !impactAck
   const canRun =
-    planned !== null && planned.blockers.length === 0 && !clearBlocked && !busy && result === null
+    planned !== null &&
+    planned.blockers.length === 0 &&
+    !clearBlocked &&
+    !impactBlocked &&
+    !busy &&
+    result === null
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -382,6 +404,22 @@ export function ImportPanel({
                       {w.message}
                     </div>
                   ))}
+                  {planned.impact.needsConfirm ? (
+                    <label className="flex items-start gap-1.5 border border-warn/40 bg-warn/5 px-3 py-2 text-[11.5px] text-ink">
+                      <input
+                        type="checkbox"
+                        checked={impactAck}
+                        onChange={(e) => setImpactAck(e.target.checked)}
+                        className="mt-0.5 accent-(--color-primary)"
+                      />
+                      <span>
+                        我確認要更新 {planned.totals.toUpdate} 筆
+                        {planned.impact.existingTotal > 0
+                          ? `(既有共 ${planned.impact.existingTotal} 筆)`
+                          : ""}
+                      </span>
+                    </label>
+                  ) : null}
                   {planned.rowErrors.slice(0, 5).map((r) => (
                     <div key={r.sourceRowNo} className="text-[11px] text-ink-4">
                       第 {r.sourceRowNo} 列:{r.errorMessage ?? r.errorCode}

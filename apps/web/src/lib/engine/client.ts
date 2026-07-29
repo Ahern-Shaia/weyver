@@ -46,7 +46,9 @@ export function describeEngineError(error: unknown): string {
 export async function engineFetch<T>(
   path: string,
   schema: z.ZodType<T>,
-  init: { method?: string; body?: unknown } = {},
+  /* idempotencyKey:網路重試不該讓同一個 mutation 生效兩次(後端 IdempotencyInterceptor
+     以此標頭去重;不帶則直接放行,既有呼叫端不受影響)。 */
+  init: { method?: string; body?: unknown; idempotencyKey?: string } = {},
 ): Promise<T> {
   /* content-type 只在**真的有 body** 時才送 —— Fastify 對「宣告 application/json
      但 body 為空」直接回 500(無 body 的 POST 如「全部標為已讀」會踩到)。
@@ -55,6 +57,7 @@ export async function engineFetch<T>(
     method: init.method ?? "GET",
     headers: {
       ...(init.body === undefined ? {} : { "content-type": "application/json" }),
+      ...(init.idempotencyKey === undefined ? {} : { "idempotency-key": init.idempotencyKey }),
       "x-dev-tenant": getDevTenant(),
     },
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
