@@ -231,7 +231,7 @@ interface StorageDriver {
 
 | 嚴重度 | 發現 |
 |---|---|
-| 🔴 | **Fastify 4.28.1 已 EOL 不再收安全修補**(當初為避型別重複而釘)。CVE-2026-33806(Content-Type 前導空白繞過 body 驗證)只修在 5.8.5 |
+| 🔴 | **Fastify 4.28.1 已 EOL 不再收安全修補**(當初為避型別重複而釘)。⚠️ **2026-07-29 更正**:原記之 CVE-2026-33806 **不影響 4.28.1**(其範圍為 `>= 5.3.2, <= 5.8.4`,是 5.x 的 regression)。真正命中且 4.x 永無修補的是 **CVE-2026-25223**(`< 5.7.2`,high)與 **CVE-2026-3635**(`<= 5.8.2`)。**結論不變、論據更換**;且盤查後發現升版範圍實為 NestJS 10→11(adapter 把 fastify 釘死)→ 另立 [F-9 framework-upgrade](framework-upgrade.md) |
 | 🔴 | **無防毒掃描會卡 ISO 27001 A.8.7** —— 食品業做 GFSI / 客戶稽核必問「附件是否掃毒」。低 ops 解:ClamAV 打成 Cloud Run 容器**非同步**掃(零常駐)+ `scan_status` 欄 + 只掃高風險型別(PDF/OOXML/CSV;影像已由 sharp 解碼驗證,可跳過 → 掃描量降 ~80%)。純 OSS 無 daemon 替代:`yara-x`(BSD-3,單 binary) |
 | 🟠 | **Polyglot 存活** —— PNG/WebP 未旋轉時位元組原封、`stripJpegMetadata` 在 SOS 後原樣保留 → **尾部附加的 ZIP 完整存活**(zip 讀取器從檔尾找中央目錄)。目前靠 `octet-stream + attachment + nosniff` 擋住觸發。**應把「不得 inline 提供 / 不得直出 CDN / 不得解壓範本」寫成模組不變量** |
 | 🟠 | **PDF 與 OOXML 零內容驗證** —— `.docm` 改名 `.docx` 仍是巨集檔。最省做法:把 OOXML 當 zip 讀 `[Content_Types].xml` 拒 macroEnabled + 拒 `word/vbaProject.bin`(只讀中央目錄不解壓);PDF regex 掃 `/JavaScript|/OpenAction|/Launch|/EmbeddedFile` |
