@@ -3,6 +3,7 @@
 import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
 import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
 import { useMemberNames } from "@/lib/engine/authz"
+import { GroupedView } from "./grouped-view"
 import { describeEngineError } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { operatorNeedsValue } from "@/lib/engine/field-filters"
@@ -10,6 +11,7 @@ import { gridThemeOverride } from "@/lib/engine/grid-tone"
 import {
   type RecordQuery,
   useDeleteRecord,
+  useGroupStats,
   useInfiniteRecordsQuery,
   useLayout,
   useUpdateRecord,
@@ -54,6 +56,8 @@ export function CollectionView({
   const [error, setError] = useState<string | null>(null)
   const memberNames = useMemberNames(form.fields)
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
+  /* 折疊狀態 —— 傳到後端從查詢排除,而非前端隱藏(否則折疊後仍吃 page size)。 */
+  const [collapsed, setCollapsed] = useState<readonly (readonly string[])[]>([])
 
   const query = useMemo<RecordQuery>(
     () => ({
@@ -66,10 +70,14 @@ export function CollectionView({
       combinator: view?.filter.combinator ?? "and",
       sort: view?.sorts ?? [],
       q: quickSearch.trim() || view?.search || undefined,
+      groupBy: view?.groupBy ?? [],
+      collapsed,
     }),
-    [view, quickSearch],
+    [view, quickSearch, collapsed],
   )
   const recordsQuery = useInfiniteRecordsQuery(formId, query)
+  const grouped = (view?.groupBy ?? []).length > 0
+  const stats = useGroupStats(formId, query, view?.aggregates ?? [])
   const records: RecordRow[] = useMemo(
     () => recordsQuery.data?.pages.flatMap((p) => p.records) ?? [],
     [recordsQuery.data],
@@ -248,6 +256,24 @@ export function CollectionView({
           <div className="flex h-full items-center justify-center text-[12px] text-ink-4">
             無相符記錄{query.q || query.filters.length > 0 ? "(篩選/搜尋無結果)" : ""}。
           </div>
+        ) : grouped ? (
+          <GroupedView
+            records={records}
+            fields={displayFields}
+            groups={view?.groupBy ?? []}
+            stats={stats.data}
+            collapsed={collapsed}
+            onToggle={(key) =>
+              setCollapsed((prev) =>
+                prev.some((c) => c.join(" ") === key.join(" "))
+                  ? prev.filter((c) => c.join(" ") !== key.join(" "))
+                  : [...prev, [...key]],
+              )
+            }
+            onOpen={onRowOpen}
+            memberNames={memberNames}
+            query={query}
+          />
         ) : (
           <GridSheet
             columns={columns}

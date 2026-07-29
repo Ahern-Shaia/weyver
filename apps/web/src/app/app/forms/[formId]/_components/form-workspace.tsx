@@ -30,6 +30,8 @@ const EMPTY_CONFIG: ViewConfig = {
   fields: [],
   filter: { combinator: "and", conditions: [] },
   sorts: [],
+  groupBy: [],
+  aggregates: [],
 }
 
 /* R1·UP-2 表單工作台雙模式(OQ-VL-7:列表為進表預設)。

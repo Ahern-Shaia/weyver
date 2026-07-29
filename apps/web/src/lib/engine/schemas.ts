@@ -186,6 +186,18 @@ export const viewSortSchema = z.object({
 })
 export type ViewSort = z.infer<typeof viewSortSchema>
 
+/* F-1 分組:分組鍵前置於排序鍵(≤3 層)。日期欄可指定粒度。 */
+export const GROUP_DATE_UNITS = ["day", "month", "quarter", "year"] as const
+export const viewGroupSchema = z.object({
+  field: z.string(),
+  dir: z.enum(["asc", "desc"]).default("asc"),
+  unit: z.enum(GROUP_DATE_UNITS).optional(),
+})
+export type ViewGroup = z.infer<typeof viewGroupSchema>
+
+export const GROUP_AGGREGATE_FNS = ["count", "empty", "filled", "sum", "avg", "min", "max"] as const
+export type GroupAggregateFn = (typeof GROUP_AGGREGATE_FNS)[number]
+
 export const viewConfigSchema = z.object({
   fields: z.array(z.string()).default([]),
   filter: z
@@ -195,6 +207,12 @@ export const viewConfigSchema = z.object({
     })
     .default({ combinator: "and", conditions: [] }),
   sorts: z.array(viewSortSchema).default([]),
+  groupBy: z.array(viewGroupSchema).max(3).default([]),
+  /* 群組小計:{欄位, 函數} 列表。空 = 只顯示筆數。 */
+  aggregates: z
+    .array(z.object({ field: z.string(), fn: z.enum(GROUP_AGGREGATE_FNS) }))
+    .max(10)
+    .default([]),
   search: z.string().optional(),
   pageSize: z.number().int().optional(),
 })

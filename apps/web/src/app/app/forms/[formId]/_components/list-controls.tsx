@@ -1,11 +1,8 @@
 "use client"
 
-import { Filter, Plus, Save, Star, Trash2, X } from "lucide-react"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
-import { type ReactNode, useState } from "react"
 import { choicesOf, toSubmitValue } from "@/app/app/builder/_components/field-value"
-import { fieldOperators, OPERATOR_LABEL, operatorNeedsValue } from "@/lib/engine/field-filters"
+import { OPERATOR_LABEL, fieldOperators, operatorNeedsValue } from "@/lib/engine/field-filters"
+import type { GROUP_DATE_UNITS } from "@/lib/engine/schemas"
 import type {
   FieldDto,
   FilterOperator,
@@ -14,6 +11,10 @@ import type {
   ViewDto,
   ViewFilterCondition,
 } from "@/lib/engine/schemas"
+import { Input } from "@weyver/ui/input"
+import { Select } from "@weyver/ui/select"
+import { Filter, Plus, Save, Star, Trash2, X } from "lucide-react"
+import { type ReactNode, useState } from "react"
 
 /* R1·UP-2 集合視圖控制列:儲存檢視三態選擇 + facet 篩選(型別感知 operator,單層 AND|OR)+ 多鍵排序。
    anyOf(多選集合)本期不入 UI(留 P1)→ 篩選值皆 scalar,經 toSubmitValue 轉正確型別。 */
@@ -42,7 +43,7 @@ export function ListControls({
   readonly onSetDefault: () => void
   readonly onDelete: () => void
 }): ReactNode {
-  const [panel, setPanel] = useState<"filter" | "sort" | null>(null)
+  const [panel, setPanel] = useState<"filter" | "sort" | "group" | null>(null)
   const activeView = views.find((v) => v.id === activeViewId) ?? null
   // formula/計算型讀時算(無可篩物理欄)、attachment 無序 → 皆不入篩選欄(空 operator 亦排除)
   const filterable = form.fields.filter(
@@ -50,6 +51,7 @@ export function ListControls({
   )
   const conditions = config.filter.conditions
   const sorts = config.sorts
+  const groups = config.groupBy
 
   const setFilter = (next: Partial<ViewConfig["filter"]>): void =>
     onConfigChange({ ...config, filter: { ...config.filter, ...next } })
@@ -65,6 +67,11 @@ export function ListControls({
     const first = form.fields[0]
     if (first === undefined) return
     onConfigChange({ ...config, sorts: [...sorts, { field: first.name, dir: "asc" }] })
+  }
+  const addGroup = (): void => {
+    const first = form.fields[0]
+    if (first === undefined) return
+    onConfigChange({ ...config, groupBy: [...groups, { field: first.name, dir: "asc" }] })
   }
 
   const saveNew = (): void => {
@@ -105,6 +112,12 @@ export function ListControls({
           onClick={() => setPanel(panel === "sort" ? null : "sort")}
         >
           排序{sorts.length > 0 ? ` ${sorts.length}` : ""}
+        </ToggleChip>
+        <ToggleChip
+          active={panel === "group"}
+          onClick={() => setPanel(panel === "group" ? null : "group")}
+        >
+          分組{groups.length > 0 ? ` ${groups.length}` : ""}
         </ToggleChip>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -165,6 +178,107 @@ export function ListControls({
               <Plus size={12} strokeWidth={2} />
               加條件
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {panel === "group" ? (
+        <div className="border-t border-line bg-surface px-4 py-2.5">
+          <div className="flex flex-col gap-1.5">
+            {groups.map((g, i) => {
+              const field = form.fields.find((f) => f.name === g.field)
+              const isDate = field?.type === "date" || field?.type === "dateTime"
+              return (
+                <div key={`${g.field}-${String(i)}`} className="flex items-center gap-2">
+                  <Select
+                    className="h-7 w-40"
+                    aria-label={`分組欄位 ${String(i + 1)}`}
+                    value={g.field}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...config,
+                        groupBy: groups.map((x, j) =>
+                          j === i ? { ...x, field: e.target.value } : x,
+                        ),
+                      })
+                    }
+                  >
+                    {form.fields.map((f) => (
+                      <option key={f.id} value={f.name}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </Select>
+                  {/* 日期欄的分組粒度 —— Ragic 原生有,Airtable 需繞公式欄 */}
+                  {isDate ? (
+                    <Select
+                      className="h-7 w-24"
+                      aria-label={`分組粒度 ${String(i + 1)}`}
+                      value={g.unit ?? "day"}
+                      onChange={(e) =>
+                        onConfigChange({
+                          ...config,
+                          groupBy: groups.map((x, j) =>
+                            j === i
+                              ? { ...x, unit: e.target.value as (typeof GROUP_DATE_UNITS)[number] }
+                              : x,
+                          ),
+                        })
+                      }
+                    >
+                      <option value="day">依日</option>
+                      <option value="month">依月</option>
+                      <option value="quarter">依季</option>
+                      <option value="year">依年</option>
+                    </Select>
+                  ) : null}
+                  <Select
+                    className="h-7 w-24"
+                    aria-label={`分組方向 ${String(i + 1)}`}
+                    value={g.dir}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...config,
+                        groupBy: groups.map((x, j) =>
+                          j === i ? { ...x, dir: e.target.value === "desc" ? "desc" : "asc" } : x,
+                        ),
+                      })
+                    }
+                  >
+                    <option value="asc">升冪</option>
+                    <option value="desc">降冪</option>
+                  </Select>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onConfigChange({ ...config, groupBy: groups.filter((_, j) => j !== i) })
+                    }
+                    className="text-ink-4 hover:text-er"
+                    aria-label="移除分組"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )
+            })}
+            {/* 3 層是業界收斂值(Airtable 3 / Teable 3 / Notion 2);再深 UI 已不可讀 */}
+            {groups.length < 3 ? (
+              <button
+                type="button"
+                onClick={addGroup}
+                className="mt-0.5 flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+              >
+                <Plus size={12} strokeWidth={2} />
+                加入分組欄位
+              </button>
+            ) : (
+              <span className="text-[11px] text-ink-4">最多 3 層</span>
+            )}
+            {groups.length > 0 ? (
+              <p className="mt-1 text-[11px] text-ink-4">
+                每組的筆數與小計由伺服器計算,只會統計你有權檢視的記錄。
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

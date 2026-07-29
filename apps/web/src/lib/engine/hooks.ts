@@ -33,6 +33,7 @@ import {
   userNameSchema,
   viewDtoSchema,
 } from "./schemas"
+import type { ViewGroup } from "./schemas"
 
 const voidSchema = z.undefined().or(z.unknown().transform(() => undefined))
 
@@ -214,6 +215,52 @@ export interface RecordQuery {
   readonly combinator: "and" | "or"
   readonly sort: readonly ViewSort[]
   readonly q?: string | undefined
+  readonly groupBy?: readonly ViewGroup[] | undefined
+  /* 折疊的群組鍵組合 —— **必須傳後端**,否則折疊只是前端隱藏卻照吃 page size */
+  readonly collapsed?: readonly (readonly string[])[] | undefined
+}
+
+/* 群組統計。與列表**同一份 query** —— 母體不一致的話小計與列表對不上且錯得安靜。 */
+export const groupStatsSchema = z.object({
+  groups: z.array(
+    z.object({
+      keys: z.array(z.string().nullable()),
+      depth: z.number(),
+      count: z.number(),
+      aggregates: z.record(z.string(), z.unknown()),
+    }),
+  ),
+  truncated: z.boolean(),
+})
+export type GroupStats = z.infer<typeof groupStatsSchema>
+
+export function useGroupStats(
+  formId: number,
+  query: RecordQuery,
+  aggregates: readonly { field: string; fn: string }[],
+) {
+  const enabled = (query.groupBy ?? []).length > 0
+  return useQuery({
+    queryKey: [...formKeys.records(formId), "group-stats", query, aggregates],
+    enabled,
+    queryFn: () =>
+      engineFetch(`/forms/${formId}/records/group-stats`, groupStatsSchema, {
+        method: "POST",
+        body: { query: { ...toQueryBody(query), limit: 1 }, aggregates },
+      }),
+  })
+}
+
+/* 列表與群組統計共用的 query body —— **母體必須一致**,否則小計與列表對不上(F-1 §4.2) */
+function toQueryBody(query: RecordQuery): Record<string, unknown> {
+  return {
+    filters: query.filters,
+    combinator: query.combinator,
+    sort: query.sort,
+    ...(query.q !== undefined && query.q !== "" ? { q: query.q } : {}),
+    ...((query.groupBy ?? []).length > 0 ? { groupBy: query.groupBy } : {}),
+    ...((query.collapsed ?? []).length > 0 ? { collapsed: query.collapsed } : {}),
+  }
 }
 
 export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, pageSize = 200) {
@@ -223,10 +270,7 @@ export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, page
       engineFetch<ListResponse>(`/forms/${formId}/records/query`, listResponseSchema, {
         method: "POST",
         body: {
-          filters: query.filters,
-          combinator: query.combinator,
-          sort: query.sort,
-          ...(query.q !== undefined && query.q !== "" ? { q: query.q } : {}),
+          ...toQueryBody(query),
           limit: pageSize,
           ...(pageParam === undefined ? {} : { cursor: pageParam }),
         },
