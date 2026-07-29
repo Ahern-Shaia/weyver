@@ -1,6 +1,7 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMemo } from "react"
 import { z } from "zod"
 import { engineFetch } from "./client"
 
@@ -122,6 +123,13 @@ export function useCreateRole() {
 
 /* 🔴 E-1 存取預覽(#96)。回「看得到幾筆 / 全部幾筆 + 每筆為什麼」。
    唯讀試算,不做 impersonation —— 管理員得到判斷所需的一切,但不能藉此翻閱他人資料。 */
+export const tenantActorSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string(),
+})
+export type TenantActor = z.infer<typeof tenantActorSchema>
+
 export const accessPreviewSchema = z.object({
   actorId: z.number(),
   formId: z.number(),
@@ -139,18 +147,28 @@ export const accessPreviewSchema = z.object({
 export type AccessPreview = z.infer<typeof accessPreviewSchema>
 
 /* 可預覽的人員 —— 不限某角色成員:有效存取是「這個人透過他所有角色能看到什麼」 */
-export function usePreviewActors() {
+export function usePreviewActors(enabled = true) {
   return useQuery({
     queryKey: ["authz", "preview", "actors"],
-    queryFn: () => engineFetch("/forms/access-preview/actors", z.array(z.number())),
+    queryFn: () => engineFetch("/forms/access-preview/actors", z.array(tenantActorSchema)),
+    enabled,
   })
+}
+
+/* member 欄的 id → 姓名。記錄列表若直接印 actor id,使用者看到的是「58」——
+   指派給誰是這個欄的全部意義,顯示成流水號等於沒做。只在表單真有 member 欄時才查。 */
+export function useMemberNames(
+  fields: readonly { readonly type: string }[],
+): ReadonlyMap<number, string> {
+  const has = fields.some((f) => f.type === "member")
+  const { data } = usePreviewActors(has)
+  return useMemo(() => new Map((data ?? []).map((a) => [a.id, a.name])), [data])
 }
 
 export function useAccessPreview(formId: number | null, actorId: number | null) {
   return useQuery({
     queryKey: ["authz", "preview", formId ?? -1, actorId ?? -1],
-    queryFn: () =>
-      engineFetch(`/forms/${formId}/access-preview/${actorId}`, accessPreviewSchema),
+    queryFn: () => engineFetch(`/forms/${formId}/access-preview/${actorId}`, accessPreviewSchema),
     enabled: formId !== null && actorId !== null,
   })
 }

@@ -39,7 +39,7 @@ export type CellValueType = (typeof CELL_VALUE_TYPES)[number]
 
 /* stub 型別(引擎 systemManaged / 行為未實作)→ palette 停用、填單唯讀。
    attachment 已於 F-5 file-storage 解鎖(上傳/下載/移除)→ 移出本清單。 */
-export const STUB_TYPES: readonly CellValueType[] = ["member", "link"]
+export const STUB_TYPES: readonly CellValueType[] = ["link"]
 
 /* F-5 附件:欄值契約 [{key,name}](後端 attachment valueSchema,max 50) */
 export const attachmentItemSchema = z.object({ key: z.string(), name: z.string() })

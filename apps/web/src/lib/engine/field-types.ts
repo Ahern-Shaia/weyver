@@ -31,7 +31,7 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   checkbox: { label: "勾選", mark: "✓", ...D },
   rating: { label: "評分", mark: "★", ...D },
   autoNumber: { label: "自動編號", mark: "№", ...D, needsPrefix: true },
-  member: { label: "成員", mark: "◍", ...D },
+  member: { label: "人員", mark: "◍", ...D },
   link: { label: "關聯", mark: "⛓", ...D },
   attachment: { label: "附件", mark: "📎", ...D },
   image: { label: "圖片", mark: "▣", ...D },
@@ -47,8 +47,11 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   barcode: { label: "條碼", mark: "▐", ...D },
 }
 
-/* 進階型別:需 M4 設計器設定(target/公式/聚合)才能建 → 不入簡易 palette */
+/* 進階型別:需設計器另行設定(target/公式/聚合/授權)才能建 → 不入簡易 palette。
+   member 在此而非 BUILDABLE:它牽動存取權(#96 指派即授權),不該與一般欄位並列隨手加;
+   且 Excel 匯入建表無從把人名對回 actor id。 */
 export const ADVANCED_TYPES: readonly CellValueType[] = [
+  "member",
   "createdAt",
   "createdBy",
   "updatedAt",

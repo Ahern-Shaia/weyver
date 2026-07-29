@@ -37,6 +37,7 @@ export interface PendingField {
   childFormId: string // rollup
   childFieldName: string // rollup
   rollupFn: string // rollup
+  grantsAccess: boolean // member(#96)
 }
 
 function splitCsv(text: string): string[] {
@@ -73,6 +74,10 @@ function pendingOptions(p: PendingField): Record<string, unknown> {
         childFieldName: p.childFieldName,
         fn: p.rollupFn || "SUM",
       }
+    /* 🔴 member 欄的存取授予(#96)。這是「業務只看自己客戶」的落地開關 ——
+       打勾後,被指派到此欄的人就能存取該筆記錄(RLS record_scope 政策讀 assignees)。 */
+    case "member":
+      return p.grantsAccess ? { grantsAccess: true } : {}
     case "barcode":
       return { symbology: "qr" }
     default:
@@ -130,6 +135,7 @@ export function EditFormPanel({
       childFormId: "",
       childFieldName: "",
       rollupFn: "SUM",
+      grantsAccess: false,
     })
   }
 

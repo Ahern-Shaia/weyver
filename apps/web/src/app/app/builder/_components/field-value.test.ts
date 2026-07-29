@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
 import type { CellValueType, FieldDto } from "@/lib/engine/schemas"
+import { describe, expect, it } from "vitest"
 import { formatFieldValue, toSubmitValue } from "./field-value"
 
 function field(type: CellValueType, options: Record<string, unknown> = {}): FieldDto {
@@ -17,6 +17,15 @@ describe("toSubmitValue", () => {
     expect(toSubmitValue(field("rating"), "3")).toBe(3)
     expect(toSubmitValue(field("percent"), "")).toBeUndefined()
     expect(toSubmitValue(field("number"), "abc")).toBe("abc")
+  })
+
+  /* 🔴 迴歸(#96 瀏覽器實走):member 值是 number,一旦落到 default 的字串分支
+     就會被當成「沒填」丟掉 —— 畫面選了人、存進去卻是空的,且完全沒有錯誤。 */
+  it("member 送出 actor id(number),不被字串分支吃掉", () => {
+    expect(toSubmitValue(field("member"), 58)).toBe(58)
+    expect(toSubmitValue(field("member"), null)).toBeNull() // 明確取消指派
+    expect(toSubmitValue(field("member"), undefined)).toBeUndefined() // 沒碰過 → 不送
+    expect(toSubmitValue(field("member"), 0)).toBeUndefined()
   })
 
   it("converts checkbox to boolean, multiSelect to non-empty array", () => {

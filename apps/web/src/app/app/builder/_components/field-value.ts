@@ -29,6 +29,12 @@ export function toSubmitValue(field: FieldDto, value: unknown): unknown {
       const n = Number(value)
       return Number.isFinite(n) ? n : value // 非數字原樣送,交後端 422
     }
+    /* 🔴 member 存 actor id(number)。不能落到 default 的字串分支 ——
+       否則「指派誰」會在送出邊界被靜默丟掉,畫面上明明選了人,存進去卻是空的
+       (#96 瀏覽器實走發現)。null = 明確取消指派,與「沒碰過」不同。 */
+    case "member":
+      if (value === null) return null
+      return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined
     case "money":
       return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined
     case "dateTime": {
@@ -44,9 +50,19 @@ export function toSubmitValue(field: FieldDto, value: unknown): unknown {
   }
 }
 
-/* 記錄值顯示(檢視):後端回值 → 可讀字串 */
-export function formatFieldValue(field: FieldDto, value: unknown): string {
+/* 記錄值顯示(檢視):後端回值 → 可讀字串。
+   members = actor id → 姓名(#96);未帶時 member 欄退回顯示 id,不會壞掉。 */
+export function formatFieldValue(
+  field: FieldDto,
+  value: unknown,
+  members?: ReadonlyMap<number, string>,
+): string {
   if (value === null || value === undefined) return "—"
+  /* bigint 經 pg 回傳為字串,兩種都要吃 */
+  if (field.type === "member") {
+    const id = typeof value === "number" ? value : Number(value)
+    return members?.get(id) ?? String(value)
+  }
   if (field.type === "checkbox") return value === true ? "是" : "否"
   if (field.type === "multiSelect" && Array.isArray(value)) return value.join("、")
   if (

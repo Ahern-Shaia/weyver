@@ -1,10 +1,10 @@
 "use client"
 
+import { ADVANCED_TYPES, BUILDABLE_TYPES, fieldTypeMeta } from "@/lib/engine/field-types"
+import type { CellValueType } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
 import { useState } from "react"
-import { ADVANCED_TYPES, BUILDABLE_TYPES, fieldTypeMeta } from "@/lib/engine/field-types"
-import type { CellValueType } from "@/lib/engine/schemas"
 
 /* 常用置頂(#109)。28 種型別平鋪會觸 Hick's law —— 選擇時間隨選項數成長,
    而實務上絕大多數欄位落在這 8 種。Airtable / Notion 官方皆有欄位搜尋。 */
@@ -34,8 +34,7 @@ export function FieldPalette({
     ? [...BUILDABLE_TYPES, ...ADVANCED_TYPES, "link"]
     : BUILDABLE_TYPES
   const matches = all.filter(
-    (t) =>
-      fieldTypeMeta(t).label.toLowerCase().includes(term) || t.toLowerCase().includes(term),
+    (t) => fieldTypeMeta(t).label.toLowerCase().includes(term) || t.toLowerCase().includes(term),
   )
   const rest = BUILDABLE_TYPES.filter((t) => !COMMON.includes(t))
 
@@ -68,7 +67,7 @@ export function FieldPalette({
           {advanced ? (
             <>
               <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-4">
-                進階 · 計算/關聯
+                進階 · 計算/關聯/指派
               </div>
               <PaletteGroup
                 types={[...ADVANCED_TYPES, "link"]}

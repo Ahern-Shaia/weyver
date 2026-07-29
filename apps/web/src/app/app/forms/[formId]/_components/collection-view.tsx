@@ -2,6 +2,7 @@
 
 import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
 import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
+import { useMemberNames } from "@/lib/engine/authz"
 import { describeEngineError } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { operatorNeedsValue } from "@/lib/engine/field-filters"
@@ -51,6 +52,7 @@ export function CollectionView({
   const updateRecord = useUpdateRecord(formId)
   const deleteRecord = useDeleteRecord(formId)
   const [error, setError] = useState<string | null>(null)
+  const memberNames = useMemberNames(form.fields)
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
 
   const query = useMemo<RecordQuery>(
@@ -93,7 +95,7 @@ export function CollectionView({
     const rows = records.map((r) => {
       const o: Record<string, unknown> = {}
       for (const f of displayFields) {
-        const disp = formatFieldValue(f, r.values[f.name])
+        const disp = formatFieldValue(f, r.values[f.name], memberNames)
         o[f.name] = disp === "—" ? "" : disp
       }
       return o
@@ -161,7 +163,8 @@ export function CollectionView({
     }
     const value = record.values[field.name]
     const editable = isGridEditable(field)
-    const display = formatFieldValue(field, value) === "—" ? "" : formatFieldValue(field, value)
+    const shown = formatFieldValue(field, value, memberNames)
+    const display = shown === "—" ? "" : shown
     const kind = gridKind(field.type)
 
     if (kind === "boolean") {

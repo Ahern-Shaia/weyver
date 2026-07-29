@@ -1,11 +1,13 @@
 "use client"
 
+import { usePreviewActors } from "@/lib/engine/authz"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
 import { Select } from "@weyver/ui/select"
+import type { ReactNode } from "react"
 import { AttachmentInput } from "./attachment-input"
 import { choicesOf } from "./field-value"
 import { ImageInput } from "./image-input"
@@ -137,6 +139,13 @@ export function FieldInput({
         />
       )
 
+    /* 🔴 member 欄選人器(#96 M2)。**這是 E-1 指派機制在 UI 上的唯一入口** ——
+       沒有它,「指派負責業務」只能靠 API 寫,而指派正是 Ragic 賴以達成
+       「業務只看自己的客戶」的機制。
+       欄位若勾了 grantsAccess,選了誰就等於把該筆記錄的存取權給誰。 */
+    case "member":
+      return <MemberInput value={value} onChange={onChange} field={field} />
+
     case "checkbox":
       return (
         <input
@@ -211,4 +220,36 @@ export function FieldInput({
       )
     }
   }
+}
+
+/* 使用者選擇器。以 select 而非自由輸入 —— member 欄存的是 actor id,
+   讓使用者打字只會得到打錯的 id。 */
+function MemberInput({
+  value,
+  onChange,
+  field,
+}: {
+  readonly value: unknown
+  readonly onChange: (v: unknown) => void
+  readonly field: FieldDto
+}): ReactNode {
+  const { data: actors } = usePreviewActors()
+  const grants = (field.options as { grantsAccess?: boolean } | undefined)?.grantsAccess === true
+  return (
+    <div className="flex flex-col gap-1">
+      <Select
+        value={typeof value === "number" || typeof value === "string" ? String(value) : ""}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        aria-label={`${field.name} 選擇使用者`}
+      >
+        <option value="">未指派</option>
+        {(actors ?? []).map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+          </option>
+        ))}
+      </Select>
+      {grants ? <span className="text-[10.5px] text-ink-4">選定的人將可存取此筆記錄</span> : null}
+    </div>
+  )
 }

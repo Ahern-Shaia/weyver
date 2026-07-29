@@ -66,9 +66,9 @@ export function AccessPreview(): ReactNode {
             aria-label="預覽使用者"
           >
             <option value="">請選擇</option>
-            {(actors ?? []).map((id) => (
-              <option key={id} value={id}>
-                #{id}
+            {(actors ?? []).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
               </option>
             ))}
           </Select>

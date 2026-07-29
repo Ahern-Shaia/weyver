@@ -121,6 +121,23 @@ export function AdvancedFieldOptions({
         </div>
       ) : null}
 
+      {t === "member" ? (
+        <label className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-2">
+          <input
+            type="checkbox"
+            checked={pending.grantsAccess}
+            onChange={(e) => set({ grantsAccess: e.target.checked })}
+            className="mt-0.5 accent-pri"
+          />
+          <span>
+            指派即授權
+            <span className="ml-1 text-ink-4">
+              —— 被指派到此欄的人可存取該筆記錄(用於「業務只看自己的客戶」)
+            </span>
+          </span>
+        </label>
+      ) : null}
+
       {t === "rollup" ? (
         <div className="flex flex-wrap gap-2">
           <Select
