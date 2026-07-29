@@ -4,6 +4,7 @@ import { Trash2, X } from "lucide-react"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
+import { OptionsEditorPanel } from "./options-editor-panel"
 import {
   DEFAULT_VARIABLES,
   type DefaultValue,
@@ -16,15 +17,23 @@ import {
    hidden 為排版層(≠權限 D4)。預設值變數對映 M1 後端 create-time 解析。 */
 export function FieldSettingsPanel({
   field,
+  formId,
   layout,
   onChange,
   onClose,
+  onOptionsSaved,
 }: {
   readonly field: FieldDto
+  readonly formId: number
   readonly layout: FieldLayout
   readonly onChange: (patch: Partial<FieldLayout>) => void
   readonly onClose: () => void
+  readonly onOptionsSaved: () => void
 }): ReactNode {
+  /* 🔴 選項編輯只在此(#105)。layout 那些是**草稿**、隨畫布一起存;
+     選項會改寫**既有記錄的資料**,所以是自己送出、自己確認,兩者不混。 */
+  const choices = (field.options as { choices?: { id: string; name: string }[] } | undefined)
+    ?.choices
   const dv = layout.defaultValue
   const dvKind = dv?.kind ?? "none"
 
@@ -142,6 +151,15 @@ export function FieldSettingsPanel({
           </div>
         </div>
       </div>
+      {choices !== undefined ? (
+        <OptionsEditorPanel
+          formId={formId}
+          fieldId={field.id}
+          fieldName={field.name}
+          initial={choices}
+          onSaved={onOptionsSaved}
+        />
+      ) : null}
     </div>
   )
 }

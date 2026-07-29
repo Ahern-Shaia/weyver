@@ -2,7 +2,14 @@
 
 import { describeEngineError } from "@/lib/engine/client"
 import { fieldTypeMeta } from "@/lib/engine/field-types"
-import { useDropField, useLayout, usePutLayout, useRecords } from "@/lib/engine/hooks"
+import {
+  formKeys,
+  useDropField,
+  useInvalidate,
+  useLayout,
+  usePutLayout,
+  useRecords,
+} from "@/lib/engine/hooks"
 import type {
   FieldDto,
   FieldLayout,
@@ -75,6 +82,7 @@ export function DesignCanvas({
 }): ReactNode {
   const { data: layoutResp, isPending } = useLayout(formId)
   const putLayout = usePutLayout(formId)
+  const invalidate = useInvalidate()
   const dropField = useDropField(formId)
   // 設計草稿 = 時間軸(hist[idx]);idx<0 = 乾淨(= 已存 baseline)。Ctrl+Z 沿時間軸移動(OQ-FD2-2)
   const [hist, setHist] = useState<Layout[]>([])
@@ -347,9 +355,11 @@ export function DesignCanvas({
       {selField !== undefined && selected?.type === "field" ? (
         <FieldSettingsPanel
           field={selField}
+          formId={formId}
           layout={effective.fields[selected.id] ?? { row: 0, col: 0 }}
           onChange={(patch) => patchField(selected.id, patch)}
           onClose={() => setSelected(null)}
+          onOptionsSaved={() => invalidate([formKeys.detail(formId)])}
         />
       ) : null}
       {showActions ? (
