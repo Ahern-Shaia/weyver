@@ -23,6 +23,15 @@
     "typescript": "^5.7.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@biomejs/biome", "@tailwindcss/oxide", "esbuild", "sharp"]
+    "onlyBuiltDependencies": [
+      "@biomejs/biome",
+      "@tailwindcss/oxide",
+      "esbuild",
+      "sharp"
+    ],
+    "overrides": {
+      "fast-uri": ">=3.1.4",
+      "find-my-way": ">=9.7.0"
+    }
   }
 }

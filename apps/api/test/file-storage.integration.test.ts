@@ -608,3 +608,56 @@ describe("🔴 追溯稽核:儲存型 CSV 公式注入", () => {
     expect(res.statusCode).toBe(201)
   })
 })
+
+/* 🔴 F-9 §4.2|Fastify 5 錯誤語義(承 nestjs/nest#15022)。
+
+   Fastify 5 的 `FST_ERR_CTP_INVALID_MEDIA_TYPE` 不再自動轉成 Nest `HttpException`,
+   社群回報原始 FastifyError 會直接外洩**且不經 guard**。本專案以 `DomainExceptionFilter`
+   產出統一錯誤信封(code/message/correlationId/timestamp),若上傳路徑的錯誤繞過 filter,
+   回傳形狀會改變、並可能洩漏內部錯誤字串(違 AGENTS「禁回傳 stack trace / DB 錯誤給 client」)。
+
+   故斷言的是**錯誤信封的形狀**,不只是狀態碼。 */
+describe("🔴 上傳端點的錯誤信封(升 Fastify 5 後的回歸防線)", () => {
+  const envelopeKeys = ["code", "message", "correlationId", "timestamp"]
+
+  it("非 multipart 的 content-type → 統一錯誤信封,不外洩原始 FastifyError", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/files`,
+      headers: { ...A(), "content-type": "application/json" },
+      payload: { hello: "world" },
+    })
+    expect(res.statusCode).toBeGreaterThanOrEqual(400)
+    const body = res.json() as Record<string, unknown>
+    for (const k of envelopeKeys) expect(body).toHaveProperty(k)
+    // 不得出現 Fastify 內部錯誤碼或堆疊
+    const raw = res.body
+    expect(raw).not.toContain("FST_ERR")
+    expect(raw).not.toContain("at Object.")
+  })
+
+  it("完全沒有 body → 同樣走統一信封", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/files`,
+      headers: A(),
+    })
+    expect(res.statusCode).toBeGreaterThanOrEqual(400)
+    const body = res.json() as Record<string, unknown>
+    for (const k of envelopeKeys) expect(body).toHaveProperty(k)
+    expect(res.body).not.toContain("FST_ERR")
+  })
+
+  it("text/plain 打上傳端點 → 統一信封", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/files`,
+      headers: { ...A(), "content-type": "text/plain" },
+      payload: "not a file",
+    })
+    expect(res.statusCode).toBeGreaterThanOrEqual(400)
+    const body = res.json() as Record<string, unknown>
+    for (const k of envelopeKeys) expect(body).toHaveProperty(k)
+    expect(res.body).not.toContain("FST_ERR")
+  })
+})
