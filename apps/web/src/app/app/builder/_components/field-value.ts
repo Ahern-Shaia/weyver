@@ -3,9 +3,27 @@ import type { FieldDto } from "@/lib/engine/schemas"
 
 /* 純值轉換(無 JSX,可單元測):填單 state ↔ 後端型別 */
 
+/* 🔴 選項清單。**必須同時吃 v1 字串與 v2 物件** ——
+   #105 把 `options.choices` 從 `["甲","乙"]` 改成 `[{id,name,color?,retired?}]`,
+   但這個讀取端沒跟上,導致填單的單選/多選下拉、篩選面板、看板分欄**全部拿到空清單**
+   (使用者根本選不了值)。實走看板時才浮現 —— 型別上 `unknown` 讓它靜默通過。
+
+   `retired`(軟停用)不出現在可選清單:新記錄不該再選到停用值;
+   但既有值仍會被 formatFieldValue 正常顯示,不會憑空消失。 */
 export function choicesOf(field: FieldDto): string[] {
   const raw = (field.options as { choices?: unknown }).choices
-  return Array.isArray(raw) ? raw.filter((c): c is string => typeof c === "string") : []
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((c) => {
+      if (typeof c === "string") return c
+      if (typeof c === "object" && c !== null) {
+        const o = c as { name?: unknown; retired?: unknown }
+        if (o.retired === true) return ""
+        return typeof o.name === "string" ? o.name : ""
+      }
+      return ""
+    })
+    .filter((n) => n !== "")
 }
 
 /* 送出前值轉換:回傳 undefined = 略過(不送);money 保字串禁 float,數值轉 number */

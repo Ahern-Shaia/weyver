@@ -1,6 +1,6 @@
 import type { CellValueType, FieldDto } from "@/lib/engine/schemas"
 import { describe, expect, it } from "vitest"
-import { formatFieldValue, toSubmitValue } from "./field-value"
+import { choicesOf, formatFieldValue, toSubmitValue } from "./field-value"
 
 function field(type: CellValueType, options: Record<string, unknown> = {}): FieldDto {
   return { id: 1, name: "f", type, required: false, unique: false, options, position: 0 }
@@ -67,5 +67,33 @@ describe("formatFieldValue", () => {
     expect(formatFieldValue(field("dateTime"), "2026-07-19T10:00:00.000Z")).toBe(
       "2026-07-19 10:00:00",
     )
+  })
+})
+
+/* 🔴 迴歸(F-1 實走揪出):#105 把 options.choices 從字串陣列改成 {id,name} 物件,
+   但這個讀取端沒跟上 → 填單的單選下拉、篩選、看板分欄全部拿到空清單。
+   型別上是 unknown,所以它靜默通過了型別檢查與所有測試。 */
+describe("choicesOf 相容 v1 字串與 v2 物件", () => {
+  const withChoices = (choices: unknown): FieldDto => field("singleSelect", { choices })
+
+  it("v2 物件選項回傳名稱(#105 之後的實際形狀)", () => {
+    expect(
+      choicesOf(withChoices([{ id: "o1", name: "新單" }, { id: "o2", name: "已完成" }])),
+    ).toEqual(["新單", "已完成"])
+  })
+
+  it("v1 字串選項仍相容(舊資料 / 舊 API 呼叫端)", () => {
+    expect(choicesOf(withChoices(["甲", "乙"]))).toEqual(["甲", "乙"])
+  })
+
+  it("停用(retired)的選項不出現在可選清單", () => {
+    expect(
+      choicesOf(withChoices([{ id: "o1", name: "在用" }, { id: "o2", name: "停用", retired: true }])),
+    ).toEqual(["在用"])
+  })
+
+  it("非陣列 / 空 options 回空陣列(不炸)", () => {
+    expect(choicesOf(withChoices(undefined))).toEqual([])
+    expect(choicesOf(field("text"))).toEqual([])
   })
 })

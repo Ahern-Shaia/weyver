@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
 import { type ReactNode, useEffect, useRef, useState } from "react"
 import { ImportBatches, importBatchKey } from "./import-batches"
+import { KanbanBoard } from "./kanban-board"
 import { ImportPanel } from "./import-panel"
 import { Segmented } from "@weyver/ui/segmented"
 import { describeEngineError } from "@/lib/engine/client"
@@ -37,9 +38,10 @@ const EMPTY_CONFIG: ViewConfig = {
 /* R1·UP-2 表單工作台雙模式(OQ-VL-7:列表為進表預設)。
    列表 = 集合(browse)網格 → 點「檢視」下鑽記錄頁;記錄 = master-detail(RecordList + Object Page)。
    mode/rid 存 URL(可深連結單筆);快速搜尋為列表模式本地狀態。 */
-const MODE_VALUES = ["list", "record"] as const
+const MODE_VALUES = ["list", "kanban", "record"] as const
 const MODE_OPTIONS = [
   { label: "列表", value: "list" },
+  { label: "看板", value: "kanban" },
   { label: "記錄", value: "record" },
 ] as const
 
@@ -217,6 +219,12 @@ export function FormWorkspace(): ReactNode {
               onRowOpen={openRecord}
             />
           </>
+        )
+      ) : mode === "kanban" ? (
+        form === undefined ? (
+          <div className="p-6 text-[12px] text-ink-3">載入…</div>
+        ) : (
+          <KanbanBoard formId={formId} form={form} onOpen={openRecord} />
         )
       ) : (
         <RecordDetail
