@@ -40,17 +40,21 @@ export class OptionService {
     @Inject(MetadataService) private readonly metadata: MetadataService,
   ) {}
 
-  /* 回傳每個選項名目前被幾筆記錄使用 —— 刪除對話框的「N 筆記錄正在使用」。
+  /* 回傳每個選項目前被幾筆記錄使用 —— 刪除對話框的「N 筆記錄正在使用」。
      查證過的系統(Airtable / Baserow / NocoDB / Teable / Notion)**沒有一家提供這個**;
-     Salesforce 最接近(強制選 replace 目標)但也不顯示筆數。 */
+     Salesforce 最接近(強制選 replace 目標)但也不顯示筆數。
+
+     🔴 **回傳以 option id 為 key,不是名稱**(瀏覽器實走時發現)。
+     以名稱為 key 時,使用者一改名前端就查不到筆數,
+     「N 筆使用中」的保護會**靜默消失** —— 名字會變,id 不會。 */
   async usageCounts(
     tenantId: number,
     formId: number,
     fieldId: number,
   ): Promise<Record<string, number>> {
     const { field, table, column, multi } = await this.resolve(tenantId, formId, fieldId)
-    const names = ((field.options.choices as OptionChoice[] | undefined) ?? []).map((c) => c.name)
-    if (names.length === 0) return {}
+    const choices = (field.options.choices as OptionChoice[] | undefined) ?? []
+    if (choices.length === 0) return {}
 
     const rows = await this.inTx(tenantId, async (trx) => {
       const sql = multi
@@ -63,11 +67,9 @@ export class OptionService {
       return res.rows
     })
 
+    const byName = new Map(rows.map((r) => [r.name, r.n]))
     const counts: Record<string, number> = {}
-    for (const name of names) counts[name] = 0
-    for (const row of rows) {
-      if (row.name in counts) counts[row.name] = row.n
-    }
+    for (const choice of choices) counts[choice.id] = byName.get(choice.name) ?? 0
     return counts
   }
 

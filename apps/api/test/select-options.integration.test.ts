@@ -248,7 +248,12 @@ describe("刪除前的使用量(業界無一家提供)", () => {
     await records.createRecord(tenantA, formId, { 編號: "2", 狀態: "甲" }, ACTOR)
     await records.createRecord(tenantA, formId, { 編號: "3", 狀態: "乙" }, ACTOR)
 
-    expect(await options.usageCounts(tenantA, formId, fieldId)).toEqual({ 甲: 2, 乙: 1, 丙: 0 })
+    /* 以 option id 為 key —— 名稱會變,id 不會(改名後 UI 才查得到筆數) */
+    expect(await options.usageCounts(tenantA, formId, fieldId)).toEqual({
+      o00000001: 2,
+      o00000002: 1,
+      o00000003: 0,
+    })
   })
 
   it("多選的使用量按元素計", async () => {
@@ -259,7 +264,10 @@ describe("刪除前的使用量(業界無一家提供)", () => {
     await records.createRecord(tenantA, formId, { 編號: "1", 狀態: ["冷藏", "冷凍"] }, ACTOR)
     await records.createRecord(tenantA, formId, { 編號: "2", 狀態: ["冷藏"] }, ACTOR)
 
-    expect(await options.usageCounts(tenantA, formId, fieldId)).toEqual({ 冷藏: 2, 冷凍: 1 })
+    expect(await options.usageCounts(tenantA, formId, fieldId)).toEqual({
+      o00000001: 2,
+      o00000002: 1,
+    })
   })
 })
 
@@ -287,5 +295,23 @@ describe("不得繞道 /type 改選項", () => {
 
     // 值沒被動過,也沒變成孤兒
     expect(await readStatus(formId, r.id)).toBe("甲")
+  })
+})
+
+describe("🔴 使用量以 option id 為 key(瀏覽器實走時發現)", () => {
+  it("**改名後仍查得到筆數** —— 以名稱為 key 會讓「N 筆使用中」的保護靜默消失", async () => {
+    const { formId, fieldId } = await selectForm("改名後使用量", "singleSelect", [
+      C("o00000001", "已核准"),
+      C("o00000002", "待審"),
+    ])
+    await records.createRecord(tenantA, formId, { 編號: "A", 狀態: "已核准" }, ACTOR)
+
+    await options.updateOptions(tenantA, formId, fieldId, [
+      C("o00000001", "核准通過"),
+      C("o00000002", "待審"),
+    ])
+
+    const usage = await options.usageCounts(tenantA, formId, fieldId)
+    expect(usage.o00000001).toBe(1)
   })
 })
