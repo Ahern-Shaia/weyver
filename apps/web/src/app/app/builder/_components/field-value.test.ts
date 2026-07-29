@@ -52,6 +52,13 @@ describe("toSubmitValue", () => {
   })
 })
 
+describe("formatFieldValue 之來源標記", () => {
+  it("帶入來源已刪除 / 無權檢視 → 翻成人看得懂的字,不印引擎標記", () => {
+    expect(formatFieldValue(field("lookup"), "__source_deleted__")).toBe("來源已刪除")
+    expect(formatFieldValue(field("lookup"), "__source_restricted__")).toBe("無權檢視")
+  })
+})
+
 describe("formatFieldValue", () => {
   it("renders null / bool / multiSelect / datetime readably", () => {
     expect(formatFieldValue(field("text"), null)).toBe("—")

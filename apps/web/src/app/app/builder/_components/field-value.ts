@@ -52,12 +52,21 @@ export function toSubmitValue(field: FieldDto, value: unknown): unknown {
 
 /* 記錄值顯示(檢視):後端回值 → 可讀字串。
    members = actor id → 姓名(#96);未帶時 member 欄退回顯示 id,不會壞掉。 */
+/* 帶入欄的兩個引擎標記(後端 record.service):必須翻成人看得懂的字 ——
+   直接把 __source_deleted__ 印在單據上等於沒處理。兩者刻意分開:
+   「來源不見了」是資料事故要追,「無權檢視」是正常的權限結果。 */
+const SOURCE_MARKERS: Record<string, string> = {
+  __source_deleted__: "來源已刪除",
+  __source_restricted__: "無權檢視",
+}
+
 export function formatFieldValue(
   field: FieldDto,
   value: unknown,
   members?: ReadonlyMap<number, string>,
 ): string {
   if (value === null || value === undefined) return "—"
+  if (typeof value === "string" && value in SOURCE_MARKERS) return SOURCE_MARKERS[value] ?? value
   /* bigint 經 pg 回傳為字串,兩種都要吃 */
   if (field.type === "member") {
     const id = typeof value === "number" ? value : Number(value)
