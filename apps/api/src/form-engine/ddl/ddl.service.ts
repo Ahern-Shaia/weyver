@@ -11,7 +11,18 @@ import {
   InvalidTypeConversionError,
 } from "../errors.js"
 import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
-import { isSafeConversion } from "../field-types/type-conversions.js"
+import {
+  castExpression,
+  type CastOptions,
+  needsTryCast,
+  quoteColumn,
+  tryCastFunctionSql,
+} from "../field-types/cast-sql.js"
+import {
+  classifyConversion,
+  type ConversionKind,
+  isSafeConversion,
+} from "../field-types/type-conversions.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import {
   MetadataService,
@@ -21,6 +32,21 @@ import {
 import type { AddFieldSpec, CreateFormSpec } from "../specs/form-specs.js"
 
 const DDL_STATEMENT_TIMEOUT = "10s"
+/* 轉換會取 ACCESS EXCLUSIVE;拿不到就放棄而非排隊(排隊會連帶卡住後續讀者) */
+const DDL_LOCK_TIMEOUT = "3s"
+
+/* dbFieldType → PG 型別。ALTER ... TYPE 需要真實型別名。 */
+const PG_TYPE: Readonly<Record<string, string>> = {
+  text: "text",
+  numeric: "numeric(19,4)",
+  date: "date",
+  timestamptz: "timestamptz",
+  boolean: "boolean",
+  int2: "int2",
+  bigint: "bigint",
+  text_array: "text[]",
+  jsonb: "jsonb",
+}
 
 /* A3|動態 DDL 服務(安全鏈,docs/22 威脅 #1):
    結構化 spec → identifier 全系統生成 → knex builder quote → advisory lock +
@@ -130,6 +156,180 @@ export class DdlService {
     await this.metadata.updateFieldType(tenantId, fieldId, newType, target.dbFieldType, options)
     await this.metadata.bumpVersion(tenantId, formId)
     await this.audit(tenantId, formId, "alterFieldType", { fieldId, from, to: newType }, "", "ok")
+  }
+
+
+  /* 🔴 dry-run 與執行**共用同一段運算式**(Flyway dry-run 同原理)。
+     會拋錯的路徑包進 pg_temp 的 try_cast:轉不動的個別回 NULL,
+     而不是讓一筆 "N/A" 弄垮整個 ALTER。函式建在 pg_temp,交易結束即消失。 */
+  private async castFor(
+    trx: Knex.Transaction,
+    from: CellValueType,
+    to: CellValueType,
+    column: string,
+    fieldId: number,
+    castOptions: CastOptions,
+  ): Promise<{ sql: string; bindings: readonly unknown[] }> {
+    const col = quoteColumn(column)
+    if (!needsTryCast(from, to)) return castExpression(from, to, col, castOptions)
+
+    const inner = castExpression(from, to, "v", castOptions)
+    const fn = `try_cast_${String(fieldId)}`
+    const pgType = PG_TYPE[fieldType(to).dbFieldType] ?? "text"
+    await trx.raw(tryCastFunctionSql(fn, pgType, inner.sql), inner.bindings as Knex.RawBinding[])
+    return { sql: `pg_temp.${fn}(${col}::text)`, bindings: [] }
+  }
+
+  /* 🔴 執行轉換(#105)。safe-metadata 走原本的純 metadata 路徑;
+     safe-rewrite / lossy 走 ALTER ... USING。
+
+     **rewrite 規則的兩個條件是 AND**(PG 官方):「USING 不改變欄位內容 **且**
+     舊型別可 binary coercible」才免 rewrite。只要用了會改值的 USING 就必定 rewrite,
+     故此處一律當成會鎖表處理:lock_timeout 拿不到就放棄,不排隊擋讀者。
+
+     ⚠️ 轉換後**必須 ANALYZE** —— 官方明載欄位統計會被清除,不做會使 query plan 劣化。
+     這是很容易漏、且症狀是「轉完之後查詢突然變慢」的那種漏。 */
+  async convertFieldType(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    newType: CellValueType,
+    castOptions: CastOptions = {},
+  ): Promise<{ kind: ConversionKind }> {
+    const { fields } = await this.readyForm(tenantId, formId)
+    const field = fields.find((f) => f.id === fieldId)
+    if (field === undefined) throw new FieldNotFoundError(fieldId)
+    const from = field.cellValueType as CellValueType
+    const rule = classifyConversion(from, newType)
+    if (rule.kind === "forbidden") throw new InvalidTypeConversionError(from, newType)
+    if (rule.kind === "safe-metadata") {
+      await this.alterFieldType(tenantId, formId, fieldId, newType, {})
+      return { kind: rule.kind }
+    }
+
+    const table = physicalTableName(formId)
+    const column = physicalColumnName(fieldId)
+    const target = fieldType(newType)
+    const pgType = PG_TYPE[target.dbFieldType]
+    let executedSql = ""
+
+    try {
+      await this.knex.transaction(async (trx) => {
+        await this.acquireDdlLock(trx, formId)
+        // 拿不到鎖就放棄,不排隊 —— ACCESS EXCLUSIVE 排隊會把後續讀者一起卡住
+        await trx.raw(`SET LOCAL lock_timeout = '${DDL_LOCK_TIMEOUT}'`)
+        const cast = await this.castFor(trx, from, newType, column, fieldId, castOptions)
+        executedSql = await this.runStatements(trx, [
+          {
+            sql: `ALTER TABLE ${DATA_SCHEMA}.?? ALTER COLUMN ?? TYPE ${pgType} USING (${cast.sql})`,
+            bindings: [table, column, ...cast.bindings],
+          },
+        ])
+      })
+      /* 🔴 options 要盡量沿用而非清空(實作時由測試抓到)。
+         單選轉多選若把 `choices` 清掉,欄位就變成沒有任何合法值的選單 ——
+         轉換「成功」了但資料再也寫不進去。能被新型別接受的設定就留著。 */
+      const carried = target.optionsSchema.safeParse(field.options)
+      await this.metadata.updateFieldType(
+        tenantId,
+        fieldId,
+        newType,
+        target.dbFieldType,
+        carried.success ? (carried.data as Record<string, unknown>) : {},
+      )
+      await this.metadata.bumpVersion(tenantId, formId)
+      /* 統計重建放在交易外:它不需要原子性,而放在交易內會延長持鎖時間 */
+      await this.knex.raw(`ANALYZE ${DATA_SCHEMA}.??`, [table])
+      await this.audit(
+        tenantId,
+        formId,
+        "convertFieldType",
+        { fieldId, from, to: newType, kind: rule.kind },
+        executedSql,
+        "ok",
+      )
+      return { kind: rule.kind }
+    } catch (error) {
+      await this.audit(
+        tenantId,
+        formId,
+        "convertFieldType",
+        { fieldId, from, to: newType },
+        executedSql,
+        "failed",
+        error,
+      )
+      throw error
+    }
+  }
+
+  /* 🔴 轉換預覽(#105)。唯讀,不加鎖、不改任何資料。
+     **必須回兩個數字**:will_be_nulled(會被清空)與 will_be_altered(值會被改變)。
+     Airtable 的真實事故是後者 —— 大整數被靜默改值,使用者根本不會發現;
+     合併成一個 N 等於把最危險的那類藏起來。 */
+  async previewFieldTypeChange(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    newType: CellValueType,
+    castOptions: CastOptions = {},
+  ): Promise<{
+    kind: ConversionKind
+    note?: string
+    totalNonNull: number
+    willBeNulled: number
+    willBeAltered: number
+    samples: string[]
+  }> {
+    const { form, fields } = await this.readyForm(tenantId, formId)
+    const field = fields.find((f) => f.id === fieldId)
+    if (field === undefined) throw new FieldNotFoundError(fieldId)
+    const from = field.cellValueType as CellValueType
+    const rule = classifyConversion(from, newType)
+    const base = {
+      kind: rule.kind,
+      ...(rule.note === undefined ? {} : { note: rule.note }),
+    }
+    if (rule.kind === "forbidden") {
+      return { ...base, totalNonNull: 0, willBeNulled: 0, willBeAltered: 0, samples: [] }
+    }
+
+    const table = physicalTableName(formId)
+    const column = physicalColumnName(fieldId)
+    const target = fieldType(newType)
+
+    return this.knex.transaction(async (trx) => {
+      await trx.raw(`SET LOCAL statement_timeout = '${DDL_STATEMENT_TIMEOUT}'`)
+      const cast = await this.castFor(trx, from, newType, column, fieldId, castOptions)
+      const q = quoteColumn(column)
+      const res = (await trx.raw(
+        `SELECT count(*) FILTER (WHERE ${q} IS NOT NULL)::int AS total,
+                count(*) FILTER (WHERE ${q} IS NOT NULL AND (${cast.sql}) IS NULL)::int AS nulled,
+                count(*) FILTER (WHERE ${q} IS NOT NULL AND (${cast.sql}) IS NOT NULL
+                                   AND (${cast.sql})::text <> ${q}::text)::int AS altered
+           FROM ${DATA_SCHEMA}.?? WHERE tenant_id = ? AND deleted_at IS NULL`,
+        [...cast.bindings, ...cast.bindings, ...cast.bindings, table, tenantId] as Knex.RawBinding[],
+      )) as { rows: { total: number; nulled: number; altered: number }[] }
+      const row = res.rows[0] ?? { total: 0, nulled: 0, altered: 0 }
+
+      /* 樣本:讓使用者看見「哪些值會不見」,而不是只看到一個數字 */
+      const sample = (await trx.raw(
+        `SELECT DISTINCT ${q}::text AS v FROM ${DATA_SCHEMA}.??
+           WHERE tenant_id = ? AND deleted_at IS NULL AND ${q} IS NOT NULL
+             AND (${cast.sql}) IS NULL LIMIT 10`,
+        [table, tenantId, ...cast.bindings] as Knex.RawBinding[],
+      )) as { rows: { v: string }[] }
+
+      void form
+      void target
+      return {
+        ...base,
+        totalNonNull: row.total,
+        willBeNulled: row.nulled,
+        willBeAltered: row.altered,
+        samples: sample.rows.map((r) => r.v),
+      }
+    })
   }
 
   /* 欄位換位(上/下移):metadata-only,交換相鄰 live 欄之 position(OQ-FDU-3=B)*/

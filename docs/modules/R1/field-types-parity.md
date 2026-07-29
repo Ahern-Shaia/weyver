@@ -527,6 +527,34 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 **記錄 id 是每張動態表各自的序列,都從 1 開始** → A 表凍結的值會蓋到 B 表同 id 的記錄上。
 已加 `form_id` 範圍;反向驗證(移除該條件)確認測試轉紅。
 
+### B-11 落地進度(2026-07-29)
+
+| 項目 | 狀態 |
+|---|---|
+| 四態分類(safe-metadata / safe-rewrite / lossy / forbidden) | ✅ SHIPPED |
+| dry-run **兩個數字**(will_be_nulled / will_be_altered)+ 樣本值 | ✅ SHIPPED |
+| dry-run 與執行**共用同一段運算式** | ✅ SHIPPED(`castFor`) |
+| try_cast 只吞資料類錯誤(不學 Baserow 的 `when others`) | ✅ SHIPPED |
+| 轉換後 ANALYZE(官方明載統計會被清除) | ✅ SHIPPED(置於交易外,不延長持鎖) |
+| `lock_timeout` 拿不到鎖即放棄(不排隊擋讀者) | ✅ SHIPPED |
+| text→date **格式白名單**、number→money **強制指定幣別** | ✅ 契約已定;幣別的 UI 強制待前端 |
+| **保留原值 / 可還原(side table)** | ⏳ **未做** —— 目前 lossy 轉換**不可還原** |
+| 影響筆數超過門檻的二次確認 | ⏳ 未做(待前端) |
+| 大表 expand-contract 逃生路徑 | ⏳ 未做(實測 7M 列 rewrite 僅 21.6 秒,先不預建) |
+
+**實作期由測試抓到的兩個缺陷**
+1. 🔴 **裸 cast 遇到第一個壞值就整句失敗**。`"f1"::numeric` 只要有一筆 `N/A`
+   就讓整個 ALTER 失敗 —— 而客戶的舊 Excel 幾乎必有 `N/A` / `待確認`。
+   **`try_cast` 當時已寫好卻沒接上去**,是測試才發現。
+2. 🔴 **轉換時把 options 清成 `{}`**,單選轉多選會把 `choices` 弄丟 →
+   欄位變成沒有任何合法值的選單,「轉換成功」但資料再也寫不進去。
+   改為以新型別的 schema `safeParse` 舊 options,能接受就沿用。
+
+**與研究建議的偏離**|`castExpression` 的欄名**直接內插而非走 knex `??`**。
+理由:該運算式會被嵌進 count 查詢裡重複三次,佔位符的 binding 數量極難對齊(實作時踩到)。
+內插安全 —— 欄名來自 `physicalColumnName(fieldId)` 系統生成,並經 `quoteColumn()`
+以 `^[a-z_][a-z0-9_]{0,62}$` 二次驗證(鐵則 1 的縱深第二道)。**值仍一律參數綁定。**
+
 ### 來源(0-ter)
 
 - Ragic|[連結與載入(中)](https://www.ragic.com/intl/zh-TW/doc/14/3) · [Link and Load(英)](https://www.ragic.com/intl/en/doc/31/link-and-load) · [KB 295 手動值被覆蓋如何從備份救回](https://www.ragic.com/intl/en/doc-kb/295/How-to-restore-manually-entered-field-values-that-were-lost-due-to-triggering-Link-and-Load-sync-or-formula-recalculation%3F) · [KB 153](https://www.ragic.com/intl/en/doc-kb/153/Repopulating-loaded-fields-from-their-source-sheet-for-link-&-load) · [KB 344 每日自動同步](https://www.ragic.com/intl/en/doc-kb/344/automatic-daily-link-load-sync) · [KB 357 型別改回去值就回來](https://www.ragic.com/intl/en/doc-kb/357/field-keeps-getting-overwritten-or-cleared-automatically)
