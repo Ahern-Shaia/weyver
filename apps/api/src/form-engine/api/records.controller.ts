@@ -30,6 +30,7 @@ import {
 import {
   bulkRecordsBodySchema,
   createRecordBodySchema,
+  groupStatsBodySchema,
   saveWithLinesBodySchema,
   updateRecordBodySchema,
 } from "./api-schemas.js"
@@ -81,6 +82,28 @@ export class RecordsController {
     @Body(new ZodValidationPipe(listQuerySchema)) body: z.infer<typeof listQuerySchema>,
   ): Promise<ListResponse> {
     return this.records.listRecords(tenant.tenantId, formId, body, permissions, tenant.actorId)
+  }
+
+  /* 🔴 F-1 分組統計。**與列表同一 RLS role / 同一交易** —— 若改用特權連線算 count,
+     使用者只看得到 3 筆卻會看到「共 47 筆」,等於洩漏無權存取之資料的存在與數量。 */
+  @Post("group-stats")
+  @HttpCode(200)
+  @RequiresFormAction("view")
+  async groupStats(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(groupStatsBodySchema))
+    body: z.infer<typeof groupStatsBodySchema>,
+  ): Promise<unknown> {
+    return this.records.groupStats(
+      tenant.tenantId,
+      formId,
+      listQuerySchema.parse(body.query),
+      body.aggregates,
+      permissions,
+      tenant.actorId,
+    )
   }
 
   @Post()

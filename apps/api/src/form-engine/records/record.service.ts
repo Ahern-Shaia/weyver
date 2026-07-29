@@ -37,7 +37,9 @@ import {
 } from "../metadata/metadata.service.js"
 import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
 import { applyKeyset, decodeCursor, encodeCursor, type SortKey } from "./keyset.js"
-import type { LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
+import { GROUP_DATE_UNITS } from "./record-specs.js"
+import type { GroupAggregateFn } from "./record-specs.js"
+import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 
 interface ResolvedField {
   readonly row: FieldDefRow
@@ -61,6 +63,26 @@ export const SOURCE_DELETED = "__source_deleted__"
    「你不能看」和「資料不見了」對使用者是完全不同的兩件事,合成一個會讓真正的資料遺失被當成權限問題忽略。
    受記錄範圍限制時,「查不到」在應用層無法與「已刪除」區分 → 一律回本標記(不揭露存在性)。 */
 export const SOURCE_RESTRICTED = "__source_restricted__"
+
+/* 分組時「空值」那一組的鍵值(前端傳回折疊狀態時用)。
+   以字面值表示而非 null —— 折疊清單是字串陣列,null 無法在其中表達。 */
+export const GROUP_EMPTY = "__empty__"
+
+/* 群數上限(OQ-VG-8=A,對齊 Baserow 2000)。高基數欄位分組會產生數萬群、直接打死瀏覽器。
+   超過時**明示截斷**而非靜默丟棄(承 views-list 匯出之誠實訊息慣例)。 */
+const MAX_GROUPS = 2000
+
+export interface GroupStatsRow {
+  readonly keys: readonly (string | null)[]
+  readonly depth: number
+  readonly count: number
+  readonly aggregates: Record<string, unknown>
+}
+
+export interface GroupStatsResult {
+  readonly groups: readonly GroupStatsRow[]
+  readonly truncated: boolean
+}
 
 /* link/bigint 值經 pg 回傳為字串 → 統一轉數值 id(lookup 用) */
 function toId(v: unknown): number | undefined {
@@ -428,6 +450,175 @@ export class RecordService {
     )
   }
 
+  /* filter + 快速搜尋的共用述詞(列表 / 分組統計同源)。 */
+  private applyQueryPredicates(
+    builder: Knex.QueryBuilder,
+    resolved: ResolvedForm,
+    formId: number,
+    query: ListQuery,
+    policy?: FieldAccessPolicy,
+  ): Knex.QueryBuilder {
+    let out = builder
+    // filters 包在自身 group(關鍵:combinator=or 不得洩到 tenant/deleted_at 之 AND 邊界)
+    if (query.filters.length > 0) {
+      const combinator = query.combinator ?? "and"
+      out = out.where((group: Knex.QueryBuilder) => {
+        query.filters.forEach((filter, i) => {
+          const joiner: "where" | "orWhere" = i === 0 || combinator === "and" ? "where" : "orWhere"
+          /* 隱藏欄不得作為篩選條件 —— 否則可由回傳筆數反推其值 */
+          this.assertReadable(resolved, formId, filter.field, policy)
+          group[joiner]((sub: Knex.QueryBuilder) => {
+            this.applyFilter(sub, resolved, filter)
+          })
+        })
+      })
+    }
+    // 快速搜尋:AND 一個「跨 textual 欄 OR ILIKE」子群(白名單 = dbFieldType text)
+    const term = query.q?.trim()
+    if (term !== undefined && term !== "") {
+      const pattern = `%${escapeLike(term)}%`
+      /* 快速搜尋**跳過**隱藏欄(而非報錯)—— 搜尋是便利功能非指名查詢,
+         報錯會讓使用者無從得知該打什麼;但掃進隱藏欄即可測知值是否存在。 */
+      const textColumns = resolved.fields
+        .filter(
+          (f) =>
+            fieldType(f.type).dbFieldType === "text" &&
+            (policy === undefined || policy.fieldVisibility(f.row.id, formId) !== "hidden"),
+        )
+        .map((f) => f.column)
+      if (textColumns.length > 0) {
+        out = out.where((group: Knex.QueryBuilder) => {
+          textColumns.forEach((col, i) => {
+            if (i === 0) group.where(col, "ilike", pattern)
+            else group.orWhere(col, "ilike", pattern)
+          })
+        })
+      }
+    }
+    return out
+  }
+
+  /* 🔴 F-1 分組統計(§4.2)。**與列表跑在同一 RLS role / 同一交易** ——
+     這是唯一會真洩漏的路徑:若改用特權連線算 count,使用者只看得到 3 筆卻會看到
+     「共 47 筆」,等於洩漏他無權存取之資料的存在與數量。
+     Ragic 官方自承「報表快照以系統管理員權限產生,可能包含檢視者無權存取的資料」即此形狀。
+     PG 官方明載 policy 先於 user query 的 conditions/functions 求值 → COUNT/SUM 天然只算可見列。
+
+     多層小計以 **GROUPING SETS 一次查完**,不逐層發查詢。 */
+  async groupStats(
+    tenantId: number,
+    formId: number,
+    query: ListQuery,
+    aggregates: readonly { field: string; fn: GroupAggregateFn }[],
+    policy?: FieldAccessPolicy,
+    actorId: number | null = null,
+  ): Promise<GroupStatsResult> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    const groups = query.groupBy ?? []
+    if (groups.length === 0) throw new UnknownFieldError("groupBy")
+
+    const exprs: string[] = []
+    for (const g of groups) {
+      const field = resolved.byName.get(g.field)
+      if (field === undefined) throw new UnknownFieldError(g.field)
+      this.assertReadable(resolved, formId, g.field, policy)
+      exprs.push(this.groupExpression(field, g))
+    }
+
+    const aggSelects: string[] = []
+    for (const [i, a] of aggregates.entries()) {
+      const field = resolved.byName.get(a.field)
+      if (field === undefined) throw new UnknownFieldError(a.field)
+      /* 隱藏欄不得被聚合 —— 小計同樣會洩漏其分佈 */
+      this.assertReadable(resolved, formId, a.field, policy)
+      aggSelects.push(`${this.aggregateExpression(field, a.fn)} AS a${String(i)}`)
+    }
+
+    return this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        let builder = this.baseQuery(trx, tenantId, resolved).clearSelect().clearOrder()
+        builder = this.applyQueryPredicates(builder, resolved, formId, query, policy)
+
+        const setList = groups.map((_, i) => `(${exprs.slice(0, i + 1).join(", ")})`).join(", ")
+        const selects = [
+          ...exprs.map((e, i) => `${e} AS g${String(i)}`),
+          "count(*)::bigint AS n",
+          ...aggSelects,
+        ]
+        const rows = (await builder
+          .select(trx.raw(selects.join(", ")))
+          .groupByRaw(`GROUPING SETS (${setList})`)) as Record<string, unknown>[]
+
+        const out: GroupStatsRow[] = rows.map((r) => {
+          const keys: (string | null)[] = []
+          for (let i = 0; i < groups.length; i++) {
+            const v = r[`g${String(i)}`]
+            keys.push(v === null || v === undefined ? null : String(v))
+          }
+          /* GROUPING SETS 的較淺層級在深層欄位為 NULL —— 以「第一個 null 之前」界定深度。
+             注意這與「值本身是 NULL」不可混淆,故 depth 由 set 結構決定而非值。 */
+          let depth = groups.length
+          for (let i = groups.length - 1; i >= 0; i--) {
+            if (r[`g${String(i)}`] === null || r[`g${String(i)}`] === undefined) depth = i
+            else break
+          }
+          const agg: Record<string, unknown> = {}
+          for (const [i, a] of aggregates.entries()) {
+            agg[`${a.fn}:${a.field}`] = r[`a${String(i)}`] ?? null
+          }
+          return { keys: keys.slice(0, Math.max(depth, 1)), depth: Math.max(depth, 1), count: Number(r.n), aggregates: agg }
+        })
+        const truncated = out.length > MAX_GROUPS
+        return { groups: truncated ? out.slice(0, MAX_GROUPS) : out, truncated }
+      },
+      { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
+    )
+  }
+
+  /* 聚合運算式。fn 為受控白名單;identifier 由 metadata 解析。 */
+  private aggregateExpression(field: ResolvedField, fn: GroupAggregateFn): string {
+    const col = `"${field.column}"`
+    switch (fn) {
+      case "count":
+        return `count(${col})::bigint`
+      case "empty":
+        return `count(*) FILTER (WHERE ${col} IS NULL)::bigint`
+      case "filled":
+        return `count(${col})::bigint`
+      case "sum":
+        return `sum(${col})::text`
+      case "avg":
+        return `avg(${col})::text`
+      case "min":
+        return `min(${col})::text`
+      case "max":
+        return `max(${col})::text`
+      default:
+        return `count(*)::bigint`
+    }
+  }
+
+  /* 分組鍵的 SQL 運算式。
+     🔴 **identifier 全數來自 metadata catalog 解析後的物理欄名**(generated column),非使用者輸入;
+     日期粒度為受控白名單(GROUP_DATE_UNITS),不接受任意字串。承 AGENTS 鐵則 1。
+     日期分桶依**租戶時區**而非瀏覽器 —— 否則同一筆記錄在不同人畫面上會落在不同天(F-1 §4.5)。 */
+  private groupExpression(field: ResolvedField, group: GroupBy): string {
+    const col = `"${field.column}"`
+    if (group.unit === undefined) return col
+    if (!GROUP_DATE_UNITS.includes(group.unit)) return col
+    if (field.type === "date") {
+      // date 欄無時區(RFC 5545 floating);直接 truncate,任何路徑禁 timestamptz cast
+      return `date_trunc('${group.unit}', ${col})::date`
+    }
+    if (field.type === "dateTime") {
+      /* timestamptz → 先轉租戶時區再 truncate。`app.tenant_tz` 由 inTenantTx 設定;
+         用 GUC 而非字串內插,時區值才不會有機會進到 SQL 文本裡。 */
+      return `date_trunc('${group.unit}', ${col} at time zone coalesce(nullif(current_setting('app.tenant_tz', true), ''), 'UTC'))::date`
+    }
+    return col
+  }
+
   /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(M1 spike S3) */
   /* 🔴 E-1 記錄範圍(#96):scope 與 actor 以 GUC 傳給 RESTRICTIVE policy。
      強制點在 DB 不在這裡 —— 這裡只負責把「我是誰、範圍是什麼」講清楚。
@@ -446,6 +637,10 @@ export class RecordService {
       await trx.raw(`SELECT set_config('app.actor_id', ?, true)`, [
         scope?.actorId === undefined || scope.actorId === null ? "" : String(scope.actorId),
       ])
+      /* F-1:日期分組依租戶時區分桶(不是瀏覽器時區)。以 GUC 傳遞,
+         時區值不進 SQL 文本。未設時 groupExpression 端 coalesce 成 UTC。 */
+      const tz = await this.tenantTimeZone(trx, tenantId)
+      await trx.raw(`SELECT set_config('app.tenant_tz', ?, true)`, [tz])
       return fn(trx)
     })
   }
@@ -611,45 +806,25 @@ export class RecordService {
       tenantId,
       async (trx) => {
       let builder = this.baseQuery(trx, tenantId, resolved)
-
-      // filters 包在自身 group(關鍵:combinator=or 不得洩到 tenant/deleted_at 之 AND 邊界)
-      if (query.filters.length > 0) {
-        const combinator = query.combinator ?? "and"
-        builder = builder.where((group: Knex.QueryBuilder) => {
-          query.filters.forEach((filter, i) => {
-            const joiner: "where" | "orWhere" =
-              i === 0 || combinator === "and" ? "where" : "orWhere"
-            /* 隱藏欄不得作為篩選條件 —— 否則可由回傳筆數反推其值 */
-            this.assertReadable(resolved, formId, filter.field, policy)
-            group[joiner]((sub: Knex.QueryBuilder) => {
-              this.applyFilter(sub, resolved, filter)
-            })
-          })
-        })
-      }
-      // 快速搜尋:AND 一個「跨 textual 欄 OR ILIKE」子群(白名單 = dbFieldType text)
-      const term = query.q?.trim()
-      if (term !== undefined && term !== "") {
-        const pattern = `%${escapeLike(term)}%`
-        /* 快速搜尋**跳過**隱藏欄(而非報錯)—— 搜尋是便利功能非指名查詢,
-           報錯會讓使用者無從得知該打什麼;但掃進隱藏欄即可測知值是否存在。 */
-        const textColumns = resolved.fields
-          .filter(
-            (f) =>
-              fieldType(f.type).dbFieldType === "text" &&
-              (policy === undefined || policy.fieldVisibility(f.row.id, formId) !== "hidden"),
-          )
-          .map((f) => f.column)
-        if (textColumns.length > 0) {
-          builder = builder.where((group: Knex.QueryBuilder) => {
-            textColumns.forEach((col, i) => {
-              if (i === 0) group.where(col, "ilike", pattern)
-              else group.orWhere(col, "ilike", pattern)
-            })
-          })
-        }
-      }
+      /* 🔴 filter / 快速搜尋抽為共用述詞 —— **列表與分組統計必須用同一份**,
+         否則小計的母體與列表看到的不是同一批,數字對不上且錯得安靜(F-1 §4.2)。 */
+      builder = this.applyQueryPredicates(builder, resolved, formId, query, policy)
       const sortKeys: SortKey[] = []
+      /* 🔴 F-1:分組鍵**前置**於使用者排序鍵(§4.1)。
+         分組不是聚合查詢,是排序的變形 —— ORDER BY g1,g2,g3, <排序鍵>, id,
+         cursor 一併涵蓋 group key,故「第 2 頁」是扁平序列的下一段、不會跨組錯位。
+         這正是 AG Grid 的 paginateChildRows 語意;改用 offset 等於放棄 #95 修好的複合 cursor。 */
+      for (const group of query.groupBy ?? []) {
+        const field = resolved.byName.get(group.field)
+        if (field === undefined) throw new UnknownFieldError(group.field)
+        /* 隱藏欄不得分組 —— **group header 的值本身即是資料**,比小計更早洩漏(FMEA G2) */
+        this.assertReadable(resolved, formId, group.field, policy)
+        const expr = this.groupExpression(field, group)
+        builder = builder.orderByRaw(
+          `${expr} ${group.dir === "desc" ? "desc" : "asc"} nulls last`,
+        )
+        sortKeys.push({ column: field.column, dir: group.dir, raw: expr })
+      }
       for (const sort of query.sort) {
         const field = resolved.byName.get(sort.field)
         if (field === undefined) throw new UnknownFieldError(sort.field)
@@ -659,6 +834,26 @@ export class RecordService {
         builder = builder.orderBy(field.column, sort.dir, "last")
         sortKeys.push({ column: field.column, dir: sort.dir })
       }
+      /* 折疊的群組:從查詢排除(而非前端隱藏)。否則折疊後仍吃掉 page size,
+         使用者會看到「明明折疊了卻出現空白頁」(承 Teable collapsedGroupIds)。 */
+      const collapsed = query.collapsed ?? []
+      if (collapsed.length > 0 && (query.groupBy ?? []).length > 0) {
+        const groups = query.groupBy ?? []
+        for (const combo of collapsed) {
+          builder = builder.whereNot((g: Knex.QueryBuilder) => {
+            combo.forEach((value, i) => {
+              const gb = groups[i]
+              if (gb === undefined) return
+              const field = resolved.byName.get(gb.field)
+              if (field === undefined) return
+              const expr = this.groupExpression(field, gb)
+              if (value === GROUP_EMPTY) g.whereRaw(`${expr} is null`)
+              else g.whereRaw(`${expr} = ?`, [value])
+            })
+          })
+        }
+      }
+
       const idColumn = `${resolved.table}.id`
       builder = builder.orderBy(idColumn, "asc")
 

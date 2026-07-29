@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { aggregateSpecSchema } from "../records/record-specs.js"
 import { CELL_VALUE_TYPES } from "../field-types/field-type-registry.js"
 import { listQuerySchema } from "../records/record-specs.js"
 import type { FieldDefRow, FormWithFields } from "../metadata/metadata.service.js"
@@ -116,3 +117,10 @@ export function toFormDto(loaded: FormWithFields): FormDto {
     fields: loaded.fields.map(toFieldDto),
   }
 }
+
+
+/* F-1 分組統計請求。query 與列表同一個 schema —— 母體必須一致,否則小計與列表對不上。 */
+export const groupStatsBodySchema = z.object({
+  query: z.unknown(),
+  aggregates: z.array(aggregateSpecSchema).max(10).default([]),
+})

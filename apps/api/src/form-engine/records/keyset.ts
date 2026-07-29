@@ -20,6 +20,9 @@ import type { Knex } from "knex"
 export interface SortKey {
   readonly column: string
   readonly dir: "asc" | "desc"
+  /* F-1 分組鍵:比較的是運算式(如 `date_trunc('month', col)`)而非欄位本身。
+     給定時 keyset 述詞以此運算式比較,否則同一群內的續頁會用錯的鍵。 */
+  readonly raw?: string
 }
 
 export interface CursorPayload {
@@ -65,10 +68,15 @@ function after(
   const value = values[index] ?? null
   const strictly = key.dir === "asc" ? ">" : "<"
 
+  /* 分組鍵比較的是運算式(如 date_trunc),不是欄位本身 —— 否則同群內續頁會用錯的鍵。
+     `raw` 全數來自 metadata 白名單解析,非使用者輸入(值仍參數綁定)。 */
+  const expr = key.raw
   if (value === null) {
     /* last 是 NULL:NULLS LAST 之下它已排在最尾,後面只可能是同為 NULL 的列 */
     void builder.where((g: Knex.QueryBuilder) => {
-      void g.whereNull(key.column).andWhere((t: Knex.QueryBuilder) => {
+      const isNull =
+        expr === undefined ? g.whereNull(key.column) : g.whereRaw(`${expr} is null`)
+      void isNull.andWhere((t: Knex.QueryBuilder) => {
         after(t, keys, values, idColumn, id, index + 1)
       })
     })
@@ -76,15 +84,22 @@ function after(
   }
 
   void builder.where((g: Knex.QueryBuilder) => {
-    void g
-      .where(key.column, strictly, value)
+    const gt =
+      expr === undefined
+        ? g.where(key.column, strictly, value)
+        : g.whereRaw(`${expr} ${strictly} ?`, [value as string])
+    const withNull =
       // NULL 排在最尾 → 非 NULL 的 last 之後必然包含所有 NULL
-      .orWhereNull(key.column)
-      .orWhere((tie: Knex.QueryBuilder) => {
-        void tie.where(key.column, "=", value).andWhere((t: Knex.QueryBuilder) => {
-          after(t, keys, values, idColumn, id, index + 1)
-        })
+      expr === undefined ? gt.orWhereNull(key.column) : gt.orWhereRaw(`${expr} is null`)
+    void withNull.orWhere((tie: Knex.QueryBuilder) => {
+      const eq =
+        expr === undefined
+          ? tie.where(key.column, "=", value)
+          : tie.whereRaw(`${expr} = ?`, [value as string])
+      void eq.andWhere((t: Knex.QueryBuilder) => {
+        after(t, keys, values, idColumn, id, index + 1)
       })
+    })
   })
 }
 
