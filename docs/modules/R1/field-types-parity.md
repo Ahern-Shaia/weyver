@@ -502,6 +502,31 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 **C-11 與 B 案的交叉裁定**|B-5 已指出:若採設計 A 改存 option id,
 `singleSelect → text` 這條 safe 轉換路徑會同時失效。**採設計 B 則該路徑維持有效** —— 兩案在此收斂,無衝突。
 
+### A-9 落地進度(2026-07-29)
+
+| 步驟 | 狀態 |
+|---|---|
+| 1. `mode` 顯式化(既有回填 live) | ⏳ 待做 —— 刻意排在 snapshot 寫入路徑之後,免得先加一個不做事的設定 |
+| **2. 鎖定即固化** | ✅ **SHIPPED**(簽核定案 → `RecordService.freezeComputed`,側表 `record_snapshot`) |
+| 3. snapshot 寫入路徑 + preserveManualEdits | ⏳ 待做 |
+| 4. 單筆/批次重整 + diff + 逐值 audit | ⏳ 待做 |
+| 5. 新欄預設 snapshot + 情境化文案 | ⏳ 待做 |
+| 6. `onSourceDeleted` 不再靜默 null | ✅ **SHIPPED**(回 `__source_deleted__` 標記) |
+
+**實作偏離研究建議之處(有理由)**|研究 §4.6 建議把快照落在**動態表的物理欄**
+(理由:physical_column 已預留、nullable ADD COLUMN 不 rewrite、可 lazy backfill)。
+實作改採**側表 `record_snapshot`**,理由三條:
+(a) lookup / rollup **本來就不在真實表裡**(虛擬欄),側表不損失任何「真實表可讀」的性質;
+(b) 每個 lookup 都 ADD COLUMN 會逼近 PG 1600 欄上限,而該上限**連 DROP 掉的欄位都仍計入**
+    (同 §B-1 的發現)—— 在使用者可自由增刪欄位的平台上不划算;
+(c) 側表使「凍結 / 未凍結」成為**明確兩態**,不必用 NULL 去猜(物理欄方案分不出
+    「凍結時就是空值」與「尚未凍結」)。
+若 R2 的計算層需要以 SQL 直接讀凍結值,再評估 materialize 到物理欄。
+
+**實作期踩到並由測試抓出的缺陷**|`applySnapshots` 一開始只用 `record_id` 過濾。
+**記錄 id 是每張動態表各自的序列,都從 1 開始** → A 表凍結的值會蓋到 B 表同 id 的記錄上。
+已加 `form_id` 範圍;反向驗證(移除該條件)確認測試轉紅。
+
 ### 來源(0-ter)
 
 - Ragic|[連結與載入(中)](https://www.ragic.com/intl/zh-TW/doc/14/3) · [Link and Load(英)](https://www.ragic.com/intl/en/doc/31/link-and-load) · [KB 295 手動值被覆蓋如何從備份救回](https://www.ragic.com/intl/en/doc-kb/295/How-to-restore-manually-entered-field-values-that-were-lost-due-to-triggering-Link-and-Load-sync-or-formula-recalculation%3F) · [KB 153](https://www.ragic.com/intl/en/doc-kb/153/Repopulating-loaded-fields-from-their-source-sheet-for-link-&-load) · [KB 344 每日自動同步](https://www.ragic.com/intl/en/doc-kb/344/automatic-daily-link-load-sync) · [KB 357 型別改回去值就回來](https://www.ragic.com/intl/en/doc-kb/357/field-keeps-getting-overwritten-or-cleared-automatically)
