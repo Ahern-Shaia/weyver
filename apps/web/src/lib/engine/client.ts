@@ -104,6 +104,33 @@ export async function uploadFile(
   return fileDtoSchema.parse(await response.json())
 }
 
+/* #106 匯入既有表單:解析在後端(OQ-IMP-6)—— 前端只上傳與顯示。
+   同 uploadFile,不設 content-type 交瀏覽器帶 boundary。 */
+export async function analyzeImport(
+  formId: number,
+  file: File,
+  sheet?: string,
+): Promise<unknown> {
+  const body = new FormData()
+  body.append("file", file)
+  const query = sheet === undefined ? "" : `?sheet=${encodeURIComponent(sheet)}`
+  const response = await fetch(`${BASE}/forms/${formId}/import/analyze${query}`, {
+    method: "POST",
+    headers: { "x-dev-tenant": getDevTenant() },
+    body,
+  })
+  if (!response.ok) {
+    const raw: unknown = await response.json().catch(() => ({}))
+    const parsed = errorEnvelopeSchema.safeParse(raw)
+    throw new EngineApiError(
+      response.status,
+      parsed.success ? parsed.data.code : "UNKNOWN",
+      parsed.success ? parsed.data.message : `HTTP ${response.status}`,
+    )
+  }
+  return response.json()
+}
+
 /* 取檔案位元組(下載與影像預覽共用;預覽見 use-file-preview)。
    `variant="thumb"` 取縮圖 —— 後端取不到縮圖會自動回原檔,故前端永不破圖(F-7 OQ-IP-9=A)。 */
 export async function fetchFileBlob(key: string, variant?: "thumb"): Promise<Blob> {

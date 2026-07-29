@@ -99,7 +99,7 @@ export function useInfiniteRecords(formId: number, pageSize = 200) {
   })
 }
 
-function useInvalidate() {
+export function useInvalidate() {
   const queryClient = useQueryClient()
   return (keys: readonly (readonly unknown[])[]) => {
     for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey })

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
 import { type ReactNode, useEffect, useRef, useState } from "react"
+import { ImportPanel } from "./import-panel"
 import { Segmented } from "@weyver/ui/segmented"
 import { describeEngineError } from "@/lib/engine/client"
 import {
@@ -12,6 +13,8 @@ import {
   useDeleteView,
   useForm,
   useForms,
+  formKeys,
+  useInvalidate,
   useRecords,
   useUpdateView,
   useViews,
@@ -54,6 +57,8 @@ export function FormWorkspace(): ReactNode {
   const [activeViewId, setActiveViewId] = useState<number | null>(null)
   const [workingConfig, setWorkingConfig] = useState<ViewConfig>(EMPTY_CONFIG)
   const [msg, setMsg] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const invalidate = useInvalidate()
   const createView = useCreateView(formId)
   const updateView = useUpdateView(formId)
   const deleteView = useDeleteView(formId)
@@ -119,6 +124,17 @@ export function FormWorkspace(): ReactNode {
     })
   }
 
+  if (importing && form !== undefined) {
+    return (
+      <ImportPanel
+        formId={formId}
+        formName={form.name}
+        onDone={() => invalidate([formKeys.records(formId)])}
+        onClose={() => setImporting(false)}
+      />
+    )
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-card px-4">
@@ -137,6 +153,15 @@ export function FormWorkspace(): ReactNode {
               placeholder="搜尋此表單…"
               className="h-7 w-56 rounded-xs border border-line bg-surface px-2.5 text-[12px] text-ink outline-none placeholder:text-ink-4 focus:border-primary"
             />
+          ) : null}
+          {mode === "list" ? (
+            <button
+              type="button"
+              onClick={() => setImporting(true)}
+              className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
+            >
+              匯入資料
+            </button>
           ) : null}
           <Link
             href="/app/builder"
