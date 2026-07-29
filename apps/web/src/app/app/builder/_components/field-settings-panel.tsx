@@ -4,6 +4,7 @@ import { Trash2, X } from "lucide-react"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
+import { ConvertTypePanel } from "./convert-type-panel"
 import { OptionsEditorPanel } from "./options-editor-panel"
 import {
   DEFAULT_VARIABLES,
@@ -151,6 +152,13 @@ export function FieldSettingsPanel({
           </div>
         </div>
       </div>
+      <ConvertTypePanel
+        formId={formId}
+        fieldId={field.id}
+        currentType={field.type}
+        onConverted={onOptionsSaved}
+      />
+
       {choices !== undefined ? (
         <OptionsEditorPanel
           formId={formId}
