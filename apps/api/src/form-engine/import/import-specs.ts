@@ -34,6 +34,10 @@ export type ImportPlanInput = z.infer<typeof importPlanSchema>
 export const commitImportSchema = z.object({
   planHash: z.string().min(1),
   plan: importPlanSchema,
+  /* 🔴 OQ-IMP-2:blankPolicy=clear 會清空既有值(Shopify N1 事故的形狀),
+     裁定為「開放但需打字確認表單名稱」。**後端也驗** —— 只放前端的確認對話框
+     等於沒有,API 直接呼叫就繞過了。 */
+  confirmFormName: z.string().optional(),
 })
 
 export interface RowPlan {
@@ -72,6 +76,10 @@ export interface ImportPlanResult {
   readonly impact: {
     readonly fieldsToClear: number
     readonly recordsAffected: number
+    /* §4.2「更新影響 >20% 或 >1000 筆 → 警 + 二次確認」。
+       比例需要知道表上總筆數,故一併回傳,讓 UI 能講出「500 筆中的 480 筆」。 */
+    readonly existingTotal: number
+    readonly needsConfirm: boolean
   }
   /* 非空 → commit 一律 409。這是「擋」與「警」的分界。 */
   readonly blockers: readonly ImportBlocker[]

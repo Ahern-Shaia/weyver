@@ -818,6 +818,13 @@ export const importBatches = pgTable(
     stats: jsonb("stats").notNull().default({}),
     /* 防「看的是 A 檔、送的是 B 檔」:commit 必須帶回 plan 當下的 hash */
     planHash: text("plan_hash").notNull(),
+    /* 來源檔內容雜湊(稽核用:這批是哪一份檔案匯進來的)。planHash 涵蓋整份輸入,
+       但它會隨映射設定改變;檔案雜湊才能回答「同一份檔是不是被匯了兩次」。 */
+    sourceFileSha256: text("source_file_sha256"),
+    /* 🔴 OQ-IMP-1 撤銷保留期 30 天(HubSpot 14 天 / Zoho 4 小時 / Baserow 5 秒)。
+       逾期不給撤銷 —— 不是因為資料不見了(diff 仍在),而是因為越久遠的還原
+       越可能吃掉他人後續的編輯,Ragic 官方也只敢寫「不建議還原久遠的修改」。 */
+    revertExpiresAt: timestamp("revert_expires_at", { withTimezone: true }),
     committedAt: timestamp("committed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

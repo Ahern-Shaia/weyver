@@ -42,7 +42,13 @@ beforeAll(async () => {
   knexDestroy = () => ddlKnex.destroy()
   ddl = new DdlService(ddlKnex, db, metadata)
   records = new RecordService(ddlKnex, metadata)
-  imports = new ImportService(tenantDb, metadata, records, new OptionService(ddlKnex, metadata))
+  imports = new ImportService(
+    tenantDb,
+    metadata,
+    records,
+    new OptionService(ddlKnex, metadata),
+    db,
+  )
 }, 120_000)
 
 afterAll(async () => {
@@ -198,7 +204,8 @@ describe("🔴 有映射但儲存格空白:預設保留原值(#106)", () => {
     const preview = await imports.plan(tenantA, formId, p)
     expect(preview.impact.fieldsToClear).toBe(1)
 
-    await imports.commit(tenantA, formId, ACTOR, preview.planHash, p)
+    // clear 需打字確認表單名稱(OQ-IMP-2)
+    await imports.commit(tenantA, formId, ACTOR, preview.planHash, p, "空白清空")
     const list = await records.listRecords(tenantA, formId, { filters: [], sort: [], limit: 10 })
     expect(list.records[0]?.values.電話).toBeNull()
   })
@@ -428,5 +435,153 @@ describe("匯入批次清單(撤銷 UI 的前提)", () => {
     // 撤銷本身也是一筆批次(補償而非刪歷史),原批次標記為已被撤銷
     expect(original?.revertedByBatchId).not.toBeNull()
     expect(batches.some((b) => b.kind === "revert")).toBe(true)
+  })
+})
+
+/* 🔴 §4.2 決策表未落地的三格(全採建議 2026-07-29)。 */
+describe("決策表補完:命中多筆 / 正規化命中 / 大量影響", () => {
+  it("**既有命中多筆 → 擋**(Airtable 擴充在此是全部更新且不警告,文件明寫絕不採)", async () => {
+    const formId = await customerForm(`命中多筆_${String(Date.now()).slice(-6)}`)
+    /* unique 擋不住這件事:欄位層 unique 看原值,比對用的是正規化後的值 ——
+       「A001」與「a001」在 DB 是兩筆合法記錄,正規化後卻是同一個 key。 */
+    await records.createRecord(tenantA, formId, { 客戶編號: "A001", 客戶名稱: "甲" }, ACTOR)
+    await records.createRecord(tenantA, formId, { 客戶編號: "a001", 客戶名稱: "乙" }, ACTOR)
+
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      plan({ rows: [{ 編號: "A001", 名稱: "更新" }] }),
+    )
+    expect(result.blockers.map((b) => b.code)).toContain("MULTIPLE_MATCH")
+  })
+
+  it("表上別處的重複不擋這份檔案(只擋檔案真的會碰到的 key)", async () => {
+    const formId = await customerForm(`無關重複_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 客戶編號: "X1", 客戶名稱: "甲" }, ACTOR)
+    await records.createRecord(tenantA, formId, { 客戶編號: "x1", 客戶名稱: "乙" }, ACTOR)
+
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      plan({ rows: [{ 編號: "Z9", 名稱: "無關" }] }),
+    )
+    expect(result.blockers.map((b) => b.code)).not.toContain("MULTIPLE_MATCH")
+  })
+
+  it("正規化之後才命中 → 警告(使用者有權知道兩個看起來不同的值被當成同一筆)", async () => {
+    const formId = await customerForm(`正規化命中_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 客戶編號: "B001", 客戶名稱: "原" }, ACTOR)
+
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      plan({ rows: [{ 編號: " b001 ", 名稱: "新" }] }),
+    )
+    expect(result.warnings.map((w) => w.code)).toContain("NORMALIZED_MATCH")
+    expect(result.totals.toUpdate).toBe(1)
+  })
+
+  it("原值就一模一樣時不發正規化警告(不誤報)", async () => {
+    const formId = await customerForm(`原值相同_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 客戶編號: "C001", 客戶名稱: "原" }, ACTOR)
+
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      plan({ rows: [{ 編號: "C001", 名稱: "新" }] }),
+    )
+    expect(result.warnings.map((w) => w.code)).not.toContain("NORMALIZED_MATCH")
+  })
+
+  it("更新比例過高 → 警告 + needsConfirm(小表被大改)", async () => {
+    const formId = await customerForm(`大量影響_${String(Date.now()).slice(-6)}`)
+    for (const n of ["D1", "D2", "D3"]) {
+      await records.createRecord(tenantA, formId, { 客戶編號: n, 客戶名稱: "原" }, ACTOR)
+    }
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      plan({
+        rows: [
+          { 編號: "D1", 名稱: "改" },
+          { 編號: "D2", 名稱: "改" },
+        ],
+      }),
+    )
+    expect(result.impact.needsConfirm).toBe(true)
+    expect(result.impact.existingTotal).toBe(3)
+    expect(result.warnings.map((w) => w.code)).toContain("LARGE_IMPACT")
+  })
+
+  it("小幅更新不觸發二次確認", async () => {
+    const formId = await customerForm(`小幅更新_${String(Date.now()).slice(-6)}`)
+    for (let i = 0; i < 10; i++) {
+      await records.createRecord(tenantA, formId, { 客戶編號: `E${String(i)}`, 客戶名稱: "原" }, ACTOR)
+    }
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      plan({ rows: [{ 編號: "E0", 名稱: "改" }] }),
+    )
+    expect(result.impact.needsConfirm).toBe(false)
+  })
+})
+
+/* 🔴 OQ-IMP-2(決策方直接裁定,涉資料銷毀):清空既有值需打字確認表單名稱。
+   **後端也驗** —— 只放前端對話框等於沒有,直接打 API 就繞過了。 */
+describe("清空既有值需確認表單名稱", () => {
+  it("blankPolicy=clear 未帶確認 → 擋", async () => {
+    const name = `清空確認_${String(Date.now()).slice(-6)}`
+    const formId = await customerForm(name)
+    await records.createRecord(tenantA, formId, { 客戶編號: "F1", 客戶名稱: "原", 電話: "0912" }, ACTOR)
+    const input = plan({ blankPolicy: "clear", rows: [{ 編號: "F1", 名稱: "新", 電話: "" }] })
+    const planned = await imports.plan(tenantA, formId, input)
+    await expect(imports.commit(tenantA, formId, ACTOR, planned.planHash, input)).rejects.toThrow(
+      /表單名稱/,
+    )
+  })
+
+  it("帶對表單名稱 → 放行,且空白格真的清空", async () => {
+    const name = `清空放行_${String(Date.now()).slice(-6)}`
+    const formId = await customerForm(name)
+    await records.createRecord(tenantA, formId, { 客戶編號: "G1", 客戶名稱: "原", 電話: "0912" }, ACTOR)
+    const input = plan({ blankPolicy: "clear", rows: [{ 編號: "G1", 名稱: "新", 電話: "" }] })
+    const planned = await imports.plan(tenantA, formId, input)
+    await imports.commit(tenantA, formId, ACTOR, planned.planHash, input, name)
+
+    const rows = await records.listRecords(tenantA, formId, { filters: [], sort: [], limit: 10 })
+    expect(rows.records[0]?.values.電話).toBeNull()
+  })
+
+  it("預設 keep 不需確認(既有行為不受影響)", async () => {
+    const formId = await customerForm(`預設保留_${String(Date.now()).slice(-6)}`)
+    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "H1", 名稱: "甲" }] })
+    const planned = await imports.plan(tenantA, formId, input)
+    await expect(
+      imports.commit(tenantA, formId, ACTOR, planned.planHash, input),
+    ).resolves.toBeDefined()
+  })
+})
+
+describe("撤銷保留期(OQ-IMP-1 = 30 天)", () => {
+  it("逾期批次不給撤銷(diff 還在,但久遠的還原會吃掉他人後續編輯)", async () => {
+    const formId = await customerForm(`保留期_${String(Date.now()).slice(-6)}`)
+    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "I1", 名稱: "甲" }] })
+    const planned = await imports.plan(tenantA, formId, input)
+    const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
+
+    await pool.query(
+      `UPDATE import_batch SET revert_expires_at = now() - interval '1 day' WHERE id = $1`,
+      [committed.batchId],
+    )
+    await expect(imports.revert(tenantA, formId, ACTOR, committed.batchId)).rejects.toThrow(/30 天/)
+  })
+
+  it("期限內可撤銷", async () => {
+    const formId = await customerForm(`期限內_${String(Date.now()).slice(-6)}`)
+    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "J1", 名稱: "甲" }] })
+    const planned = await imports.plan(tenantA, formId, input)
+    const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
+    await expect(imports.revert(tenantA, formId, ACTOR, committed.batchId)).resolves.toBeDefined()
   })
 })

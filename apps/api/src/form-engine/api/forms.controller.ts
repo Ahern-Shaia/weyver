@@ -364,7 +364,14 @@ export class FormsController {
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(commitImportSchema)) body: z.infer<typeof commitImportSchema>,
   ): Promise<unknown> {
-    return this.imports.commit(tenant.tenantId, formId, tenant.actorId, body.planHash, body.plan)
+    return this.imports.commit(
+      tenant.tenantId,
+      formId,
+      tenant.actorId,
+      body.planHash,
+      body.plan,
+      body.confirmFormName,
+    )
   }
 
   /* 批次清單:**看得到才撤得掉** —— 原本有 revert 端點卻沒有清單,使用者無從得知 batchId。 */
