@@ -322,3 +322,30 @@ describe("匯入前的破壞性偵測(業界共同破口,#106)", () => {
     expect(result.warnings.map((w) => w.code)).toContain("SCIENTIFIC_NOTATION")
   })
 })
+
+describe("🔴 匯入不得繞過簽核鎖(#106)", () => {
+  it("**簽核中的記錄不得被匯入改掉** —— 匯入端點不經 ApprovalLockInterceptor", async () => {
+    const formId = await customerForm("簽核鎖")
+    const rec = await records.createRecord(
+      tenantA,
+      formId,
+      { 客戶編號: "A001", 客戶名稱: "原本的" },
+      ACTOR,
+    )
+    // 直接造一筆進行中的簽核(不經 service,只驗鎖是否被尊重)
+    await pool.query(
+      `INSERT INTO approval_instance (tenant_id, form_id, record_id, def_id, status, current_step, submitted_by)
+       VALUES ($1, $2, $3, 1, 'pending', 1, $4)`,
+      [tenantA, formId, rec.id, ACTOR],
+    )
+
+    const p = plan({ rows: [{ 編號: "A001", 名稱: "偷改的" }] })
+    const preview = await imports.plan(tenantA, formId, p)
+    expect(preview.totals.skipped).toBe(1)
+    expect(preview.warnings.map((w) => w.code)).toContain("RECORD_LOCKED")
+
+    await imports.commit(tenantA, formId, ACTOR, preview.planHash, p)
+    const after = await records.getRecord(tenantA, formId, rec.id)
+    expect(after.values.客戶名稱).toBe("原本的")
+  })
+})

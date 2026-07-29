@@ -272,8 +272,28 @@ POST /forms/:id/imports/:iid/revert   → 產生補償批次
 
 ---
 
+## 4.5 實作期發現(M1)
+
+**🔴 匯入完全繞過簽核鎖(已修)**|`ApprovalLockInterceptor` 只認 `/records/:recordId` 路由
+(`request.url.includes("/records/")` + `params.recordId`),而匯入端點是 `/forms/:id/import/commit`
+—— **兩個條件都不成立,鎖形同不存在**,可以繞過流程改掉簽核中的單。
+已在 **plan 階段**就標成 skip 並警告(而非 commit 才擋):使用者要在**按下匯入之前**知道有幾筆不會被動到。
+> 這是與 `alterFieldType` 繞道改選項同一類的問題:**橫切防護只掛在某一條路由上,新路由天然不受保護**。
+> 對照 [[rule-outer-shell-sweep]] —— 日後新增任何寫入路徑都要回頭檢查簽核鎖。
+
+**G4 / G5 兩個缺口在本架構下結構性不存在(已查證,不需實作)**
+
+| 缺口 | 研究的擔憂 | 本專案實況 |
+|---|---|---|
+| **G4** 撤銷後衍生值不一致 | Ragic 官方明載還原**不重算**公式 / 連結與載入 / workflow | **公式 / lookup / rollup 全是讀時算**(`withFormulas` / `withComputed`),撤銷後下一次讀取自然是新值 —— **Ragic 的問題在此架構下不可能發生**。唯一例外是 #113 的凍結快照,但凍結只發生在簽核定案,而簽核中的記錄已被上面那條擋住 |
+| **G5** 匯入觸發的副作用不可回收 | 已寄出的通知收不回來 | **`RecordService` 完全不發通知** —— 通知只從 `approval.service` 發出。匯入寫記錄不會觸發任何通知,`defer` 機制無需實作 |
+
+→ **OQ-IMP-5 的裁定(workflow/通知 defer)在目前的實作下是 no-op,列為「若日後把通知掛上記錄寫入路徑則必須補」。**
+未實作的東西不要假裝有做;此處明列以免日後誤以為已具備。
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-29 | v1.0-M1 | **M1 SHIPPED**:四政策 upsert + plan(dry-run)+ commit(planHash 守衛)+ revert(補償批次 + per-field compare-and-set)+ 決策表 + no-op 偵測 + 前導零/科學記號偵測。migration 0025(import_batch / import_batch_row,RLS FORCE)。**實作期揪出「匯入繞過簽核鎖」**(§4.5),並查證 G4/G5 在本架構下結構性不存在。api 464 綠 | Claude Code |
 | 2026-07-29 | v0.1 | M0 DRAFT。承 #106 追溯稽核 + 深度研究(§0,~40 條來源)。研究推翻兩個原本判斷:(a) 危險的不是「檔案沒有的欄位」而是「有映射但空白」;(b) 撤銷設計有 5 個缺口,最大是更新型變更無 before-image 且 batch_id 掛記錄上會被覆蓋。OQ-IMP-1..8 待裁定,其中 OQ-IMP-6 為推翻既有 OQ-GEI-3 之提案 | Claude Code |
