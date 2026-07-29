@@ -1,6 +1,6 @@
 # [E-1] 動態權限(記錄範圍 + 指派)
 
-> ✅ **狀態:APPROVED v0.2 — OQ-DP-1..10 已裁定(2026-07-29,全採建議),進 M1**|**v0.2 三路補研究(含 30 萬列實測)推翻 v0.1 的核心架構決定**,見 §0.6
+> ✅ **狀態:SHIPPED v1.0(2026-07-29,M1→M4 完成)**|OQ-DP-1..10 已裁定(全採建議)· **v0.2 三路補研究(含 30 萬列實測)推翻 v0.1 的核心架構決定**,見 §0.6
 > **上游**|docs/04 §E「動態權限(依欄位值判斷)| ✅ | ✅(業務只能看自己客戶)| 4 人月」· docs/25 §E(⬜)· 承 P0-4a 三層權限 + authz-resource-inheritance
 > **緣由**|docs/25 v1.5 覆蓋率彙總後定為下一批第一順位 —— 「業務只看自己負責的客戶」是 Ragic 客戶普遍在用的能力,而 Weyver **目前完全沒有**:表單可見即該表**所有記錄**可見。
 
@@ -194,6 +194,17 @@ v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown�
 
 **合計 ≈ 0.28 mo**(docs/04 E 段編列 4 人月,本批只取 Ragic-parity 之 P0)。前後端分開 commit。
 
+### 3.1 落地結果(2026-07-29)
+
+| 里程碑 | 實際落點 | 狀態 |
+|---|---|---|
+| M1 | `form_permissions.scoped_actions`(migration 0028)· `EffectivePermissions.isScopedToOwn` 逐動作解析(**跨角色取交集,任一角色給 `all` 即不受限**)· 動態表加 `assignees bigint[]` + GIN · **`AS RESTRICTIVE` policy `record_scope`** 隨建表 provision 一併建立、既有表由 0028 DO block 補建 · 範圍與 actor 以 `app.record_scope` / `app.actor_id` GUC 於交易內傳入 | ✅ |
+| M2 | `member` 欄 `optionsSchema.grantsAccess` · 寫入時同步 `assignees`(單一同步點)· **前端選人器 + 設計器「指派即授權」勾選 + 列表顯示姓名** · `/forms/access-preview/actors` 回**帶姓名**的租戶人員清單 | ✅ |
+| M3 | 權限矩陣範圍三態格(`SCOPEABLE = view/create/edit/delete`)· 存取預覽面板(筆數 + 前 N 筆 + **每筆為何看得到**)| ✅ |
+| M4 | FMEA §12.2 實測結果回填 · 本節 · MODULES.md · docs/25 §E | ✅ |
+
+**實走驗證(Playwright MCP,真瀏覽器 + 真 PG)**|設計器加「人員」欄並勾選指派即授權 → 填單選「陳專員」→ 列表顯示姓名(非 `58`)→ 以 actor 58 走真實 authz 讀取,**3 筆中只回被指派的那 1 筆**,預覽面板同步顯示「看得到 1 / 全部 3 筆 · 被指派」。
+
 ---
 
 ## 10. 開放問題(OQ-DP-N)— ✅ **已裁定 2026-07-29(全採建議)**
@@ -230,6 +241,23 @@ v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown�
 | D10 | member 欄 → `assignees` 系統欄不同步 → 權限與畫面不一致 | 單一同步點(記錄寫入路徑);整合測斷言「改 member 欄後可見性立即改變」 | **P0** |
 | D8 | 範圍與既有 owner 短路 / 敏感旗標 / 分類繼承交互作用產生意外放寬 | 解析順序明文化並測試矩陣;**敏感表不得因指派而放寬**(承 OQ-ARI-5 精神)| P1 |
 
+### 12.2 實作後回填(2026-07-29)
+
+| # | 結果 |
+|---|---|
+| D1 | ✅ 如設計:policy 於 provision 建立,漏注入不外洩。**實走另證**:應用層那行 `own` 旗標與 policy 兩者一致 |
+| D3 | ⏳ **仍為缺口**|lookup 快照顯示值目前不受來源表範圍管(#113 已在處理 lookup 語意,D3 併入該項一起裁定)|
+| D10 | ✅ 同步點在 `RecordService` 寫入路徑;**只有 `grantsAccess` 為 true 的 member 欄**參與,且該欄未被本次寫入觸及時不動 `assignees`(避免部分更新清空指派)|
+
+**實作期新發現(非 pre-mortem 預列,由實走揪出)**
+
+| # | 場景 | 處置 | Sev |
+|---|---|---|---|
+| D11 | **指派在送出邊界被靜默丟掉**|`toSubmitValue` 的 default 分支只收字串,`member` 的數值 actor id 落入後回 `undefined` → 畫面明明選了人、存進去是空的,且**沒有任何錯誤** | 加 `member` 分支 + 迴歸測(已反向驗證:移除修正即紅)| **P0** |
+| D12 | 🔴 **`APP_DATABASE_URL` 未設時靜默回落到 migration 特權角色 → RLS 完全不執法**(租戶隔離與記錄範圍一起失效,查詢照常回資料)。dev 因此**永遠驗不出範圍限制**,本模組差點以「瀏覽器看起來沒限制」誤判為 bug | (a) prod `validateEnv` fail-fast(未設 / 與 `DATABASE_URL` 相同即拒開機)(b) 開機自檢查 `pg_roles`:app 車道若為 superuser 或 BYPASSRLS,prod throw / dev 大聲警告 (c) dev 加 `x-dev-real-authz: 1` header 走真實角色解析,讓範圍限制在瀏覽器裡驗得出來 | **P0** |
+
+> D12 與 #98(NODE_ENV 未設即 dev 旁路)、本 session 稍早的「測試用 superuser 連線導致 RLS 全程未執法」是**同一類**:安全機制在設定缺漏時**無聲失效**,且驗證環境本身把失效遮住。**判準**:凡「靠設定才生效」的安全機制,都要有開機自檢或 fail-fast,不能只靠文件。
+
 ### 12.3 不在本模組 scope 修的 pre-existing 問題
 
 - 🔴 **keyset 分頁在非 id 排序時會跳列 / 重複**|`record.service.ts:425-434` 以 `orderBy(<欄>)` 排序卻只用 `id > cursor` 當 cursor(已對程式碼確認)。**與本模組無關但同一檔案**,且**加上權限述詞後症狀會更明顯**(可見列變少 → 跳頁更容易露餡)。應另立小項修為複合 cursor `(sort_val, id) > (:v, :id)`。
@@ -240,5 +268,6 @@ v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown�
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-29 | **v1.0 SHIPPED** | M1→M4 落地(§3.1)。**實作期揪出兩個 P0**(§12.2):(a) `member` 數值在填單送出邊界被字串分支靜默丟掉;(b) **`APP_DATABASE_URL` 未設時 app 車道回落到特權角色 → RLS 全面不執法**,已補 prod fail-fast + 開機自檢 + dev `x-dev-real-authz` 逃生口。**D3(lookup 繞過)仍為缺口**,併入 #113 lookup 語意一起裁定 | Claude Code |
 | 2026-07-28 | **v0.2** | **決策方追問「有站在巨人的肩膀上嗎」** —— 誠實檢視後確認 v0.1 標準低於通知模組(只 1 路研究 + 2 頁 Ragic),遂補三路研究,**其中一路於本機 PG 16.13 建 30 萬列實測**。**推翻 v0.1 的核心架構決定**:(a) **OQ-DP-7 由「應用層注入」翻為「`AS RESTRICTIVE` RLS policy」** —— 實測兩者**執行計畫完全相同、零效能代價**,但 RESTRICTIVE **語意恆為 AND**,使用者篩選的 OR 語法上不可能逃出,且**漏注入也不外洩**;實測反例:少一層括號即 **103 倍外洩**。v0.1 §0.4 的推論對複雜 policy 成立、對簡單述詞不成立,已標 SUPERSEDED。(b) **新增 OQ-DP-9**:指派存成**固定系統欄 `assignees bigint[]` + GIN** —— 實測 0.16 ms vs junction 的 **265 ms**(planner hashed SubPlan 退化);更關鍵是它讓**所有動態表共用同一份靜態 policy**,規則變更是資料變更而非 DDL。(c) **新增 OQ-DP-10**:預覽採**唯讀試算不做 impersonation**(「Login as user」觀測性不足易濫用);承 §0.9 三分類(effective access / simulator / report-only)分階段。**§0.8 授權警訊**:NocoDB 與 Directus **2026 起已非 OSS**、Baserow enterprise 專有、Teable apps 為 AGPL → 一律只讀公開文件不看實作。**§12.3 記錄一個 pre-existing bug**:keyset 分頁在非 id 排序時會跳列/重複(已對碼確認)| Claude Code |
 | 2026-07-28 | v0.1 | 初版 DRAFT。**§0.1 推翻本模組原本的假設**:docs/04 記為「動態權限(依欄位值判斷)」暗示 Salesforce 式規則引擎,但翻 Ragic 文件確認**它根本沒有條件規則引擎** —— 而是「**有序存取層級**(內建『自己新增及被指派的』述詞)+ **member 欄位值驅動的指派**」兩機制組合;「業務只看自己客戶」= 問卷式使用者 + 選擇使用者欄位。**§0.2 企業級對照**:Salesforce criteria-based 上限 50 條且**禁 lookup/公式/衍生欄位**、預計算 `__Share` 表非同步重算;Odoo `ir.rule` 查詢時注入且 **global AND / group OR**;**Airtable 完全沒有此能力**(Interface 過濾非安全邊界);**Notion 只綁 Person 型屬性** —— 與 Ragic 獨立收斂到同一受限模型,為強訊號。**§0.3/§0.4**:採查詢時注入不預計算;RLS 維持只做租戶兜底(policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown)。**§0.5**:Krebs/Varonis 揭露之 Salesforce Community 外洩案例根因為「規則正確但管理員理解錯」且產品**無法預覽效果** → **預覽模擬器列 P0**。OQ-DP-1..8 待裁定;FMEA D1–D8,其中 D3(lookup 繞過)須於 M1 前裁定 | Claude Code |
