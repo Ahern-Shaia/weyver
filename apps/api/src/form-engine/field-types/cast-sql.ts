@@ -25,11 +25,11 @@ export const DATE_FORMATS = ["YYYY-MM-DD", "YYYY/MM/DD", "DD/MM/YYYY", "MM/DD/YY
 export type DateFormat = (typeof DATE_FORMATS)[number]
 
 export interface CastOptions {
-  readonly dateFormat?: DateFormat
+  readonly dateFormat?: DateFormat | undefined
   /** number → money 必須顯式指定,不可推斷 */
-  readonly currency?: string
-  readonly ratingMax?: number
-  readonly choices?: readonly string[]
+  readonly currency?: string | undefined
+  readonly ratingMax?: number | undefined
+  readonly choices?: readonly string[] | undefined
 }
 
 /* 回傳一段 SQL 運算式。

@@ -21,6 +21,15 @@ export const moveFieldBodySchema = z.object({
   direction: z.enum(["up", "down"]),
 })
 
+/* 型別轉換(#105 四態)。cast 選項:日期格式必須明確、幣別不可推斷。 */
+export const convertFieldTypeBodySchema = z.object({
+  type: z.enum(CELL_VALUE_TYPES),
+  dateFormat: z.enum(["YYYY-MM-DD", "YYYY/MM/DD", "DD/MM/YYYY", "MM/DD/YYYY"]).optional(),
+  currency: z.string().max(8).optional(),
+  ratingMax: z.number().int().min(1).max(10).optional(),
+  choices: z.array(z.string().max(100)).max(200).optional(),
+})
+
 /* 選項增刪改名(#105)。刻意與 /type 分開:改型別是 DDL,改選項會改寫**資料**,
    兩者的風險與流程不同,合在一個端點會讓呼叫端分不清自己在做哪件事。 */
 export const updateOptionsBodySchema = z.object({

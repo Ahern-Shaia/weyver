@@ -43,6 +43,7 @@ import {
 } from "../specs/form-specs.js"
 import {
   alterFieldTypeBodySchema,
+  convertFieldTypeBodySchema,
   updateOptionsBodySchema,
   moveFieldBodySchema,
   toFieldDto,
@@ -174,6 +175,44 @@ export class FormsController {
     body: z.infer<typeof alterFieldTypeBodySchema>,
   ): Promise<void> {
     await this.ddl.alterFieldType(tenant.tenantId, formId, fieldId, body.type, body.options)
+  }
+
+  /* 🔴 型別轉換(#105 四態)。preview 是唯讀 dry-run,**回兩個數字**
+     (會被清空 / 值會被改變)+ 樣本值 —— 合併成一個 N 會把最危險的那類藏起來。 */
+  @Post(":formId/fields/:fieldId/convert/preview")
+  @RequiresFormAction("design")
+  async previewConvert(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(convertFieldTypeBodySchema))
+    body: z.infer<typeof convertFieldTypeBodySchema>,
+  ): Promise<unknown> {
+    return this.ddl.previewFieldTypeChange(tenant.tenantId, formId, fieldId, body.type, body)
+  }
+
+  @Post(":formId/fields/:fieldId/convert")
+  @RequiresFormAction("design")
+  async convertField(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(convertFieldTypeBodySchema))
+    body: z.infer<typeof convertFieldTypeBodySchema>,
+  ): Promise<unknown> {
+    return this.ddl.convertFieldType(tenant.tenantId, formId, fieldId, body.type, body)
+  }
+
+  /* 還原一次 lossy 轉換 —— Ragic 的型別轉換是非破壞性的,這是補回那個體驗 */
+  @Post(":formId/fields/:fieldId/convert/:conversionId/revert")
+  @RequiresFormAction("design")
+  async revertConvert(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Param("conversionId", ParseIntPipe) conversionId: number,
+  ): Promise<unknown> {
+    return this.ddl.revertFieldConversion(tenant.tenantId, formId, fieldId, conversionId)
   }
 
   /* 選項增刪改名(#105):與 /type 分開,因為這條會改寫既有記錄的資料 */

@@ -251,3 +251,91 @@ describe("A7 REST API e2e", () => {
     expect(typeof r?.updatedAt).toBe("string")
   })
 })
+
+/* 🔴 #105 型別轉換走完整 HTTP 路徑 —— service 全綠但沒有端點時,功能對使用者是零 */
+describe("型別轉換端點(#105)", () => {
+  let convFormId = 0
+  let convFieldId = 0
+
+  it("建表 + 灌入含壞值的資料", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: `轉換E2E_${String(Date.now()).slice(-6)}`, fields: [{ name: "值", type: "text" }] },
+    })
+    const body = created.json() as { id: number; fields: { id: number; name: string }[] }
+    convFormId = body.id
+    convFieldId = body.fields[0]?.id ?? 0
+    for (const v of ["10", "N/A", "20"]) {
+      await app.inject({
+        method: "POST",
+        url: `/api/forms/${convFormId}/records`,
+        headers: A(),
+        payload: { values: { 值: v } },
+      })
+    }
+    expect(convFieldId).toBeGreaterThan(0)
+  })
+
+  it("**preview 回兩個數字 + 樣本值**,且不改動資料", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${convFormId}/fields/${convFieldId}/convert/preview`,
+      headers: A(),
+      payload: { type: "number" },
+    })
+    expect(res.statusCode).toBe(201)
+    const body = res.json() as {
+      kind: string
+      willBeNulled: number
+      willBeAltered: number
+      samples: string[]
+    }
+    expect(body.kind).toBe("lossy")
+    expect(body.willBeNulled).toBe(1)
+    expect(body.samples).toContain("N/A")
+
+    const after = await app.inject({
+      method: "GET",
+      url: `/api/forms/${convFormId}/records`,
+      headers: A(),
+    })
+    expect(after.body).toContain("N/A")
+  })
+
+  it("convert 執行後回 conversionId,再 revert 把值救回來", async () => {
+    const done = await app.inject({
+      method: "POST",
+      url: `/api/forms/${convFormId}/fields/${convFieldId}/convert`,
+      headers: A(),
+      payload: { type: "number" },
+    })
+    const { conversionId } = done.json() as { conversionId: number }
+    expect(conversionId).toBeGreaterThan(0)
+
+    const reverted = await app.inject({
+      method: "POST",
+      url: `/api/forms/${convFormId}/fields/${convFieldId}/convert/${conversionId}/revert`,
+      headers: A(),
+    })
+    expect(reverted.statusCode).toBe(201)
+
+    const after = await app.inject({
+      method: "GET",
+      url: `/api/forms/${convFormId}/records`,
+      headers: A(),
+    })
+    expect(after.body).toContain("N/A")
+  })
+
+  it("forbidden 轉換由端點層擋下", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${convFormId}/fields/${convFieldId}/convert`,
+      headers: A(),
+      payload: { type: "autoNumber" },
+    })
+    expect(res.statusCode).toBe(422)
+  })
+})
