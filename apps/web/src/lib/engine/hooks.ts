@@ -234,6 +234,39 @@ export const groupStatsSchema = z.object({
 })
 export type GroupStats = z.infer<typeof groupStatsSchema>
 
+/* F-1 行事曆:區間重疊查詢(非 group-by)。依 FullCalendar 慣例帶可見範圍。 */
+export const calendarResponseSchema = z.object({
+  records: z.array(recordRowSchema),
+  truncated: z.boolean(),
+})
+
+export function useCalendarRange(
+  formId: number,
+  params: {
+    startField: string
+    endField?: string | undefined
+    from: string
+    to: string
+  } | null,
+) {
+  return useQuery({
+    queryKey: [...formKeys.records(formId), "calendar", params],
+    enabled: params !== null,
+    queryFn: () =>
+      engineFetch(`/forms/${formId}/records/calendar`, calendarResponseSchema, {
+        method: "POST",
+        body: {
+          startField: params?.startField,
+          ...(params?.endField ? { endField: params.endField } : {}),
+          from: params?.from,
+          to: params?.to,
+          filters: [],
+          limit: 1000,
+        },
+      }),
+  })
+}
+
 export function useGroupStats(
   formId: number,
   query: RecordQuery,
