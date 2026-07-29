@@ -24,6 +24,8 @@ export interface ParsedSheet {
   readonly truncated: boolean
   /** 標題列在原始檔的列號(1-based),供 UI 顯示「已略過前 N 列」 */
   readonly headerRowIndex: number
+  /** 合併儲存格數量(已自動填滿);0 表示沒有 */
+  readonly mergedCells: number
 }
 
 export class WorkbookError extends Error {}
@@ -93,6 +95,10 @@ export function parseSheet(buffer: Buffer, wanted?: string): ParsedSheet {
 
   /* blankrows:false 會在偵測標題列**之前**就改變列號,使回報的列號對不回原檔 */
   const matrix = utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" })
+  /* 🔴 合併儲存格:值只存在左上角,其餘格子是空的 —— 直接匯入會靜默產生空白欄位。
+     舊 Excel 的單頭欄(訂單編號跨多列明細)幾乎必然是合併的。
+     以左上角的值填滿整個範圍 = 使用者看到的內容,並回報數量讓 UI 說清楚做了什麼。 */
+  const mergedCells = fillMerges(matrix, sheet["!merges"])
   const headerIndex = detectHeaderRow(matrix)
   const columns = normalizeColumnNames(
     (matrix[headerIndex] ?? []).map((c) => String(c ?? "")),
@@ -115,7 +121,31 @@ export function parseSheet(buffer: Buffer, wanted?: string): ParsedSheet {
     totalRows: dataRows.length,
     truncated,
     headerRowIndex: headerIndex + 1,
+    mergedCells,
   }
+}
+
+/* 以合併範圍左上角的值填滿該範圍。回傳被填的儲存格數(不含左上角本身)。 */
+function fillMerges(
+  matrix: unknown[][],
+  merges: readonly { s: { r: number; c: number }; e: { r: number; c: number } }[] | undefined,
+): number {
+  if (merges === undefined || merges.length === 0) return 0
+  let filled = 0
+  for (const range of merges) {
+    const anchor = matrix[range.s.r]?.[range.s.c]
+    if (anchor === undefined || String(anchor) === "") continue
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const row = matrix[r]
+      if (row === undefined) continue
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        if (r === range.s.r && c === range.s.c) continue
+        row[c] = anchor
+        filled += 1
+      }
+    }
+  }
+  return filled
 }
 
 /* 欄名 → 表單欄位的建議對映。

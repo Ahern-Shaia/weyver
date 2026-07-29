@@ -336,6 +336,8 @@ export class FormsController {
       columns: parsed.columns,
       totalRows: parsed.totalRows,
       truncated: parsed.truncated,
+      /* 合併儲存格已自動填滿 —— 要讓使用者知道「我看到的空白被填了什麼」 */
+      mergedCells: parsed.mergedCells,
       maxRows: MAX_IMPORT_ROWS,
       preview: parsed.rows.slice(0, 20),
       rows: parsed.rows,
@@ -363,6 +365,16 @@ export class FormsController {
     @Body(new ZodValidationPipe(commitImportSchema)) body: z.infer<typeof commitImportSchema>,
   ): Promise<unknown> {
     return this.imports.commit(tenant.tenantId, formId, tenant.actorId, body.planHash, body.plan)
+  }
+
+  /* 批次清單:**看得到才撤得掉** —— 原本有 revert 端點卻沒有清單,使用者無從得知 batchId。 */
+  @Get(":formId/import/batches")
+  @RequiresFormAction("view")
+  listImportBatches(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+  ): Promise<unknown> {
+    return this.imports.listBatches(tenant.tenantId, formId)
   }
 
   /* 撤銷 = 補償批次,不刪歷史。需 delete 權(可能會軟刪除本批新增的記錄)*/

@@ -112,3 +112,36 @@ describe("🔴 預設工作表(瀏覽器實走時發現,#106)", () => {
     expect(parseSheet(buf, "說明").sheetName).toBe("說明")
   })
 })
+
+
+/* 🔴 合併儲存格(#106):值只在左上角,其餘是空的 → 直接匯入會靜默產生空白欄位。
+   舊 Excel 的單頭欄(訂單編號跨多列明細)幾乎必然是合併的。 */
+describe("合併儲存格", () => {
+  it("以左上角的值填滿整個合併範圍,並回報數量", () => {
+    const ws = utils.aoa_to_sheet([
+      ["訂單編號", "品項"],
+      ["PO-001", "螺絲"],
+      ["", "螺帽"],
+      ["", "墊片"],
+    ])
+    ws["!merges"] = [{ s: { r: 1, c: 0 }, e: { r: 3, c: 0 } }]
+    const wb = utils.book_new()
+    utils.book_append_sheet(wb, ws, "工作表1")
+    const buf = write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer
+
+    const parsed = parseSheet(buf)
+    expect(parsed.mergedCells).toBe(2)
+    expect(parsed.rows.map((r) => r.訂單編號)).toEqual(["PO-001", "PO-001", "PO-001"])
+  })
+
+  it("沒有合併時 mergedCells 為 0(不誤報)", () => {
+    const ws = utils.aoa_to_sheet([
+      ["A", "B"],
+      ["1", "2"],
+    ])
+    const wb = utils.book_new()
+    utils.book_append_sheet(wb, ws, "s")
+    const buf = write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer
+    expect(parseSheet(buf).mergedCells).toBe(0)
+  })
+})

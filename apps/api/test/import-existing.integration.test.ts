@@ -8,6 +8,7 @@ import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { ImportService } from "../src/form-engine/import/import.service.js"
 import { importPlanSchema } from "../src/form-engine/import/import-specs.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
+import { OptionService } from "../src/form-engine/field-types/option.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 
@@ -41,7 +42,7 @@ beforeAll(async () => {
   knexDestroy = () => ddlKnex.destroy()
   ddl = new DdlService(ddlKnex, db, metadata)
   records = new RecordService(ddlKnex, metadata)
-  imports = new ImportService(tenantDb, metadata, records)
+  imports = new ImportService(tenantDb, metadata, records, new OptionService(ddlKnex, metadata))
 }, 120_000)
 
 afterAll(async () => {
@@ -347,5 +348,85 @@ describe("🔴 匯入不得繞過簽核鎖(#106)", () => {
     await imports.commit(tenantA, formId, ACTOR, preview.planHash, p)
     const after = await records.getRecord(tenantA, formId, rec.id)
     expect(after.values.客戶名稱).toBe("原本的")
+  })
+})
+
+/* 🔴 未知選項(#106):schema 一直接受 `create`,但實作只有 error 路徑 ——
+   使用者選了「自動新增選項」,結果整批在寫入時失敗。 */
+describe("未知選項處理", () => {
+  async function selectForm(name: string): Promise<number> {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name,
+        fields: [
+          { name: "編號", type: "text", unique: true },
+          { name: "狀態", type: "singleSelect", options: { choices: ["已完成", "處理中"] } },
+        ],
+      }),
+      ACTOR,
+    )
+    return form.id
+  }
+
+  const selectPlan = (over: Record<string, unknown>) =>
+    importPlanSchema.parse({
+      policy: "upsert",
+      matchFields: ["編號"],
+      mapping: { no: "編號", st: "狀態" },
+      rows: [],
+      ...over,
+    })
+
+  it("**error 模式:在 plan 階段就擋下並列出是哪些值**(不是按了匯入才整批失敗)", async () => {
+    const formId = await selectForm(`未知選項擋_${String(Date.now()).slice(-6)}`)
+    const result = await imports.plan(
+      tenantA,
+      formId,
+      selectPlan({ rows: [{ no: "A1", st: "已取消" }] }),
+    )
+    const blocker = result.blockers.find((b) => b.code === "UNKNOWN_OPTION")
+    expect(blocker).toBeDefined()
+    expect(blocker?.message).toContain("已取消")
+  })
+
+  it("create 模式:plan 警告會新增哪些,commit 真的把選項加進去", async () => {
+    const formId = await selectForm(`未知選項建_${String(Date.now()).slice(-6)}`)
+    const input = selectPlan({
+      unknownSelectOption: "create",
+      rows: [
+        { no: "A1", st: "已取消" },
+        { no: "A2", st: "已完成" },
+      ],
+    })
+    const planned = await imports.plan(tenantA, formId, input)
+    expect(planned.blockers).toHaveLength(0)
+    expect(planned.warnings.map((w) => w.code)).toContain("OPTION_WILL_BE_CREATED")
+
+    const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
+    expect(committed.inserted).toBe(2)
+
+    const rows = await records.listRecords(tenantA, formId, { filters: [], sort: [], limit: 10 })
+    expect(rows.records.map((r) => r.values.狀態).sort()).toEqual(["已取消", "已完成"])
+  })
+})
+
+describe("匯入批次清單(撤銷 UI 的前提)", () => {
+  it("列出本表批次,且已被撤銷者標出 revertedByBatchId", async () => {
+    const formId = await customerForm(`批次清單_${String(Date.now()).slice(-6)}`)
+    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "B1", 名稱: "甲" }] })
+    const planned = await imports.plan(tenantA, formId, input)
+    const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
+
+    let batches = await imports.listBatches(tenantA, formId)
+    expect(batches[0]?.id).toBe(committed.batchId)
+    expect(batches[0]?.revertedByBatchId).toBeNull()
+
+    await imports.revert(tenantA, formId, ACTOR, committed.batchId)
+    batches = await imports.listBatches(tenantA, formId)
+    const original = batches.find((b) => b.id === committed.batchId)
+    // 撤銷本身也是一筆批次(補償而非刪歷史),原批次標記為已被撤銷
+    expect(original?.revertedByBatchId).not.toBeNull()
+    expect(batches.some((b) => b.kind === "revert")).toBe(true)
   })
 })
