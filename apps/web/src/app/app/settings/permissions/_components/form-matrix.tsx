@@ -1,5 +1,5 @@
 "use client"
-import { Check, RotateCcw } from "lucide-react"
+import { Check, UserCheck, RotateCcw } from "lucide-react"
 import { type ReactNode, useMemo } from "react"
 import {
   ACTION_LABEL,
@@ -30,6 +30,11 @@ export function FormMatrix({
     for (const f of perms.forms) m.set(f.formId, new Set(f.actions))
     return m
   }, [perms.forms])
+  const scopedByForm = useMemo(() => {
+    const m = new Map<number, Set<FormAction>>()
+    for (const f of perms.forms) m.set(f.formId, new Set(f.scopedActions ?? []))
+    return m
+  }, [perms.forms])
   const grantByCategory = useMemo(() => {
     const m = new Map<number, Set<FormAction>>()
     for (const c of perms.categories) m.set(c.categoryId, new Set(c.actions))
@@ -50,14 +55,27 @@ export function FormMatrix({
     }
     setCategory.mutate({ categoryId, actions: [...cur] })
   }
+  /* 三態循環:未授權 → 全部 → 只限自己的 → 未授權。
+     不可設範圍的動作(design / approve / export)維持兩態。 */
   const toggleForm = (form: FormResource, action: FormAction): void => {
     const cur = new Set(overrideByForm.get(form.id) ?? inheritedFor(form) ?? [])
-    if (cur.has(action)) cur.delete(action)
-    else {
+    const curScoped = new Set(scopedByForm.get(form.id) ?? [])
+    const canScope = SCOPEABLE.has(action)
+
+    if (!cur.has(action)) {
       cur.add(action)
       cur.add("view")
+    } else if (canScope && !curScoped.has(action)) {
+      curScoped.add(action)
+    } else {
+      cur.delete(action)
+      curScoped.delete(action)
     }
-    setForm.mutate({ formId: form.id, actions: [...cur] }) // 空集 → 後端刪覆寫 → 還原繼承
+    setForm.mutate({
+      formId: form.id,
+      actions: [...cur],
+      scopedActions: [...curScoped].filter((a) => cur.has(a)),
+    }) // 空集 → 後端刪覆寫 → 還原繼承
   }
   const busy = setForm.isPending || setCategory.isPending
 
@@ -92,6 +110,7 @@ export function FormMatrix({
                 group={g}
                 grant={g.categoryId !== null ? grantByCategory.get(g.categoryId) : undefined}
                 overrideByForm={overrideByForm}
+                scopedByForm={scopedByForm}
                 inheritedFor={inheritedFor}
                 busy={busy}
                 onToggleCategory={toggleCategory}
@@ -111,6 +130,9 @@ export function FormMatrix({
       </div>
       <p className="mt-3 text-[11px] text-ink-4">
         點分類列格子=設分類授權(藍);點表單列格子=建立該表覆寫(琥珀);覆寫列可「還原繼承」。
+        <br />
+        表單列的檢視/新增/編輯/刪除可再點一次切成 <UserCheck size={11} className="inline" />{" "}
+        <b className="text-ink-2">只限自己的</b>(自己建立的 + 被指派的);再點一次取消授權。
       </p>
     </>
   )
@@ -138,6 +160,7 @@ function CategoryGroup({
   group,
   grant,
   overrideByForm,
+  scopedByForm,
   inheritedFor,
   busy,
   onToggleCategory,
@@ -147,6 +170,7 @@ function CategoryGroup({
   readonly group: Group
   readonly grant: Set<FormAction> | undefined
   readonly overrideByForm: Map<number, Set<FormAction>>
+  readonly scopedByForm: Map<number, Set<FormAction>>
   readonly inheritedFor: (form: FormResource) => Set<FormAction> | undefined
   readonly busy: boolean
   readonly onToggleCategory: (categoryId: number, action: FormAction) => void
@@ -207,6 +231,7 @@ function CategoryGroup({
                 <CheckBox
                   variant={source === "inherit" ? "inherit" : "override"}
                   on={display.has(a)}
+                  scoped={scopedByForm.get(form.id)?.has(a) === true}
                   disabled={busy}
                   onClick={() => onToggleForm(form, a)}
                 />
@@ -241,14 +266,22 @@ function Tag({
   )
 }
 
+/* 🔴 三態格子(#96):空 → 全部記錄 → **只限自己的** → 空。
+   範圍是**動作的修飾**而非另一個動作 —— 拆成兩欄會讓 7 動作變 14 欄,
+   而且看不出「這是同一個授權的兩種強度」。
+   ⚠️ 只有讀寫類動作有範圍語意;design 是表結構層,approve/export 於 R1 先不設範圍。 */
+const SCOPEABLE: ReadonlySet<FormAction> = new Set(["view", "create", "edit", "delete"])
+
 function CheckBox({
   variant,
   on,
+  scoped = false,
   disabled,
   onClick,
 }: {
   readonly variant: "grant" | "override" | "inherit"
   readonly on: boolean
+  readonly scoped?: boolean
   readonly disabled?: boolean
   readonly onClick: () => void
 }): ReactNode {
@@ -262,8 +295,19 @@ function CheckBox({
         : "border-fx/40 border-dashed bg-fx-bg text-fx"
   const cls = on ? onCls : "border-line bg-card text-transparent hover:border-primary"
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className={`${base} ${cls}`}>
-      <Check size={12} strokeWidth={2.6} />
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`${base} ${cls}`}
+      title={on ? (scoped ? "只限自己建立或被指派的記錄" : "全部記錄") : "未授權"}
+      aria-label={on ? (scoped ? "已授權(只限自己的)" : "已授權(全部)") : "未授權"}
+    >
+      {on && scoped ? (
+        <UserCheck size={12} strokeWidth={2.4} />
+      ) : (
+        <Check size={12} strokeWidth={2.6} />
+      )}
     </button>
   )
 }

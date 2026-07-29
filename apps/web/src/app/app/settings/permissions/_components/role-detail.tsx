@@ -4,6 +4,7 @@ import { User } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { type Role, type RolePermissions, useRolePermissions } from "@/lib/engine/authz"
 import { FieldMatrix } from "./field-matrix"
+import { AccessPreview } from "./access-preview"
 import { FormMatrix } from "./form-matrix"
 
 /* 選定角色的詳情:header + 分頁(表單權限 / 欄位權限 / 成員)。admin 特判全權。 */
@@ -68,7 +69,13 @@ export function RoleDetail({ role }: { readonly role: Role | null }): ReactNode 
           <div className="text-[12px] text-ink-3">載入權限…</div>
         ) : perms.data ? (
           <>
-            {tab === "forms" ? <FormMatrix roleId={role.id} perms={perms.data} /> : null}
+            {tab === "forms" ? (
+              <>
+                <FormMatrix roleId={role.id} perms={perms.data} />
+                {/* 設完馬上能看見後果 —— Salesforce 外洩案例的根因正是缺這一步 */}
+                <AccessPreview />
+              </>
+            ) : null}
             {tab === "fields" ? <FieldMatrix roleId={role.id} perms={perms.data} /> : null}
             {tab === "members" ? <Members perms={perms.data} /> : null}
           </>

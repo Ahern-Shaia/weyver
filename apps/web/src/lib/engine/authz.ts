@@ -47,7 +47,14 @@ const roleSchema = z.object({
 export type Role = z.infer<typeof roleSchema>
 
 const rolePermsSchema = z.object({
-  forms: z.array(z.object({ formId: z.number(), actions: z.array(z.enum(FORM_ACTIONS)) })),
+  forms: z.array(
+    z.object({
+      formId: z.number(),
+      actions: z.array(z.enum(FORM_ACTIONS)),
+      /* E-1 記錄範圍(#96)。後端未回時視為空 = 全部 all */
+      scopedActions: z.array(z.enum(FORM_ACTIONS)).default([]),
+    }),
+  ),
   categories: z.array(z.object({ categoryId: z.number(), actions: z.array(z.enum(FORM_ACTIONS)) })),
   fields: z.array(z.object({ fieldId: z.number(), visibility: z.enum(FIELD_VISIBILITIES) })),
   memberActorIds: z.array(z.number()),
@@ -113,13 +120,53 @@ export function useCreateRole() {
   })
 }
 
+/* 🔴 E-1 存取預覽(#96)。回「看得到幾筆 / 全部幾筆 + 每筆為什麼」。
+   唯讀試算,不做 impersonation —— 管理員得到判斷所需的一切,但不能藉此翻閱他人資料。 */
+export const accessPreviewSchema = z.object({
+  actorId: z.number(),
+  formId: z.number(),
+  scoped: z.boolean(),
+  visibleCount: z.number(),
+  totalCount: z.number(),
+  samples: z.array(
+    z.object({
+      recordId: z.number(),
+      title: z.string(),
+      reason: z.enum(["owner", "assigned", "unrestricted"]),
+    }),
+  ),
+})
+export type AccessPreview = z.infer<typeof accessPreviewSchema>
+
+/* 可預覽的人員 —— 不限某角色成員:有效存取是「這個人透過他所有角色能看到什麼」 */
+export function usePreviewActors() {
+  return useQuery({
+    queryKey: ["authz", "preview", "actors"],
+    queryFn: () => engineFetch("/forms/access-preview/actors", z.array(z.number())),
+  })
+}
+
+export function useAccessPreview(formId: number | null, actorId: number | null) {
+  return useQuery({
+    queryKey: ["authz", "preview", formId ?? -1, actorId ?? -1],
+    queryFn: () =>
+      engineFetch(`/forms/${formId}/access-preview/${actorId}`, accessPreviewSchema),
+    enabled: formId !== null && actorId !== null,
+  })
+}
+
 export function useSetFormActions(roleId: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { formId: number; actions: readonly FormAction[] }) =>
+    mutationFn: (input: {
+      formId: number
+      actions: readonly FormAction[]
+      /* E-1 記錄範圍(#96):列在此者只及於「自己的」記錄 */
+      scopedActions?: readonly FormAction[]
+    }) =>
       engineFetch(`/authz/roles/${roleId}/forms/${input.formId}`, voidSchema, {
         method: "PUT",
-        body: { actions: input.actions },
+        body: { actions: input.actions, scopedActions: input.scopedActions ?? [] },
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: authzKeys.perms(roleId) }),
   })
