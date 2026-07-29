@@ -49,7 +49,7 @@
 | Glide 封裝 | ✅ `packages/ui GridSheet`(canvas + token theme + onCellEdited)| 需接引擎 records:欄→GridColumn、記錄→getCell、cell edit→updateRecord |
 | 記錄 API | ✅ list / query(cursor 分頁)/ get / **update(樂觀鎖)** / create / saveWithLines | **無 bulk 建立**(Excel 匯入需要;見 A1)|
 | client 層 | ✅ engine client + hooks(FDU M1)| 加 useUpdateRecord / useBulkCreate |
-| Excel 解析 | ❌ 無 xlsx 套件 | 需選型(OQ-GEI-3;SheetJS `xlsx` 純前端解析)|
+| Excel 解析 | ❌ 無 xlsx 套件 | 需選型(⚠️SUPERSEDED-OQ-GEI-3;SheetJS `xlsx` 純前端解析)|
 | mockup grid | `/app/_components/po-grid-view.tsx`(Glide + 靜態 fx 資料)| 視覺基準;本模組出真 grid,mockup 標「示意」|
 | 型別 registry | ✅ 15 型別 + 前端 field-types meta | 推斷邏輯映射到此子集(text/number/money/date/singleSelect…)|
 

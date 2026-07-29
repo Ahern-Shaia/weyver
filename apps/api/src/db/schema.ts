@@ -781,3 +781,71 @@ export const recordSnapshots = pgTable(
   },
   (t) => [primaryKey({ columns: [t.tenantId, t.formId, t.recordId] })],
 )
+
+/* 🔴 匯入批次(#106,深研見 import-to-existing-form.md §0)。
+
+   **為什麼要有這兩張表**|業界沒有一家做到「匯入是原子交易」
+   (Salesforce / NetSuite / Odoo / Shopify 全部部分提交)。真正的護欄是
+   **匯入前 dry-run + 匯入後可撤銷**,不是 rollback。而可撤銷需要 before-image。
+
+   **原構想的兩個致命缺口(已修)**|
+   (G1) 只在記錄上標 `import_batch_id` → **更新型變更完全撤不回來**,
+        而遷移場景「每天匯入既有表」絕大多數是更新不是新增。
+   (G2) batch_id 掛在記錄上會被**第二批匯入覆蓋** —— 記錄先被 A 新增再被 B 更新,
+        只能留一個 batch_id。故 batch↔record 的關係一律放側表,記錄表上不掛任何欄位。 */
+export const importBatches = pgTable(
+  "import_batch",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    actorId: bigint("actor_id", { mode: "number" }).notNull(),
+    /* 'import' | 'revert' —— **撤銷是補償批次不是刪歷史**(AGENTS 鐵則 4),
+       故撤銷本身也是一筆 batch,且可再被撤銷(等同 redo)。 */
+    kind: text("kind").notNull().default("import"),
+    revertOfBatchId: bigint("revert_of_batch_id", { mode: "number" }),
+    status: text("status").notNull().default("planned"),
+    // 完整 plan 設定原樣保存供稽核(政策 / key / 映射 / 各項開關)
+    policy: jsonb("policy").notNull(),
+    stats: jsonb("stats").notNull().default({}),
+    /* 防「看的是 A 檔、送的是 B 檔」:commit 必須帶回 plan 當下的 hash */
+    planHash: text("plan_hash").notNull(),
+    committedAt: timestamp("committed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("import_batch_form_idx").on(t.tenantId, t.formId, t.createdAt)],
+)
+
+export const importBatchRows = pgTable(
+  "import_batch_row",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    batchId: bigint("batch_id", { mode: "number" })
+      .notNull()
+      .references(() => importBatches.id),
+    // 原始檔列號 —— 錯誤檔要能讓使用者回去改那一列(對齊 NetSuite 的錯誤報告形狀)
+    sourceRowNo: integer("source_row_no").notNull(),
+    // insert | update | noop | skip | error
+    op: text("op").notNull(),
+    recordId: bigint("record_id", { mode: "number" }),
+    matchKeyText: text("match_key_text"),
+    /* **只存本次真的改到的欄位**(diff,非整列)—— 體積可控,且撤銷時
+       只還原這次動過的欄位,不會連帶蓋掉別人改的其他欄位。 */
+    beforeImage: jsonb("before_image"),
+    /* 撤銷時做 **per-field compare-and-set**:當前值 == after 才還原成 before。
+       不相等代表匯入後有人改過 → 跳過並列入衝突報告(修 G3;Ragic 沒解決這點,
+       只在文件警告「不建議還原久遠的修改」)。 */
+    afterImage: jsonb("after_image"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+  },
+  (t) => [
+    index("import_batch_row_batch_idx").on(t.tenantId, t.batchId),
+    index("import_batch_row_record_idx").on(t.tenantId, t.recordId),
+  ],
+)

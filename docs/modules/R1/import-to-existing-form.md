@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| 狀態 | **M0 DRAFT — 待 OQ-IMP-1..8 裁定** |
+| 狀態 | **APPROVED — OQ-IMP-1..8 已裁定(2026-07-29),進 M1** |
 | 建立 | 2026-07-29 |
 | 上游 | #106 追溯稽核(Tier 2)· grid-and-excel-import.md · docs/25 G 匯入匯出 |
 | 依賴 | form-engine-core(記錄 DML / 動態表)· reliability(idempotency)· authz |
@@ -253,18 +253,20 @@ POST /forms/:id/imports/:iid/revert   → 產生補償批次
 
 ---
 
-## 10. 開放問題(OQ-IMP-N)— **待裁定**
+## 10. 開放問題(OQ-IMP-N)— ✅ **已裁定 2026-07-29**
+
+**OQ-IMP-6 / OQ-IMP-2 由決策方直接裁定**(前者推翻既有 OQ-GEI-3=A,後者涉資料銷毀);其餘六題採建議。
 
 這八題都會影響**不可逆的資料安全行為**,值得先拍板再動工。
 
 | # | 問題 | 建議 | 理由 |
 |---|---|---|---|
 | **OQ-IMP-1** | 撤銷保留期多久? | **30 天** | HubSpot 14 天 / Zoho 4 小時 / Baserow 5 秒。30 天已在同業之上,且 before/after 只存 diff,體積可控 |
-| **OQ-IMP-2** | 是否開放 `blankPolicy=clear`(空白格清空既有值)? | **開放但預設 keep,且需打字確認表單名稱** | Shopify 無開關直接清空是 N1 事故;Salesforce/NetSuite 預設保留。完全不給則批次清欄無路可走 |
+| **OQ-IMP-2** ✅裁定 | 是否開放 `blankPolicy=clear`(空白格清空既有值)? | **開放但預設 keep,且需打字確認表單名稱** | Shopify 無開關直接清空是 N1 事故;Salesforce/NetSuite 預設保留。完全不給則批次清欄無路可走 |
 | **OQ-IMP-3** | 子表(lines)預設語意? | **`untouched`(只更新 header,明細不動)** | NetSuite 的 `Overwrite Sublists` 是破壞性開關且**無法用空白列刪除子表**。預設取最保守 |
 | **OQ-IMP-4** | 單批列數上限? | **50,000** | Airtable 25,000 / NetSuite 25,000 / Baserow 5,000。取兩倍以宣稱遷移優勢 |
 | **OQ-IMP-5** | 匯入時 workflow / 通知? | **預設 `defer`**(commit 成功後才發) | 讓撤銷視窗內沒有已外送的副作用(修 G5) |
-| **OQ-IMP-6** | 🔴 **解析改到後端?** | **改後端,前端只留預覽 + 映射** | 現行 OQ-GEI-3=A 選前端解析(隱私 + 零 infra)。但**Airtable 的 25,000 列上限正是前端解析的代價**;SheetJS 官方也建議大檔在伺服器處理;且錯誤檔下載與重跑需要原檔。**這是推翻既有裁定,需明確拍板** |
+| **OQ-IMP-6** ✅裁定 | 🔴 **解析改到後端?** | **改後端,前端只留預覽 + 映射**(⚠️ **正式推翻 OQ-GEI-3=A**,grid-and-excel-import.md 需標註) | 現行 OQ-GEI-3=A 選前端解析(隱私 + 零 infra)。但**Airtable 的 25,000 列上限正是前端解析的代價**;SheetJS 官方也建議大檔在伺服器處理;且錯誤檔下載與重跑需要原檔。**這是推翻既有裁定,需明確拍板** |
 | **OQ-IMP-7** | key 正規化預設? | **trim=true、caseSensitive=false、NFKC 全形→半形** | Airtable 官方就是 trim + 大小寫敏感;**全形半形業界全無**,但台灣場景必要 |
 | **OQ-IMP-8** | 值沒變化時是否寫入? | **不寫入(no-op 偵測)** | **業界無一家做**。1000 列有 900 列沒變就不動 `updated_at`/稽核/通知,對「取代 ERP」的稽核可信度是實質加分 |
 

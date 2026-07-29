@@ -155,3 +155,17 @@ export class NotALinkFieldError extends DomainError {
     super(`欄位 ${name} 不是關聯(link)欄位`)
   }
 }
+
+/* 匯入的 plan 與 commit 之間,檔案或設定被改過 —— 使用者看到的預覽與即將執行的
+   不是同一件事。這是「所見即所得」的最後一道保險。 */
+export class ImportPlanStaleError extends DomainError {
+  constructor() {
+    super("匯入設定或檔案已變更,請重新預覽後再提交")
+  }
+}
+
+export class ImportBlockedError extends DomainError {
+  constructor(reason: string) {
+    super(`匯入被擋下:${reason}`)
+  }
+}

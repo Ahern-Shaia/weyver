@@ -9,6 +9,7 @@ import { FormulaService } from "./formula/formula.service.js"
 import { LayoutService } from "./layout/layout.service.js"
 import { MetadataService } from "./metadata/metadata.service.js"
 import { OptionService } from "./field-types/option.service.js"
+import { ImportService } from "./import/import.service.js"
 import { RecordService } from "./records/record.service.js"
 import { RelationService } from "./relations/relation.service.js"
 import { ReverseRelationService } from "./relations/reverse-relation.service.js"
@@ -22,6 +23,7 @@ import { RollupService } from "./relations/rollup.service.js"
     MetadataService,
     DdlService,
     OptionService,
+    ImportService,
     RecordService,
     FormulaService,
     RelationService,
@@ -33,6 +35,7 @@ import { RollupService } from "./relations/rollup.service.js"
     MetadataService,
     DdlService,
     OptionService,
+    ImportService,
     RecordService,
     FormulaService,
     RelationService,

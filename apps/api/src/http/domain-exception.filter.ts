@@ -20,6 +20,8 @@ import {
   FormNotPendingError,
   FormNotReadyError,
   InvalidFilterError,
+  ImportBlockedError,
+  ImportPlanStaleError,
   InvalidTypeConversionError,
   OptionInUseError,
   OptionRenameConflictError,
@@ -61,6 +63,9 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof InvalidTypeConversionError) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "UNSAFE_TYPE_CONVERSION" }
+  }
+  if (error instanceof ImportPlanStaleError || error instanceof ImportBlockedError) {
+    return { status: HttpStatus.CONFLICT, code: "IMPORT_BLOCKED" }
   }
   if (error instanceof OptionRenameConflictError) {
     return { status: HttpStatus.CONFLICT, code: "OPTION_RENAME_CONFLICT" }

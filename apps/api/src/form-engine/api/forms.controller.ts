@@ -21,6 +21,8 @@ import { Throttle } from "@nestjs/throttler"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
 import { OptionService } from "../field-types/option.service.js"
+import { ImportService } from "../import/import.service.js"
+import { commitImportSchema, importPlanSchema } from "../import/import-specs.js"
 import { LayoutService } from "../layout/layout.service.js"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { MetadataService } from "../metadata/metadata.service.js"
@@ -50,6 +52,7 @@ export class FormsController {
     @Inject(MetadataService) private readonly metadata: MetadataService,
     @Inject(LayoutService) private readonly layout: LayoutService,
     @Inject(OptionService) private readonly options: OptionService,
+    @Inject(ImportService) private readonly imports: ImportService,
   ) {}
 
   @Post()
@@ -192,6 +195,38 @@ export class FormsController {
       body.deleteMode,
       body.replaceWith,
     )
+  }
+
+  /* 匯入既有表單(#106)。plan 是 dry-run 不寫任何資料;commit 必須帶回 planHash */
+  @Post(":formId/import/plan")
+  @RequiresFormAction("create")
+  async planImport(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(importPlanSchema)) body: z.infer<typeof importPlanSchema>,
+  ): Promise<unknown> {
+    return this.imports.plan(tenant.tenantId, formId, body)
+  }
+
+  @Post(":formId/import/commit")
+  @RequiresFormAction("create")
+  async commitImport(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(commitImportSchema)) body: z.infer<typeof commitImportSchema>,
+  ): Promise<unknown> {
+    return this.imports.commit(tenant.tenantId, formId, tenant.actorId, body.planHash, body.plan)
+  }
+
+  /* 撤銷 = 補償批次,不刪歷史。需 delete 權(可能會軟刪除本批新增的記錄)*/
+  @Post(":formId/import/:batchId/revert")
+  @RequiresFormAction("delete")
+  async revertImport(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("batchId", ParseIntPipe) batchId: number,
+  ): Promise<unknown> {
+    return this.imports.revert(tenant.tenantId, formId, tenant.actorId, batchId)
   }
 
   @Patch(":formId/fields/:fieldId/position")
