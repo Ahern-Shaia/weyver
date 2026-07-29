@@ -300,12 +300,36 @@ POST /forms/:id/imports/:iid/revert   → 產生補償批次
 | **錯誤列下載(errors.csv)** | ✅ 只顯示前 5 列等於叫使用者自己猜其餘幾百列。可下載全部;**含 CSV 注入防護**(= + - @ 開頭前綴單引號)—— 內容來自使用者上傳的檔案,是不可信輸入 |
 | **撤銷 UI** | ✅ 後端一直有 revert 端點卻**沒有清單**,使用者無從得知 batchId → 撤銷功能等於不存在。補 `GET /import/batches`(近 50 筆)+ 面板;撤銷本身也是一筆批次,原批次標記「已由 #N 撤銷」免得重複按 |
 | 子表(lines)語意 | ⏳ 仍為 `untouched`(OQ-IMP-3 的裁定值)。四語意的其餘三種未做,見下 |
+| §4.2 決策表其餘三格 / §4.3 三個 schema 欄位 | ✅ **M3 補完**,見 §4.7 |
 
 **子表未做的理由**|OQ-IMP-3 裁定預設 `untouched`,而**目前的行為就是 untouched** ——
 匯入只寫 header,明細不動。要補的是 `append` / `replace` 這類**新增能力**,不是修破口。
 NetSuite 的 `Overwrite Sublists` 是破壞性開關且**無法用空白列刪除子表**(§0.2),
 在沒有真實客戶檔案樣本前貿然設計「一張表格同時表達單頭與明細」的語意,很容易做出用不到的東西。
 **列為 P1,待第一份實際的 Ragic 單頭/明細匯出檔到手後再設計。**
+
+## 4.7 M3 決策表補完(2026-07-29,全採建議)
+
+盤點 §4.2 決策表與 §4.3 schema 後,以下六項原本只在文件裡,程式沒有:
+
+| 項目 | 依據 | 落地 |
+|---|---|---|
+| **既有命中多筆 → 擋** | §4.2 +「絕不採 Airtable 的命中多筆全部更新」 | 🔴 原本 `Map.set` **直接覆蓋**,正是被明文否決的那個行為。**unique 約束擋不住** —— 欄位層 unique 看原值,比對用的是正規化後的值:「A001」與「a001」在 DB 是兩筆合法記錄,正規化後同一個 key;複合鍵更明顯(unique 逐欄,組合不保證唯一)。改為擋下並列出列號,**且只擋這份檔案真的會碰到的 key**(表上別處的重複不該讓整份匯入停擺)|
+| **正規化後才命中 → 警** | §4.2 | 原值不同(大小寫 / 全半形 / 空白)卻被當成同一筆 —— 多半是對的,但使用者有權知道 |
+| **更新影響 >20% 或 >1000 筆 → 警 + 二次確認** | §4.2 | plan 回 `impact.needsConfirm`;UI 未勾確認前「確認匯入」為 disabled。比例門檻抓「小表被大改」,絕對值門檻抓「大表被大改」|
+| **blankPolicy=clear 打字確認** | OQ-IMP-2(決策方直接裁定) | 前端 M1 就有對話框,但**沒送到後端** —— 直接打 API 即可繞過。改為 commit 驗 `confirmFormName` |
+| **撤銷保留期 30 天** | OQ-IMP-1 | `revert_expires_at`(migration 0030);逾期不給撤銷。理由不是 diff 不見了,而是越久遠的還原越可能吃掉他人後續編輯 —— G3 的 compare-and-set 只擋得住欄位層衝突,擋不住「這半年大家都以新值在作業」|
+| **source_file_sha256 + Idempotency-Key** | §4.3 schema / §4.4 API | planHash 隨映射設定改變,檔案雜湊才答得出「同一份檔是否被匯了兩次」;commit 帶冪等鍵讓網路重試不會匯兩次 |
+
+**🔴 又一次「整合測綠、瀏覽器才爆」**|`lockedRecordIds` 用 **app 車道**讀 `approval_instance`,
+而該表與 authz 各表同為 Tier-1 非 RLS 系統表,`weyver_app` **刻意無 grant**。整合測走特權連線 → 一路綠。
+修法**不是補 grant**,而是改走特權車道(承 `authz.repository` 既有註記)。
+一併查明**不能注入 `ActionsRepository`**:ActionsModule 已 import FormEngineModule
+(ApprovalService 需要 RecordService),反向注入會造成模組循環,而 AGENTS 明列 forwardRef 為緊耦合訊號。
+
+> 本 session 第三次同型事故(前兩次:`action_audit` 缺 grant、測試用 superuser 連線導致 RLS 全程未執法)。
+> **共同結構**:安全 / 權限機制在測試環境被特權連線遮蔽。已在 `lookup-snapshot` 與本模組把測試改走 app 車道;
+> 判準寫入 [[rule-outer-shell-sweep]] 的延伸 —— **凡走 app 車道的服務,測試就必須用 app 車道**。
 
 **實走發現(整合測綠、瀏覽器才看得到)**|撤銷清單掛載時抓一次,匯入完成後不會重載 ——
 剛匯完的批次不會出現,使用者會以為沒有撤銷這回事。已加 `reloadKey`。
@@ -317,6 +341,7 @@ NetSuite 的 `Overwrite Sublists` 是破壞性開關且**無法用空白列刪�
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-29 | **v1.0-M3** | **§4.2 決策表與 §4.3 schema 全數補完**(§4.7):命中多筆改為擋(原本是被明文否決的 Airtable 式靜默覆蓋)· 正規化命中警告 · 大量影響二次確認 · clear 打字確認後端驗(前端有對話框但沒送後端,API 可繞過)· 撤銷保留期 30 天(migration 0030)· source_file_sha256 + Idempotency-Key。**第三次同型事故**:`approval_instance` 走 app 車道但該表刻意無 grant,整合測特權連線遮住 —— 改走特權車道並查明反向注入會造成模組循環 | Claude Code |
 | 2026-07-29 | **v1.0-M2** | 未知選項 `create` 真正實作(原本 schema 收但不生效)· 合併儲存格填滿 + 回報 · 錯誤列 CSV 下載(含注入防護)· **撤銷 UI**(補 batches 清單端點,原本 revert 有端點無清單等於不可用)。子表語意維持 `untouched` 並明列未做理由(待真實客戶檔案樣本)| Claude Code |
 | 2026-07-29 | v1.0-M1 | **M1 SHIPPED**:四政策 upsert + plan(dry-run)+ commit(planHash 守衛)+ revert(補償批次 + per-field compare-and-set)+ 決策表 + no-op 偵測 + 前導零/科學記號偵測。migration 0025(import_batch / import_batch_row,RLS FORCE)。**實作期揪出「匯入繞過簽核鎖」**(§4.5),並查證 G4/G5 在本架構下結構性不存在。api 464 綠 | Claude Code |
 | 2026-07-29 | v0.1 | M0 DRAFT。承 #106 追溯稽核 + 深度研究(§0,~40 條來源)。研究推翻兩個原本判斷:(a) 危險的不是「檔案沒有的欄位」而是「有映射但空白」;(b) 撤銷設計有 5 個缺口,最大是更新型變更無 before-image 且 batch_id 掛記錄上會被覆蓋。OQ-IMP-1..8 待裁定,其中 OQ-IMP-6 為推翻既有 OQ-GEI-3 之提案 | Claude Code |
