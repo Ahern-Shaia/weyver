@@ -57,6 +57,9 @@ export class MetadataService {
       const form = insertedForms[0]
       if (form === undefined) throw new Error("insert form_def returned no row")
 
+      /* 零欄位是合法的(建表 = 命名 → 進設計器);drizzle 的 values([]) 會拋錯 */
+      if (spec.fields.length === 0) return { form, fields: [] }
+
       const fields = await tx
         .insert(fieldDefs)
         .values(

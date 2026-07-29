@@ -106,3 +106,14 @@ describe("metadata catalog on real PG (Testcontainers)", () => {
     expect(loaded.form.provisionState).toBe("ready")
   })
 })
+
+describe("零欄位建表(#109)", () => {
+  it("**空白表單可建立** —— 建表是「命名 → 進設計器」,欄位在設計器裡加", async () => {
+    const { form, fields } = await service.createFormDraft(
+      tenantA,
+      createFormSpecSchema.parse({ name: `空白_${String(Date.now()).slice(-6)}`, fields: [] }),
+    )
+    expect(form.name).toContain("空白")
+    expect(fields).toHaveLength(0)
+  })
+})

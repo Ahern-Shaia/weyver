@@ -41,7 +41,10 @@ export const createFormSpecSchema = z
   .object({
     name: displayNameSchema,
     parentFormId: z.number().int().positive().optional(),
-    fields: z.array(addFieldSpecSchema).min(1).max(300),
+    /* 🔴 允許零欄位建表(#109)。原本 min(1) 逼出了「新建另有一套先排欄位的 UI」
+       —— 而 Ragic 的建表是「命名 → 進設計器」,空白畫布是正常的過渡狀態。
+       物理表本來就有系統欄,零使用者欄位完全成立。 */
+    fields: z.array(addFieldSpecSchema).max(300),
   })
   .superRefine((value, ctx) => {
     const seen = new Set<string>()
