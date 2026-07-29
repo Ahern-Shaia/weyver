@@ -21,6 +21,8 @@ import {
   FormNotReadyError,
   InvalidFilterError,
   InvalidTypeConversionError,
+  OptionInUseError,
+  OptionRenameConflictError,
   RecordNotFoundError,
   RequiredFieldError,
   SystemManagedFieldError,
@@ -59,6 +61,12 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof InvalidTypeConversionError) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "UNSAFE_TYPE_CONVERSION" }
+  }
+  if (error instanceof OptionRenameConflictError) {
+    return { status: HttpStatus.CONFLICT, code: "OPTION_RENAME_CONFLICT" }
+  }
+  if (error instanceof OptionInUseError) {
+    return { status: HttpStatus.CONFLICT, code: "OPTION_IN_USE" }
   }
   if (
     error instanceof RequiredFieldError ||

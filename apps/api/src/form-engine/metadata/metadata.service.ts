@@ -187,6 +187,28 @@ export class MetadataService {
     if (updated.length === 0) throw new FieldNotFoundError(fieldId)
   }
 
+  /* 只換 options,不動型別 —— 選項增刪改名走此路徑(資料改寫由 OptionService 負責)。 */
+  async updateFieldOptions(
+    tenantId: number,
+    fieldId: number,
+    options: Record<string, unknown>,
+  ): Promise<void> {
+    const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx
+        .update(fieldDefs)
+        .set({ options })
+        .where(
+          and(
+            eq(fieldDefs.tenantId, tenantId),
+            eq(fieldDefs.id, fieldId),
+            isNull(fieldDefs.deletedAt),
+          ),
+        )
+        .returning({ id: fieldDefs.id }),
+    )
+    if (updated.length === 0) throw new FieldNotFoundError(fieldId)
+  }
+
   async updateFieldType(
     tenantId: number,
     fieldId: number,

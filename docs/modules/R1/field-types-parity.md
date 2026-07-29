@@ -214,8 +214,11 @@ Airtable multiSelect 存 **array of strings**(值即字串非 id)→ **改名 = 
 **是遷移期就該修的結構債。**
 
 **2|lookup 的 live vs snapshot 未顯式化 —— ERP 的經典分歧**
-- **Ragic 官方說得最透**:**連結與載入 = 需要觸發(快照)**,只在選連結欄位時帶入。理由原文:
-  「不必讓本月商品的變動內容影響**去年的舊訂單**」
+- **Ragic 官方說得最透**:**連結與載入 = 快照**(預設不同步)。[官方中文文件](https://www.ragic.com/intl/zh-TW/doc/14/3)逐字:
+  「如果 A 表單上有欄位的值是從 B 表單連結載入的資料,B 表單上資料做修改**並不會反映在 A 表單先前存的資料中**。」
+  舉例逐字:「假設王先生後來搬家了…**但先前既有的訂單上確實還是要顯示當初的地址**而非後來搬家的新地址。」
+  ⚠️ **更正**(2026-07-29 二輪查證)|本節原引「不必讓本月商品的變動內容影響去年的舊訂單」並標為「理由原文」——
+  中英文官方文件四路搜尋**皆查無此句**,官方用的是上述「客戶搬家」例。語意等價但非原文,已替換為可驗證的逐字引用。
 - **Airtable 官方**:lookup = **即時**(「always be up-to-date in all tables」)
 - ⚠️ Ragic 另有官方文件專門教「不小心觸發同步/重算導致手動值遺失,**如何從備份找回**」—— 業界已知事故
 
@@ -257,6 +260,277 @@ Airtable multiSelect 存 **array of strings**(值即字串非 id)→ **改名 = 
 - [Ragic — 自動產生欄位值](https://www.ragic.com/intl/zh-TW/doc/auto-generated-field-values) · [連結與載入](https://www.ragic.com/intl/zh-TW/doc/link-and-load) · [數值欄公式回傳空值而非 0](https://www.ragic.com/intl/zh-TW/doc-kb/How-to-make-calculated-fields-empty-instead-of-zero)
 - [Salesforce — Considerations for Converting the Field Type of a Custom Field](https://help.salesforce.com/s/articleView?id=platform.notes_on_changing_custom_field_types.htm)
 - [Baserow — Field converter](https://baserow.io/docs/plugins/field-converter)
+
+---
+
+## 0-ter. 深度研究(2026-07-29)— 🔴 三項落實前的向上設計
+
+§0-bis 只做到「發現落差」。本節是動工前的第二輪深研,**推翻了 §0-bis 的三個判斷**,故獨立成節保留原判斷與更正,不覆寫。
+
+### A|lookup live vs snapshot
+
+**A-1 先修正一項認知落差:這不是新決策,是已裁定但只落地一半的設計。**
+`docs/modules/R1/formula-and-linkload.md` 的 **OQ-FML-4 早已裁定「A. 兩者都做且區分」**
+(Load 快照可編輯 / Lookup 即時唯讀),理由正是「Ragic 兩者皆有且語意不同」。
+現況是 **Lookup(live)做完了,Load(snapshot)只做了讀取端**:`RelationService.load()` 已存在且註解寫明
+「快照複製至來源記錄之語意」,但**不持久化、無前端帶入 UI、無重整、無稽核**。
+
+**A-2 各系統對照**
+
+| 系統 | 預設 | 可否設定 | 重整機制 |
+|---|---|---|---|
+| **Ragic** | **Snapshot** | ✅「隨時同步載入欄位值」勾選(**預設不勾**) | 設計模式齒輪「執行一次」 |
+| **FileMaker**(30 年先例) | **Snapshot** | ✅ 雙機制:lookup 靜態 / 關聯欄動態 | `Relookup Field Contents`,**不可 undo** |
+| **Quickbase** | lookup live,**另立 snapshot 欄** | ✅ 欄位屬性 Advanced → Snapshot | 換 parent 才重取 |
+| **SAP / NetSuite / Dataverse** | **Snapshot**(寫入文件層) | — | 手動 Update prices |
+| **Odoo** | 地址=**存參照(等同 live)** | ❌ | — |
+| **Airtable / Baserow / NocoDB / Teable / Notion** | **全 Live** | ❌ 全無 | 自動 |
+
+Dataverse 官方那句最精準:「The data that is transferred is the data at that point in time.
+**The data isn't synchronized if the source data later changes.**」
+
+**A-3 ⚠️ 更正 §0-bis 的引文**|原文標為 Ragic「理由原文」的
+「不必讓本月商品的變動內容影響去年的舊訂單」**中英文官方文件四路搜尋皆查無**。
+官方用的是**客戶搬家**例(見 §0-bis 已更正段)。語意等價,但不得當引文使用。
+
+**A-4 負面發現(兩個方向都查了)**
+
+- **snapshot 側**|Ragic 官方 KB 295 專篇教「手動值被同步/重算覆蓋,如何從備份救回」——
+  救援程序是 **Tools > Download from Backup → 匯回**,且需有 unique 欄才能對映。
+  官方預防建議逐字:「If the field is set to Link and Load or has a formula, **manual edits are not recommended**.」
+  → **代表 Ragic 的重整是無差別覆蓋、無 diff、無逐筆稽核。這是本專案可明確勝出之處。**
+  另 KB 153 / 255 / 344 三篇教自動重跑,證明「主檔改了單據沒跟上」也是真實痛點。
+  ⚠️ **未找到「因 snapshot 造成重大損失」的公開事故** —— 該側證據形態是困惑與需求,不是災難。
+- **live 側**|證據明顯更多且更嚴重。Airtable 社群發票串使用者原話:
+  「**Who wants all invoices to change when the product price changes???**」至 2025-01 仍無原生解。
+  Baserow feature idea 原話:「Lookup fields in Airtable and Baserow are **basically useless
+  unless you don't care about historical Data accuracy**.」官方人員回覆表示**仍難以理解此需求**。
+  Odoo [#23756](https://github.com/odoo/odoo/issues/23756) **2018 開至今 OPEN**:
+  「Printing the SO before and after changing the addresses result in different documents.」
+  Odoo 官方立場是「改地址有時是為了修正錯字」,ticket 被關;回報者反駁:
+  「The address correction should not affect the order once created, **even if it's really a typo**.」
+
+**A-5 決定性論點:失敗不對稱**
+
+| | live 出錯 | snapshot 出錯 |
+|---|---|---|
+| 症狀 | 歷史單據被**靜默**改寫 | 使用者看到舊值 |
+| 可觀察性 | **不可觀察**(無事件無記錄) | 立即可見 |
+| 可修復性 | **不可修復**(原值已不存在) | 按一下重載 |
+
+→ 兩種設計都會出錯,但**只有一種的錯誤可觀察且可修復**。企業級系統選失敗可見的那邊。
+
+**A-6 最重要的設計槓桿:把選擇從「建欄時」移到「單據生命週期」**
+
+即使欄位設 live,**記錄一旦 locked / posted / 期間關閉,自動固化所有 live 值為物理快照**。
+一次解決四件事:(1) 使用者選錯也不失真 → **不需理解術語就安全**;(2) 未鎖定期間保有 live 便利;
+(3) 對齊 AGENTS 鐵則 4 傳票不可變(證據錨:Odoo secure posted entries hash、SAP billing 後不重算);
+(4) **既有全 live 欄不改語意即受保護 → 遷移風險趨近零**。
+
+**A-7 UI 文案不出現 live / snapshot 術語**(業界無一家用此術語當文案):
+「這個欄位的內容,之後要不要跟著「客戶」主檔一起變?」
+◉ 保留填單當時的內容(建議)· ○ 永遠顯示最新內容 ⚠️「**包含去年的舊單據**」
+
+**A-8 DDL 成本近零(關鍵可行性)**|`field_def.physical_column` 是 generated column `'f' || id`,
+**虛擬欄早已有保留好的欄名**,虛轉實不需改名。PG 的 nullable `ADD COLUMN` 是 catalog-only,**不 rewrite**。
+再加 **lazy backfill**(值 NULL 時讀取回退 live,下次寫入或明確重整才落值)→ 切換是 O(1) DDL、零 backfill 停機。
+
+### B|型別轉換
+
+**B-1 🔴 推翻 §0-bis「影子欄保留 30 天」—— 這個設計是錯的。**
+PG 16 官方 limits.html 逐字:「**Columns that have been dropped from the table also contribute to
+the maximum column limit.**」1600 欄上限,**DROP 掉的欄位仍佔額度**,只有 `VACUUM FULL` / `pg_repack`
+重建整表才回收。設計期反覆改型別本就是高頻行為 → 30 天窗口會讓影子欄堆積撞硬牆。
+**前例對照:Baserow 的備份欄只留 120 分鐘**(`MINUTES_UNTIL_ACTION_CLEANED_UP` 預設 120),
+且其原始碼自承「fast but **not suitable for actually backing up the data to prevent data loss**」。
+→ **改用 side table 存 old_value(jsonb)**;短窗口(小時級)才用影子欄。
+另一個影子欄風險:動態表引擎若以 `SELECT *` 或 `information_schema` 反射欄位,**備份欄會外洩**到
+API / grid / 匯出 / OpenAPI,必須在 metadata catalog 顯式排除。
+
+**B-2 🔴 推翻「三態」——(a) 缺「值會被改變」這一類**
+Airtable 真實事故不是清空而是**靜默改值**:大整數(>2^53-1)因 JS number 精度被改成錯的值,
+使用者存產品編號 / 條碼最易中。社群原話:「it changes the data values... **with no warning at all**」,官方無回應。
+Baserow 的 `round()` / `greatest(...,0)` / `least(...,max)` / 多選取 rank=1 全屬靜默改值。
+→ **dry-run 必須報兩個數字:`will_be_nulled` / `will_be_altered`,不可合併成一個 N。**
+使用者對「清空 3 筆」的接受度遠高於「悄悄改了 10 萬筆的小數位」。
+
+**B-3 🔴 推翻「三態」——(b) 缺「safe 但需要 DDL」**
+`singleSelect → multiSelect`(text → text[])**語意零損失**但要 rewrite + ACCESS EXCLUSIVE。
+既不屬 safe(零 DDL),也不該進 lossy(沒東西會丟)。→ **四態**:
+`safe-metadata`(直通)/ `safe-rewrite`(告知列數+預估鎖時間,單次確認)/ `lossy`(dry-run+二次確認+保留原值)/ `forbidden`。
+
+**B-4 反直覺發現:Ragic 的型別轉換是非破壞性的。** 官方 KB 逐字:
+「If you have not made any further changes, simply **revert the field type to the original,
+and the values will return to normal**.」→ 暗示 Ragic 底層非「每欄一個強型別 real column」,
+值以寬鬆形式存,型別屬 metadata 解讀。**故對標 Ragic 的使用者心智是「改型別可隨便試,不對就改回來」**,
+`forbidden` 態會被感受成「比 Ragic 難用」。折衷:對「必定 rewrite 但語意可逆」的路徑
+(number→text、date→text)用 side table 達成可逆體驗 —— 保留機制的定位不是安全網,是**可逆性的實作機制**。
+
+**B-5 ⚠️ 與 A 案的耦合(自查項)**|研究明確點出:
+「若 singleSelect 如 Baserow 存 option id(FK),`singleSelect → text` 就不是 text→text,不能標 safe」。
+**本專案現況存的是文字值**(`z.enum(choices)` + `dbFieldType: text`),故現行標記正確;
+但**若採用選項 stable id 方案改成存 id,這條 safe 路徑會同時失效** —— 兩案必須一起裁定。
+
+**B-6 PostgreSQL 事實(官方明載,兩個易漏陷阱)**
+- rewrite 規則兩條件是 **AND**:「if the USING clause does not change the column contents **and**
+  the old type is binary coercible」→ **只要用了會改值的 USING,必定 rewrite**。
+- 免 rewrite 的具體案例(PG 9.2+):varchar/varbit **加長**、numeric **提高精度**;**縮短不免**。
+- text ↔ varchar 在無 collation 變更時**不需重建索引**(排序相同)。
+- ⚠️ **統計被清除** —— 官方建議轉換後跑 `ANALYZE`,不做會使 query plan 劣化。
+- ⚠️ `USING` **不套用到 column default** —— 需 DROP DEFAULT → ALTER TYPE → SET DEFAULT。
+
+**B-7 dry-run 是市場空白**|Airtable / Notion / Ragic / Baserow / NocoDB / Teable **沒有一家**提供
+「會影響 N 筆」的預覽。工程界成熟 pattern 可借:Terraform plan/apply、Flyway dry-run、
+gh-ost / pt-online-schema-change 不加 `--execute`、**Bytebase**(審核者可見 statement + 受影響列數)。
+關鍵:**dry-run 與執行必須用同一個 try_cast 函式**,這是預覽與結果一致的唯一保證(Flyway 同原理)。
+
+**B-8 try_cast 要比 Baserow 嚴謹**|Baserow 用 `exception when others`,會**吞掉 statement_timeout
+等非資料錯誤**。應收窄為 `invalid_text_representation` / `numeric_value_out_of_range` /
+`datetime_field_overflow` / `invalid_datetime_format`,其餘照拋。
+
+**B-9 其餘負面發現**
+- **NocoDB #10515**|meta API 改 `uidt` 不同步改 DB 型別,filter 仍用字串比較 → **靜默給出錯誤查詢結果**;
+  #11848 欄位在 UI 消失但 PG 裡還在。→ **真實表架構的頭號故障模式,與本專案直接相關**:
+  任何轉換路徑都必須保證 metadata catalog 與 `information_schema` 最終一致,並有對帳 job。
+- **Baserow 救援文件與實作對不上**|程式碼有完整 backup/undo,官方 user-doc 完全沒提型別轉換救援路徑。
+- **Salesforce 的嚴謹有明碼標價**|背景 job **可能超過 24 小時**、85M 轉換硬配額、
+  資料遺失會**連帶刪除 list view** 並影響 assignment/escalation rules。
+- **Rails `change_column` 是 irreversible migration**|業界最成熟 ORM 之一都不假裝能自動回滾型別變更。
+- **Notion 官方文件對型別轉換後果零字提及**(已實抓確認);唯一討論來源是備份廠商行銷文(利益衝突)。
+
+**B-10 專案專屬警示**
+- `text → number`:PG `numeric` 無 2^53 問題,但 **API 若以 JSON number 回傳,大整數會在瀏覽器端被截斷**
+  —— 正是 Airtable 事故的同一機制。金額 / 大整數欄 API 一律回字串。
+- `text → date`:本專案已踩過 pg DATE parser 位移 bug。**格式必須釘死白名單**,
+  不依賴 PG 寬鬆 date input(`'01/02/03'` 會依 `DateStyle` 解成完全不同的日期);
+  無法以指定格式解析者一律計入 `will_be_nulled`,即使 PG 自己猜得出來。
+- `number → money`:**必須強制指定幣別**(不可推斷),且禁用 PG 內建 `money` 型別(locale 依賴)。
+- **過度設計警示**|實測 7M 列 / 600MB 表 rewrite 僅 **21.6 秒**。Phase 1 不需非同步 job + 進度 + 通知,
+  先做同步 + `lock_timeout` + `statement_timeout`,撞到再說。
+
+### C|選項身分模型 —— 🔴 推翻 §0-bis 的「選項存 stable option id」
+
+**C-1 §0-bis 的建議是錯的。** 原判斷「選項存 stable option id(顯示名另存)」等同下表的**設計 A**,
+而**同為真實表架構的 Teable 與 NocoDB 都不這麼做** —— 兩者皆存名稱、皆以 option id 偵測改名後改寫資料。
+走設計 A 的是 **Baserow**,代價正是本專案最不能付的:真實表完全不可讀。
+
+| 系統 | 選項有 stable id | **記錄實際存什麼** | 架構 |
+|---|---|---|---|
+| **Teable** | ✅ `choices[].id` | **名稱**(`z.string()`,以 `choices.find(c => c.name === v)` 驗證) | **真實表** |
+| **NocoDB** | ✅ `nc_col_select_options_v2.id` | **名稱 text**(多選是逗號串) | **真實表** |
+| **Baserow** | ✅ 整數 PK | **整數 FK `field_<id>_id`**;多選在 M2M through 表 | **真實表** |
+| Airtable | ✅ `selXXX` | 內部 id;**REST API 對外讀寫是名稱** | 專有 |
+| Notion | ✅ UUID | 內部 id(官方:「Does not change if the name is changed」) | 專有 |
+| Salesforce | ✅ API name | API name,label 可另改(= 設計 C) | 專有 |
+| Odoo Selection | ✅ technical key | **key**(label 走翻譯層) | 固定 schema |
+| **Ragic** | ❌ 值即名稱 | **名稱** | 專有 |
+| Grist | ❌ 無持久 id | 名稱(改名靠 UI 編輯期 `previousLabel`) | 真實表 |
+
+**C-2 拒絕設計 A 的四個理由**
+1. **直接摧毀架構賣點**。Baserow 是活證明:`SELECT *` 得到 `f123_id = 87`,多選欄根本不在該表上。
+   R2 計算層寫「狀態 = 已過帳則產生傳票」的過帳規則時,設計 A 逼每條規則 join `field_def.options` jsonb。
+2. **與命門原則衝突**([[feedback-calc-binding-self-service]])。AI 要從真實表推斷「這欄的『已驗收』代表什麼」,
+   看到 `opt_a3f9` 完全推不動,看到 `已驗收` 才推得動。**設計 A 對 AI-native 定位是實質損害。**
+3. **Ragic 遷入成本**。Ragic 匯出是名稱字串,且**必然含「已不在選項清單」的歷史孤兒值**
+   (因為 Ragic 官方教的流程就是手動改完再刪選項)。設計 B 可直接 COPY。
+4. **匯出可用性**。客戶匯 CSV 給稽核或主管機關,拿到 `opt_a3f9` 等於沒匯。
+
+**C-3 拒絕設計 C(Salesforce 值/標籤分離)**|Salesforce 能這樣做是因為使用者是**專職 admin**。
+本專案使用者是「自己建自己填」的 Ragic 使用者,要求同時命名「值」與「標籤」違反 no-code 定位。
+**但設計 B 已偷到 C 的一半**:內部 stable id 就是 C 的「值」,只是不要求使用者命名、不曝露在 UI。
+
+**C-4 建議何時失效(反面條件,誠實列出)**
+
+| # | 條件 | 為何 B 會崩 |
+|---|---|---|
+| **F1** | **選項標籤需要多語系翻譯** | 資料欄只能存一種語言。Odoo 存 technical key 正是為此 |
+| **F2** | **已過帳單據不得被追溯改字** | 與 AGENTS 鐵則 4 衝突:B 的改名會把已過帳單據上的字追溯改掉 |
+| F3 | 單表千萬列 **且** 改名為常態 | 每次改名 = 全表 UPDATE + WAL 放大 + replica lag |
+| F4 | 外部系統以選項名硬編整合 | 改名破壞外部契約(設計 A 亦有此問題,只是換成不可讀的 id) |
+
+**F1 的退路只有在現在就加 id 才成立**:未來若需 i18n,可在不動資料欄的前提下,
+於 choice 物件加 `labels: Record<locale, string>`,UI 以 id 查表顯示,資料欄仍存 canonical 名稱。
+→ **這正是「stable id 要加,但不進資料欄」的最強理由。**
+**F2 現在就要留縫**:rename 必須寫 audit;R2 過帳時傳票摘要文字須在**過帳當下 materialize**,不參照 live 選項名。
+
+**C-5 改名的兩個實作陷阱(業界踩過)**
+- 🔴 **交換 / 循環改名會全毀**。使用者一次送出 `A→B` 且 `B→A`,照序執行會先把所有 A 變 B,
+  再把所有 B(含剛變過來的)變 A → 資料全毀。NocoDB 為此寫了一整套 `interchange` 臨時名 hack;
+  其原始碼註解自己指出更好的解:「**CASE evaluates each row's old text once and handles cycles natively**」。
+  → **用單一 CASE 一次改完**,不需臨時名。
+- 🔴 **並發競態:NocoDB 與 Teable 都沒處理**。改名交易跑 UPDATE 的同時,另一交易正插入舊值
+  (它讀到的是舊 metadata)→ 提交後留下永久孤兒。
+  → 沿用專案既有 `pg_advisory_xact_lock(formId)`(`ddl.service.ts` 已在用,M1 spike 實測開銷可忽略):
+  改名走 exclusive、記錄寫入走 **shared**。**關鍵細節:寫入路徑必須在取得 shared lock 之後才讀 options 做最終驗證**,
+  否則快取會讓鎖失效。
+
+**C-6 刪除:軟停用(retire)。Salesforce 是唯一完整前例,而它的兩個代價要一起抄**
+- 官方語意:停用後「existing records that had the value **continue to display it**」,且**可 Activate 還原**。
+- 🔴 **代價一**:停用值會**靜默從 report bucket 掉出**,官方定調為 **expected behavior 而非 bug**,
+  且重新啟用後 bucket 設定**不會自動回來**。→ **retired 選項必須仍出現在篩選器 / 分組 / 顏色 / 排序的可選清單中。**
+- 🔴 **代價二**:inactive values 無節制累積會拖垮效能,Salesforce 最終被迫加 **4,000 硬上限**
+  且移除上限的選項也被拿掉。→ **retired 數量必須納入總上限(active + retired 合計 ≤ 200)。**
+
+**C-7 「刪除前顯示 N 筆記錄正在使用」—— 所有查證的系統都沒有。**
+Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制選 replace 目標或留白)但不顯示筆數。
+→ 這是**可做出差異化的小功能**,且對「取代 ERP」的嚴謹定位是必要的信任訊號。
+
+**C-8 Ragic 的官方流程(對遷移最關鍵)**|官方 KB 逐字:
+「由於此功能目前不支援直接變更**選擇欄位**的選項,若要修改選擇欄位的值,需透過**大量修改**來變更。」
+建議步驟是「加新選項 → 篩選 → 大量修改 → 回設計模式刪舊選項」。
+→ 兩個推論:(a) **既有 Ragic 客戶已被訓練成接受「改名 = 手動遷移」**,任何自動化都是體驗升級;
+(b) **Ragic 匯出檔必然含孤兒值**,遷入時必須能吸收 —— 直接支持「軟停用 + 允許既有值超出 active 集合」。
+
+**C-9 結構性改動:廢除以名稱為 key 的 side map。**
+現行 `colors: Record<選項名, 色>` 與 `optionParents: Record<子選項名, 父選項名[]>` 是「借屍還魂」bug 的根源
+(現行 `superRefine` 是用驗證去補結構缺陷)。v2 把 color / parents **收進 choice 物件、以 id 為錨**
+→ **該類 bug 從結構上消失,驗證規則可退場**。
+
+**C-10 其餘負面發現**
+- **Airtable 刪除選項會清空既有格,但官方文件完全未載**(已逐頁查證 `single-select-field` 兩個版本),
+  UI 無警告、不可還原。社群一致回報。**這是要避開的行為典型。**
+- **Airtable `typecast: true` 會靜默新增選項且不去重** → 打錯字污染選項清單。
+- **Notion API 完全無法改名**:官方「the name and color of an existing option **cannot be updated**」
+  → 唯一路徑是刪舊建新,必然掉資料。且 update property schema 是 **replace-all 語意**:
+  「If an existing option is omitted, it **will be removed**」→ 送出部分清單即刪光其餘,整合商反覆踩雷。
+- **Salesforce rename 與 replace 皆不寫入 record history** → 稽核斷鏈。本專案必須寫 audit。
+- **NocoDB #3896**:改名不連動以名稱參照該選項的**衍生設定**(預設值仍指舊名 → 存檔報錯)。
+  → 改名必須 sweep view filter / 分組 / 預設值 / 排序 / 條件格式([[rule-outer-shell-sweep]])。
+- **NocoDB 多選塞逗號串 text** → 選項名不得含逗號。**本專案用 `text[]` 沒有這個限制,是結構性優勢。**
+- **Teable 改名/刪除走逐列 OT op**(先撈出所有受影響列再逐列建 op)→ 大表不可擴展。
+
+**C-11 與 B 案的交叉裁定**|B-5 已指出:若採設計 A 改存 option id,
+`singleSelect → text` 這條 safe 轉換路徑會同時失效。**採設計 B 則該路徑維持有效** —— 兩案在此收斂,無衝突。
+
+### 來源(0-ter)
+
+- Ragic|[連結與載入(中)](https://www.ragic.com/intl/zh-TW/doc/14/3) · [Link and Load(英)](https://www.ragic.com/intl/en/doc/31/link-and-load) · [KB 295 手動值被覆蓋如何從備份救回](https://www.ragic.com/intl/en/doc-kb/295/How-to-restore-manually-entered-field-values-that-were-lost-due-to-triggering-Link-and-Load-sync-or-formula-recalculation%3F) · [KB 153](https://www.ragic.com/intl/en/doc-kb/153/Repopulating-loaded-fields-from-their-source-sheet-for-link-&-load) · [KB 344 每日自動同步](https://www.ragic.com/intl/en/doc-kb/344/automatic-daily-link-load-sync) · [KB 357 型別改回去值就回來](https://www.ragic.com/intl/en/doc-kb/357/field-keeps-getting-overwritten-or-cleared-automatically)
+- FileMaker|[Defining and updating lookups](https://help.claris.com/en/pro-help/content/lookups.html) · [Relookup Field Contents](https://help.claris.com/en/pro-help/content/relookup-field-contents.html)
+- Quickbase|[Set up snapshots of lookup fields](https://help.quickbase.com/docs/setting-up-snapshots-of-lookup-fields)
+- SAP|[One-Time Customers 地址寫入文件層](https://help.sap.com/docs/SAP_ERP/f55481b88d8545e2871ca06d5a1dbf73/1b80ce53118d4308e10000000a174cb4.html) · [Condition Records 效期主檔](https://learning.sap.com/courses/implementing-sap-s-4hana-cloud-public-edition-sales-configuration/managing-condition-records-for-sales-prices)
+- NetSuite|[Working with Addresses on Transactions](https://docs.oracle.com/en/cloud/saas/netsuite/ns-online-help/section_N553515.html)
+- Dataverse|[Map table columns in Power Apps](https://learn.microsoft.com/en-us/power-apps/maker/data-platform/map-entity-fields)
+- Odoo|[#23756 改地址回溯改寫已確認訂單(OPEN)](https://github.com/odoo/odoo/issues/23756) · [論壇 workaround](https://www.odoo.com/forum/help-1/how-to-keep-the-invoice-address-when-partner-data-changes-44550) · [Data inalterability(過帳 hash)](https://www.odoo.com/documentation/18.0/applications/finance/accounting/reporting/data_inalterability.html)
+- Airtable|[社群發票 lookup 串](https://community.airtable.com/t5/other-questions/lookup-data-that-doesn-t-change-after-source-data-changes/td-p/31560) · [🔴 型別轉換靜默改值事故](https://community.airtable.com/t5/other-questions/serious-bug-with-field-type-changes/td-p/159761) · [snapshot 還原會建新 base](https://support.airtable.com/docs/taking-and-restoring-base-snapshots)
+- Baserow|[lookup 是 live(官方 user doc)](https://baserow.io/user-docs/lookup-field) · [One-time Lookup fields 需求串](https://community.baserow.io/t/one-time-lookup-fields/9709) · [schema.py lenient editor](https://github.com/baserow/baserow/blob/develop/backend/src/baserow/contrib/database/db/schema.py) · [backup_handler.py 影子欄](https://github.com/baserow/baserow/blob/develop/backend/src/baserow/contrib/database/fields/backup_handler.py)
+- PostgreSQL 16|[limits.html(1600 欄 / dropped 仍計入)](https://www.postgresql.org/docs/16/limits.html) · [sql-altertable.html(rewrite 規則 / ANALYZE / USING 不套 default)](https://www.postgresql.org/docs/16/sql-altertable.html)
+- 線上 schema 變更|[pgroll](https://pgroll.com/) · [Xata pgroll 說明](https://xata.io/blog/pgroll-schema-migrations-postgres) · [boringSQL 型別變更實測](https://boringsql.com/posts/how-not-to-change-postgresql-column-type/) · [Bytebase 受影響列數預覽](https://www.bytebase.com/blog/how-to-handle-database-schema-change/) · [Flyway dry run](https://documentation.red-gate.com/flyway/flyway-concepts/migrations/migration-command-dry-runs)
+- Teable|[官方 field doc(Ctrl+Z 可還原轉換)](https://help.teable.ai/en/basic/field)
+- 資料倉儲|[Kimball — Slowly Changing Dimensions(asOf 模式的正典)](https://www.kimballgroup.com/2008/08/slowly-changing-dimensions/)
+- 選項身分|[Airtable Field model(choices[].id)](https://airtable.com/developers/web/api/field-model) · [Airtable Scripting cell values](https://airtable.com/developers/scripting/api/cell_values) · [Airtable single-select doc(刪除行為未載之證據)](https://support.airtable.com/docs/single-select-field) · [Notion property object(id 不隨改名而變)](https://developers.notion.com/reference/property-object) · [Notion update property schema(replace-all 語意 + 無法改名)](https://developers.notion.com/reference/update-property-schema-object)
+- Salesforce picklist|[rename vs replace 差異](https://help.salesforce.com/s/articleView?id=000385717&language=en_US&type=1) · [Deactivate / Reactivate](https://help.salesforce.com/s/articleView?id=platform.fields_deactivate_reactivate_values.htm&language=en_US&type=5) · [🔴 停用值從 report bucket 靜默移除(expected behavior)](https://help.salesforce.com/s/articleView?id=000384189&language=en_US&type=1) · [🔴 inactive 值 4000 硬上限](https://help.salesforce.com/s/articleView?id=release-notes.rn_forcecom_fields_inactive_picklists.htm&language=en_US&release=230&type=5)
+- Ragic 選項|[如何大量變更選項欄位值?(官方教手動大量修改)](https://www.ragic.com/intl/zh-TW/doc-kb/145/%E5%A6%82%E4%BD%95%E5%A4%A7%E9%87%8F%E8%AE%8A%E6%9B%B4%E9%81%B8%E9%A0%85%E6%AC%84%E4%BD%8D%E5%80%BC%EF%BC%9F)
+- 真實表同架構原始碼|[Teable single-select.field.ts(存名稱)](https://github.com/teableio/teable/blob/develop/packages/core/src/models/field/derivate/single-select.field.ts) · [NocoDB columns.service.ts(改名同交易改寫 + interchange)](https://github.com/nocodb/nocodb/blob/develop/packages/nocodb/src/services/columns.service.ts) · [Baserow field_types.py(整數 FK = 設計 A 反例)](https://gitlab.com/baserow/baserow/-/raw/develop/backend/src/baserow/contrib/database/fields/field_types.py) · [NocoDB #3896 改名不連動衍生設定](https://github.com/nocodb/nocodb/issues/3896) · [Grist useractions.py RenameChoices(改名同步改寫 filter)](https://github.com/gristlabs/grist-core/blob/main/sandbox/grist/useractions.py)
+
+### 查不到 / 證據不足(誠實聲明)
+
+1. Ragic「不必讓本月商品…」原文 —— **查無**,已更正(見 A-3)
+2. Airtable 官方**未逐字**說明 lookup 即時性(已實抓確認);即時性由社群 + Baserow 官方對照佐證
+3. Notion rollup/relation 即時性、是否有 freeze —— 官方文件**查無**
+4. **未找到「因 snapshot 造成重大事故」的公開案例** —— 該側證據是困惑與需求,非災難
+5. Salesforce 官方頁 JS 渲染,三次抓取失敗;內容經搜尋引擎擷取 + 二手交叉,**完整轉換矩陣未取得**
+6. Teable undo 的確切 TTL 數字 —— 確認機制持久化,未取得數值
+7. Airtable 型別轉換警告對話框的確切措辭 —— 查無;社群明確反映 text→number **無警告**
 
 ## 13. 變更紀錄
 

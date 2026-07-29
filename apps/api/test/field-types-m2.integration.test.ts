@@ -134,10 +134,12 @@ describe("R1·UP-4 M2 autoNumber pattern + 選項擴充", () => {
     const got = await metadata.getForm(tenantA, form.id)
     const st = got.fields.find((f) => f.name === "狀態")
     const detail = got.fields.find((f) => f.name === "細項")
-    expect((st?.options as { colors?: Record<string, string> }).colors).toEqual({
-      新: "c1",
-      結: "ok",
-    })
+    /* v2:顏色收進 choice 物件以 id 為錨(不再是以名稱為 key 的 side map,#105) */
+    const stChoices = (st?.options as { choices: { name: string; color?: string }[] }).choices
+    expect(stChoices.map((c) => [c.name, c.color])).toEqual([
+      ["新", "c1"],
+      ["結", "ok"],
+    ])
     expect((detail?.options as { parentField?: string }).parentField).toBe("狀態")
     // valueSchema 仍 enum choices:寫入合法選項成功、非法拒
     const rec = await records.createRecord(tenantA, form.id, { 狀態: "新", 細項: "新A" }, ACTOR)
@@ -193,7 +195,8 @@ describe("選項配色(option colors)", () => {
       choices: ["北區", "中區", "待審"],
       colors: { 北區: "c1", 中區: "c5", 待審: "warn" },
     })
-    expect((fields[0]?.options as { colors: Record<string, string> }).colors.北區).toBe("c1")
+    const choices = (fields[0]?.options as { choices: { name: string; color?: string }[] }).choices
+    expect(choices.find((c) => c.name === "北區")?.color).toBe("c1")
   })
 
   it("任意字串 / hex 被拒(受控色盤,非自由選色)", async () => {
@@ -205,14 +208,23 @@ describe("選項配色(option colors)", () => {
     ).rejects.toThrow()
   })
 
-  it("FMEA C3:colors 指向不存在的選項 → 拒(防改名後借屍還魂)", async () => {
-    await expect(
-      createSelectForm({ choices: ["北區"], colors: { 已刪除的選項: "c2" } }),
-    ).rejects.toThrow()
+  /* FMEA C3 的保證在 v2 由**結構**提供,不再靠驗證(#105):
+     顏色錨在 choice 的 stable id 上,指向不存在選項的顏色在正規化時就被丟棄,
+     且改名後顏色跟著同一個 id 走 —— 同名的新選項不可能繼承到舊色。
+     舊測試斷言的是「拒絕」,新測試斷言的是「不可能發生」。 */
+  it("FMEA C3:指向不存在選項的顏色被丟棄,不會沾到任何選項", async () => {
+    const { fields } = await createSelectForm({
+      choices: ["北區"],
+      colors: { 北區: "c1", 已刪除的選項: "c2" },
+    })
+    const choices = (fields[0]?.options as { choices: { name: string; color?: string }[] }).choices
+    expect(choices).toHaveLength(1)
+    expect(choices[0]?.color).toBe("c1")
   })
 
   it("未設 colors 仍可建(向後相容,既有欄位零遷移)", async () => {
     const { fields } = await createSelectForm({ choices: ["甲", "乙"] })
-    expect((fields[0]?.options as { colors?: unknown }).colors).toBeUndefined()
+    const choices = (fields[0]?.options as { choices: { color?: string }[] }).choices
+    expect(choices.every((c) => c.color === undefined)).toBe(true)
   })
 })

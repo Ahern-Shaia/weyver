@@ -102,6 +102,20 @@ export class BulkTooLargeError extends DomainError {
   }
 }
 
+/* 改名目標撞到本次未被改名的既有選項 = 合併語意。默默合併會讓兩組資料再也分不開,
+   故要求呼叫端明示,不自作主張。 */
+export class OptionRenameConflictError extends DomainError {
+  constructor(from: string, to: string) {
+    super(`選項「${from}」不能改名為「${to}」:已有同名選項。若要合併請改用取代刪除`)
+  }
+}
+
+export class OptionInUseError extends DomainError {
+  constructor(name: string, count: number) {
+    super(`選項「${name}」仍有 ${String(count)} 筆記錄使用中,需指定停用 / 取代 / 清空`)
+  }
+}
+
 export class InvalidTypeConversionError extends DomainError {
   constructor(from: string, to: string) {
     super(

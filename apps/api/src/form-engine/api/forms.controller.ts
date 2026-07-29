@@ -20,6 +20,7 @@ import { Tenant } from "../../http/tenant.decorator.js"
 import { Throttle } from "@nestjs/throttler"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { DdlService } from "../ddl/ddl.service.js"
+import { OptionService } from "../field-types/option.service.js"
 import { LayoutService } from "../layout/layout.service.js"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { MetadataService } from "../metadata/metadata.service.js"
@@ -31,6 +32,7 @@ import {
 } from "../specs/form-specs.js"
 import {
   alterFieldTypeBodySchema,
+  updateOptionsBodySchema,
   moveFieldBodySchema,
   toFieldDto,
   toFormDto,
@@ -47,6 +49,7 @@ export class FormsController {
     @Inject(DdlService) private readonly ddl: DdlService,
     @Inject(MetadataService) private readonly metadata: MetadataService,
     @Inject(LayoutService) private readonly layout: LayoutService,
+    @Inject(OptionService) private readonly options: OptionService,
   ) {}
 
   @Post()
@@ -159,6 +162,36 @@ export class FormsController {
     body: z.infer<typeof alterFieldTypeBodySchema>,
   ): Promise<void> {
     await this.ddl.alterFieldType(tenant.tenantId, formId, fieldId, body.type, body.options)
+  }
+
+  /* 選項增刪改名(#105):與 /type 分開,因為這條會改寫既有記錄的資料 */
+  @Get(":formId/fields/:fieldId/options/usage")
+  @RequiresFormAction("design")
+  async optionUsage(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+  ): Promise<Record<string, number>> {
+    return this.options.usageCounts(tenant.tenantId, formId, fieldId)
+  }
+
+  @Patch(":formId/fields/:fieldId/options")
+  @RequiresFormAction("design")
+  async updateOptions(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(updateOptionsBodySchema))
+    body: z.infer<typeof updateOptionsBodySchema>,
+  ): Promise<{ renamed: number; affectedRows: number }> {
+    return this.options.updateOptions(
+      tenant.tenantId,
+      formId,
+      fieldId,
+      body.choices,
+      body.deleteMode,
+      body.replaceWith,
+    )
   }
 
   @Patch(":formId/fields/:fieldId/position")

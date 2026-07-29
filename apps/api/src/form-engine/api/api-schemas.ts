@@ -21,6 +21,27 @@ export const moveFieldBodySchema = z.object({
   direction: z.enum(["up", "down"]),
 })
 
+/* 選項增刪改名(#105)。刻意與 /type 分開:改型別是 DDL,改選項會改寫**資料**,
+   兩者的風險與流程不同,合在一個端點會讓呼叫端分不清自己在做哪件事。 */
+export const updateOptionsBodySchema = z.object({
+  choices: z
+    .array(
+      z.object({
+        // 既有選項必須帶回原 id,才會被辨識為「改名」而非「刪一個再建一個」
+        id: z.string().regex(/^o[0-9a-z]{8}$/),
+        name: z.string().trim().min(1).max(100),
+        color: z.string().max(20).optional(),
+        retired: z.boolean().optional(),
+        parents: z.array(z.string()).max(200).optional(),
+      }),
+    )
+    .min(1)
+    .max(200),
+  // 預設 retire:仍被使用的選項不硬刪,既有值保留(見 option.service 檔頭)
+  deleteMode: z.enum(["retire", "replace", "clear"]).default("retire"),
+  replaceWith: z.string().max(100).optional(),
+})
+
 export const bulkRecordsBodySchema = z.object({
   rows: z.array(z.object({ values: z.record(z.string(), z.unknown()) })).max(5000),
 })

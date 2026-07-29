@@ -115,29 +115,110 @@ const CHIP_TONES = [
   "c8",
 ] as const
 
-const choicesSchema = z
+/* 🔴 選項身分模型 v2(#105 追溯稽核,深研見 field-types-parity.md §0-ter C)。
+
+   **v1 的結構缺陷**|`{choices: string[], colors: Record<選項名,色>, optionParents: Record<名,名[]>}`
+   —— 值即名稱、呈現設定以名稱為 key。改名後既有記錄留舊字串變孤兒;
+   舊色會「借屍還魂」套到同名新選項上(v1 靠 superRefine 驗證去補,是拿驗證補結構缺陷)。
+
+   **v2 = 業界的設計 B**|choice 物件帶**內部 stable id**當錨點,**但資料欄仍存名稱**,改名時同交易改寫資料。
+   同為真實表架構的 **Teable 與 NocoDB 都是這個做法**;走「資料欄存 option id」的是 Baserow,
+   代價是 `SELECT *` 得到 `f123_id = 87`、多選欄根本不在該表上 —— 那會摧毀「真實表可直接查詢/報表」的架構賣點,
+   也讓 AI 無法從 `已驗收` 推斷語意(退化成 `opt_a3f9`)。
+   color / parents 收進 choice 物件以 id 為錨 → **借屍還魂從結構上不可能發生,驗證規則因此退場**。
+
+   id 不曝露給使用者、不進資料欄;它的另一個用途是留 i18n 退路
+   (日後可加 `labels: Record<locale,string>` 而不動資料欄)。 */
+const choiceSchema = z
   .object({
-    choices: z.array(z.string().min(1).max(100)).min(1).max(200),
-    // 選項 → 色 token(非 raw hex,對齊 docs/14 §0.2 受控色盤)
-    colors: z.record(z.string(), z.enum(CHIP_TONES)).optional(),
-    // 連動:依 parentField 當前值過濾本欄可選項(optionParents: 子選項 → 允許之父選項清單)
-    parentField: z.string().max(100).optional(),
-    optionParents: z.record(z.string(), z.array(z.string().max(100)).max(200)).optional(),
+    id: z.string().regex(/^o[0-9a-z]{8}$/),
+    name: z.string().trim().min(1).max(100),
+    // 色 token(非 raw hex,對齊 docs/14 §0.2 受控色盤)
+    color: z.enum(CHIP_TONES).optional(),
+    /* 軟停用:新記錄不可選,既有值保留可讀可篩選可分組(Salesforce inactive picklist 語意)。
+       Salesforce 的教訓一併抄:停用值**仍須出現在篩選/分組/顏色的可選清單**,
+       否則會複製其 report bucket 靜默掉值的事故;且停用值計入總上限,
+       免得走上 Salesforce 被迫追加 4000 硬上限的路。 */
+    retired: z.boolean().optional(),
+    // 連動:允許本選項出現時,父欄需為哪些選項(存父欄的 option id,非名稱)
+    parents: z.array(z.string()).max(200).optional(),
   })
   .strict()
-  /* colors 之 key 必須是現存選項:否則選項改名後,舊色會「借屍還魂」套到同名新選項上,
-     產生難查的錯色(FMEA C3)。連動選項之 optionParents 同理。 */
+
+/* **id 是內部細節,不該要求呼叫端發明。**
+   建表 / 加欄 / Excel 匯入 / Ragic 遷入手上只有名稱字串,強迫它們生 id 等於把實作外洩到 API。
+   故此處吃三種輸入並一律正規化成 v2:
+     (a) `["甲","乙"]`                       —— 最常見(匯入 / 快速建表)
+     (b) `[{name:"甲"}, ...]`                —— 有 color 但還沒有 id
+     (c) `[{id:"o…",name:"甲"}, ...]`        —— 完整 v2(改名偵測靠這個 id)
+   同時吸收 v1 的兩張以名稱為 key 的 side map(`colors` / `optionParents`)並摺進 choice 物件。
+   ⚠️ 沒帶 id 的輸入每次都會生新 id → **改選項一律走 `/options` 端點**(那裡要求帶 id),
+   不要用 `/type` 改選項,否則每次都被判成「全刪全建」。 */
+const OPTION_ID_RE = /^o[0-9a-z]{8}$/
+
+function mintOptionId(): string {
+  return `o${Math.random().toString(36).slice(2, 10).padEnd(8, "0")}`
+}
+
+const rawChoicesShape = z.preprocess((input) => {
+  if (typeof input !== "object" || input === null) return input
+  const raw = input as Record<string, unknown>
+  if (!Array.isArray(raw.choices)) return input
+
+  const colors = (raw.colors ?? {}) as Record<string, string>
+  const parents = (raw.optionParents ?? {}) as Record<string, string[]>
+  const nameToId = new Map<string, string>()
+  const choices = raw.choices.map((item) => {
+    const base =
+      typeof item === "string" ? { name: item } : ((item ?? {}) as Record<string, unknown>)
+    const name = typeof base.name === "string" ? base.name.trim() : ""
+    const id = typeof base.id === "string" && OPTION_ID_RE.test(base.id) ? base.id : mintOptionId()
+    nameToId.set(name, id)
+    const color = base.color ?? colors[name]
+    return {
+      ...base,
+      id,
+      name,
+      ...(color === undefined ? {} : { color }),
+    }
+  })
+
+  /* v1 的 optionParents 以名稱為 key,轉成 choice 內的父 option id 陣列 */
+  const withParents = choices.map((c: Record<string, unknown>) => {
+    if (c.parents !== undefined) return c
+    const fromV1 = parents[c.name as string]
+    if (fromV1 === undefined) return c
+    return { ...c, parents: fromV1.map((p) => nameToId.get(p) ?? p) }
+  })
+
+  const { colors: _c, optionParents: _p, ...rest } = raw
+  return { ...rest, choices: withParents }
+}, z.looseObject({}))
+
+const choicesSchema = rawChoicesShape
+  .pipe(
+    z
+      .object({
+        // active + retired 合計上限,不分開算
+        choices: z.array(choiceSchema).min(1).max(200),
+        parentField: z.string().max(100).optional(),
+      })
+      .strict(),
+  )
   .superRefine((value, ctx) => {
-    if (value.colors === undefined) return
-    const known = new Set(value.choices)
-    for (const key of Object.keys(value.colors)) {
-      if (!known.has(key)) {
+    /* 名稱 case-insensitive 唯一(對齊 Notion「Names must be unique (case-insensitive)」)。
+       比對範圍**含 retired** —— 否則停用「舊分類」後再建同名選項,兩者在資料欄裡無法區分。 */
+    const seen = new Set<string>()
+    for (const [i, choice] of value.choices.entries()) {
+      const key = choice.name.toLowerCase()
+      if (seen.has(key)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["colors", key],
-          message: `colors 指向不存在的選項:${key}`,
+          path: ["choices", i, "name"],
+          message: `選項名稱重複(不分大小寫):${choice.name}`,
         })
       }
+      seen.add(key)
     }
   })
 
@@ -145,8 +226,20 @@ const choicesSchema = z
    若此處沿用完整 choicesSchema,一個壞掉的顏色值會讓整張表無法存記錄(潛在缺陷,
    於 R1·UP-4c 收緊 colors 為 enum 時發現並修正)。 */
 const choicesOnlySchema = z
-  .object({ choices: z.array(z.string().min(1).max(100)).min(1).max(200) })
+  .object({
+    choices: z.array(z.object({ name: z.string().min(1).max(100) }).loose()).min(1).max(200),
+  })
   .loose()
+
+/* 值域**含 retired**,這是刻意的。
+   失敗不對稱:若拒收 retired,前端存檔會送出整份欄位值 → **持有停用值的記錄從此存不了檔**
+   (使用者感受是「系統壞了」,高傷害);若接受,最壞情況只是有人繞過 UI 選了停用值
+   —— 值仍在選項清單裡、看得見、可還原,低傷害。選失敗可見的那一邊。
+   「新記錄不可選 retired」由選單只列 active 達成。 */
+function choiceNames(options: Record<string, unknown>): [string, ...string[]] {
+  const parsed = choicesOnlySchema.parse(options)
+  return parsed.choices.map((c) => c.name) as [string, ...string[]]
+}
 
 function def(entry: FieldTypeDefinition): FieldTypeDefinition {
   return entry
@@ -260,10 +353,7 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     dbFieldType: "text",
     optionsSchema: choicesSchema,
     buildColumn: (t, col) => void t.text(col),
-    valueSchema: (options) => {
-      const parsed = choicesOnlySchema.parse(options)
-      return z.enum(parsed.choices as [string, ...string[]])
-    },
+    valueSchema: (options) => z.enum(choiceNames(options)),
     filterOperators: [...EQUALITY, "anyOf"],
     systemManaged: false,
   }),
@@ -272,10 +362,7 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     dbFieldType: "text_array",
     optionsSchema: choicesSchema,
     buildColumn: (t, col) => void t.specificType(col, "text[]"),
-    valueSchema: (options) => {
-      const parsed = choicesOnlySchema.parse(options)
-      return z.array(z.enum(parsed.choices as [string, ...string[]])).max(200)
-    },
+    valueSchema: (options) => z.array(z.enum(choiceNames(options))).max(200),
     filterOperators: [...EMPTINESS, "anyOf"],
     systemManaged: false,
   }),

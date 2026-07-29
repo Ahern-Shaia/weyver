@@ -47,7 +47,7 @@ describe("field type registry", () => {
     for (const type of CELL_VALUE_TYPES) {
       const options =
         type === "singleSelect" || type === "multiSelect"
-          ? { choices: ["a"] }
+          ? { choices: [{ id: "oaaaaaaa1", name: "a" }] }
           : type === "link"
             ? { targetFormId: 1 }
             : type === "formula"
@@ -69,7 +69,13 @@ describe("field type registry", () => {
   })
 
   it("singleSelect value schema enforces choices", () => {
-    const schema = FIELD_TYPE_REGISTRY.singleSelect.valueSchema({ choices: ["紅", "綠"] })
+    /* valueSchema 收的是**已儲存**的 options,恆為 v2(建表時經 normalizedOptions 正規化) */
+    const schema = FIELD_TYPE_REGISTRY.singleSelect.valueSchema({
+      choices: [
+        { id: "oaaaaaaa1", name: "紅" },
+        { id: "oaaaaaaa2", name: "綠" },
+      ],
+    })
     expect(schema.safeParse("紅").success).toBe(true)
     expect(schema.safeParse("藍").success).toBe(false)
   })
