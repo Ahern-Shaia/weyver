@@ -135,6 +135,9 @@ export type ConditionalFormats = z.infer<typeof conditionalFormatsSchema>
 
 export const layoutSchema = z
   .object({
+    /* 🔴 樂觀鎖(#109)。整表覆寫下,兩人同改後寫者會蓋掉整張版面。
+       未帶時維持舊行為(既有呼叫端與測試不受影響)。 */
+    expectedVersion: z.number().int().positive().optional(),
     grid: z
       .object({
         cols: z.number().int().min(1).max(50).default(12),

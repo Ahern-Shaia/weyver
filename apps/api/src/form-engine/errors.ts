@@ -169,3 +169,14 @@ export class ImportBlockedError extends DomainError {
     super(`匯入被擋下:${reason}`)
   }
 }
+
+/* 版面是整表覆寫,兩人同改後寫者會蓋掉整張版面。錯誤要帶出「目前是第幾版」,
+   否則前端只能叫使用者重整,無法說明「你看到的已經不是最新的」。 */
+export class LayoutVersionConflictError extends DomainError {
+  constructor(
+    readonly expected: number,
+    readonly current: number,
+  ) {
+    super(`版面已被其他人修改(你的版本 ${String(expected)},目前 ${String(current)}),請重新載入後再存`)
+  }
+}

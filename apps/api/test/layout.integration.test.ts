@@ -216,3 +216,61 @@ describe("條件式格式(conditionalFormats)", () => {
     expect(res.statusCode).toBe(200)
   })
 })
+
+describe("🔴 版面樂觀鎖(#109)", () => {
+  it("**兩人同改,後寫者被擋而非蓋掉整張版面**", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: `並發版面_${String(Date.now()).slice(-6)}`,
+        fields: [
+          { name: "甲", type: "text" },
+          { name: "乙", type: "text" },
+        ],
+      },
+    })
+    const body = created.json() as { id: number; version: number; fields: { id: number }[] }
+    const fid = body.id
+    const a = String(body.fields[0]?.id ?? 0)
+    const b = String(body.fields[1]?.id ?? 0)
+
+    // 兩人同時載入,拿到同一個 version
+    const detail = await app.inject({ method: "GET", url: `/api/forms/${fid}`, headers: A() })
+    const base = (detail.json() as { version: number }).version
+
+    const first = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${fid}/layout`,
+      headers: A(),
+      payload: { fields: { [a]: { row: 0, col: 0 } }, expectedVersion: base },
+    })
+    expect(first.statusCode).toBe(200)
+
+    // 後寫者拿著同一個舊 version → 必須被擋,而不是蓋掉整張
+    const second = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${fid}/layout`,
+      headers: A(),
+      payload: { fields: { [b]: { row: 5, col: 5 } }, expectedVersion: base },
+    })
+    expect(second.statusCode).toBe(409)
+    expect((second.json() as { code: string }).code).toBe("LAYOUT_VERSION_CONFLICT")
+
+    const after = await app.inject({ method: "GET", url: `/api/forms/${fid}/layout`, headers: A() })
+    const saved = (after.json() as { layout: { fields: Record<string, unknown> } }).layout
+    expect(saved.fields[a]).toEqual({ row: 0, col: 0 })
+    expect(saved.fields[b]).toBeUndefined()
+  })
+
+  it("不帶 expectedVersion 時維持舊行為(既有呼叫端不受影響)", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${formId}/layout`,
+      headers: A(),
+      payload: { fields: { [String(noteFieldId)]: { row: 2, col: 2 } } },
+    })
+    expect(res.statusCode).toBe(200)
+  })
+})

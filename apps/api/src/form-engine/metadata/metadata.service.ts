@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common"
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb, TenantDb } from "../../db/db.module.js"
 import { fieldDefs, formDefs, users } from "../../db/schema.js"
-import { FieldNotFoundError, FormNotFoundError } from "../errors.js"
+import { FieldNotFoundError, FormNotFoundError, LayoutVersionConflictError } from "../errors.js"
 import { FIELD_TYPE_REGISTRY } from "../field-types/field-type-registry.js"
 import { normalizedOptions, type AddFieldSpec, type CreateFormSpec } from "../specs/form-specs.js"
 
@@ -256,17 +256,50 @@ export class MetadataService {
   }
 
   /* R1·UP-3 2D 設計器:整表版面覆寫(純 metadata,零 DDL)+ bumpVersion。 */
-  async setLayout(tenantId: number, formId: number, layout: unknown): Promise<void> {
+  /* 🔴 版面是**整表覆寫**,兩人同時編輯後寫者會蓋掉整張版面(#109)。
+     `version` 一直在遞增卻從沒人檢查 —— 樂觀鎖的材料早就在,只差條件式 UPDATE。
+     expectedVersion 未給時維持舊行為(既有呼叫端不受影響)。 */
+  async setLayout(
+    tenantId: number,
+    formId: number,
+    layout: unknown,
+    expectedVersion?: number,
+  ): Promise<number> {
     const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
       tx
         .update(formDefs)
         .set({ layout, version: sql`${formDefs.version} + 1`, updatedAt: new Date() })
         .where(
-          and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
+          and(
+            eq(formDefs.tenantId, tenantId),
+            eq(formDefs.id, formId),
+            isNull(formDefs.deletedAt),
+            ...(expectedVersion === undefined ? [] : [eq(formDefs.version, expectedVersion)]),
+          ),
         )
-        .returning({ id: formDefs.id }),
+        .returning({ id: formDefs.id, version: formDefs.version }),
     )
-    if (updated.length === 0) throw new FormNotFoundError(formId)
+    if (updated.length === 0) {
+      /* 分辨「表不存在」與「版本被人改過」—— 兩者的使用者動作完全不同 */
+      if (expectedVersion !== undefined) {
+        const current = await this.tenantDb.withTenant(tenantId, (tx) =>
+          tx
+            .select({ version: formDefs.version })
+            .from(formDefs)
+            .where(
+              and(
+                eq(formDefs.tenantId, tenantId),
+                eq(formDefs.id, formId),
+                isNull(formDefs.deletedAt),
+              ),
+            ),
+        )
+        const found = current[0]
+        if (found !== undefined) throw new LayoutVersionConflictError(expectedVersion, found.version)
+      }
+      throw new FormNotFoundError(formId)
+    }
+    return updated[0]?.version ?? 0
   }
 
   /* $USERNAME 預設值解析用(DRIZZLE 車道;weyver_app 無 users grant → 走此)。 */

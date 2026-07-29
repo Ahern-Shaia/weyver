@@ -128,8 +128,14 @@ export class FormsController {
   async getLayout(
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
-  ): Promise<{ layout: unknown }> {
-    return { layout: await this.layout.getLayout(tenant.tenantId, formId) }
+  ): Promise<{ layout: unknown; version: number }> {
+    /* version 與 layout 同源同次讀出 —— 樂觀鎖若從別的查詢拿版本,
+       兩者可能不同步,鎖就變成隨機通過/隨機失敗。 */
+    const form = await this.metadata.getForm(tenant.tenantId, formId)
+    return {
+      layout: await this.layout.getLayout(tenant.tenantId, formId),
+      version: form.form.version,
+    }
   }
 
   @Patch(":formId/layout")

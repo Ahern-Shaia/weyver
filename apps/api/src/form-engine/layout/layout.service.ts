@@ -14,13 +14,22 @@ export class LayoutService {
     return form.layout
   }
 
-  async setLayout(tenantId: number, formId: number, layout: Layout): Promise<Layout> {
+  async setLayout(
+    tenantId: number,
+    formId: number,
+    layout: Layout,
+  ): Promise<Layout & { version: number }> {
     const { fields } = await this.metadata.getForm(tenantId, formId)
     const validIds = new Set(fields.map((f) => String(f.id)))
     for (const key of Object.keys(layout.fields)) {
       if (!validIds.has(key)) throw new UnknownFieldError(`layout field id ${key}`)
     }
-    await this.metadata.setLayout(tenantId, formId, layout)
-    return layout
+    const version = await this.metadata.setLayout(
+      tenantId,
+      formId,
+      layout,
+      layout.expectedVersion,
+    )
+    return { ...layout, version }
   }
 }

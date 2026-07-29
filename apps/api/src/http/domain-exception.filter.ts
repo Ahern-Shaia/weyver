@@ -23,6 +23,7 @@ import {
   ImportBlockedError,
   ImportPlanStaleError,
   InvalidTypeConversionError,
+  LayoutVersionConflictError,
   OptionInUseError,
   OptionRenameConflictError,
   RecordNotFoundError,
@@ -54,6 +55,9 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof VersionConflictError) {
     return { status: HttpStatus.CONFLICT, code: "VERSION_CONFLICT" }
+  }
+  if (error instanceof LayoutVersionConflictError) {
+    return { status: HttpStatus.CONFLICT, code: "LAYOUT_VERSION_CONFLICT" }
   }
   if (error instanceof FieldForbiddenError) {
     return { status: HttpStatus.FORBIDDEN, code: "FORBIDDEN" }
