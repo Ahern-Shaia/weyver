@@ -34,11 +34,16 @@ export class DevTenantGuard implements CanActivate {
     }
     const rawActor = request.headers["x-dev-actor"]
     const actorId = Number(Array.isArray(rawActor) ? rawActor[0] : (rawActor ?? "1"))
+    /* 🔴 x-dev-real-authz: 1 → 這個請求改走真實角色解析(#96 實走時發現)。
+       dev 一律 super admin 的話,「只看自己的」這類範圍限制在瀏覽器裡永遠看不到效果 ——
+       而權限功能的預設失效模式正是「設了以為對了」,不能只靠整合測。 */
+    const rawReal = request.headers["x-dev-real-authz"]
+    const realAuthz = (Array.isArray(rawReal) ? rawReal[0] : rawReal) === "1"
     request.tenantContext = {
       tenantId,
       actorId: Number.isSafeInteger(actorId) && actorId > 0 ? actorId : 1,
-      // dev 略過三層權限(建表/填單體驗);真正 authz 執法由 Testcontainers 整合測驗證
-      isSuperAdmin: true,
+      // dev 預設略過三層權限(建表/填單體驗);真正 authz 執法由 Testcontainers 整合測驗證
+      isSuperAdmin: !realAuthz,
     }
     return true
   }

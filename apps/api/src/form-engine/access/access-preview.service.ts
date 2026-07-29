@@ -45,8 +45,8 @@ export class AccessPreviewService {
     @Inject(AuthzRepository) private readonly authz: AuthzRepository,
   ) {}
 
-  /* 可預覽的人員 —— 見 AuthzRepository.listTenantActors 的理由 */
-  listActors(tenantId: number): Promise<number[]> {
+  /* 可預覽 / 可指派的人員(帶名字)—— 見 AuthzRepository.listTenantActors 的理由 */
+  listActors(tenantId: number): Promise<{ id: number; name: string; email: string }[]> {
     return this.authz.listTenantActors(tenantId)
   }
 

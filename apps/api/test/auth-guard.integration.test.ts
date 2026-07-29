@@ -62,7 +62,15 @@ beforeAll(async () => {
   process.env.NODE_ENV = "production"
   process.env.BETTER_AUTH_SECRET = "x".repeat(48)
   process.env.DATABASE_URL = uri
-  process.env.APP_DATABASE_URL = uri
+  /* prod 模式禁止 app 車道與 migration 車道同一角色(否則 RLS 被 BYPASSRLS 旁路),
+     故此處備妥真正的非特權登入角色 —— 與 record-scope 測同法。 */
+  await pool.query(
+    `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS; GRANT weyver_app TO app_login`,
+  )
+  const appUri = new URL(uri)
+  appUri.username = "app_login"
+  appUri.password = "app_login"
+  process.env.APP_DATABASE_URL = appUri.toString()
   const { AppModule } = await import("../src/app.module.js")
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
   app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())

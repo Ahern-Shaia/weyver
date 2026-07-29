@@ -10,6 +10,7 @@ import {
   roleMembers,
   roles,
   tenants,
+  users,
 } from "../db/schema.js"
 import { type FieldVisibility, type FormAction, isFormAction } from "./authz-model.js"
 import { depthForParent, RoleCycleError, wouldCreateCycle } from "./authz-tree.js"
@@ -195,15 +196,18 @@ export class AuthzRepository {
     return rows.map((r) => r.actorId)
   }
 
-  /* 🔴 預覽用的人員清單(#96)。**租戶內全部有角色的人**,不限本角色成員 ——
-     有效存取是「這個人透過他所有角色能看到什麼」,限定本角色在語意上是錯的
-     (瀏覽器實走時發現:沒有成員的角色,預覽面板完全不可用且無任何說明)。 */
-  async listTenantActors(tenantId: number): Promise<number[]> {
+  /* 🔴 租戶內的人員清單(#96)。**帶名字** —— member 欄的選人器與預覽器都要用,
+     只有 id 的清單使用者根本無從選起(這正是 member 欄一直做不出前端的原因)。
+     以 role_members 為範圍:租戶邊界由它界定(users 是跨租戶系統表)。 */
+  async listTenantActors(
+    tenantId: number,
+  ): Promise<{ id: number; name: string; email: string }[]> {
     const rows = await this.db
-      .selectDistinct({ actorId: roleMembers.actorId })
+      .selectDistinct({ id: users.id, name: users.name, email: users.email })
       .from(roleMembers)
-      .where(eq(roleMembers.tenantId, tenantId))
-    return rows.map((r) => r.actorId)
+      .innerJoin(users, eq(users.id, roleMembers.actorId))
+      .where(and(eq(roleMembers.tenantId, tenantId), isNull(users.deletedAt)))
+    return rows.map((r) => ({ id: r.id, name: r.name ?? r.email, email: r.email }))
   }
 
   async countChildren(tenantId: number, roleId: number): Promise<number> {

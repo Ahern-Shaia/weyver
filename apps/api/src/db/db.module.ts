@@ -1,4 +1,12 @@
-import { Global, Inject, Injectable, Module, type OnModuleDestroy } from "@nestjs/common"
+import {
+  Global,
+  Inject,
+  Injectable,
+  Logger,
+  Module,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { sql } from "drizzle-orm"
 import { type NodePgDatabase, drizzle } from "drizzle-orm/node-postgres"
@@ -70,13 +78,35 @@ export class TenantDb {
 
 /* graceful shutdown:app.close() / SIGTERM 時收乾連線(零停機滾動部署前提) */
 @Injectable()
-class DbLifecycle implements OnModuleDestroy {
+class DbLifecycle implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(DbLifecycle.name)
+
   constructor(
     @Inject(PG_POOL) private readonly pool: pg.Pool,
     @Inject(APP_PG_POOL) private readonly appPool: pg.Pool,
     @Inject(DDL_KNEX) private readonly ddlKnex: Knex,
     @Inject(APP_KNEX) private readonly appKnex: Knex,
+    @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
+
+  /* 🔴 開機自檢:app 車道必須是**沒有 BYPASSRLS 的非 superuser**,否則 RLS 完全不執法 ——
+     租戶隔離與記錄範圍會靜默失效(查詢照常回資料,沒有任何錯誤)。#96 實走時發現 dev
+     因 APP_DATABASE_URL 未設而回落到特權連線,「只看自己的」在瀏覽器裡驗不出來。
+     prod 直接 fail-fast(寧可起不來也不要無聲洩漏);dev 大聲警告,不靜默。 */
+  async onModuleInit(): Promise<void> {
+    const { rows } = await this.appPool.query<{ superuser: boolean; bypassrls: boolean }>(
+      `SELECT rolsuper AS superuser, rolbypassrls AS bypassrls
+         FROM pg_roles WHERE rolname = current_user`,
+    )
+    const role = rows[0]
+    if (role === undefined || (!role.superuser && !role.bypassrls)) return
+
+    const message =
+      "app DB 車道使用特權角色(superuser 或 BYPASSRLS)→ RLS 不執法,租戶隔離與記錄範圍失效。" +
+      "請將 APP_DATABASE_URL 指向 GRANT weyver_app 的 LOGIN 角色。"
+    if (this.config.get<string>("NODE_ENV") === "production") throw new Error(message)
+    this.logger.warn(`${message}(dev 容許,但權限相關驗證請以整合測為準)`)
+  }
 
   async onModuleDestroy(): Promise<void> {
     await Promise.all([

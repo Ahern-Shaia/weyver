@@ -60,6 +60,17 @@ export const envSchema = z
           "BETTER_AUTH_SECRET is required in production (min 32 chars; inject via Infisical)",
       })
     }
+    /* 🔴 app 車道未設時會回落到 DATABASE_URL(migration 特權角色)→ RLS 不執法。
+       這種失效是靜默的:查詢照常回資料,只是跨租戶。prod 寧可起不來。 */
+    if (prodSecurity && (!env.APP_DATABASE_URL || env.APP_DATABASE_URL === env.DATABASE_URL)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["APP_DATABASE_URL"],
+        message:
+          "APP_DATABASE_URL is required in production and must differ from DATABASE_URL " +
+          "(point it at a LOGIN role granted weyver_app; the migration role bypasses RLS)",
+      })
+    }
     if (env.STORAGE_DRIVER === "s3") {
       for (const key of ["STORAGE_BUCKET", "STORAGE_ACCESS_KEY", "STORAGE_SECRET_KEY"] as const) {
         if (!env[key]) {
