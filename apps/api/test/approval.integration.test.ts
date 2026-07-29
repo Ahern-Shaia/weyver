@@ -337,3 +337,43 @@ describe("🔴 簽核內控補丁包(追溯稽核 #103)", () => {
     expect(Number(after.rows[0]?.n)).toBe(Number(before.rows[0]?.n) + 1)
   })
 })
+
+/* 🔴 橫切 sweep:簽核鎖只掛在 PATCH/DELETE 且 url 含 /records/ 的路由上,
+   而**按鈕本來就是設計來改記錄的**,走的是另一條路由形狀 → 完全不受保護。
+   這是本 session 第三次踩到同一類問題(選項繞道 /type、匯入繞過鎖)。 */
+describe("🔴 簽核鎖的路由涵蓋(橫切 sweep)", () => {
+  it("**按鈕不得繞過簽核鎖**", async () => {
+    const rec = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/records`,
+      headers: A(),
+      payload: { values: { 品名: "鎖測試", 金額: 10 } },
+    })
+    const recordId = (rec.json() as { id: number }).id
+
+    const def = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/approvals/defs`,
+      headers: A(),
+      payload: { name: "鎖測試流程", steps: [{ stepNo: 1, approverRoleId: null }] },
+    })
+    const defId = (def.json() as { id: number }).id
+
+    const submitted = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/approvals/records/${recordId}/submit`,
+      headers: A(),
+      payload: { defId },
+    })
+    // 送簽本身不被鎖擋 —— 當下還沒有進行中的簽核
+    expect(submitted.statusCode).toBeLessThan(400)
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/buttons/${buttonId}/run/${recordId}`,
+      headers: A(),
+    })
+    expect(res.statusCode).toBe(409)
+    expect((res.json() as { code: string }).code).toBe("RECORD_LOCKED_BY_APPROVAL")
+  })
+})

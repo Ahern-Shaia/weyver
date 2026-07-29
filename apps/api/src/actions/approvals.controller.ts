@@ -18,6 +18,7 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
+import { SkipApprovalLock } from "./approval-lock.interceptor.js"
 import { ApprovalService } from "./approval.service.js"
 import {
   type ApprovalDefDto,
@@ -64,6 +65,7 @@ export class ApprovalsController {
   }
 
   /* 送簽(需 edit 權:送簽改變記錄可編狀態)*/
+  @SkipApprovalLock()
   @Post("records/:recordId/submit")
   @RequiresFormAction("edit")
   @HttpCode(200)
