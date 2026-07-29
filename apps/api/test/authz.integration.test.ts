@@ -127,7 +127,7 @@ describe("AuthzRepository — 種子 / role tree / 權限(P0-4a M1)", () => {
     await repo.setFieldPermission(lead.id, fieldA, "hidden")
 
     expect(await repo.loadFormPermissions([lead.id])).toEqual([
-      { roleId: lead.id, formId: formA, actions: ["view", "create", "edit"] },
+      { roleId: lead.id, formId: formA, actions: ["view", "create", "edit"], scopedActions: [] },
     ])
     expect(await repo.loadFieldPermissions([lead.id])).toEqual([
       { roleId: lead.id, fieldId: fieldA, visibility: "hidden" },

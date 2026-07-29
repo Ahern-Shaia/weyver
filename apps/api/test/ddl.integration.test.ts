@@ -96,11 +96,17 @@ describe("A3 DDL service on real PG", () => {
       [form.id],
     )
     expect(rls.rows[0]).toEqual({ relrowsecurity: true, relforcerowsecurity: true })
-    const policy = await pool.query(
-      `SELECT count(*)::int AS c FROM pg_policy WHERE polrelid = ('data.t' || $1::text)::regclass`,
+    /* 兩條:tenant_isolation(PERMISSIVE,跨租戶)+ record_scope(RESTRICTIVE,記錄範圍 #96)。
+       RESTRICTIVE 的意義正在於它與前者是 AND —— 少一條就少一層。 */
+    const policy = await pool.query<{ polname: string; polpermissive: boolean }>(
+      `SELECT polname, polpermissive FROM pg_policy
+         WHERE polrelid = ('data.t' || $1::text)::regclass ORDER BY polname`,
       [form.id],
     )
-    expect(policy.rows[0]?.c).toBe(1)
+    expect(policy.rows.map((r) => [r.polname, r.polpermissive])).toEqual([
+      ['record_scope', false],
+      ['tenant_isolation', true],
+    ])
   })
 
   it("creates a subtable with parent FK + line_no", async () => {

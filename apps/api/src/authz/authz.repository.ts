@@ -31,6 +31,8 @@ export interface FormPermissionRow {
   readonly roleId: number
   readonly formId: number
   readonly actions: readonly FormAction[]
+  /* E-1 記錄範圍:列在此者只看得到 / 只能動「自己的」記錄 */
+  readonly scopedActions: readonly FormAction[]
 }
 
 export interface FieldPermissionRow {
@@ -442,6 +444,7 @@ export class AuthzRepository {
       roleId: r.roleId,
       formId: r.formId,
       actions: r.actions.filter(isFormAction),
+      scopedActions: r.scopedActions.filter(isFormAction),
     }))
   }
 

@@ -17,6 +17,8 @@ import type {
 /* 欄位級授權策略(RecordService M4 依此遮罩讀 / 白名單寫;EffectivePermissions 結構相容)。 */
 export interface FieldAccessPolicy {
   fieldVisibility(fieldId: number, formId: number): FieldVisibility
+  /* E-1 記錄範圍(#96)。optional —— 既有以純 FieldAccessPolicy 呼叫的測試不受影響。 */
+  isScopedToOwn?(formId: number, action: FormAction): boolean
 }
 
 /* 清單三態(OQ-ARI-8=折衷):可讀完整 / 非敏感無權=鎖定 stub(顯示+申請)/ 敏感無權=隱藏(不入任一)。 */
@@ -36,7 +38,19 @@ export class EffectivePermissions {
     private readonly forms: ReadonlyMap<number, ReadonlySet<FormAction>>,
     private readonly fields: ReadonlyMap<number, FieldVisibility>,
     private readonly sensitiveForms: ReadonlySet<number>,
+    /* 🔴 E-1 記錄範圍(#96):受 own 限制的動作集(表單 × 動作)。
+       範圍是**動作的正交維度**,故與 forms 分開存,不併進 actions 集合。 */
+    private readonly scoped: ReadonlyMap<number, ReadonlySet<FormAction>> = new Map(),
   ) {}
+
+  /* 這個動作在這張表上是否只限「自己的」記錄。
+     admin 恆為 all —— 管理員看不到全部的話,沒有人能稽核。
+     多角色時**取寬**:任一角色給了 all 就是 all(deny-by-default 只適用於「有沒有這個動作」,
+     範圍是已授予動作的修飾,不該因為多一個受限角色而被收緊)。 */
+  isScopedToOwn(formId: number, action: FormAction): boolean {
+    if (this.isAdmin) return false
+    return this.scoped.get(formId)?.has(action) ?? false
+  }
 
   formActions(formId: number): ReadonlySet<FormAction> {
     if (this.isAdmin) return this.allActions
@@ -146,7 +160,26 @@ export function buildEffectivePermissions(input: EffectivePermissionsInput): Eff
     fields.set(row.fieldId, maxFieldVisibility(fields.get(row.fieldId) ?? "hidden", row.visibility))
   }
 
-  return new EffectivePermissions(false, forms, fields, sensitiveForms)
+  /* 🔴 E-1 記錄範圍(#96)。**取交集不是聯集**:某動作要受 own 限制,
+     必須**所有**給了該動作的角色都標記它受限 —— 只要有一個角色給了 all,
+     就是 all。範圍是已授予動作的修飾,不該因為多一個受限角色而被收緊。
+     owner 短路(層 1)給的動作恆為 all,不受此限。 */
+  const scoped = new Map<number, Set<FormAction>>()
+  for (const row of input.formRows) {
+    const granting = input.formRows.filter(
+      (r) => r.formId === row.formId && input.roleIds.includes(r.roleId),
+    )
+    const set = new Set<FormAction>()
+    for (const action of row.scopedActions) {
+      const allScoped = granting
+        .filter((r) => r.actions.includes(action))
+        .every((r) => r.scopedActions.includes(action))
+      if (allScoped) set.add(action)
+    }
+    if (set.size > 0) scoped.set(row.formId, set)
+  }
+
+  return new EffectivePermissions(false, forms, fields, sensitiveForms, scoped)
 }
 
 function indexByFormRole(

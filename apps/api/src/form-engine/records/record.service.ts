@@ -377,12 +377,23 @@ export class RecordService {
   }
 
   /* SET LOCAL 不可參數綁定 → set_config(..., true) 交易範圍等價(M1 spike S3) */
+  /* 🔴 E-1 記錄範圍(#96):scope 與 actor 以 GUC 傳給 RESTRICTIVE policy。
+     強制點在 DB 不在這裡 —— 這裡只負責把「我是誰、範圍是什麼」講清楚。
+     未給 scope 時明確設 'all':**GUC 是連線層狀態**,不重設會沿用同一連線上一個
+     交易的值(連線池會重用),那正是「A 的限制套到 B 身上」這種最難查的洩漏。 */
   private async inTenantTx<T>(
     tenantId: number,
     fn: (trx: Knex.Transaction) => Promise<T>,
+    scope?: { actorId: number | null; own: boolean },
   ): Promise<T> {
     return this.knex.transaction(async (trx) => {
       await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
+      await trx.raw(`SELECT set_config('app.record_scope', ?, true)`, [
+        scope?.own === true ? "own" : "all",
+      ])
+      await trx.raw(`SELECT set_config('app.actor_id', ?, true)`, [
+        scope?.actorId === undefined || scope.actorId === null ? "" : String(scope.actorId),
+      ])
       return fn(trx)
     })
   }
@@ -517,9 +528,12 @@ export class RecordService {
     formId: number,
     query: ListQuery,
     policy?: FieldAccessPolicy,
+    actorId: number | null = null,
   ): Promise<{ records: RecordRow[]; nextCursor: string | null }> {
     const resolved = await this.resolveForm(tenantId, formId)
-    const result = await this.inTenantTx(tenantId, async (trx) => {
+    const result = await this.inTenantTx(
+      tenantId,
+      async (trx) => {
       let builder = this.baseQuery(trx, tenantId, resolved)
 
       // filters 包在自身 group(關鍵:combinator=or 不得洩到 tenant/deleted_at 之 AND 邊界)
@@ -593,7 +607,11 @@ export class RecordService {
             })
           : null
       return { records, nextCursor }
-    })
+      },
+      /* 🔴 E-1:view 受 own 限制時,DB 端的 RESTRICTIVE policy 會把別人的記錄濾掉。
+         這裡只是把身分與範圍講清楚 —— 就算這行漏了,policy 仍是 fail-closed。 */
+      { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
+    )
     const enriched = await this.withComputed(tenantId, formId, resolved, result.records)
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
     return {

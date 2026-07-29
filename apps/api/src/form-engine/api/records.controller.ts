@@ -67,6 +67,7 @@ export class RecordsController {
       formId,
       listQuerySchema.parse({ cursor: query.cursor, limit: query.limit }),
       permissions,
+      tenant.actorId,
     )
   }
 
@@ -79,7 +80,7 @@ export class RecordsController {
     @Param("formId", ParseIntPipe) formId: number,
     @Body(new ZodValidationPipe(listQuerySchema)) body: z.infer<typeof listQuerySchema>,
   ): Promise<ListResponse> {
-    return this.records.listRecords(tenant.tenantId, formId, body, permissions)
+    return this.records.listRecords(tenant.tenantId, formId, body, permissions, tenant.actorId)
   }
 
   @Post()

@@ -283,6 +283,12 @@ export const formPermissions = pgTable(
       .notNull()
       .references(() => formDefs.id, { onDelete: "cascade" }),
     actions: text("actions").array().notNull().default(sql`ARRAY[]::text[]`),
+    /* 🔴 E-1 記錄範圍(OQ-DP-2=A / OQ-DP-4=A)。
+       範圍是**動作的正交維度**而非新動作 —— 併進 actions 會讓集合爆炸(7 動作 × 2 範圍)。
+       逐動作獨立:列在 scopedActions 者受 own 限制,其餘仍是 all。
+       這正是 Ragic「佈告欄式」的語意:**看得到全部,但只能改自己的**。
+       空陣列 = 全部 all = 既有行為,零遷移。 */
+    scopedActions: text("scoped_actions").array().notNull().default(sql`ARRAY[]::text[]`),
   },
   (t) => [
     primaryKey({ columns: [t.roleId, t.formId] }),

@@ -8,10 +8,16 @@ import type {
   FormPermissionRow,
 } from "./authz.repository.js"
 
-const fp = (roleId: number, formId: number, actions: FormAction[]): FormPermissionRow => ({
+const fp = (
+  roleId: number,
+  formId: number,
+  actions: FormAction[],
+  scopedActions: FormAction[] = [],
+): FormPermissionRow => ({
   roleId,
   formId,
   actions,
+  scopedActions,
 })
 const cp = (roleId: number, categoryId: number, actions: FormAction[]): CategoryPermissionRow => ({
   roleId,

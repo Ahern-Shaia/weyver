@@ -509,7 +509,15 @@ export class DdlService {
             t.timestamp("updated_at", { useTz: true }).notNullable().defaultTo(trx.fn.now())
             t.bigint("updated_by").notNullable()
             t.timestamp("deleted_at", { useTz: true })
+            /* 🔴 E-1 記錄範圍(OQ-DP-9=A):指派存成**固定系統欄** bigint[] + GIN。
+               不直接讀該表的 member 欄 —— 那會讓 policy 需引用「這張表的指派欄」,
+               而 CREATE POLICY 是 DDL 且表名不可參數化 → 每次規則變更都變 DDL。
+               固定欄使**所有動態表共用同一份靜態 policy**(建表時一次寫入,
+               消除「新表忘了套」),規則變更成為資料變更。
+               實測:bigint[]+GIN 0.16ms vs junction + OR EXISTS 265ms。 */
+            t.specificType("assignees", "bigint[]")
             t.index(["tenant_id"])
+            t.index(["assignees"], `${table}_assignees_gin`, "gin")
             if (parentTable !== null) t.index(["parent_id"])
           })
           .toSQL()
@@ -572,10 +580,30 @@ export class DdlService {
     const qualified = `"${DATA_SCHEMA}"."${table}"`
     // NULLIF:custom GUC session 內 reset 值為 '' 非 NULL(spike S3);空 context → deny(fail-closed)
     const predicate = "tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::bigint"
+
+    /* 🔴 E-1 記錄範圍的強制點在此,不在應用層(OQ-DP-7=B,推翻 v0.1)。
+
+       §0.6 於 PG 16.13 / 30 萬列實測:RESTRICTIVE policy 與應用層注入 WHERE
+       **執行計畫完全相同**(BitmapOr + GIN,0.169ms vs 0.16ms)—— 零效能代價。
+       但 RESTRICTIVE **語意恆為 AND**:使用者自訂篩選的 OR 在**語法上不可能逃出**,
+       且**應用層漏注入也不外洩**。實測反例規模:少一層括號即 103 倍外洩(309 列 vs 3 列)。
+
+       `app.record_scope` 為 'all' 或 ''(未設)時整條為真 → 既有行為不變、零遷移。
+       設為 'own' 時,只看得到自己建立的 + 被指派的。
+       ⚠️ 述詞只用簡單運算與 current_setting,**不得呼叫非 LEAKPROOF 的自訂函數**
+       —— 那會讓 planner 放棄 pushdown 而退化成全表掃。 */
+    const scope = "NULLIF(current_setting('app.record_scope', true), '')"
+    const actor = "NULLIF(current_setting('app.actor_id', true), '')::bigint"
+    const scopePredicate = `(
+      COALESCE(${scope}, 'all') <> 'own'
+      OR created_by = ${actor}
+      OR assignees @> ARRAY[${actor}]
+    )`
     return [
       `ALTER TABLE ${qualified} ENABLE ROW LEVEL SECURITY`,
       `ALTER TABLE ${qualified} FORCE ROW LEVEL SECURITY`,
       `CREATE POLICY tenant_isolation ON ${qualified} USING (${predicate}) WITH CHECK (${predicate})`,
+      `CREATE POLICY record_scope ON ${qualified} AS RESTRICTIVE USING ${scopePredicate}`,
     ]
   }
 
