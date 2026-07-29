@@ -4,6 +4,7 @@
 > **檔案組織**|各模組 design doc 依所屬 release 置於子資料夾 `docs/modules/<R1|R2|R3|R4|foundation>/`;`_template.md`(骨架)與本索引留在根層。**新模組動工前先寫 M0 design doc,依 release 放對資料夾,並在本表登錄。**
 > **流程**(每模組)|M0 DRAFT → OQ 裁定 APPROVED → M1..MN 實作(每 milestone 一 commit)→ FMEA 收尾 SHIPPED。詳見 `_template.md` + `memory/rule_module_design_flow`。
 > **[P0] 研究即寫入 doc**|競品 / 規範 / 實測研究**當下就寫進模組 doc §0 並附來源連結**,不得只留在 task 或 commit message —— 2026-07-28 稽核發現六個模組的研究成果全散落在 repo 外,**來源 URL 差點永久遺失**。追溯補寫用 `## 0-bis`。
+> ⚠️ **「附連結」不是形式要求**|2026-07-29 複核 `print-merge` 時,其只記文件編號未附 URL 的引用**被查出兩處歸屬錯誤**(把「紙張委派瀏覽器」記在 `doc/149` 名下,實際出處是 `doc/4`)。**編號無法自我驗證,錯了也看不出來**;連上去一看即知。凡引用外部文件一律附可點 URL。
 > **[P0] 收尾必回填 `docs/25`**|模組 SHIPPED 時,除本表標 ✅ 外**必須**同步更新 `docs/25 功能完整對照清單` 之對應子功能列(✅ / 🟡 並註明界線)並重算覆蓋率 —— docs/25 是「仿 Ragic 進度」唯一權威,不回填則該數字失真(2026-07-28 實例:只落後四天即嚴重失真,須整份重查)。
 > **狀態圖例**|✅ SHIPPED · 🚧 進行中(APPROVED / 實作)· 📝 M0 DRAFT · ⬜ 未起(規劃中)
 

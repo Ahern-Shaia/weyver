@@ -8,7 +8,7 @@
 >
 > **核心範圍洞見(證據驅動)**|Ragic 的列印能力是**三件不同的事**,阻塞條件天差地別:
 > 1. **標籤產生器** —— **完全 in-app 設定**(選欄 + 每欄樣式 + 標籤尺寸 + A4 預覽 + 平舖/一頁一標籤 + 數量參照欄);條碼取自既有條碼欄,label maker 本身不生條碼。**零檔案上傳依賴**。
-> 2. **友善列印 + 下載 PDF** —— 瀏覽器渲染;**紙張/邊界/方向明確委派瀏覽器列印設定**(Ragic 不自建)。列印頁首頁尾/換頁為**設計模式之列範圍選取**。
+> 2. **友善列印 + 下載 PDF** —— 瀏覽器渲染;**紙張/邊界/方向明確委派瀏覽器列印設定**(Ragic 不自建,[doc/4](https://www.ragic.com/intl/zh-TW/doc/4) 逐字)。列印頁首頁尾/換頁為**設計模式之列範圍選取**([doc/149](https://www.ragic.com/intl/zh-TW/doc/149))。
 > 3. **合併列印 / 客製列印報表** —— **上傳 .xlsx/.docx 範本**(後者為 Carbone 引擎 `{d.欄位}`,可出 PDF + 密碼)。
 >
 > 現況盤點對照:**`qrcode.react` 已安裝**(MFA TOTP 已用)、`form_def.layout` metadata 可承載列印設定、print CSS + `window.print()` 已有(form-designer-2d);但**無上傳端點 / 無物件儲存**(與 OQ-FTP-6 同一 file-storage 阻塞)、無 PDF/docx 套件。
@@ -17,7 +17,7 @@
 >
 > 作者：Claude Code(草擬)
 > 版本：v0.1(2026-07-25)
-> 證據：docs/27 §4 P1/P2(標籤 QR「pilot 客戶實用中 — 進貨憑單 QRcode」、客製列印報表、合併列印;OQ-UP-4 裁定「暫留 P2,遷移盤點複核依賴即升 P1」)、本地 Ragic 參照庫(`doc/40` 標籤 maker、`doc/149` 列印頁首頁尾換頁、`doc/4` 匯出列印上限、`doc/42` 合併列印、`doc/138` 客製列印報表 Carbone、`doc/53` 以條碼顯示、`doc/27` 條碼欄型)、現況盤點(qrcode.react 已裝 / print CSS 已有 / barcode 欄型已有但未渲染 / 無 file-storage)
+> 證據：docs/27 §4 P1/P2(標籤 QR「pilot 客戶實用中 — 進貨憑單 QRcode」、客製列印報表、合併列印;OQ-UP-4 裁定「暫留 P2,遷移盤點複核依賴即升 P1」)、本地 Ragic 參照庫([doc/40](https://www.ragic.com/intl/zh-TW/doc/40) 標籤 maker、[doc/149](https://www.ragic.com/intl/zh-TW/doc/149) 列印頁首頁尾換頁、[doc/4](https://www.ragic.com/intl/zh-TW/doc/4) 匯出列印上限 + 紙張委派瀏覽器、[doc/42](https://www.ragic.com/intl/zh-TW/doc/42) 合併列印、[doc/138](https://www.ragic.com/intl/zh-TW/doc/138) 客製列印報表 Carbone、[doc/53](https://www.ragic.com/intl/zh-TW/doc/53) 以條碼顯示、[doc/27](https://www.ragic.com/intl/zh-TW/doc/27) 條碼欄型)、現況盤點(qrcode.react 已裝 / print CSS 已有 / barcode 欄型已有但未渲染 / 無 file-storage)
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### 1.1 目標(P0)
 
-1. **條碼欄實際渲染**|補 field-types-parity 之顯示層殘留:`barcode` 欄型於填單/記錄頁渲染 QR(複用**已安裝**之 `qrcode.react`);text 欄另加「以條碼顯示」設定(Ragic doc/53 語意,QR-only)。
+1. **條碼欄實際渲染**|補 field-types-parity 之顯示層殘留:`barcode` 欄型於填單/記錄頁渲染 QR(複用**已安裝**之 `qrcode.react`);text 欄另加「以條碼顯示」設定([Ragic doc/53](https://www.ragic.com/intl/zh-TW/doc/53) 語意,QR-only)。
 2. **標籤/QR 產生器**|表單可掛**標籤定義**(in-app 設定,零上傳):選欄 + 順序 + 每欄樣式(字體/大小/對齊/是否顯示欄名)+ 標籤尺寸(寬高 mm)+ **平舖多標籤/頁 或 一頁一標籤** + **數量參照欄**(數值欄決定每筆印幾張)。
 3. **標籤列印頁**|A4 平舖預覽 + `@page` 列印樣式 → 瀏覽器列印/另存 PDF;支援**批次**(集合視圖勾選 / 當前檢視結果)。
 4. **列印增強(友善列印)**|`form_def.layout` 加列印設定:**列印頁首/頁尾列範圍** + **換頁點**;記錄頁列印沿用既有 print CSS。
@@ -36,12 +36,12 @@
 | 子題 | 訴求 | 對應 |
 |---|---|---|
 | 標籤/QR | pilot 客戶(鮮勇)**進貨憑單 QRcode 實用中** —— 遷移必備依賴 | docs/27 §4 P2 + OQ-UP-4(依賴確認即升 P1);docs/25 H 列印 |
-| 列印增強 | 單據友善列印之頁首頁尾/換頁(Ragic doc/149) | docs/27 §4 P2 |
+| 列印增強 | 單據友善列印之頁首頁尾/換頁([Ragic doc/149](https://www.ragic.com/intl/zh-TW/doc/149)) | docs/27 §4 P2 |
 
 ### 1.3 不做的事
 
 - ⏳ **合併列印 / 客製列印報表(範本上傳 + Carbone)**|~~依 file-storage 基礎設施~~ → **【2026-07-27 阻塞已解除】**[F-5 file-storage](../foundation/file-storage.md) SHIPPED v1.0 提供上傳/下載/物件儲存抽象;本件維持 **P1**,待排期時直接接既有 `POST /api/forms/:formId/files` 與 `StorageDriver`(OQ-PM-1)。
-- ❌ **伺服器端 PDF 產生**(puppeteer / pdfmake)|P0 走瀏覽器列印(Ragic 亦將紙張/邊界/方向委派瀏覽器);伺服器端 PDF(密碼保護 / 大量非同步)→ P1(OQ-PM-3)。
+- ❌ **伺服器端 PDF 產生**(puppeteer / pdfmake)|P0 走瀏覽器列印(Ragic 亦將紙張/邊界/方向委派瀏覽器,[doc/4](https://www.ragic.com/intl/zh-TW/doc/4));伺服器端 PDF(密碼保護 / 大量非同步)→ P1(OQ-PM-3)。
 - ❌ **Code128 等 QR 以外 symbology**|`qrcode.react` 已在且 Ragic 僅列 Code128/QR;Code128 需新依賴 → P1(OQ-PM-4)。
 - ❌ **列印輸出寫回記錄之附件欄**(Ragic 批次合併列印可寫回)|依 file-storage → P1。
 - ❌ **浮水印 / PDF 密碼 / 公司 logo 上傳**|依 file-storage 或伺服器端 PDF → P1。
@@ -100,7 +100,7 @@ label_def(id, tenant_id, form_id, name,
 
 ### 4.2 條碼渲染(M2;OQ-PM-4=A 複用 qrcode.react)
 - `barcode` 欄:填單為文字輸入(存值)+ 下方即時 QR 預覽;記錄頁/標籤渲染 QR(`QRCodeSVG`,SVG 對列印友善)。
-- text 欄 options 加 `showAsQr?: boolean`(Ragic「以條碼顯示」QR-only 語意,doc/53)。
+- text 欄 options 加 `showAsQr?: boolean`(Ragic「以條碼顯示」QR-only 語意,[doc/53](https://www.ragic.com/intl/zh-TW/doc/53))。
 - `symbology: "code128"` → P0 顯示「Code128 需 P1」提示,不靜默失敗(誠實)。
 
 ### 4.3 標籤列印頁(M3)
@@ -110,9 +110,9 @@ label_def(id, tenant_id, form_id, name,
 - **上限**(OQ-PM-7):預設 ≤ 1000 標籤/次,超過提示「請縮小篩選或分批」(不靜默截斷)。
 
 ### 4.4 列印頁首頁尾 + 換頁(M4)
-- `form_def.layout.print = { headerRows: [0..n], footerRows: [...], pageBreakAfterRows: [...] }`(列範圍,承 Ragic doc/149 之列選取語意)。
+- `form_def.layout.print = { headerRows: [0..n], footerRows: [...], pageBreakAfterRows: [...] }`(列範圍,承 [Ragic doc/149](https://www.ragic.com/intl/zh-TW/doc/149) 之列選取語意)。
 - 記錄頁列印:header/footer 列以 `position: fixed` + `@media print` 重複;pageBreak 列後 `break-after: page`。
-- 紙張/邊界/方向:**不自建**,委派瀏覽器列印對話框(Ragic 同)。
+- 紙張/邊界/方向:**不自建**,委派瀏覽器列印對話框(Ragic 同,[doc/4](https://www.ragic.com/intl/zh-TW/doc/4) 逐字:「其餘列印格式(例如:頁面配置、邊界、顏色等)需於瀏覽器的列印設定中進行調整」)。
 
 ---
 
@@ -171,13 +171,13 @@ Input validation:label config 全 Zod(欄名長度、尺寸 mm 範圍、items �
 
 | # | 議題 | 選項 | 建議 = 裁定 |
 |---|---|---|---|
-| **OQ-PM-1** | 合併列印(範本上傳)是否入 P0 | A. **排除,歸 P1(待 file-storage)**;P0 = 標籤/QR + 列印增強(in-app 設定,零上傳)<br>B. 本模組順帶建最小上傳 | **A** — 範本上傳需 file-storage(上傳端點/物件儲存/型別白名單/掃描),與 OQ-FTP-6 之 image·signature·attachment **同一阻塞**,應由 file-storage 模組統一解;強塞入本模組會重複造輪且擴大攻擊面(.docx/.xlsx 解析)。**證據**:Ragic 合併列印/客製報表皆為**上傳**範本(doc/42、doc/138),而**標籤 maker 為 in-app 設定**(doc/40)→ 天然可切 |
-| **OQ-PM-2** | 標籤版面模型 | A. **專用 `label_def`**(欄位堆疊序 + 每欄樣式 + 標籤尺寸 + 平舖設定)<br>B. 復用 `form_def.layout` 2D 畫布 | **A** — Ragic 標籤即「選欄 + 順序 + 每欄字體/對齊/寬高」之堆疊模型,非 2D 座標;與表單版面解耦(標籤≠填單畫面),避免 layout schema 被兩種語意污染。**證據**:doc/40 標籤設定項 |
-| **OQ-PM-3** | PDF 產出方式 | A. **瀏覽器列印/另存 PDF**(`@page` CSS;零依賴、零 infra)<br>B. 伺服器端 PDF(puppeteer/pdfmake)| **A** — Ragic 明確將**紙張/邊界/方向委派瀏覽器列印設定**(doc/149),自身只管內容版面;伺服器端 PDF 之價值(密碼保護、大量非同步、寫回附件)**全部依賴 file-storage 或屬 P1**。**證據**:doc/149 + 現況無 PDF 套件 |
-| **OQ-PM-4** | 條碼 symbology 範圍 | A. **P0 僅 QR**(複用已裝 `qrcode.react`);Code128 → P1(需新依賴)<br>B. P0 即裝 bwip-js 全譜 | **A** — `qrcode.react` **已在**(MFA 用)→ 零新依賴;pilot 需求為**進貨憑單 QRcode**(docs/27 §4 註記)。Ragic 亦僅列 Code128/QR,且其「以條碼顯示」欄位設定**本身即 QR-only**(doc/53)。Code128 明示為 P1、不靜默失敗 |
+| **OQ-PM-1** | 合併列印(範本上傳)是否入 P0 | A. **排除,歸 P1(待 file-storage)**;P0 = 標籤/QR + 列印增強(in-app 設定,零上傳)<br>B. 本模組順帶建最小上傳 | **A** — 範本上傳需 file-storage(上傳端點/物件儲存/型別白名單/掃描),與 OQ-FTP-6 之 image·signature·attachment **同一阻塞**,應由 file-storage 模組統一解;強塞入本模組會重複造輪且擴大攻擊面(.docx/.xlsx 解析)。**證據**:Ragic 合併列印/客製報表皆為**上傳**範本([doc/42](https://www.ragic.com/intl/zh-TW/doc/42)、[doc/138](https://www.ragic.com/intl/zh-TW/doc/138)),而**標籤 maker 為 in-app 設定**([doc/40](https://www.ragic.com/intl/zh-TW/doc/40))→ 天然可切 |
+| **OQ-PM-2** | 標籤版面模型 | A. **專用 `label_def`**(欄位堆疊序 + 每欄樣式 + 標籤尺寸 + 平舖設定)<br>B. 復用 `form_def.layout` 2D 畫布 | **A** — Ragic 標籤即「選欄 + 順序 + 每欄字體/對齊/寬高」之堆疊模型,非 2D 座標;與表單版面解耦(標籤≠填單畫面),避免 layout schema 被兩種語意污染。**證據**:[doc/40](https://www.ragic.com/intl/zh-TW/doc/40) 標籤設定項 |
+| **OQ-PM-3** | PDF 產出方式 | A. **瀏覽器列印/另存 PDF**(`@page` CSS;零依賴、零 infra)<br>B. 伺服器端 PDF(puppeteer/pdfmake)| **A** — Ragic 明確將**紙張/邊界/方向委派瀏覽器列印設定**,自身只管內容版面;伺服器端 PDF 之價值(密碼保護、大量非同步、寫回附件)**全部依賴 file-storage 或屬 P1**。**證據**:[doc/4](https://www.ragic.com/intl/zh-TW/doc/4) 逐字「其餘列印格式(例如:頁面配置、邊界、顏色等)需於瀏覽器的列印設定中進行調整」+ 現況無 PDF 套件(⚠️ 原記為 doc/149,2026-07-29 連線複核後更正歸屬,結論不變) |
+| **OQ-PM-4** | 條碼 symbology 範圍 | A. **P0 僅 QR**(複用已裝 `qrcode.react`);Code128 → P1(需新依賴)<br>B. P0 即裝 bwip-js 全譜 | **A** — `qrcode.react` **已在**(MFA 用)→ 零新依賴;pilot 需求為**進貨憑單 QRcode**(docs/27 §4 註記)。Ragic 亦僅列 Code128/QR,且其「以條碼顯示」欄位設定**本身即 QR-only**([doc/53](https://www.ragic.com/intl/zh-TW/doc/53))。Code128 明示為 P1、不靜默失敗 |
 | **OQ-PM-5** | `label_def` 車道 | A. **authz Tier-1 DRIZZLE 車道 + app tenant scope**(同 view_def/button_def)<br>B. RLS 車道 | **A** — 標籤定義是 metadata(非 tenant 記錄資料),一致既定模式(view_def/button_def/approval_def 皆此)|
-| **OQ-PM-6** | 列印頁首頁尾模型 | A. **`form_def.layout.print` 之列範圍**(headerRows/footerRows/pageBreakAfterRows;設計器選列)<br>B. 獨立範本 | **A** — 直配 Ragic doc/149「設計模式選頂/底列 → 設為列印頁首/頁尾」語意;layout 加法零 migration。**證據**:doc/149 |
-| **OQ-PM-7** | 批次上限策略 | A. **明示硬上限 + 超量提示**(標籤 ≤1000 張/次;友善列印沿用既有分頁上限)<br>B. 不設上限 | **A** — 對齊 Ragic 明示上限文化(友善列印 5000 筆 / PDF 單檔 100 筆 / 匯出 >5000 轉 CSV);不靜默截斷(承 views-list 匯出之誠實訊息慣例)。**證據**:doc/4 |
+| **OQ-PM-6** | 列印頁首頁尾模型 | A. **`form_def.layout.print` 之列範圍**(headerRows/footerRows/pageBreakAfterRows;設計器選列)<br>B. 獨立範本 | **A** — 直配 [Ragic doc/149](https://www.ragic.com/intl/zh-TW/doc/149)「設定列印頁首頁尾及換頁」之列選取語意;layout 加法零 migration。**證據**:[doc/149](https://www.ragic.com/intl/zh-TW/doc/149) |
+| **OQ-PM-7** | 批次上限策略 | A. **明示硬上限 + 超量提示**(標籤 ≤1000 張/次;友善列印沿用既有分頁上限)<br>B. 不設上限 | **A** — 對齊 Ragic 明示上限文化(友善列印 5000 筆 / PDF 單檔 100 筆 / 匯出 >5000 轉 CSV);不靜默截斷(承 views-list 匯出之誠實訊息慣例)。**證據**:[doc/4](https://www.ragic.com/intl/zh-TW/doc/4) |
 
 ---
 
@@ -209,9 +209,22 @@ Input validation:label config 全 Zod(欄名長度、尺寸 mm 範圍、items �
 2026-07-28 全庫稽核以「有無 `## 0` 證據段」為判準,本檔被列入「疑似無證據」名單。
 **複查後確認為誤判**:證據已散在正文中,只是未集中成 §0 段。
 
-**實際引用的 Ragic 官方文件**|`doc/40`(標籤產生器:選欄 + 樣式 + 標籤尺寸 + 平舖 / 一頁一標籤 + 數量參照欄)·
-`doc/149`(友善列印:紙張 / 邊界 / 方向**委派瀏覽器**)· `doc/42`、`doc/138`(合併列印需上傳 .xlsx / .docx 範本)·
-`doc/4`、`doc/27`、`doc/53`。全文提及 Ragic 22 處。
+**實際引用的 Ragic 官方文件**(2026-07-29 逐篇連線複核標題,補完整 URL)
+
+| 引用 | 實際標題 | 本檔用它支撐什麼 |
+|---|---|---|
+| [doc/40](https://www.ragic.com/intl/zh-TW/doc/40) | 標籤產生器 | 選欄 + 樣式 + 標籤尺寸 + 數量參照欄 → 標籤 maker 完全 in-app(OQ-PM-1) |
+| [doc/149](https://www.ragic.com/intl/zh-TW/doc/149) | **設定列印頁首頁尾及換頁** | 設計模式選頂/底列 → 列印頁首頁尾;換頁元件(OQ-PM-6) |
+| [doc/4](https://www.ragic.com/intl/zh-TW/doc/4) | 匯出與匯入 | 逐字:「其餘列印格式(例如:頁面配置、邊界、顏色等)**需於瀏覽器的列印設定中進行調整**」(OQ-PM-3)+ 匯出/列印上限(OQ-PM-7) |
+| [doc/42](https://www.ragic.com/intl/zh-TW/doc/42) | 合併列印(將資料輸出成 Excel/Word) | 需上傳 .xlsx / .docx 範本 → 依賴 file-storage,歸 P1 |
+| [doc/138](https://www.ragic.com/intl/zh-TW/doc/138) | 客製列印報表 | 同上;PDF/DOCX/XLSX/PPTX 範本流程 |
+| [doc/53](https://www.ragic.com/intl/zh-TW/doc/53) | 附加欄位設定 | 「以條碼顯示」為欄位附加設定而非獨立欄型 |
+| [doc/27](https://www.ragic.com/intl/zh-TW/doc/27) | 欄位種類 | 條碼屬「編碼與資訊欄位」類 |
+
+**🔴 複核時抓到兩處歸屬錯誤(已於本次修正)**|原文把「紙張 / 邊界 / 方向委派瀏覽器」記在 `doc/149` 名下,
+但該篇實為「設定列印頁首頁尾及換頁」;**委派瀏覽器的逐字出處在 `doc/4`**。
+OQ-PM-3 的裁定理由與 §5「不自建紙張設定」皆曾引用錯誤編號 —— **結論不變(證據存在且更明確),但來源指錯**。
+> 這正是「只記編號不記 URL」的代價:編號無法自我驗證,錯了也看不出來。P0 規則要求附連結,理由即在此。
 
 **判斷**|**不需重做研究**。本檔的範圍切分(① 標籤 maker 完全 in-app、② 紙張設定委派瀏覽器、
 ③ 範本上傳才需伺服器)正是直接從上述官方文件推導,屬證據錨定之設計。
@@ -219,11 +232,13 @@ Input validation:label config 全 Zod(欄名長度、尺寸 mm 範圍、items �
 
 > **方法上的教訓**|「有無 §0 段」是**近似指標不是判準** —— 會有偽陽性(本檔)。
 > 後續補研究前應先複查正文,避免重做已做過的功課。
+> **但偽陽性不等於完全合規**:本檔當時只寫文件編號、未附 URL,已於 2026-07-29 補齊並因此抓出上述歸屬錯誤。
 
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-29 | v1.0(§0-bis 補正) | 追溯稽核當時只記 Ragic 文件編號未附 URL,不符 MODULES 之 P0 規則。**逐篇連線複核標題後補齊 31 個可點連結,並抓出兩處歸屬錯誤**:「紙張 / 邊界 / 方向委派瀏覽器」原記在 `doc/149`,該篇實為「設定列印頁首頁尾及換頁」,**逐字出處在 `doc/4`**;OQ-PM-3 與 §5 已更正(結論不變)。教訓已回寫 MODULES P0 規則 | Claude Code |
 | 2026-07-27 | v1.0 | **M1–M5 SHIPPED**。M1 label_def(0013,authz Tier-1)+ CRUD(欄名/數量欄驗證)+ layout.print 加法。M2 barcode 欄實際渲染 QR(複用 qrcode.react)+ text 欄 showAsQr。M3 標籤設計器(選欄堆疊/尺寸/平舖/份數參照欄)+ 標籤列印頁(@page A4 + mm 平舖 + 份數展開 + 1000 張硬上限明示)。M4 列印頁首/頁尾/換頁(列範圍)+ Object Page 套用。M5 print-merge.spec。FMEA P1–P2 P0 全 ✅;殘留明列。api 258 + web 22 e2e 綠 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-PM-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:合併列印(範本上傳)排除歸 P1 待 file-storage;標籤走專用 label_def 堆疊模型;PDF 走瀏覽器列印;P0 僅 QR 複用 qrcode.react;label_def 走 authz Tier-1 車道;列印頁首頁尾走 layout.print 列範圍;批次明示硬上限 | Claude Code |
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 後續-2。**範圍洞見**:Ragic 列印為三件事,標籤 maker 為 in-app 設定(零上傳)、友善列印委派瀏覽器紙張設定、僅合併列印/客製報表需上傳範本(Carbone)→ P0 取前二(零 infra、零阻塞),範本上傳合併歸 P1 待 file-storage(同 OQ-FTP-6)。`qrcode.react` 已裝可直接複用。OQ-PM-1..7 待裁定 | Claude Code |
