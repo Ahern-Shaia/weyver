@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
 import { type ReactNode, useEffect, useRef, useState } from "react"
+import { ImportBatches, importBatchKey } from "./import-batches"
 import { ImportPanel } from "./import-panel"
 import { Segmented } from "@weyver/ui/segmented"
 import { describeEngineError } from "@/lib/engine/client"
@@ -126,12 +127,21 @@ export function FormWorkspace(): ReactNode {
 
   if (importing && form !== undefined) {
     return (
-      <ImportPanel
-        formId={formId}
-        formName={form.name}
-        onDone={() => invalidate([formKeys.records(formId)])}
-        onClose={() => setImporting(false)}
-      />
+      <div className="flex h-full min-h-0 flex-col overflow-auto">
+        <ImportPanel
+          formId={formId}
+          formName={form.name}
+          onDone={() => invalidate([formKeys.records(formId), importBatchKey(formId)])}
+          onClose={() => setImporting(false)}
+        />
+        {/* 匯入紀錄與撤銷:後端一直有 revert 端點卻沒有清單,等於撤銷不可用(#106) */}
+        <div className="px-4 pb-4">
+          <ImportBatches
+            formId={formId}
+            onReverted={() => invalidate([formKeys.records(formId)])}
+          />
+        </div>
+      </div>
     )
   }
 

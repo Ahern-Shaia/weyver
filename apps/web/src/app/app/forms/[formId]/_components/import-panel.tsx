@@ -3,9 +3,10 @@
 import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
-import { AlertTriangle, Upload, X } from "lucide-react"
+import { AlertTriangle, Download, Upload, X } from "lucide-react"
 import { type ReactNode, useRef, useState } from "react"
 import { analyzeImport, describeEngineError, engineFetch } from "@/lib/engine/client"
+import { downloadErrorsCsv } from "./import-errors-csv"
 import { z } from "zod"
 
 /* 🔴 匯入既有表單(#106 M2)。入口在**記錄列表頁**而非設計器 ——
@@ -21,6 +22,7 @@ const analyzeSchema = z.object({
   columns: z.array(z.string()),
   totalRows: z.number(),
   truncated: z.boolean(),
+  mergedCells: z.number().default(0),
   maxRows: z.number(),
   preview: z.array(z.record(z.string(), z.string())),
   rows: z.array(z.record(z.string(), z.string())),
@@ -228,6 +230,7 @@ export function ImportPanel({
                       setPlanned(null)
                     }}
                     className="h-7 w-44"
+                    aria-label="匯入方式"
                   >
                     {POLICIES.map((p) => (
                       <option key={p.value} value={p.value}>
@@ -246,6 +249,7 @@ export function ImportPanel({
                         setPlanned(null)
                       }}
                       className="h-7 w-44"
+                      aria-label="比對欄位"
                     >
                       <option value="">請選擇</option>
                       {sheet.fields.map((f) => (
@@ -367,6 +371,12 @@ export function ImportPanel({
                       {b.message}
                     </div>
                   ))}
+                  {sheet.mergedCells > 0 ? (
+                    <div className="text-[11.5px] text-warn">
+                      偵測到 {sheet.mergedCells} 個合併儲存格,已用左上角的值填滿 ——
+                      請確認下方預覽是否符合預期。
+                    </div>
+                  ) : null}
                   {planned.warnings.map((w) => (
                     <div key={w.code} className="text-[11.5px] text-warn">
                       {w.message}
@@ -377,6 +387,14 @@ export function ImportPanel({
                       第 {r.sourceRowNo} 列:{r.errorMessage ?? r.errorCode}
                     </div>
                   ))}
+                  {/* 🔴 錯誤列可下載:只顯示前 5 列等於叫使用者自己去猜其餘幾百列是哪些。
+                      要修檔案就得知道全部,這是 Excel 遷移的實際工作方式。 */}
+                  {planned.rowErrors.length > 0 ? (
+                    <Button variant="subtle" size="sm" onClick={() => downloadErrorsCsv(planned.rowErrors)}>
+                      <Download size={11} className="mr-1" />
+                      下載錯誤列(共 {planned.rowErrors.length} 列)
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </>
