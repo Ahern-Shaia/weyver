@@ -32,7 +32,12 @@ function translateRoleError(error: unknown): never {
 }
 
 export interface RolePermissionsView {
-  readonly forms: ReadonlyArray<{ formId: number; actions: readonly FormAction[] }>
+  readonly forms: ReadonlyArray<{
+    formId: number
+    actions: readonly FormAction[]
+    /* E-1 記錄範圍(#96) */
+    scopedActions: readonly FormAction[]
+  }>
   readonly categories: ReadonlyArray<{ categoryId: number; actions: readonly FormAction[] }>
   readonly fields: ReadonlyArray<{ fieldId: number; visibility: FieldVisibility }>
   readonly memberActorIds: readonly number[]
@@ -131,7 +136,11 @@ export class AuthzAdminService {
       this.repo.listRoleMembers(tenantId, roleId),
     ])
     return {
-      forms: forms.map((f) => ({ formId: f.formId, actions: f.actions })),
+      forms: forms.map((f) => ({
+        formId: f.formId,
+        actions: f.actions,
+        scopedActions: f.scopedActions,
+      })),
       categories: categories.map((c) => ({ categoryId: c.categoryId, actions: c.actions })),
       fields: fields.map((f) => ({ fieldId: f.fieldId, visibility: f.visibility })),
       memberActorIds,

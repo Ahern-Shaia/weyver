@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
 import { APP_KNEX } from "../../db/db.module.js"
 import { DATA_SCHEMA, physicalTableName } from "../identifiers.js"
+import { AuthzRepository } from "../../authz/authz.repository.js"
 import { PermissionService } from "../../authz/permission.service.js"
 import type { FormAction } from "../../authz/authz-model.js"
 
@@ -41,7 +42,13 @@ export class AccessPreviewService {
   constructor(
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(PermissionService) private readonly permissions: PermissionService,
+    @Inject(AuthzRepository) private readonly authz: AuthzRepository,
   ) {}
+
+  /* 可預覽的人員 —— 見 AuthzRepository.listTenantActors 的理由 */
+  listActors(tenantId: number): Promise<number[]> {
+    return this.authz.listTenantActors(tenantId)
+  }
 
   async preview(
     tenantId: number,
@@ -97,7 +104,7 @@ export class AccessPreviewService {
             AND (NOT ? OR created_by = ? OR assignees @> ARRAY[?::bigint])
           ORDER BY id LIMIT 10`,
         [actorId, actorId, table, scoped, actorId, actorId],
-      )) as { rows: { id: number; title: string | null; reason: AccessPreviewRow["reason"] }[] }
+      )) as { rows: { id: string; title: string | null; reason: AccessPreviewRow["reason"] }[] }
 
       const visible = (await trx.raw(
         `SELECT count(*)::int AS n FROM ${DATA_SCHEMA}.??
@@ -113,7 +120,8 @@ export class AccessPreviewService {
         visibleCount: visible.rows[0]?.n ?? 0,
         totalCount: total.rows[0]?.n ?? 0,
         samples: rows.rows.map((r) => ({
-          recordId: r.id,
+          /* pg driver 把 bigint 當字串回 —— 不轉的話前端 schema 解析失敗(實走時發現) */
+          recordId: Number(r.id),
           title: r.title ?? `#${String(r.id)}`,
           reason: r.reason,
         })),

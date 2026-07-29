@@ -195,6 +195,17 @@ export class AuthzRepository {
     return rows.map((r) => r.actorId)
   }
 
+  /* 🔴 預覽用的人員清單(#96)。**租戶內全部有角色的人**,不限本角色成員 ——
+     有效存取是「這個人透過他所有角色能看到什麼」,限定本角色在語意上是錯的
+     (瀏覽器實走時發現:沒有成員的角色,預覽面板完全不可用且無任何說明)。 */
+  async listTenantActors(tenantId: number): Promise<number[]> {
+    const rows = await this.db
+      .selectDistinct({ actorId: roleMembers.actorId })
+      .from(roleMembers)
+      .where(eq(roleMembers.tenantId, tenantId))
+    return rows.map((r) => r.actorId)
+  }
+
   async countChildren(tenantId: number, roleId: number): Promise<number> {
     const rows = await this.db
       .select({ id: roles.id })

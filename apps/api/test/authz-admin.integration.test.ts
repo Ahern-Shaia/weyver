@@ -141,7 +141,9 @@ describe("AuthzAdminService — 權限管理後台(P0-4a M5)", () => {
     await admin.assignMember(tenantA, role.id, actorX)
 
     const view = await admin.getRolePermissions(tenantA, role.id)
-    expect(view.forms).toEqual([{ formId: formA, actions: ["view", "export"] }])
+    expect(view.forms).toEqual([
+      { formId: formA, actions: ["view", "export"], scopedActions: [] },
+    ])
     expect(view.fields).toEqual([{ fieldId: fieldA, visibility: "hidden" }])
     expect(view.memberActorIds).toEqual([actorX])
   })

@@ -53,7 +53,7 @@ beforeAll(async () => {
   records = new RecordService(appKnex, metadata)
 
   const repo = new AuthzRepository(db, new TenantDb(db))
-  preview = new AccessPreviewService(appKnex, new PermissionService(repo))
+  preview = new AccessPreviewService(appKnex, new PermissionService(repo), repo)
 }, 120_000)
 
 afterAll(async () => {

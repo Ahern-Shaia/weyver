@@ -187,6 +187,13 @@ export class FormsController {
 
   /* 🔴 E-1 存取預覽(#96)。Salesforce 外洩案例的根因是「規則對了但管理員理解錯」,
      而該產品無法在設定當下看見效果。唯讀試算,不做 impersonation。 */
+  /* 可預覽的人員清單 —— 租戶內全部有角色的人,不限某個角色的成員 */
+  @Get("access-preview/actors")
+  @RequiresFormAction("design")
+  previewActors(@Tenant() tenant: TenantContext): Promise<number[]> {
+    return this.preview.listActors(tenant.tenantId)
+  }
+
   @Get(":formId/access-preview/:actorId")
   @RequiresFormAction("design")
   previewAccess(
