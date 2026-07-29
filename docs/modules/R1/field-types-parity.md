@@ -506,12 +506,22 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 
 | 步驟 | 狀態 |
 |---|---|
-| 1. `mode` 顯式化(既有回填 live) | ⏳ 待做 —— 刻意排在 snapshot 寫入路徑之後,免得先加一個不做事的設定 |
+| 1. `mode` 顯式化(既有回填 live) | ✅ **SHIPPED**|`options.syncMode: "live" \| "snapshot"`,**schema 預設 live**(既有欄位零遷移;預設值若改 snapshot 等於靜默改寫所有既有單據的行為)|
 | **2. 鎖定即固化** | ✅ **SHIPPED**(簽核定案 → `RecordService.freezeComputed`,側表 `record_snapshot`) |
-| 3. snapshot 寫入路徑 + preserveManualEdits | ⏳ 待做 |
-| 4. 單筆/批次重整 + diff + 逐值 audit | ⏳ 待做 |
-| 5. 新欄預設 snapshot + 情境化文案 | ⏳ 待做 |
-| 6. `onSourceDeleted` 不再靜默 null | ✅ **SHIPPED**(回 `__source_deleted__` 標記) |
+| 3. snapshot 寫入路徑 | ✅ **SHIPPED**|snapshot 模式**有物理欄**(逐欄 virtual 判定),link 欄被寫到時固化來源當下值;讀取時值為 NULL 才回退即時計算(= §A-8 lazy backfill,剛切換的既有記錄照舊顯示)|
+| 4. 單筆/批次重整 + diff + 逐值 audit | ✅ **SHIPPED**|`RelookupService` + `POST /forms/:id/fields/:fieldId/relookup { dryRun }`;dry-run 回「會改幾筆 + 前 20 筆 before→after」,套用後**每筆寫 `action_audit`**。Ragic 對應功能是無差別覆蓋、無 diff、無記錄 |
+| 5. 新欄預設 snapshot + 情境化文案 | ✅ **SHIPPED**|設計器新欄預設「保留填單當時的內容(建議)」,文案不出現 live / snapshot 術語(§A-7)|
+| 6. `onSourceDeleted` 不再靜默 null | ✅ **SHIPPED**(回 `__source_deleted__` 標記;前端翻成「來源已刪除」)|
+| 7. 越權讀取(承 E-1 FMEA D3)| ✅ **SHIPPED**|帶入三層閘:來源表 view → 目標欄非 hidden → 來源表記錄範圍;無權回 `__source_restricted__`(與「來源已刪除」分開,前者是權限結果、後者是要追的資料事故)|
+
+**preserveManualEdits 未做(明列)**|Ragic 的手動編輯保護是「重算會覆蓋手改值」的補救,
+其官方 KB 甚至另闢專篇教怎麼從備份救回。本實作的重整**先給 diff 再套用**,使用者看得到
+哪幾筆會被改寫;真正需要「保護手改值」時再評估,不預先加一個沒有需求驅動的旗標。
+
+**實作期由瀏覽器實走抓出的缺陷(整合測是綠的)**|重整寫 `action_audit` 時
+**app 車道對該表沒有 grant**,但整合測當時用 superuser 車道跑,權限問題完全被遮住。
+已補 migration 0029(只給 SELECT / INSERT —— 稽核 append-only)並把該測試改走 app 車道。
+與本 session 稍早「測試用 superuser 連線導致 RLS 全程未執法」是同一類假綠。
 
 **實作偏離研究建議之處(有理由)**|研究 §4.6 建議把快照落在**動態表的物理欄**
 (理由:physical_column 已預留、nullable ADD COLUMN 不 rewrite、可 lazy backfill)。
@@ -595,6 +605,7 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-29 | v1.1 | **§A 快照帶入全數落地**(§A-9 表):`syncMode` 顯式化(預設 live 保既有語意)、snapshot 物理欄 + lazy backfill、重整 endpoint 帶 diff 與逐筆稽核、設計器情境化文案、帶入三層權限閘(承 E-1 FMEA D3)。**瀏覽器實走抓到整合測遮住的缺陷**:`action_audit` 對 app 車道缺 grant(migration 0029 補;該測試已改走 app 車道)。preserveManualEdits 明列為不做及理由 | Claude Code |
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 順序 4（承 form-designer-2d）：系統欄/rollup/lookup/link 補完/autoNumber pattern/選項顏色+連動/barcode/mask;核心洞見(RollupService 已完整、formula 讀時注入範本、link 部分、系統欄投影);image/signature 依賴 file-storage 排除 P0（OQ-FTP-6）;OQ-FTP-1..7 待裁定 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-FTP-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:讀時 systemManaged pseudo-field(承 formula)、系統欄投影 audit、options 加法擴充零遷移、link 補完(含 link&load)、autoNumber counter table 統一、image/signature 依 file-storage 排除 P0、§1.1 八項為 P0 | Claude Code |
 | 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 registry 加 6 virtual 型別(系統欄 4/lookup/rollup;no-op buildColumn,baseQuery 排除)+ RecordService.withComputed 讀時注入(系統欄投影/lookup 批次/rollup listByParents+純函式聚合,抽 rollup-agg 避服務循環)。M2 autoNumber pattern(counter 0011 + dateFormat + reset scope)+ 選項顏色/連動 + link displayFields(options 加法零遷移)。M3 barcode 型別 + text displayMask + 前端 enum 同步/渲染(計算型唯讀、barcode 輸入)。M4 設計器進階 palette + 設定編輯器(autoNumber pattern/link/lookup/rollup/系統欄)。M5 field-types.spec。FMEA T1–T4 P0 緩解(T1 lookup 欄位級權限為 ⚠️ 殘留);顯示層(QR 渲染/顏色 chip/連動過濾)+ image/signature(file-storage)+ member/rich-text 等為 P1。api 236 + web 17 e2e 綠 | Claude Code |

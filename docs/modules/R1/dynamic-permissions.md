@@ -246,7 +246,7 @@ v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown�
 | # | 結果 |
 |---|---|
 | D1 | ✅ 如設計:policy 於 provision 建立,漏注入不外洩。**實走另證**:應用層那行 `own` 旗標與 policy 兩者一致 |
-| D3 | ⏳ **仍為缺口**|lookup 快照顯示值目前不受來源表範圍管(#113 已在處理 lookup 語意,D3 併入該項一起裁定)|
+| D3 | ✅ **已修(併 #113)**|帶入三層閘:來源表 view → 目標欄非 hidden → 來源表記錄範圍。無權回 `__source_restricted__`,與 `__source_deleted__` 分開(受範圍限制時「查不到」無法與「已刪除」區分,一律回前者以免揭露存在性)。**表單級閘實為粗網** —— 完全無權時 `defaultFieldVisibility` 已回 hidden,真正發動的是欄位級閘;留著是為「目標欄名解不出來」時仍 fail-closed |
 | D10 | ✅ 同步點在 `RecordService` 寫入路徑;**只有 `grantsAccess` 為 true 的 member 欄**參與,且該欄未被本次寫入觸及時不動 `assignees`(避免部分更新清空指派)|
 
 **實作期新發現(非 pre-mortem 預列,由實走揪出)**
@@ -255,6 +255,11 @@ v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown�
 |---|---|---|---|
 | D11 | **指派在送出邊界被靜默丟掉**|`toSubmitValue` 的 default 分支只收字串,`member` 的數值 actor id 落入後回 `undefined` → 畫面明明選了人、存進去是空的,且**沒有任何錯誤** | 加 `member` 分支 + 迴歸測(已反向驗證:移除修正即紅)| **P0** |
 | D12 | 🔴 **`APP_DATABASE_URL` 未設時靜默回落到 migration 特權角色 → RLS 完全不執法**(租戶隔離與記錄範圍一起失效,查詢照常回資料)。dev 因此**永遠驗不出範圍限制**,本模組差點以「瀏覽器看起來沒限制」誤判為 bug | (a) prod `validateEnv` fail-fast(未設 / 與 `DATABASE_URL` 相同即拒開機)(b) 開機自檢查 `pg_roles`:app 車道若為 superuser 或 BYPASSRLS,prod throw / dev 大聲警告 (c) dev 加 `x-dev-real-authz: 1` header 走真實角色解析,讓範圍限制在瀏覽器裡驗得出來 | **P0** |
+
+**#113 sweep 另發現(同批已修)**|記錄範圍原本**只接在列表路徑**上 —— `getRecord` /
+`updateRecord` / `softDeleteRecord` / 簽核送簽 / 按鈕動作都沒帶範圍,只要知道 id 就繞得過去。
+這是「橫向防護只掛在一種路由形狀上」的第四次重演(前三次:選項改型別、匯入、按鈕執行)。
+**配額 count 刻意不套範圍**已加註理由(租戶量非個人可見量)。7 條迴歸測全數反向驗證。
 
 > D12 與 #98(NODE_ENV 未設即 dev 旁路)、本 session 稍早的「測試用 superuser 連線導致 RLS 全程未執法」是**同一類**:安全機制在設定缺漏時**無聲失效**,且驗證環境本身把失效遮住。**判準**:凡「靠設定才生效」的安全機制,都要有開機自檢或 fail-fast,不能只靠文件。
 
