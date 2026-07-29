@@ -89,6 +89,8 @@ function Column({
   return (
     <div
       ref={setNodeRef}
+      data-stack={id}
+      aria-label={`看板欄 ${title}`}
       className={`flex w-60 shrink-0 flex-col gap-1.5 border p-2 ${
         isOver ? "border-primary bg-primary/5" : "border-line bg-surface"
       }`}
