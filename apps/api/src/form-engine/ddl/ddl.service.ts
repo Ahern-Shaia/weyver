@@ -117,6 +117,12 @@ export class DdlService {
     const field = fields.find((f) => f.id === fieldId)
     if (field === undefined) throw new InvalidTypeConversionError("<missing>", newType)
     const from = field.cellValueType as CellValueType
+    /* 🔴 選項的增刪改名一律走 /options(#105)。
+       本路徑只換 metadata **不動資料** —— 拿它改選項就是製造孤兒值的那條路。
+       擋在這裡而非只寫在文件裡:文件擋不住下一個接手的人。 */
+    if (from === newType && (from === "singleSelect" || from === "multiSelect")) {
+      throw new InvalidTypeConversionError(from, newType)
+    }
     if (!isSafeConversion(from, newType)) throw new InvalidTypeConversionError(from, newType)
 
     const target = fieldType(newType)

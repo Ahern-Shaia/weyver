@@ -270,3 +270,22 @@ describe("選項名稱唯一性", () => {
     ).rejects.toThrow()
   })
 })
+
+describe("不得繞道 /type 改選項", () => {
+  it("**alterFieldType 對同型別 select 直接拒絕** —— 那條路只換 metadata 不動資料", async () => {
+    const { formId, fieldId } = await selectForm("繞道測試", "singleSelect", [
+      C("o00000001", "甲"),
+      C("o00000002", "乙"),
+    ])
+    const r = await records.createRecord(tenantA, formId, { 編號: "A", 狀態: "甲" }, ACTOR)
+
+    await expect(
+      ddl.alterFieldType(tenantA, formId, fieldId, "singleSelect", {
+        choices: [C("o00000001", "改過的甲"), C("o00000002", "乙")],
+      }),
+    ).rejects.toThrow()
+
+    // 值沒被動過,也沒變成孤兒
+    expect(await readStatus(formId, r.id)).toBe("甲")
+  })
+})
