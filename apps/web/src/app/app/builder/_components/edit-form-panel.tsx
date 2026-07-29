@@ -34,6 +34,7 @@ export interface PendingField {
   displayFields: string // link(逗號)
   linkFieldName: string // lookup
   targetFieldName: string // lookup
+  lookupKeepsValue: boolean // lookup(#113):保留填單當時的內容 = snapshot
   childFormId: string // rollup
   childFieldName: string // rollup
   rollupFn: string // rollup
@@ -67,7 +68,11 @@ function pendingOptions(p: PendingField): Record<string, unknown> {
       return o
     }
     case "lookup":
-      return { linkFieldName: p.linkFieldName, targetFieldName: p.targetFieldName }
+      return {
+        linkFieldName: p.linkFieldName,
+        targetFieldName: p.targetFieldName,
+        syncMode: p.lookupKeepsValue ? "snapshot" : "live",
+      }
     case "rollup":
       return {
         childFormId: Number(p.childFormId),
@@ -136,6 +141,9 @@ export function EditFormPanel({
       childFieldName: "",
       rollupFn: "SUM",
       grantsAccess: false,
+      /* 建議值 = 保留當時內容。業界多數(Ragic / FileMaker / Dataverse / SAP)皆為快照;
+         全 live 那一派的社群長年抱怨「改個主檔,去年的單據跟著變」。 */
+      lookupKeepsValue: true,
     })
   }
 

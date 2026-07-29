@@ -6,6 +6,7 @@ import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
 import { ConvertTypePanel } from "./convert-type-panel"
 import { OptionsEditorPanel } from "./options-editor-panel"
+import { RelookupPanel } from "./relookup-panel"
 import {
   DEFAULT_VARIABLES,
   type DefaultValue,
@@ -227,6 +228,11 @@ export function FieldSettingsPanel({
         currentType={field.type}
         onConverted={onOptionsSaved}
       />
+
+      {field.type === "lookup" &&
+      (field.options as { syncMode?: string }).syncMode === "snapshot" ? (
+        <RelookupPanel formId={formId} fieldId={field.id} onDone={onOptionsSaved} />
+      ) : null}
 
       {choices !== undefined ? (
         <OptionsEditorPanel
