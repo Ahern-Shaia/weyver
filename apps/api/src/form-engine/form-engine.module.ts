@@ -13,6 +13,7 @@ import { OptionService } from "./field-types/option.service.js"
 import { ImportService } from "./import/import.service.js"
 import { RecordService } from "./records/record.service.js"
 import { RelationService } from "./relations/relation.service.js"
+import { RelookupService } from "./relations/relookup.service.js"
 import { ReverseRelationService } from "./relations/reverse-relation.service.js"
 import { RollupService } from "./relations/rollup.service.js"
 
@@ -29,6 +30,7 @@ import { RollupService } from "./relations/rollup.service.js"
     RecordService,
     FormulaService,
     RelationService,
+    RelookupService,
     ReverseRelationService,
     RollupService,
     LayoutService,
@@ -42,6 +44,7 @@ import { RollupService } from "./relations/rollup.service.js"
     RecordService,
     FormulaService,
     RelationService,
+    RelookupService,
     ReverseRelationService,
     RollupService,
     LayoutService,

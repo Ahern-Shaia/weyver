@@ -27,6 +27,7 @@ import { DdlService } from "../ddl/ddl.service.js"
 import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
 import { AccessPreviewService } from "../access/access-preview.service.js"
 import { OptionService } from "../field-types/option.service.js"
+import { RelookupService } from "../relations/relookup.service.js"
 import { ImportService } from "../import/import.service.js"
 import { commitImportSchema, importPlanSchema } from "../import/import-specs.js"
 import { MAX_IMPORT_ROWS, parseSheet, sheetNames, suggestMapping } from "../import/workbook.js"
@@ -52,7 +53,7 @@ import {
   type FieldDto,
   type FormDto,
 } from "./api-schemas.js"
-import type { z } from "zod"
+import { z } from "zod"
 
 /* 薄 controller(AGENTS 分層鐵則):只做 HTTP 形狀 ↔ service 呼叫,零業務邏輯 */
 @Controller("api/forms")
@@ -63,6 +64,7 @@ export class FormsController {
     @Inject(MetadataService) private readonly metadata: MetadataService,
     @Inject(LayoutService) private readonly layout: LayoutService,
     @Inject(OptionService) private readonly options: OptionService,
+    @Inject(RelookupService) private readonly relookup: RelookupService,
     @Inject(ImportService) private readonly imports: ImportService,
     @Inject(AccessPreviewService) private readonly preview: AccessPreviewService,
   ) {}
@@ -203,6 +205,21 @@ export class FormsController {
     @Param("actorId", ParseIntPipe) actorId: number,
   ): Promise<unknown> {
     return this.preview.preview(tenant.tenantId, formId, actorId)
+  }
+
+  /* 🔴 #113 快照帶入重整。Ragic 對應功能是無差別覆蓋、無 diff、無稽核,
+     其官方另闢專篇教「被蓋掉怎麼從備份救」。這裡先 dry-run 給人看再寫,每筆留稽核。 */
+  @Post(":formId/fields/:fieldId/relookup")
+  @HttpCode(200)
+  @RequiresFormAction("design")
+  relookupField(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(z.object({ dryRun: z.boolean().default(true) })))
+    body: { dryRun: boolean },
+  ): Promise<unknown> {
+    return this.relookup.relookup(tenant.tenantId, formId, fieldId, tenant.actorId, body.dryRun)
   }
 
   /* 🔴 型別轉換(#105 四態)。preview 是唯讀 dry-run,**回兩個數字**

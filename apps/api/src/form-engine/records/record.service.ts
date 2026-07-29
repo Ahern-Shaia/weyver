@@ -21,7 +21,11 @@ import {
   UnknownFieldError,
   VersionConflictError,
 } from "../errors.js"
-import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
+import {
+  type CellValueType,
+  fieldType,
+  isSnapshotLookup,
+} from "../field-types/field-type-registry.js"
 import { FormulaService } from "../formula/formula.service.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import { defaultNeedsUserName, resolveDefaultValue } from "../layout/default-value.js"
@@ -260,16 +264,25 @@ export class RecordService {
       // 記錄級閘:來源表檢視受 own 限制時,帶入也只能帶自己看得到的記錄
       const targetScoped = policy?.isScopedToOwn?.(targetFormId, "view") === true
 
+      /* 🔴 快照模式:值已在物理欄裡,讀取時**不得**用即時值蓋掉(那就等於 live)。
+         值為 NULL 才回退即時計算 —— 對應 lazy backfill:剛從 live 切成 snapshot 的既有記錄
+         還沒有值,先照舊顯示,下次寫入或明確重整才落值(§0-ter A-8)。 */
+      const snapshot = isSnapshotLookup(lf.row.options)
+      const pending = snapshot
+        ? out.filter((r) => r.values[lf.row.name] === null || r.values[lf.row.name] === undefined)
+        : out
+      if (pending.length === 0) continue
+
       const ids = [
         ...new Set(
-          out.map((r) => toId(r.values[linkName])).filter((v): v is number => v !== undefined),
+          pending.map((r) => toId(r.values[linkName])).filter((v): v is number => v !== undefined),
         ),
       ]
       const targets = await this.getRecordsByIds(tenantId, targetFormId, ids, {
         actorId: actorId ?? null,
         own: targetScoped,
       })
-      for (const rec of out) {
+      for (const rec of pending) {
         const linkedId = toId(rec.values[linkName])
         const target = linkedId !== undefined ? targets.get(linkedId) : undefined
         /* 🔴 區分「沒連結」與「連結的來源已不存在」(#113)。
@@ -885,7 +898,9 @@ export class RecordService {
         row,
         column: physicalColumnName(row.id),
         type,
-        virtual: fieldType(type).virtual === true,
+        /* 🔴 snapshot 模式的 lookup 有物理欄(#113)→ 不是虛擬欄:
+           baseQuery 要 select 它,值才讀得到。虛擬與否是**逐欄**的,不是逐型別的。 */
+        virtual: fieldType(type).virtual === true && !isSnapshotLookup(row.options),
       }
     })
     // layout 讀時 parse 兜底(DB 竄改/舊版 → 忽略,走無預設)
@@ -1044,6 +1059,31 @@ export class RecordService {
         throw new FieldValueError(name, z.prettifyError(parsed.error))
       }
       columns[field.column] = this.toDbValue(field.type, parsed.data)
+    }
+
+    /* 🔴 #113 快照帶入:link 欄本次被寫到時,把來源當下的值固化進本表的物理欄。
+       之後主檔怎麼改都不動這張單據 —— 這是 Ragic / FileMaker / Dataverse 的預設語意,
+       理由是失敗不對稱:live 出錯會**靜默改寫歷史單據且不可回復**,snapshot 出錯只是看到舊值,
+       按一下重整就好(field-types-parity.md §0-ter A-5)。 */
+    const snapshotLookups = resolved.fields.filter(
+      (f) => f.type === "lookup" && isSnapshotLookup(f.row.options),
+    )
+    for (const lf of snapshotLookups) {
+      const opts = lf.row.options as { linkFieldName?: string; targetFieldName?: string }
+      const linkField = opts.linkFieldName ? resolved.byName.get(opts.linkFieldName) : undefined
+      if (linkField === undefined || opts.targetFieldName === undefined) continue
+      // 只在 link 欄本次有被寫到時重取 —— 否則每次存檔都會把快照刷成最新,等同 live
+      if (!(linkField.column in columns)) continue
+      const linkedId = toId(columns[linkField.column])
+      if (linkedId === undefined) {
+        columns[lf.column] = null
+        continue
+      }
+      const targetFormId = (linkField.row.options as { targetFormId?: number }).targetFormId
+      if (targetFormId === undefined) continue
+      const targets = await this.getRecordsByIds(tenantId, targetFormId, [linkedId])
+      const value = targets.get(linkedId)?.values[opts.targetFieldName]
+      columns[lf.column] = value === undefined || value === null ? null : String(value)
     }
 
     /* 🔴 E-1 指派同步(#96):勾了 grantsAccess 的 member 欄 → 系統欄 assignees。

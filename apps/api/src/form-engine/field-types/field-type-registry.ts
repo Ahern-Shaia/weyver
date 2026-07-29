@@ -75,6 +75,15 @@ const NO_CONTROL_RE = /^[^\u0000-\u001F\u007F]*$/u
 
 const emptyOptions = z.object({}).strict()
 
+/* lookup 是否為快照模式(有物理欄、值寫入時固化)。options 可能來自 DB 尚未 parse,故寬鬆讀。 */
+export function isSnapshotLookup(options: unknown): boolean {
+  return (
+    typeof options === "object" &&
+    options !== null &&
+    (options as { syncMode?: unknown }).syncMode === "snapshot"
+  )
+}
+
 export interface FieldTypeDefinition {
   readonly cellValueType: CellValueType
   readonly dbFieldType: DbFieldType
@@ -531,9 +540,16 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
       .object({
         linkFieldName: z.string().min(1).max(100),
         targetFieldName: z.string().min(1).max(100),
+        /* 🔴 #113 lookup 的 live vs snapshot(docs/modules/R1/field-types-parity.md §0-ter A)。
+           **schema 預設 live** —— 既有欄位無此鍵,預設值必須維持既有語意,否則等於靜默改寫
+           所有既有單據的行為。設計器對**新欄**建議 snapshot(業界多數:Ragic / FileMaker /
+           Dataverse / SAP 皆為快照;全 live 的是 Airtable 那一派,其社群長年抱怨歷史單據被改寫)。 */
+        syncMode: z.enum(["live", "snapshot"]).default("live"),
       })
       .strict(),
-    buildColumn: () => undefined,
+    /* snapshot 模式要有物理欄才存得住值;live 維持虛擬欄(無欄、讀時算)。 */
+    buildColumn: (t, col, options) =>
+      isSnapshotLookup(options) ? void t.text(col) : undefined,
     valueSchema: () => z.never(),
     filterOperators: [],
     systemManaged: true,
