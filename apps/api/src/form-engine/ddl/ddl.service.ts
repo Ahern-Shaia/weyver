@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common"
+import { and, eq } from "drizzle-orm"
 import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { ddlAudits } from "../../db/schema.js"
@@ -34,6 +35,8 @@ import type { AddFieldSpec, CreateFormSpec } from "../specs/form-specs.js"
 const DDL_STATEMENT_TIMEOUT = "10s"
 /* 轉換會取 ACCESS EXCLUSIVE;拿不到就放棄而非排隊(排隊會連帶卡住後續讀者) */
 const DDL_LOCK_TIMEOUT = "3s"
+/* 與匯入撤銷保留期一致(OQ-IMP-1)。側表故不受 PG 1600 欄上限拘束。 */
+const CONVERSION_UNDO_DAYS = 30
 
 /* dbFieldType → PG 型別。ALTER ... TYPE 需要真實型別名。 */
 const PG_TYPE: Readonly<Record<string, string>> = {
@@ -159,6 +162,91 @@ export class DdlService {
   }
 
 
+
+  /* 轉換前把整欄原值複製到側表。到期日與匯入撤銷一致(30 天)。 */
+  private async snapshotColumn(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    conversionId: number,
+  ): Promise<void> {
+    const table = physicalTableName(formId)
+    const col = quoteColumn(physicalColumnName(fieldId))
+    await this.knex.raw(
+      `INSERT INTO field_conversion_snapshot
+         (tenant_id, conversion_id, form_id, field_id, record_id, old_value, expires_at)
+       SELECT ?, ?, ?, ?, id, to_jsonb(${col}), now() + interval '${CONVERSION_UNDO_DAYS} days'
+         FROM ${DATA_SCHEMA}.??
+        WHERE tenant_id = ? AND deleted_at IS NULL AND ${col} IS NOT NULL`,
+      [tenantId, conversionId, formId, fieldId, table, tenantId],
+    )
+  }
+
+  /* 🔴 還原一次 lossy 轉換(#105)。
+     先把欄位型別轉回去,再從側表把原值寫回。**只寫回快照裡有的列** ——
+     轉換後新增的記錄不在快照內,不該被動到。 */
+  async revertFieldConversion(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    conversionId: number,
+  ): Promise<{ restored: number }> {
+    const audits = await this.db
+      .select()
+      .from(ddlAudits)
+      .where(and(eq(ddlAudits.tenantId, tenantId), eq(ddlAudits.id, conversionId)))
+    const spec = audits[0]?.spec as { from?: string; to?: string } | undefined
+    const from = spec?.from as CellValueType | undefined
+    if (from === undefined) throw new FieldNotFoundError(fieldId)
+
+    const table = physicalTableName(formId)
+    const col = quoteColumn(physicalColumnName(fieldId))
+    const source = fieldType(from)
+    const pgType = PG_TYPE[source.dbFieldType] ?? "text"
+
+    /* 🔴 `USING NULL` 會把**轉換後才新增的列**一起清空(測試抓到的資料遺失)。
+       改用反向 cast:先把現值盡量轉回原型別,快照再覆蓋它有的那些列。
+       不在快照裡的列(轉換後新增)因此保有自己的值。 */
+    const { fields: current } = await this.readyForm(tenantId, formId)
+    const nowType = (current.find((f) => f.id === fieldId)?.cellValueType ??
+      from) as CellValueType
+
+    const restored = await this.knex.transaction(async (trx) => {
+      await this.acquireDdlLock(trx, formId)
+      await trx.raw(`SET LOCAL lock_timeout = '${DDL_LOCK_TIMEOUT}'`)
+      const back = await this.castFor(trx, nowType, from, physicalColumnName(fieldId), fieldId, {})
+      await trx.raw(
+        `ALTER TABLE ${DATA_SCHEMA}.?? ALTER COLUMN ?? TYPE ${pgType} USING (${back.sql})`,
+        [table, physicalColumnName(fieldId), ...back.bindings] as Knex.RawBinding[],
+      )
+      const res = (await trx.raw(
+        `UPDATE ${DATA_SCHEMA}.?? t SET ${col} = (
+             CASE WHEN jsonb_typeof(s.old_value) = 'array'
+                  THEN (SELECT array_agg(x #>> '{}') FROM jsonb_array_elements(s.old_value) x)::text[]::text
+                  ELSE s.old_value #>> '{}' END
+           )::${pgType}
+           FROM field_conversion_snapshot s
+          WHERE s.tenant_id = ? AND s.conversion_id = ? AND s.record_id = t.id
+            AND t.tenant_id = ?`,
+        [table, tenantId, conversionId, tenantId],
+      )) as { rowCount?: number }
+      return res.rowCount ?? 0
+    })
+
+    await this.metadata.updateFieldType(tenantId, fieldId, from, source.dbFieldType, {})
+    await this.metadata.bumpVersion(tenantId, formId)
+    await this.knex.raw(`ANALYZE ${DATA_SCHEMA}.??`, [table])
+    await this.audit(
+      tenantId,
+      formId,
+      "revertFieldConversion",
+      { fieldId, conversionId, restoredTo: from, restored },
+      "",
+      "ok",
+    )
+    return { restored }
+  }
+
   /* 🔴 dry-run 與執行**共用同一段運算式**(Flyway dry-run 同原理)。
      會拋錯的路徑包進 pg_temp 的 try_cast:轉不動的個別回 NULL,
      而不是讓一筆 "N/A" 弄垮整個 ALTER。函式建在 pg_temp,交易結束即消失。 */
@@ -195,7 +283,7 @@ export class DdlService {
     fieldId: number,
     newType: CellValueType,
     castOptions: CastOptions = {},
-  ): Promise<{ kind: ConversionKind }> {
+  ): Promise<{ kind: ConversionKind; conversionId?: number }> {
     const { fields } = await this.readyForm(tenantId, formId)
     const field = fields.find((f) => f.id === fieldId)
     if (field === undefined) throw new FieldNotFoundError(fieldId)
@@ -212,8 +300,26 @@ export class DdlService {
     const target = fieldType(newType)
     const pgType = PG_TYPE[target.dbFieldType]
     let executedSql = ""
+    let conversionId: number | null = null
 
     try {
+      /* 🔴 lossy 轉換前先把原值存進側表 —— 這是「可還原」的唯一依據。
+         Ragic 的型別轉換是非破壞性的(改回去值就回來),客戶的心智是
+         「改型別可以隨便試」;我們的物理型別真的變了,只能靠快照補回這個體驗。 */
+      if (rule.kind === "lossy") {
+        conversionId = await this.audit(
+          tenantId,
+          formId,
+          "convertFieldType",
+          { fieldId, from, to: newType, kind: rule.kind, phase: "snapshot" },
+          "",
+          "ok",
+        )
+        if (conversionId !== null) {
+          await this.snapshotColumn(tenantId, formId, fieldId, conversionId)
+        }
+      }
+
       await this.knex.transaction(async (trx) => {
         await this.acquireDdlLock(trx, formId)
         // 拿不到鎖就放棄,不排隊 —— ACCESS EXCLUSIVE 排隊會把後續讀者一起卡住
@@ -248,7 +354,7 @@ export class DdlService {
         executedSql,
         "ok",
       )
-      return { kind: rule.kind }
+      return conversionId === null ? { kind: rule.kind } : { kind: rule.kind, conversionId }
     } catch (error) {
       await this.audit(
         tenantId,
@@ -523,20 +629,25 @@ export class DdlService {
     executedSql: string,
     result: "ok" | "failed",
     error?: unknown,
-  ): Promise<void> {
+  ): Promise<number | null> {
     try {
-      await this.db.insert(ddlAudits).values({
-        tenantId,
-        formId,
-        action,
-        spec: spec as Record<string, unknown>,
-        executedSql: executedSql === "" ? null : executedSql,
-        result,
-        errorMessage: error === undefined ? null : String(error).slice(0, 2000),
-      })
+      const [row] = await this.db
+        .insert(ddlAudits)
+        .values({
+          tenantId,
+          formId,
+          action,
+          spec: spec as Record<string, unknown>,
+          executedSql: executedSql === "" ? null : executedSql,
+          result,
+          errorMessage: error === undefined ? null : String(error).slice(0, 2000),
+        })
+        .returning({ id: ddlAudits.id })
+      return row?.id ?? null
     } catch {
       // audit 失敗不得掩蓋原始錯誤;僅記 stderr
       console.error(`ddl_audit write failed for form ${formId} action ${action}`)
+      return null
     }
   }
 }

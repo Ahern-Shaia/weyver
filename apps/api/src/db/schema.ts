@@ -849,3 +849,38 @@ export const importBatchRows = pgTable(
     index("import_batch_row_record_idx").on(t.tenantId, t.recordId),
   ],
 )
+
+/* 🔴 型別轉換的原值快照(#105,深研見 field-types-parity.md §0-ter B)。
+
+   **為什麼是側表而不是影子欄**|研究原本建議「轉換前把原值複製到同表的影子欄」,
+   但 PG 16 官方明載:**DROP 掉的欄位仍計入 1600 欄上限**,只有 VACUUM FULL /
+   pg_repack 重建整表才回收。在使用者可自由增刪欄位、且設計期反覆改型別是常態的
+   平台上,影子欄會把額度吃光而且要不回來。
+   (Baserow 用影子欄,但它只留 **120 分鐘** —— 短窗口才划得來,而其原始碼也自承
+   「fast but not suitable for actually backing up the data」。)
+
+   側表另有兩個好處:不會被 `SELECT *` 或 information_schema 反射意外撈出去;
+   TTL 清理是 `DELETE WHERE expires_at < now()` 而不是 DDL。
+
+   header 直接用 `ddl_audit` 那一列(已存 from/to/kind),不另立表。 */
+export const fieldConversionSnapshots = pgTable(
+  "field_conversion_snapshot",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    // 對應 ddl_audit.id —— 一次轉換就是一批
+    conversionId: bigint("conversion_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    fieldId: bigint("field_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    /* 原值以 jsonb 存(text / 陣列 / 數字皆可容納);還原時依原型別轉回 */
+    oldValue: jsonb("old_value"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index("field_conversion_snapshot_batch_idx").on(t.tenantId, t.conversionId),
+    index("field_conversion_snapshot_expiry_idx").on(t.expiresAt),
+  ],
+)

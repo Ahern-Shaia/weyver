@@ -183,6 +183,13 @@
       "when": 1785290771946,
       "tag": "0025_import_batch",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1785310596039,
+      "tag": "0026_field_conversion_snapshot",
+      "breakpoints": true
     }
   ]
 }

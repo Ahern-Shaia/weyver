@@ -538,17 +538,23 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 | 轉換後 ANALYZE(官方明載統計會被清除) | ✅ SHIPPED(置於交易外,不延長持鎖) |
 | `lock_timeout` 拿不到鎖即放棄(不排隊擋讀者) | ✅ SHIPPED |
 | text→date **格式白名單**、number→money **強制指定幣別** | ✅ 契約已定;幣別的 UI 強制待前端 |
-| **保留原值 / 可還原(side table)** | ⏳ **未做** —— 目前 lossy 轉換**不可還原** |
+| **保留原值 / 可還原(side table)** | ✅ SHIPPED(`field_conversion_snapshot`,30 天;header 復用 `ddl_audit` 那一列不另立表) |
 | 影響筆數超過門檻的二次確認 | ⏳ 未做(待前端) |
 | 大表 expand-contract 逃生路徑 | ⏳ 未做(實測 7M 列 rewrite 僅 21.6 秒,先不預建) |
 
-**實作期由測試抓到的兩個缺陷**
+**實作期由測試抓到的四個缺陷**
 1. 🔴 **裸 cast 遇到第一個壞值就整句失敗**。`"f1"::numeric` 只要有一筆 `N/A`
    就讓整個 ALTER 失敗 —— 而客戶的舊 Excel 幾乎必有 `N/A` / `待確認`。
    **`try_cast` 當時已寫好卻沒接上去**,是測試才發現。
 2. 🔴 **轉換時把 options 清成 `{}`**,單選轉多選會把 `choices` 弄丟 →
    欄位變成沒有任何合法值的選單,「轉換成功」但資料再也寫不進去。
    改為以新型別的 schema `safeParse` 舊 options,能接受就沿用。
+3. 🔴 **還原用 `USING NULL` 會清空「轉換後才新增」的列**。那些列不在快照裡,
+   還原後就永久是空的 —— **還原動作本身造成資料遺失**,比原本的轉換更糟。
+   改為先以**反向 cast** 把現值轉回原型別,快照再覆蓋它有的那些列。
+4. `numeric(19,4)::text` 給出 `42.0000` —— 無損但難看,而使用者把數字欄轉成
+   文字時期待看到 `42`。改用 `trim_scale()`(PG 13+,只去小數尾零,
+   不會把 `100` 變成 `1`)。
 
 **與研究建議的偏離**|`castExpression` 的欄名**直接內插而非走 knex `??`**。
 理由:該運算式會被嵌進 count 查詢裡重複三次,佔位符的 binding 數量極難對齊(實作時踩到)。

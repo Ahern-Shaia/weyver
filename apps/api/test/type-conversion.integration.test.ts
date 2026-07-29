@@ -110,8 +110,8 @@ describe("🔴 執行轉換(#105)", () => {
   it("number → text 無損轉換", async () => {
     const { formId, fieldId } = await formWith("數轉文", "number", [42, 7])
     await ddl.convertFieldType(tenantA, formId, fieldId, "text")
-    const all = await readAll(formId)
-    expect(all.every((v) => typeof v === "string")).toBe(true)
+    // numeric(19,4) 直接 ::text 會給 42.0000;trim_scale 去掉小數尾零
+    expect((await readAll(formId)).sort()).toEqual(["42", "7"])
   })
 
   it("**lossy:轉不動的清空,轉得動的保留** —— 不是整批失敗也不是全部清空", async () => {
@@ -162,5 +162,58 @@ describe("轉換後的資料仍可正常讀寫(#105)", () => {
     await ddl.convertFieldType(tenantA, formId, fieldId, "multiSelect")
     const created = await records.createRecord(tenantA, formId, { 值: ["甲", "乙"] }, ACTOR)
     expect(created.values.值).toEqual(["甲", "乙"])
+  })
+})
+
+describe("🔴 lossy 轉換可還原(#105)", () => {
+  it("**還原後值回來** —— Ragic 的型別轉換是非破壞性的,客戶心智是「可以隨便試」", async () => {
+    const { formId, fieldId } = await formWith("可還原", "text", ["10", "N/A", "20"])
+    const done = await ddl.convertFieldType(tenantA, formId, fieldId, "number")
+    expect(done.conversionId).toBeDefined()
+    // 轉換後:N/A 被清空
+    expect((await readAll(formId)).filter((v) => v === null)).toHaveLength(1)
+
+    await ddl.revertFieldConversion(tenantA, formId, fieldId, done.conversionId ?? 0)
+    expect((await readAll(formId)).sort()).toEqual(["10", "20", "N/A"])
+  })
+
+  it("safe-rewrite 不留快照(無資料會丟,沒有還原的必要)", async () => {
+    const { formId, fieldId } = await formWith("無需快照", "number", [1, 2])
+    const done = await ddl.convertFieldType(tenantA, formId, fieldId, "text")
+    expect(done.conversionId).toBeUndefined()
+    const { rows } = await pool.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM field_conversion_snapshot WHERE form_id = $1",
+      [formId],
+    )
+    expect(rows[0]?.n).toBe(0)
+  })
+
+  it("**還原不動轉換後才新增的記錄** —— 它們不在快照裡,不該被牽連", async () => {
+    const { formId, fieldId } = await formWith("新增不受影響", "text", ["10", "N/A"])
+    const done = await ddl.convertFieldType(tenantA, formId, fieldId, "number")
+    const added = await records.createRecord(tenantA, formId, { 值: 999 }, ACTOR)
+
+    await ddl.revertFieldConversion(tenantA, formId, fieldId, done.conversionId ?? 0)
+    const after = await records.getRecord(tenantA, formId, added.id)
+    expect(after.values.值).toBe("999")
+  })
+
+  it("還原後欄位型別也轉回原本的(不只是值)", async () => {
+    const { formId, fieldId } = await formWith("型別轉回", "text", ["5"])
+    const done = await ddl.convertFieldType(tenantA, formId, fieldId, "number")
+    await ddl.revertFieldConversion(tenantA, formId, fieldId, done.conversionId ?? 0)
+    // 轉回 text 後,非數字值可以寫入
+    const created = await records.createRecord(tenantA, formId, { 值: "純文字" }, ACTOR)
+    expect(created.values.值).toBe("純文字")
+  })
+
+  it("快照有 30 天到期日(可清理,不無限長)", async () => {
+    const { formId, fieldId } = await formWith("到期", "text", ["x"])
+    await ddl.convertFieldType(tenantA, formId, fieldId, "number")
+    const { rows } = await pool.query<{ days: number }>(
+      "SELECT EXTRACT(DAY FROM (expires_at - now()))::int AS days FROM field_conversion_snapshot WHERE form_id = $1 LIMIT 1",
+      [formId],
+    )
+    expect(rows[0]?.days).toBeGreaterThanOrEqual(29)
   })
 })

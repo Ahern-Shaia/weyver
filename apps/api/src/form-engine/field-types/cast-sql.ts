@@ -82,6 +82,12 @@ export function castExpression(
     if (from === "date" || from === "dateTime") {
       return { sql: `to_char(${col}, 'YYYY-MM-DD')`, bindings: [] }
     }
+    if (from === "number" || from === "money" || from === "percent") {
+      /* 欄位是 numeric(19,4),直接 ::text 會得到 `42.0000` —— 無損但難看,
+         而使用者把數字欄轉成文字時期待看到的是 `42`。
+         trim_scale(PG 13+)只去掉小數部分的尾零,不會把 `100` 變成 `1`。 */
+      return { sql: `trim_scale(${col})::text`, bindings: [] }
+    }
     return { sql: `${col}::text`, bindings: [] }
   }
   if (to === "number" || to === "money" || to === "percent") {
