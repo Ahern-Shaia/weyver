@@ -163,11 +163,13 @@ export function FormWorkspace(): ReactNode {
               匯入資料
             </button>
           ) : null}
+          {/* 深連到**目前這張表**的設計模式(#109)。原本連到 builder 根目錄,
+              使用者到了那裡還要自己在清單裡找回剛才那張表。 */}
           <Link
-            href="/app/builder"
+            href={`/app/builder?form=${formId}&mode=design`}
             className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
           >
-            設計器
+            設計
           </Link>
         </div>
       </div>

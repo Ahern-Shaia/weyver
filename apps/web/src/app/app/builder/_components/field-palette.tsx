@@ -1,8 +1,23 @@
 "use client"
 
+import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
+import { useState } from "react"
 import { ADVANCED_TYPES, BUILDABLE_TYPES, fieldTypeMeta } from "@/lib/engine/field-types"
 import type { CellValueType } from "@/lib/engine/schemas"
+
+/* 常用置頂(#109)。28 種型別平鋪會觸 Hick's law —— 選擇時間隨選項數成長,
+   而實務上絕大多數欄位落在這 8 種。Airtable / Notion 官方皆有欄位搜尋。 */
+const COMMON: readonly CellValueType[] = [
+  "text",
+  "longText",
+  "number",
+  "money",
+  "date",
+  "singleSelect",
+  "multiSelect",
+  "checkbox",
+]
 
 export function FieldPalette({
   onPick,
@@ -13,20 +28,57 @@ export function FieldPalette({
   disabled?: boolean
   advanced?: boolean
 }) {
+  const [q, setQ] = useState("")
+  const term = q.trim().toLowerCase()
+  const all: readonly CellValueType[] = advanced
+    ? [...BUILDABLE_TYPES, ...ADVANCED_TYPES, "link"]
+    : BUILDABLE_TYPES
+  const matches = all.filter(
+    (t) =>
+      fieldTypeMeta(t).label.toLowerCase().includes(term) || t.toLowerCase().includes(term),
+  )
+  const rest = BUILDABLE_TYPES.filter((t) => !COMMON.includes(t))
+
   return (
     <div className="w-[178px] shrink-0 overflow-y-auto border-r border-line bg-card p-2.5">
       <div className="px-1.5 pb-2 text-[10px] font-semibold tracking-wide text-ink-4">
         欄位型別 · 點擊加入
       </div>
-      <PaletteGroup types={BUILDABLE_TYPES} onPick={onPick} disabled={disabled} />
-      {advanced ? (
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="搜尋型別…"
+        aria-label="搜尋欄位型別"
+        className="mb-2 h-7"
+      />
+
+      {term !== "" ? (
+        matches.length === 0 ? (
+          <div className="px-1.5 py-2 text-[11px] text-ink-4">找不到「{q.trim()}」</div>
+        ) : (
+          <PaletteGroup types={matches} onPick={onPick} disabled={disabled} />
+        )
+      ) : (
         <>
+          <PaletteGroup types={COMMON} onPick={onPick} disabled={disabled} />
           <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-4">
-            進階 · 計算/關聯
+            其他
           </div>
-          <PaletteGroup types={[...ADVANCED_TYPES, "link"]} onPick={onPick} disabled={disabled} />
+          <PaletteGroup types={rest} onPick={onPick} disabled={disabled} />
+          {advanced ? (
+            <>
+              <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-4">
+                進階 · 計算/關聯
+              </div>
+              <PaletteGroup
+                types={[...ADVANCED_TYPES, "link"]}
+                onPick={onPick}
+                disabled={disabled}
+              />
+            </>
+          ) : null}
         </>
-      ) : null}
+      )}
     </div>
   )
 }
