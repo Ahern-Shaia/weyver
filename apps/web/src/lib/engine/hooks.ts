@@ -90,11 +90,11 @@ export function useInfiniteRecords(formId: number, pageSize = 200) {
     queryFn: ({ pageParam }) =>
       engineFetch<ListResponse>(
         `/forms/${formId}/records?limit=${pageSize}${
-          pageParam === undefined ? "" : `&cursor=${pageParam}`
+          pageParam === undefined ? "" : `&cursor=${encodeURIComponent(pageParam)}`
         }`,
         listResponseSchema,
       ),
-    initialPageParam: undefined as number | undefined,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   })
 }
@@ -231,7 +231,7 @@ export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, page
           ...(pageParam === undefined ? {} : { cursor: pageParam }),
         },
       }),
-    initialPageParam: undefined as number | undefined,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   })
 }

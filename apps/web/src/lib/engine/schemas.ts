@@ -115,7 +115,9 @@ export type RecordRow = z.infer<typeof recordRowSchema>
 
 export const listResponseSchema = z.object({
   records: z.array(recordRowSchema),
-  nextCursor: z.number().int().nullable(),
+  /* 不透明續頁權杖(#95)—— 原樣傳回即可,不得自行解讀。
+     原本是 record id,但依非 id 欄排序時會整頁跳過。 */
+  nextCursor: z.string().nullable(),
 })
 
 export type ListResponse = z.infer<typeof listResponseSchema>
