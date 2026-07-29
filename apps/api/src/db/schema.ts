@@ -745,3 +745,39 @@ export const emailSuppressions = pgTable(
   },
   (t) => [index("email_suppression_reason_idx").on(t.reason)],
 )
+
+/* 🔴 記錄快照(#113,深研見 field-types-parity.md §0-ter A)。
+
+   **問題**|lookup / rollup 目前是虛擬欄,值在每次讀取時即時 join 出來 = 全部 live。
+   代表主檔一改,**去年的舊單據顯示內容跟著被改寫**,而且是靜默的:
+   沒有事件、沒有記錄、原值已不存在。Odoo #23756 正是這個(2018 開至今 OPEN),
+   Airtable / Baserow 社群長年抱怨(「Who wants all invoices to change when the product price changes???」)。
+
+   **決定性論點是失敗不對稱**|live 出錯不可觀察且不可修復;
+   snapshot 出錯只是使用者看到舊值,立即可見、按一下重載即可。企業級選失敗可見的那一邊。
+
+   **為什麼是側表而不是把值寫進動態表的物理欄**|
+   lookup / rollup **本來就不在真實表裡**(虛擬欄),故側表不損失任何「真實表可讀」的性質;
+   反之若改成實體欄,每個 lookup 都要 ADD COLUMN,而 PG 的 1600 欄上限
+   **連 DROP 掉的欄位都仍計入**(官方明載)—— 在使用者可自由增刪欄位的平台上不划算。
+   側表另有一個好處:凍結與未凍結是**明確的兩態**,不必用 NULL 去猜。
+
+   凍結時機目前為簽核完成(見 SnapshotService)。承 AGENTS 鐵則 4 傳票不可變;
+   證據錨:Odoo secure posted entries hash、SAP billing document 後不再重算定價。 */
+export const recordSnapshots = pgTable(
+  "record_snapshot",
+  {
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    /* 凍結當下的計算欄值:{ 欄名: 值 }。只放 lookup / rollup,
+       使用者自填欄本來就在真實表裡,不需要也不該複製一份。 */
+    values: jsonb("values").notNull(),
+    frozenAt: timestamp("frozen_at", { withTimezone: true }).notNull().defaultNow(),
+    // 'approval' 等 —— 日後多一種凍結時機時,才知道這筆是誰凍的
+    frozenReason: text("frozen_reason").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.formId, t.recordId] })],
+)

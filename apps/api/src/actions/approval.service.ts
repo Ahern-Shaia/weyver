@@ -229,6 +229,17 @@ export class ApprovalService {
       { status: "pending", currentStep: step.stepNo },
     )
     if (!won) throw raceLost()
+
+    /* 🔴 定案即固化(#113):把 lookup / rollup 的即時值寫成快照。
+       否則主檔日後一改,**已核准單據的顯示內容會被靜默改寫** —— 不可觀察也不可修復
+       (Odoo #23756 正是這個,2018 開至今 OPEN)。承 AGENTS 鐵則 4 傳票不可變。
+       置於定案之後:凍結失敗不該讓已通過的簽核回退成 pending。 */
+    await this.records.freezeComputed(
+      tenant.tenantId,
+      instance.formId,
+      instance.recordId,
+      "approval",
+    )
     await this.notifySubmitter(tenant, instance, NOTIFICATION_EVENTS.approvalApproved)
     return this.toInstanceDto(tenant, instanceId)
   }

@@ -48,6 +48,10 @@ const SYSTEM_FIELD_TYPES: ReadonlySet<CellValueType> = new Set([
   "updatedBy",
 ])
 
+/* lookup 的來源記錄已被刪除時的標記值。回 null 會讓「沒填」與「來源不見了」
+   在單據上長得一模一樣 —— 後者是資料遺失,必須看得出來。 */
+export const SOURCE_DELETED = "__source_deleted__"
+
 /* link/bigint 值經 pg 回傳為字串 → 統一轉數值 id(lookup 用) */
 function toId(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isSafeInteger(v)) return v
@@ -191,6 +195,7 @@ export class RecordService {
      公式可引用其結果。全 systemManaged(值不儲存);越權讀 target(lookup)由呼叫端 policy 遮罩兜底。 */
   private async withComputed(
     tenantId: number,
+    formId: number,
     resolved: ResolvedForm,
     records: readonly RecordRow[],
   ): Promise<RecordRow[]> {
@@ -234,6 +239,13 @@ export class RecordService {
       for (const rec of out) {
         const linkedId = toId(rec.values[linkName])
         const target = linkedId !== undefined ? targets.get(linkedId) : undefined
+        /* 🔴 區分「沒連結」與「連結的來源已不存在」(#113)。
+           兩者原本都是 null —— 單據上看起來就是「這欄空的」,而實際是資料遺失。
+           已凍結的記錄不受影響:快照值會在最後覆蓋回來,這正是 snapshot 的價值。 */
+        if (linkedId !== undefined && target === undefined) {
+          rec.values[lf.row.name] = SOURCE_DELETED
+          continue
+        }
         rec.values[lf.row.name] = target?.values[targetName] ?? null
       }
     }
@@ -277,7 +289,69 @@ export class RecordService {
         rec.values[rf.row.name] = val instanceof Decimal ? val.toString() : val
       }
     }
+
+    /* 🔴 已凍結的記錄:用快照值覆蓋剛算出來的即時值(#113)。
+       放在**最後**覆蓋而非「凍結就跳過計算」—— 計算本來就是整批做的,
+       少算幾筆省不了 round trip,但少一條分支就少一種不一致的可能。 */
+    if (lookupFields.length > 0 || rollupFields.length > 0) {
+      await this.applySnapshots(tenantId, formId, out)
+    }
     return out
+  }
+
+  /* 讀取凍結值並覆蓋。只查一次(以 record id 批次),非凍結表零成本(命不中即無事發生)。
+     🔴 **必須同時綁 form_id**:記錄 id 是每張動態表各自的序列,都從 1 開始 ——
+     只用 record_id 過濾會讓 A 表凍結的值蓋到 B 表同 id 的記錄上(實作時踩到,由測試抓出)。 */
+  private async applySnapshots(
+    tenantId: number,
+    formId: number,
+    records: RecordRow[],
+  ): Promise<void> {
+    if (records.length === 0) return
+    const rows = await this.inTenantTx(tenantId, (trx) =>
+      trx("record_snapshot")
+        .select("record_id", "values")
+        .where({ tenant_id: tenantId, form_id: formId })
+        .whereIn(
+          "record_id",
+          records.map((r) => r.id),
+        ),
+    )
+    if (rows.length === 0) return
+    const byId = new Map(
+      (rows as { record_id: string | number; values: RecordValues }[]).map((r) => [
+        Number(r.record_id),
+        r.values,
+      ]),
+    )
+    for (const rec of records) {
+      const frozen = byId.get(rec.id)
+      if (frozen === undefined) continue
+      for (const [name, value] of Object.entries(frozen)) rec.values[name] = value
+    }
+  }
+
+  /* 🔴 固化:把當下的 lookup / rollup 值寫成快照,此後不再隨主檔變動(#113)。
+     目前由簽核完成觸發 —— 單據一旦定案,其顯示內容就不該再被第三方(主檔維護者)改寫。
+
+     **once frozen, stays frozen**:ON CONFLICT DO NOTHING。
+     重複凍結會用「現在的主檔值」蓋掉「定案當下的值」,正好是本機制要防的事。 */
+  async freezeComputed(tenantId: number, formId: number, recordId: number, reason: string): Promise<void> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    const computedFields = resolved.fields.filter((f) => f.type === "lookup" || f.type === "rollup")
+    if (computedFields.length === 0) return
+
+    const record = await this.getRecord(tenantId, formId, recordId)
+    const frozen: RecordValues = {}
+    for (const field of computedFields) frozen[field.row.name] = record.values[field.row.name] ?? null
+
+    await this.inTenantTx(tenantId, (trx) =>
+      trx.raw(
+        `INSERT INTO record_snapshot (tenant_id, form_id, record_id, values, frozen_reason)
+         VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+        [tenantId, formId, recordId, JSON.stringify(frozen), reason],
+      ),
+    )
   }
 
   /* 批次依 id 取記錄(lookup target 用;raw 值,無 withComputed/withFormulas 避遞迴) */
@@ -326,7 +400,7 @@ export class RecordService {
       this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null),
     )
     await this.bindFiles(tenantId, formId, resolved, record.id, withDefaults)
-    const [enriched] = await this.withComputed(tenantId, resolved, [record])
+    const [enriched] = await this.withComputed(tenantId, formId, resolved, [record])
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
     return masked ?? injected ?? record
@@ -414,7 +488,7 @@ export class RecordService {
       if (row === undefined) throw new RecordNotFoundError(recordId)
       return this.toRecord(resolved, row as Record<string, unknown>)
     })
-    const [enriched] = await this.withComputed(tenantId, resolved, [record])
+    const [enriched] = await this.withComputed(tenantId, formId, resolved, [record])
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
     return masked ?? injected ?? record
@@ -504,7 +578,7 @@ export class RecordService {
       const last = records[records.length - 1]
       return { records, nextCursor: hasMore && last !== undefined ? last.id : null }
     })
-    const enriched = await this.withComputed(tenantId, resolved, result.records)
+    const enriched = await this.withComputed(tenantId, formId, resolved, result.records)
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
     return {
       records: this.maskRead(resolved, formId, computed, policy),
