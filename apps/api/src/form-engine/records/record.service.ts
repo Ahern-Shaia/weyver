@@ -78,24 +78,42 @@ interface AutoNumberOptions {
   readonly resetField?: string
 }
 
-function formatDatePart(fmt: "yyyy" | "yyyyMM" | "yyyyMMdd", d: Date): string {
-  const y = String(d.getUTCFullYear())
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0")
-  const day = String(d.getUTCDate()).padStart(2, "0")
+/* 🔴 單據的「日期分界」必須用**租戶時區**,不能用 UTC(#105 P1-7)。
+   台灣是 UTC+8:1/1 08:00 之前開的單,UTC 還在去年 → 年度序號續用去年的桶、
+   單號日期段也印成去年。憑證一旦列印出去就收不回來。
+   formatToParts 而非 format:不倚賴任何 locale 的輸出格式。 */
+function tenantDateParts(d: Date, timeZone: string): { y: string; m: string; day: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d)
+  const pick = (type: string): string => parts.find((p) => p.type === type)?.value ?? ""
+  return { y: pick("year"), m: pick("month"), day: pick("day") }
+}
+
+function formatDatePart(fmt: "yyyy" | "yyyyMM" | "yyyyMMdd", d: Date, timeZone: string): string {
+  const { y, m, day } = tenantDateParts(d, timeZone)
   if (fmt === "yyyy") return y
   if (fmt === "yyyyMM") return y + m
   return y + m + day
 }
 
-/* reset_key:counter 依此分桶(空=全域)。日期段依 UTC 一致(避免跨時區重號) */
-function computeResetKey(options: AutoNumberOptions, values: RecordValues, now: Date): string {
+/* reset_key:counter 依此分桶(空=全域)。日期段依租戶時區,見 tenantDateParts。 */
+function computeResetKey(
+  options: AutoNumberOptions,
+  values: RecordValues,
+  now: Date,
+  timeZone: string,
+): string {
   switch (options.resetScope ?? "none") {
     case "yearly":
-      return `y${now.getUTCFullYear()}`
+      return `y${formatDatePart("yyyy", now, timeZone)}`
     case "monthly":
-      return `m${formatDatePart("yyyyMM", now)}`
+      return `m${formatDatePart("yyyyMM", now, timeZone)}`
     case "daily":
-      return `d${formatDatePart("yyyyMMdd", now)}`
+      return `d${formatDatePart("yyyyMMdd", now, timeZone)}`
     case "field":
       return `f${options.resetField ? String(values[options.resetField] ?? "") : ""}`
     default:
@@ -881,7 +899,8 @@ export class RecordService {
     }
 
     const now = new Date()
-    const resetKey = computeResetKey(options, values, now)
+    const timeZone = await this.tenantTimeZone(trx, tenantId)
+    const resetKey = computeResetKey(options, values, now, timeZone)
     const res = (await trx.raw(
       `INSERT INTO public.autonumber_counter (field_id, tenant_id, reset_key, value)
        VALUES (?, ?, ?, 1)
@@ -890,8 +909,18 @@ export class RecordService {
       [field.row.id, tenantId, resetKey],
     )) as { rows: { value: string }[] }
     const seq = Number(res.rows[0]?.value ?? "0")
-    const datePart = options.dateFormat === undefined ? "" : formatDatePart(options.dateFormat, now)
+    const datePart =
+      options.dateFormat === undefined ? "" : formatDatePart(options.dateFormat, now, timeZone)
     return `${prefix}${datePart}${String(seq).padStart(width, "0")}`
+  }
+
+  /* 只在有「帶日期段/會歸零」的 autoNumber 欄時才查(一般記錄寫入不付這個成本)。
+     weyver_app 對 tenants 有 SELECT(0003_app_role_grants)。 */
+  private async tenantTimeZone(trx: Knex.Transaction, tenantId: number): Promise<string> {
+    const res = (await trx.raw("SELECT timezone FROM public.tenants WHERE id = ?", [tenantId])) as {
+      rows: { timezone: string }[]
+    }
+    return res.rows[0]?.timezone ?? "Asia/Taipei"
   }
 
   /* jsonb 欄需顯式序列化(pg driver 不會把 JS 陣列當 JSON 送)。

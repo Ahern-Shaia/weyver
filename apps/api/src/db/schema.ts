@@ -44,6 +44,10 @@ export const tenants = pgTable("tenants", {
      docs/05 明載其定價「是模型不是斷言」,不把未定案的商業決策固化成程式碼。 */
   planCode: text("plan_code"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  /* 🔴 單據日期分界(#105 P1-7)。autoNumber 的日期段與 yearly/monthly/daily 歸零原本走 UTC:
+     台灣(UTC+8)在 01/01 08:00 前開的單會拿到**去年**的年度序號、單號日期段也印成去年
+     —— 對已列印的憑證是不可回收的錯誤。分界一律以租戶所在時區判定。 */
+  timezone: text("timezone").notNull().default("Asia/Taipei"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
