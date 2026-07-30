@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| 狀態 | 📝 **M0 DRAFT — 研究已完成,OQ-PF-1..8 待裁定;實作排在 [G-1](webhook-and-events.md) 之後** |
+| 狀態 | ✅ **SHIPPED v1.0(2026-07-30)** — OQ-PF-1..8 全採建議 |
 | 建立 | 2026-07-30 |
 | 上游 | docs/25 §164「Public Form(對外收件)2」 |
 | 依賴 | authz(欄位級權限 + 匿名 principal)· form-engine-core · file-storage(匿名上傳)· reliability(配額 / 限流) |
@@ -107,7 +107,7 @@ CAPTCHA / 安全|[Cap:OSS CAPTCHA 比較 2026](https://trycap.dev/guide/open-sou
 
 ---
 
-## 4. 設計要點(草案)
+## 4. 設計要點
 
 ### 4.1 🔴 沿用欄位級權限 **+ 二次閘門**,不要單純沿用
 
@@ -148,7 +148,31 @@ CAPTCHA / 安全|[Cap:OSS CAPTCHA 比較 2026](https://trycap.dev/guide/open-sou
 
 ---
 
-## 10. 開放問題(OQ-PF-N)— ⏳ 待裁定(G-1 完成後再議)
+## 3. 實作結果
+
+| | |
+|---|---|
+| commit | `e00e574` 後端 · `3e91327` DI 修正 · `1e3a3f7` 前端 |
+| migration | 0035(`public_form_share` / `public_submission`)|
+| 測試 | api **692 綠**(公開表單 16)· web 87 · e2e 4 |
+| 反向驗證 | 白名單過濾 / 危險型別閘門 / 不可探測 —— 拔掉即 6 條轉紅 |
+
+**與原設計的差異**|OQ-PF-3(Link&Load 伺服器端搜尋)未實作,改採更強的處置:
+**link 型別一律不得公開**。研究實證這是最大破口(Airtable 社群與支援一致確認
+表單上的 linked record 欄會讓填表者看到來源表全部記錄的 primary field 且可被爬取),
+而「伺服器端搜尋 + 上限」仍然會逐步洩漏來源表內容。P0 先關死,
+真有需求時再以「限定來源檢視 + 最小查詢長度 + 回傳上限」開放,列後續。
+
+OQ-PF-5 的 Altcha 未接:目前是 **honeypot + 最短填寫時間 + throttler(IP × token)**。
+研究已言明 PoW **只提高成本不阻擋**(2026 研究顯示 AI solver 已可破多數 CAPTCHA),
+是摩擦層而非閘門 —— 既有三層都在,補 Altcha 屬增量而非缺口,列後續。
+
+OQ-PF-8(編輯既有記錄的 magic link)未實作 —— P0 沒有「讓外部人回頭改」的需求,
+不預先造。
+
+---
+
+## 10. 開放問題(OQ-PF-N)— ✅ 2026-07-30 全採建議
 
 | # | 問題 | 建議 |
 |---|---|---|
@@ -167,4 +191,5 @@ CAPTCHA / 安全|[Cap:OSS CAPTCHA 比較 2026](https://trycap.dev/guide/open-sou
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-30 | **v1.0** | **SHIPPED**。OQ-PF-1..8 全採建議。交付:opt-in 欄位白名單(排除制在「日後有人加一個成本欄」那一刻就外洩)· 危險型別設計期閘門 · **匿名提交落待審收件匣不進動態表** · 關閉條件(截止 / 上限 / 手動,且計數與提交同一 tx)· honeypot + 最短填寫時間 + throttler · IP 只存加鹽 hash · 回執給不透明代碼 · `/f/[token]` 訪客頁(不用 `/app` layout,無任何內部 chrome)· 設定頁與收件匣。**🔴 瀏覽器實走抓到一個所有靜態防線都攔不住的 bug**:控制器用裸建構子參數 `constructor(private readonly forms: PublicFormService)`,而本專案 tsconfig 未開 `emitDecoratorMetadata` → Nest 注入 undefined,打那條路由就 500。type-check 過(型別是對的)、16 條整合測全綠(直接 new 服務、繞過 DI)、lint 無話說 —— **只有把 app 跑起來打那條路由才會炸**。已 sweep 全 src 確認僅此一處。**與原設計的差異**:OQ-PF-3 改採更強處置(link 一律不得公開,而非伺服器端搜尋);Altcha 與 magic link 列後續,理由見 §3。api 692 · web 87 · e2e 4 | Claude Code |
 | 2026-07-30 | v0.1 | M0 DRAFT(研究先落檔,實作排 G-1 之後,OQ-WH-9=A)。**§0.1 最大發現**:下拉 / 帶入欄是已實證的洩漏破口 —— Airtable 社群與支援一致確認表單上的 linked record 欄會讓填表者看到**來源表全部記錄的 primary field** 且可被爬取;**prefill 不是安全機制**(Airtable 官方明文 hide 參數可刪、Ragic `pfv` 明碼在 URL)。**§4.1-B 對本專案的關鍵推論**:[authz.md §12.2 F4](authz.md)(公式引用 hidden 欄間接洩漏)是**已存在的 P1 殘留**,內部靠管理員紀律可接受,但**觀眾換成匿名者後同一個洞就是 P0** —— 既有風險評級綁定威脅模型,開放新入口時必須重評。**§0.2 誠實話**:PoW CAPTCHA 只提高成本不阻擋,2026 研究顯示 AI solver 已可破多數 CAPTCHA,應視為摩擦層而非閘門;OSS 可用者 Cap(Apache-2.0)/ Altcha(MIT),**Friendly Captcha 伺服器端專有不符 OSS-only**。**§0.3**:Google Forms 的「限制 1 次回應」**強制登入** —— 誠實結論是不登入就無法可靠認定同一人。**§4.3 刻意不照抄業界**:各家問卷平台都不隔離公開提交(Airtable 反而提供 trigger 方便串接),但 ERP 定位下匿名提交直接觸發簽核與正式單號不可接受 → 預設落待審收件匣。**§0.6 產業空白**:無任何廠商對「公開表單灌單導致配額耗盡」有結構性防護。OQ-PF-1..8 待裁定 | Claude Code |
