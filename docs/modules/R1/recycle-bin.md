@@ -110,11 +110,30 @@ partial unique 的副作用即 §0.2 的還原衝突;若業務要求「編號永
 本專案 [field-types-parity](field-types-parity.md) §B-1 原記:
 「1600 欄上限,DROP 掉的欄位仍佔額度,**只有 `VACUUM FULL` / `pg_repack` 重建整表才回收**」。
 
-**後半句是錯的。** 本機 PG 16 實測(300 次 add/drop 循環):
+**後半句是錯的。** 本機 PG 16 實測(300 次 add/drop 循環)。
+**重現腳本**|推翻既有記載的結論必須可複驗,否則下一個人只能選擇相信:
+
+```sql
+DROP TABLE IF EXISTS attnum_probe;
+CREATE TABLE attnum_probe (keep int);
+DO $$ BEGIN
+  FOR i IN 1..300 LOOP
+    EXECUTE format('ALTER TABLE attnum_probe ADD COLUMN c%s text', i);
+    EXECUTE format('ALTER TABLE attnum_probe DROP COLUMN c%s', i);
+  END LOOP;
+END $$;
+SELECT count(*) FILTER (WHERE attisdropped) AS dropped, max(attnum) AS max_attnum
+  FROM pg_attribute WHERE attrelid = 'attnum_probe'::regclass;
+VACUUM FULL attnum_probe;   -- 舊記載稱此步會回收
+SELECT count(*) FILTER (WHERE attisdropped) AS dropped, max(attnum) AS max_attnum
+  FROM pg_attribute WHERE attrelid = 'attnum_probe'::regclass;
+```
+
+輸出(2026-07-30,`postgres:16-alpine`;兩次獨立執行結果一致):
 
 ```
-循環後:            dropped=300  live=1  max_attnum=301
-VACUUM FULL 之後:  dropped=300              max_attnum=301   ← 完全沒回收
+before             dropped=300  max_attnum=301
+after VACUUM FULL  dropped=300  max_attnum=301   ← 完全沒回收
 ```
 
 佐證:PG 核心開發者 David Rowley 於 pgsql-hackers 明言「**We just never recycle attnums**」;
