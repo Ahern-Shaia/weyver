@@ -47,6 +47,12 @@ export const envSchema = z
        不讓「忘了設定」與「決定不掃」長得一樣。 */
     MALWARE_SCAN_MODE: z.enum(["off", "required"]).default("off"),
     MALWARE_SCAN_ACK_DISABLED: z.string().optional(),
+    MALWARE_SCAN_HOST: z.string().default("127.0.0.1"),
+    MALWARE_SCAN_PORT: z.coerce.number().int().positive().default(3310),
+    /* 上傳當下的同步掃描逾時。研究建議 3–5s:clamd 常駐時 <10MB 通常百毫秒級,
+       逾時就落補掃佇列 —— 不讓使用者等,也不放棄掃。 */
+    MALWARE_SCAN_INLINE_TIMEOUT_MS: z.coerce.number().int().positive().default(4000),
+    MALWARE_SCAN_BATCH_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
     STORAGE_LOCAL_DIR: z.string().default(".weyver-storage"),
     STORAGE_BUCKET: z.string().optional(),
     STORAGE_ENDPOINT: z.string().url().optional(),

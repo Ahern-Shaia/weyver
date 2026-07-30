@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config"
 import { ImageProcessor } from "./image-processor.js"
 import { LocalStorageDriver } from "./local-storage.driver.js"
 import { S3StorageDriver } from "./s3-storage.driver.js"
+import { ScanService } from "./scan.service.js"
 import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
 
 /* F-5 儲存驅動注入(@Global:多模組共用同一 infra,承 AGENTS「共用 infra 註冊一次」)。
@@ -10,6 +11,7 @@ import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
 @Global()
 @Module({
   providers: [
+    ScanService,
     {
       provide: STORAGE_DRIVER,
       inject: [ConfigService],
@@ -29,6 +31,7 @@ import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
     },
     ImageProcessor,
   ],
-  exports: [STORAGE_DRIVER, ImageProcessor],
+  exports: [
+    ScanService, STORAGE_DRIVER, ImageProcessor],
 })
 export class StorageModule {}

@@ -43,7 +43,9 @@ const PUBLIC_SAFE_TYPES = new Set([
    - lookup / rollup / formula:值來自別處,公開它等於公開來源
    - autoNumber:連號單據洩漏業務量(German tank problem)
    - createdBy / updatedBy / member:內部人員名冊
-   - attachment / image / signature:需掃毒,平台尚未具備(#102) */
+   - attachment / image / signature:匿名上傳需掃毒 + 隔離。
+     **F-11 已交付掃毒**,但公開表單附件的解鎖仍需 per-share 開關 +
+     獨立配額 + 「未 clean 逾時自動刪」,列 G-2 殘留(#121)—— 沒做完就不開。 */
 const PUBLIC_FORBIDDEN_TYPES = new Set([
   "link",
   "lookup",
@@ -399,7 +401,7 @@ function reasonFor(type: string): string {
     case "attachment":
     case "image":
     case "signature":
-      return "匿名上傳需先掃毒,平台尚未具備"
+      return "匿名上傳的附件需掃毒與隔離,尚未開放(F-11 已具備掃毒,尚缺 per-share 配額與逾時清理)"
     default:
       return "不適合開放給匿名填寫者"
   }

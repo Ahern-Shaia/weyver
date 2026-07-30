@@ -28,6 +28,7 @@ const EXPECTED_CRON_JOBS = [
   "trash.purge",
   "event.fanout",
   "webhook.deliver",
+  "file.scan",
 ] as const
 
 let container: StartedPostgreSqlContainer

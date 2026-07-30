@@ -22,6 +22,7 @@ import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { detectType, hasSpreadsheetFormula, sanitizeFilename } from "../storage/file-type.js"
 import { inspectContent } from "../storage/content-inspect.js"
+import { ScanService } from "../storage/scan.service.js"
 import { ImageProcessor } from "../storage/image-processor.js"
 import {
   STORAGE_DRIVER,
@@ -96,7 +97,41 @@ export class FilesService implements OnModuleInit {
     @Inject(TenantDb) private readonly tenantDb: TenantDb,
     @Inject(ImageProcessor) private readonly images: ImageProcessor,
     @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(ScanService) private readonly scan: ScanService,
   ) {}
+
+  /* 🔴 F-11 M5|混合下載。授權**每次**由 API 重新求值(權限 + 欄位 + 記錄 + 掃描狀態),
+     通過後才簽一個 30–60 秒的 URL 讓位元組直接從物件儲存走。
+
+     解的是出口頻寬:代理下載的瓶頸不是事件迴圈(`StreamableFile` 是串流)
+     而是 Cloud Run 每實例並發 80 × 20MB 就塞滿。
+
+     驅動不支援(本機檔案系統)時回 null,呼叫端自然回退到代理 —— 能力差異不是錯誤。 */
+  async presignedUrlFor(
+    tenant: TenantContext,
+    permissions: EffectivePermissions,
+    key: string,
+  ): Promise<string | null> {
+    if (this.storage.presign === undefined) return null
+    /* 走與代理下載**完全相同**的判定鏈 —— 不能因為換了傳輸方式就少驗一道 */
+    const row = await this.requireReadableFile(tenant, key)
+    const formId = num(row.form_id)
+    const fieldId = num(row.field_id)
+    if (!permissions.hasAction(formId, "view")) {
+      throw new ForbiddenException({ code: "FORBIDDEN", message: "無此表單檢視權限" })
+    }
+    if (permissions.fieldVisibility(fieldId, formId) === "hidden") {
+      throw new ForbiddenException({ code: "FIELD_FORBIDDEN", message: "無此欄位檢視權限" })
+    }
+    await this.assertRecordReadable(tenant.tenantId, formId, row.record_id)
+    return this.storage.presign(key, {
+      ttlSeconds: 60,
+      filename: row.name,
+      /* 保守型別 + attachment:即使位元組不經我們,header 仍受控 ——
+         否則 polyglot / SVG 會以物件儲存宣告的型別被瀏覽器直接開啟 */
+      mime: "application/octet-stream",
+    })
+  }
 
   private get scanEnabled(): boolean {
     return this.config.get<string>("MALWARE_SCAN_MODE") === "required"
@@ -217,6 +252,20 @@ export class FilesService implements OnModuleInit {
       await this.storage.put(thumbnailKeyOf(key), processed.thumbnail, { mime: "image/webp" })
     }
 
+    /* 🔴 兩段式掃描的第一段:上傳當下先同步掃(4 秒逾時)。
+       逾時 / clamd 不可用 → 回 null → 留 pending 交補掃 cron。
+       **接受端 fail-open**(上傳仍成功),供應端才 fail-closed(下載閘擋)。 */
+    let initialScan = scanStatusOnUpload(detected.mime, inspected, this.scanEnabled)
+    let scanDetail: string | null = null
+    if (initialScan === "pending") {
+      const verdict = await this.scan.scanInline(processed.body)
+      if (verdict?.status === "clean") initialScan = "clean"
+      else if (verdict?.status === "infected") {
+        initialScan = "infected"
+        scanDetail = verdict.signature
+      }
+    }
+
     await this.inTenantTx(tenant.tenantId, (trx) =>
       trx("file_object").insert({
         key,
@@ -236,7 +285,9 @@ export class FilesService implements OnModuleInit {
 
            `opaque` 的 PDF(物件流 / 加密)反而**更需要**掃 —— 原始位元組
            掃描看不進去,那正是 ClamAV 的守備範圍(doc §1.4)。 */
-        scan_status: scanStatusOnUpload(detected.mime, inspected, this.scanEnabled),
+        scan_status: initialScan,
+        scan_detail: scanDetail,
+        scanned_at: initialScan === "pending" ? null : new Date(),
         sha256: createHash("sha256").update(processed.body).digest("hex"),
         created_by: tenant.actorId,
       }),

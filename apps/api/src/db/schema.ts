@@ -1124,8 +1124,9 @@ export const publicFormShares = pgTable(
     maxSubmissions: integer("max_submissions"),
     closedMessage: text("closed_message"),
     submissionCount: integer("submission_count").notNull().default(0),
-    /* 🔴 掃毒未就緒前預設禁附件(OQ-PF-6)。匿名者上傳的檔案在掃完前
-       不可被任何人取用,而本平台目前沒有掃毒(#102)—— 沒有就不要開。 */
+    /* 🔴 預設禁附件(OQ-PF-6)。F-11 已交付掃毒與下載閘(未 clean 不可取用),
+       但要對匿名者開放還缺:per-share 附件配額、逾時未 clean 自動刪除、
+       獨立的匿名上傳限流。三者齊備前維持關閉(#121)。 */
     allowAttachments: boolean("allow_attachments").notNull().default(false),
     requireCaptcha: boolean("require_captcha").notNull().default(true),
     active: boolean("active").notNull().default(true),

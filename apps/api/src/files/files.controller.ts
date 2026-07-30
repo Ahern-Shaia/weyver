@@ -102,11 +102,25 @@ export class FilesController {
     @Param("objectName") objectName: string,
     @Query("variant") variant: string | undefined,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<StreamableFile> {
+  ): Promise<StreamableFile | undefined> {
+    const key = `${tenantSeg}/${formSeg}/${objectName}`
+    /* 🔴 F-11 M5|混合下載:授權每次由此重新求值,通過後 302 到 60 秒的簽名 URL,
+       位元組不經應用層(解 Cloud Run 出口頻寬瓶頸)。
+       縮圖不走簽名(它小、且 variant 語意在代理端);驅動不支援時回退代理。 */
+    if (variant !== "thumb") {
+      const signed = await this.files.presignedUrlFor(tenant, permissions, key)
+      if (signed !== null) {
+        reply.status(302).header("location", signed)
+        /* 簽名 URL 有時效且對應單一使用者的授權結果 —— 絕不可被任何快取層留存 */
+        reply.header("cache-control", "no-store, private")
+        return undefined
+      }
+    }
+
     const { stream, meta } = await this.files.openForDownload(
       tenant,
       permissions,
-      `${tenantSeg}/${formSeg}/${objectName}`,
+      key,
       variant === "thumb" ? "thumb" : undefined,
     )
     // 保守 Content-Type + 一律 attachment(不 inline)→ 防 HTML/SVG XSS(docs/22;nosniff 已於 onSend)

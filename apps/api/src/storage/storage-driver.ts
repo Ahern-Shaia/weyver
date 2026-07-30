@@ -8,6 +8,16 @@ export interface StorageDriver {
   get(key: string): Promise<Readable>
   delete(key: string): Promise<void>
   stat(key: string): Promise<{ size: number } | null>
+  /* 🔴 F-11 M5|短效簽名 URL。**回 null 代表此驅動不支援**(本機檔案系統),
+     呼叫端據此回退到伺服器代理 —— 不是錯誤,是能力差異。
+
+     解的問題(file-storage §殘留):代理下載的瓶頸不是事件迴圈(`StreamableFile`
+     是串流)而是**出口頻寬** —— Cloud Run 每實例並發 80 × 20MB 就塞滿。
+     授權仍每次由 API 重新求值,只有位元組不經應用層。 */
+  presign?(
+    key: string,
+    opts: { ttlSeconds: number; filename: string; mime: string },
+  ): Promise<string | null>
 }
 
 export const STORAGE_DRIVER = Symbol("STORAGE_DRIVER")
