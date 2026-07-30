@@ -26,6 +26,7 @@
     "@weyver/formula": "workspace:*",
     "@weyver/ui": "workspace:*",
     "better-auth": "^1.6.23",
+    "echarts": "^6.1.0",
     "lucide-react": "^0.469.0",
     "next": "^15.5.4",
     "next-intl": "^4.13.2",
