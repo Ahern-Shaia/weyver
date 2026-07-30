@@ -75,9 +75,20 @@ export function listZipEntryNames(buf: Buffer, limit = 2000): string[] | null {
   return names
 }
 
-/* 巨集的兩個證據:`vbaProject.bin` 存在,或 [Content_Types].xml 宣告 macroEnabled。
-   兩者都查 —— 只查其一都能被繞過。 */
+/* 🔴 巨集偵測。**檔名不是可靠的判準。**
+
+   最初只比對 `vbaProject.bin` 這個檔名,實測發現可繞:OPC 規範允許 part 用
+   **任意名稱**,型別由 `[Content_Types].xml` 的 Override 宣告。
+   把 part 命名為 `word/x.bin` 但宣告 `application/vnd.ms-office.vbaProject`,
+   Office 照樣載入巨集,而檔名檢查完全看不到。
+
+   這個洞是手刻造成的 —— `oletools`(olevba)這類既有工具判的是**型別與結構**
+   而非檔名。改為以宣告的 content type 為主、檔名為輔。
+
+   一併涵蓋 **Excel 4.0 / XLM 巨集**(`macrosheet`)—— 它不住在 vbaProject 裡,
+   是已知的規避手法。 */
 const MACRO_ENTRY = /(^|\/)vbaProject\.bin$/i
+const MACRO_CONTENT_TYPES = ["vbaProject", "macroEnabled", "macrosheet"] as const
 
 export function inspectOoxml(buf: Buffer): InspectVerdict {
   const names = listZipEntryNames(buf)
@@ -93,8 +104,15 @@ export function inspectOoxml(buf: Buffer): InspectVerdict {
      是兩回事,zip bomb 的攻擊面在後者。 */
   if (names.includes("[Content_Types].xml")) {
     const xml = readEntryText(buf, "[Content_Types].xml")
-    if (xml !== null && xml.includes("macroEnabled")) {
-      return { ok: false, reason: "檔案宣告為啟用巨集格式,基於安全考量不接受" }
+    /* 🔴 讀不到就**拒絕**,不是放行。讀不到代表「無法確認這個檔沒有巨集」,
+       而 fail-open 正是把「不確定」當成「安全」。實務上 OOXML 的
+       [Content_Types].xml 只會是 stored 或 deflate,解不開本身就可疑。 */
+    if (xml === null) {
+      return { ok: false, reason: "無法讀取 Office 檔案的型別宣告,請以 Office 另存後再上傳" }
+    }
+    const hit = MACRO_CONTENT_TYPES.find((k) => xml.includes(k))
+    if (hit !== undefined) {
+      return { ok: false, reason: `檔案宣告含巨集內容(${hit}),基於安全考量不接受` }
     }
   }
   return OK
@@ -133,6 +151,10 @@ function readEntryText(buf: Buffer, wanted: string): string | null {
       const localNameLen = buf.readUInt16LE(localOffset + 26)
       const localExtraLen = buf.readUInt16LE(localOffset + 28)
       const dataStart = localOffset + 30 + localNameLen + localExtraLen
+      /* 只接受 stored(0)與 deflate(8)。實務上 OOXML 只用這兩種,
+         其餘(deflate64 / bzip2 / LZMA…)出現在這裡本身就可疑,而且
+         盲目丟給 inflateRawSync 可能「剛好解得開」而給出錯誤的安全感。 */
+      if (method !== 0 && method !== 8) return null
       const data = buf.subarray(dataStart, dataStart + compSize)
       try {
         const out = method === 0 ? data : inflateRawSync(data, { maxOutputLength: ENTRY_MAX_BYTES })

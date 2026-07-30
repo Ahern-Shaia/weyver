@@ -88,6 +88,45 @@ describe("OOXML 巨集偵測", () => {
     expect(inspectOoxml(zip).ok).toBe(false)
   })
 
+  /* 🔴 手刻造成的漏洞,實測才發現:OPC 允許 part 用任意名稱,
+     型別由 [Content_Types].xml 的 Override 宣告 —— 只比對檔名擋不住。
+     `oletools` 這類既有工具判的是型別與結構,不是檔名。 */
+  it("🔴 vbaProject 用非標準 part 名稱(OPC 允許)→ 仍被拒", () => {
+    const ct =
+      '<?xml version="1.0"?><Types><Override PartName="/word/x.bin" ContentType="application/vnd.ms-office.vbaProject"/></Types>'
+    const zip = buildZip([
+      { name: "[Content_Types].xml", data: Buffer.from(ct) },
+      { name: "word/x.bin", data: Buffer.from([0xd0, 0xcf, 0x11, 0xe0]) },
+    ])
+    const verdict = inspectOoxml(zip)
+    expect(verdict.ok).toBe(false)
+    expect(verdict.reason).toMatch(/vbaProject/)
+  })
+
+  /* Excel 4.0 / XLM 巨集不住在 vbaProject 裡,是已知的規避手法 */
+  it("🔴 Excel 4.0(XLM)巨集表 → 被拒", () => {
+    const ct =
+      '<?xml version="1.0"?><Types><Override PartName="/xl/macrosheets/sheet1.xml" ContentType="application/vnd.ms-excel.macrosheet+xml"/></Types>'
+    const zip = buildZip([{ name: "[Content_Types].xml", data: Buffer.from(ct) }])
+    expect(inspectOoxml(zip).ok).toBe(false)
+  })
+
+  it("🔴 型別宣告讀不到 → 拒絕而非放行(不確定不等於安全)", () => {
+    const zip = buildZip([{ name: "word/document.xml", data: Buffer.from("<w/>") }])
+    // 有 [Content_Types].xml 之名但實際缺席的情況由上面涵蓋;這裡測「宣告解不開」
+    const withCt = buildZip([
+      { name: "[Content_Types].xml", data: Buffer.from("<Types/>") },
+      { name: "word/document.xml", data: Buffer.from("<w/>") },
+    ])
+    withCt.writeUInt16LE(9, 8) // 竄改壓縮方法為 deflate64 → 解不開
+    const eocd = withCt.length - 22
+    const centralStart = withCt.readUInt32LE(eocd + 16)
+    withCt.writeUInt16LE(9, centralStart + 10)
+    expect(inspectOoxml(withCt).ok).toBe(false)
+    // 沒有 [Content_Types].xml 的 zip 不在此規則內(交由其他檢查)
+    expect(inspectOoxml(zip).ok).toBe(true)
+  })
+
   it("透過 inspectContent 走 docx mime 也擋得住", () => {
     const zip = buildZip([
       { name: "[Content_Types].xml", data: Buffer.from(CONTENT_TYPES_PLAIN) },
