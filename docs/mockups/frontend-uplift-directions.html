@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weyver — 前端重構方向確認(R1·UX-1)</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --font:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    /* 值直接取自 packages/ui/src/styles/tokens.css v3.0 */
+    --surface:#f6f7f9;--card:#fff;--head:#f1f3f5;--label:#f4f6f8;
+    --ink:#16191f;--ink2:#3d4753;--ink3:#697585;--ink4:#9aa4b1;
+    --line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;
+    --primary:#22568a;--primary-d:#1a476f;--primary-t:#eaf1f8;
+    --link:#1160b4;--fx:#0b6b5d;--fx-bg:#e8f4f1;--rel:#5b3fa8;
+    --ok:#1a7a43;--ok-line:#c4e0ce;--ok-t:#eaf4ee;
+    --wn:#96590a;--wn-line:#e7d3ad;--wn-t:#f8f1e2;
+    --er:#b3261e;--er-line:#e9c9c6;--er-t:#f9ecea;
+    --nt:#4a5560;--nt-line:#d6dbe0;--nt-t:#eef0f2;
+    --c1:#1f5f9e;--c1-line:#c2d6e8;--c1-t:#eaf1f8;
+    --c5:#0f6b6b;--c5-line:#bcdcdc;--c5-t:#e8f4f4;
+    /* 對比修正(OQ-11):ink-4 拆兩用途 */
+    --ink-placeholder:#697585;  /* 4.68:1 ✅ 取代原 ink-4 於 placeholder / 資訊性文字 */
+    --ink-disabled:#9aa4b1;     /* 2.52:1 —— 僅限停用元件內文字(1.4.3 incidental 豁免)*/
+    /* 字階(OQ-12):16 種 → 6 階,全整數 */
+    --fs-xs:12px;   --lh-xs:16px;   /* 地板:標籤 / 圖說 / 輔助 */
+    --fs-sm:13px;   --lh-sm:18px;   /* 表格儲存格 / 密集列表 */
+    --fs-base:14px; --lh-base:20px; /* 內文 / 表單值 */
+    --fs-lg:16px;   --fs-xl:20px;   --fs-2xl:24px;
+    --radius-xs:3px;--radius-sm:4px;--radius-md:6px;
+    --shadow-overlay:0 4px 14px rgba(20,24,29,.1),0 2px 6px rgba(20,24,29,.07);
+    /* Carbon productive motion(OQ-6=A) */
+    --fast-01:70ms;--fast-02:110ms;--moderate-01:150ms;
+    --entrance:cubic-bezier(0,0,.38,.9);--exit:cubic-bezier(.2,0,1,.9);
+  }
+  body{margin:0;background:#e9ebef;color:var(--ink);font-family:var(--font);font-size:12.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .page{max-width:1240px;margin:0 auto;padding:36px 22px 90px}
+  h1{font-size:21px;font-weight:700;letter-spacing:-.015em;margin:0 0 6px}
+  h2{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:0 0 3px}
+  .lede{color:var(--ink3);font-size:13px;max-width:900px;margin:0 0 8px}
+  .lede b{color:var(--ink2);font-weight:600}
+  svg{display:block;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;fill:none}
+
+  /* ── 框外標註層(不進產品 chrome)────────────────── */
+  section{margin:34px 0 0;border-top:1px solid #d9dde2;padding-top:22px}
+  .shead{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .snum{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink4)}
+  .why{margin-top:12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--card);padding:12px 14px}
+  .why h3{margin:0 0 7px;font-size:11.5px;font-weight:600;color:var(--ink3);letter-spacing:.03em;text-transform:uppercase}
+  .why ul{margin:0;padding-left:17px}.why li{margin:3px 0;color:var(--ink2)}
+  .src{font-family:var(--mono);font-size:10.5px;color:var(--ink3);background:var(--head);border:1px solid var(--line);border-radius:var(--radius-xs);padding:0 4px}
+  .bad{color:var(--er);font-weight:600}.good{color:var(--ok);font-weight:600}
+
+  /* ── 產品外框 ──────────────────────────────────── */
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .frame{border:1px solid #d9dde2;border-radius:var(--radius-md);overflow:hidden;background:var(--surface)}
+  .flabel{font-size:11px;font-weight:600;color:var(--ink3);margin:0 0 5px;display:flex;align-items:center;gap:6px}
+  .tag{border:1px solid;border-radius:var(--radius-xs);padding:0 5px;font-size:10px;font-weight:600;line-height:16px;display:inline-block}
+  .tag.now{color:var(--er);border-color:var(--er-line);background:var(--er-t)}
+  .tag.next{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t)}
+
+  .app{display:flex;height:342px;background:var(--surface)}
+  /* rail */
+  .rail{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:9px 0;gap:2px;flex:none}
+  .rail.icons{width:56px;align-items:center}
+  .rail.wide{width:172px;padding:9px 8px}
+  .brand{width:30px;height:30px;border-radius:7px;background:var(--primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}
+  .rail.wide .brandrow{display:flex;align-items:center;gap:8px;padding:0 2px 9px;font-weight:600;font-size:var(--fs-sm)}
+  .rail.icons .brand{margin-bottom:8px}
+  .nv{display:flex;align-items:center;color:var(--ink3);cursor:default;border-radius:var(--radius-sm);transition:background var(--fast-01) var(--exit),color var(--fast-01) var(--exit)}
+  .rail.icons .nv{width:36px;height:36px;justify-content:center}
+  .rail.wide .nv{height:30px;gap:9px;padding:0 8px;font-size:var(--fs-sm)}
+  .nv svg{width:17px;height:17px;flex:none}
+  .nv.on{background:var(--primary-t);color:var(--primary);font-weight:600}
+  .nv:hover{background:var(--head);color:var(--ink)}
+  .spacer{margin-top:auto}
+  .railsplit{height:1px;background:var(--line2);margin:6px 2px}
+  .collapse{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;color:var(--ink-placeholder);font-size:var(--fs-xs);border-radius:var(--radius-sm)}
+  .collapse svg{width:15px;height:15px}
+
+  .stage{flex:1;min-width:0;display:flex;flex-direction:column}
+  .top{height:40px;flex:none;display:flex;align-items:center;gap:10px;padding:0 13px;background:var(--card);border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  .crumb{font-size:var(--fs-sm);font-weight:600}
+  .crumb i{font-style:normal;color:var(--ink4);font-weight:400;margin:0 5px}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:var(--radius-sm);height:26px;padding:0 9px;font-size:var(--fs-xs);font-weight:500;display:inline-flex;align-items:center;gap:5px;font-family:var(--font)}
+  .btn svg{width:13px;height:13px}
+  .btn.pri{background:var(--primary);border-color:var(--primary);color:#fff}
+  .srch{margin-left:auto;display:flex;align-items:center;gap:6px;border:1px solid #8d8d8d;border-radius:var(--radius-sm);height:26px;padding:0 8px;color:var(--ink-placeholder);font-size:var(--fs-xs);min-width:158px}
+  .srch svg{width:13px;height:13px}
+  .kbd{font-family:var(--mono);font-size:var(--fs-xs);border:1px solid var(--line);border-radius:2px;padding:0 3px;color:var(--ink3);background:var(--head);margin-left:auto}
+  .body{flex:1;min-height:0;overflow:hidden;padding:13px}
+
+  /* 首頁區塊 */
+  .zone{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:9px;overflow:hidden}
+  .zhead{display:flex;align-items:center;gap:7px;height:29px;padding:0 11px;border-bottom:1px solid var(--line2);background:var(--head)}
+  .zhead h4{margin:0;font-size:var(--fs-xs);font-weight:600;color:var(--ink2)}
+  .zhead svg{width:13px;height:13px;color:var(--ink3)}
+  .cnt{font-family:var(--mono);font-size:var(--fs-xs);color:var(--ink2);border:1px solid var(--line);border-radius:var(--radius-xs);padding:0 4px;background:var(--card)}
+  .rows{display:flex;flex-direction:column}
+  .row{display:flex;align-items:center;gap:9px;height:30px;padding:0 11px;border-bottom:1px solid var(--line2);font-size:var(--fs-sm)}
+  .row:last-child{border-bottom:0}
+  .row:hover{background:var(--primary-t)}
+  .row .nm{color:var(--link);font-weight:500}
+  .row .meta{margin-left:auto;font-family:var(--mono);font-size:var(--fs-xs);color:var(--ink-placeholder)}
+  .row svg{width:14px;height:14px;color:var(--ink3);flex:none}
+  .chip{border:1px solid;border-radius:var(--radius-xs);padding:0 5px;font-size:var(--fs-xs);font-weight:600;line-height:16px;white-space:nowrap}
+  .chip.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t)}
+  .chip.nt{color:var(--nt);border-color:var(--nt-line);background:var(--nt-t)}
+  .chip.er{color:var(--er);border-color:var(--er-line);background:var(--er-t)}
+  .chip.c1{color:var(--c1);border-color:var(--c1-line);background:var(--c1-t)}
+  .chip.c5{color:var(--c5);border-color:var(--c5-line);background:var(--c5-t)}
+
+  /* 資料表 */
+  table{border-collapse:collapse;width:100%;background:var(--card)}
+  th,td{border:1px solid var(--cell);padding:0 9px;height:34px;text-align:left;font-size:var(--fs-sm);vertical-align:middle}
+  th{background:var(--head);font-weight:600;color:var(--ink2);height:34px;font-size:var(--fs-xs)}
+  td.num{text-align:right;font-family:var(--mono);font-feature-settings:"tnum" 1}
+  .twrap{border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
+
+  /* 載入示範 */
+  .prog{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--line2);overflow:hidden;opacity:0;transition:opacity var(--fast-02) var(--exit)}
+  .prog.on{opacity:1}
+  .prog i{display:block;height:100%;width:36%;background:var(--primary);transform:translateX(-100%);animation:slide 1.1s var(--entrance) infinite}
+  @keyframes slide{to{transform:translateX(320%)}}
+  .dim{transition:opacity var(--moderate-01) var(--exit)}
+  .dim.busy{opacity:.55}
+  .blank{display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink3);font-size:var(--fs-xs)}
+  .ctl{display:flex;align-items:center;gap:9px;margin:12px 0 0}
+  .ctl button{border:1px solid var(--primary);background:var(--primary);color:#fff;border-radius:var(--radius-sm);height:28px;padding:0 13px;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer}
+  .ctl button:hover{background:var(--primary-d)}
+  .ctl span{color:var(--ink3);font-size:11.5px}
+
+  /* token 卡 */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+  .tok{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--card);padding:11px 13px}
+  .tok h4{margin:0 0 7px;font-size:12px;font-weight:600}
+  .tok dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11.5px}
+  .tok dt{font-family:var(--mono);color:var(--ink3)}
+  .tok dd{margin:0;color:var(--ink2);text-align:right}
+  .kb{width:100%;border-collapse:collapse;font-size:11.5px}
+  .kb td{border:0;border-bottom:1px solid var(--line2);height:26px;padding:0}
+  .kb tr:last-child td{border-bottom:0}
+  .kb td:last-child{text-align:right;color:var(--ink2)}
+  /* 說明式雙欄:左對齊(靠右對齊只適合鍵盤捷徑那種短值)*/
+  .kb.expl td{text-align:left;padding-right:14px;vertical-align:top;line-height:1.5}
+  .kb.expl td:first-child{width:26%;color:var(--ink)}
+  .kb.expl td:last-child{text-align:left;padding-right:0}
+  .kb code{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);border-radius:2px;padding:1px 4px;background:var(--head);color:var(--ink2)}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>前端重構方向確認</h1>
+<p class="lede">
+  模組 <b>R1·UX-1</b>|依 <span class="src">docs/modules/R1/frontend-uplift.md</span> v0.2 之 OQ 全採建議繪製。
+  色彩 / 圓角 / 字級直接取自 <span class="src">packages/ui/src/styles/tokens.css</span> v3.0,<b>非另立一套</b>。
+  所有依據與標註置於產品外框之外。
+</p>
+
+<!-- ═══════════ 1 導覽 ═══════════ -->
+<section>
+  <div class="shead"><span class="snum">01</span><h2>導覽 —— 10 個純圖示 → 展開標籤 + 5 個主目的地</h2></div>
+  <p class="lede">設定類六項收進單一「設定」入口(即已定案之 S22 設定中心)。展開為預設,可收合並記住偏好。</p>
+
+  <div class="pair">
+    <div>
+      <p class="flabel"><span class="tag now">現況</span> 10 個圖示,無文字,只能 hover 猜</p>
+      <div class="frame"><div class="app">
+        <nav class="rail icons">
+          <div class="brand">W</div>
+          <div class="nv on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/><path d="M9 10v9"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10.3 21a2 2 0 003.4 0"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M14 3v6h6"/><path d="M14 3H6v18h12V9z"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M9 3v6"/><path d="M15 3v6"/><path d="M6 9h12v4a6 6 0 01-12 0z"/><path d="M12 19v2"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 118 0v3"/></svg></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16"/></svg></div>
+        </nav>
+        <div class="stage">
+          <div class="top"><span class="crumb">工作區</span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>搜尋<span class="kbd">⌘K</span></span></div>
+          <div class="body"><div class="zone"><div class="zhead"><h4>採購</h4><span class="cnt">6</span></div><div class="rows">
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">採購單</span><span class="meta">07-29 14:22</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">請購單</span><span class="meta">07-28 09:10</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">供應商主檔</span><span class="meta">07-24 16:41</span></div>
+          </div></div></div>
+        </div>
+      </div></div>
+    </div>
+
+    <div>
+      <p class="flabel"><span class="tag next">建議</span> 展開標籤,5 個主目的地 + 設定中心</p>
+      <div class="frame"><div class="app">
+        <nav class="rail wide">
+          <div class="brandrow"><div class="brand">W</div><span>鮮勇食品</span></div>
+          <div class="nv on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>工作區</div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/><path d="M9 10v9"/></svg>我的表單</div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l2 8v6H3v-6z"/></svg>待我處理</div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10.3 21a2 2 0 003.4 0"/></svg>通知</div>
+          <div class="railsplit"></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg>設定</div>
+          <div class="spacer"></div>
+          <div class="nv"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>陳文彥</div>
+          <div class="collapse"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M16 10l-2 2 2 2"/></svg>收合</div>
+        </nav>
+        <div class="stage">
+          <div class="top"><span class="crumb">工作區</span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>搜尋表單與記錄<span class="kbd">⌘K</span></span></div>
+          <div class="body"><div class="zone"><div class="zhead"><h4>採購</h4><span class="cnt">6</span></div><div class="rows">
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">採購單</span><span class="meta">07-29 14:22</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">請購單</span><span class="meta">07-28 09:10</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">供應商主檔</span><span class="meta">07-24 16:41</span></div>
+          </div></div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="why">
+    <h3>依據</h3>
+    <ul>
+      <li><b>Material 3</b>:collapsed rail 目的地 <b>3–7 個,&gt;7 必須改用 expanded rail</b> —— 現況 10 個明確超標。<span class="src">官方</span></li>
+      <li><b>WinUI NavigationView</b>:icon-only 是<b>空間不足時的降級態</b>(641–1007px),不是預設態。<span class="src">官方</span></li>
+      <li><b>NN/g</b>:除 home / print / search 外多數圖示歧義,<b>文字標籤必須隨時可見,不靠 hover</b>。<span class="src">官方</span></li>
+      <li>可收合為圖示態的先例:Material expanded rail · WinUI compact↔expanded · Slack 右鍵切換。</li>
+      <li class="bad">驗收線:設定六項使用頻率須先量測 —— 高頻者不得進設定中心,否則違反「點擊數不得增加」。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════ 2 首頁 ═══════════ -->
+<section>
+  <div class="shead"><span class="snum">02</span><h2>首頁 —— 分類目錄之上補「最近使用 / 待我簽核」</h2></div>
+  <p class="lede">IA 三層防線目前缺第二層。分類目錄(已 SHIPPED)與 ⌘K(已 SHIPPED)之間,缺少承接日常流量的一層。</p>
+
+  <div class="frame" style="max-width:820px"><div class="app" style="height:376px">
+    <nav class="rail wide">
+      <div class="brandrow"><div class="brand">W</div><span>鮮勇食品</span></div>
+      <div class="nv on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>工作區</div>
+      <div class="nv"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/><path d="M9 10v9"/></svg>我的表單</div>
+      <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l2 8v6H3v-6z"/></svg>待我處理</div>
+      <div class="nv"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 7 3 7 3 9H3c0-2 3-2 3-9"/><path d="M10.3 21a2 2 0 003.4 0"/></svg>通知</div>
+      <div class="railsplit"></div>
+      <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg>設定</div>
+      <div class="spacer"></div>
+      <div class="nv"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>陳文彥</div>
+    </nav>
+    <div class="stage">
+      <div class="top"><span class="crumb">工作區</span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>搜尋表單與記錄<span class="kbd">⌘K</span></span></div>
+      <div class="body" style="overflow-y:auto">
+        <div class="zone">
+          <div class="zhead"><svg viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l2 8v6H3v-6z"/></svg><h4>待我處理</h4><span class="cnt">3</span></div>
+          <div class="rows">
+            <div class="row"><span class="chip wn">待簽核</span><span class="nm">採購單 PO-2026-0714</span><span style="color:var(--ink3)">請購 · 林佩君</span><span class="meta">07-30 09:12</span></div>
+            <div class="row"><span class="chip wn">待簽核</span><span class="nm">採購單 PO-2026-0713</span><span style="color:var(--ink3)">請購 · 王志明</span><span class="meta">07-29 17:40</span></div>
+            <div class="row"><span class="chip er">已退回</span><span class="nm">請購單 PR-2026-0221</span><span style="color:var(--ink3)">待補附件</span><span class="meta">07-29 11:05</span></div>
+          </div>
+        </div>
+        <div class="zone">
+          <div class="zhead"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><h4>最近使用</h4></div>
+          <div class="rows">
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">採購單</span><span class="chip c1">採購</span><span class="meta">14 分鐘前</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">進貨驗收單</span><span class="chip c5">倉儲</span><span class="meta">今天 10:26</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">供應商主檔</span><span class="chip c1">採購</span><span class="meta">昨天 16:41</span></div>
+          </div>
+        </div>
+        <div class="zone">
+          <div class="zhead"><h4>採購</h4><span class="cnt">6</span></div>
+          <div class="rows">
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">採購單</span><span class="meta">07-29 14:22</span></div>
+            <div class="row"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 10h18"/></svg><span class="nm">請購單</span><span class="meta">07-28 09:10</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="why">
+    <h3>依據</h3>
+    <ul>
+      <li><b>沒有任何一家</b>靠「側欄全列」撐 50–200 個使用者自建物件。共通三層防線 = 分類容器 + 最近/我的最愛 + 命令面板。<span class="src">Ragic / Airtable / Notion / NocoDB / Coda</span></li>
+      <li>Airtable 首頁預設 Recently opened · Notion Home 首區 Recents · NocoDB 給 recent 專屬 <span class="src">⌘L</span> → 推斷「最近使用吃日常、搜尋吃長尾」。<span class="src">間接證據</span></li>
+      <li><b>不做 KPI 儀表板</b>:Jira 已把預設 landing 從 Dashboards 改為「Your work」。<span class="src">JRACLOUD-73316</span></li>
+      <li>狀態章依 <span class="src">docs/14 §0.1</span> 層級:<b>要行動者</b>(待簽核)留語意色,<b>已了結者</b>退 neutral,不與待辦爭注意力。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════ 3 載入 ═══════════ -->
+<section>
+  <div class="shead"><span class="snum">03</span><h2>載入 —— 視覺阻斷與版面跳動的實際來源</h2></div>
+  <p class="lede">
+    現況 <b>9 處</b>整頁替換成一行「載入中…」,且 <span class="src">keepPreviousData</span> 為 0 —— 即使資料已在快取也照閃一次。
+    <b>按下按鈕,同時觀察兩邊。</b>
+  </p>
+
+  <div class="ctl">
+    <button id="go">重新載入(同時)</button>
+    <span>左:整頁替換 → 版面塌陷再長回。右:保留內容 + 延遲 400ms 的細進度條。</span>
+  </div>
+
+  <div class="pair">
+    <div>
+      <p class="flabel"><span class="tag now">現況</span> <span class="bad">內容消失 → 版面位移(CLS)</span></p>
+      <div class="frame"><div class="app" style="height:250px">
+        <div class="stage" id="oldStage">
+          <div class="top"><span class="crumb">採購<i>/</i>採購單</span><button class="btn pri">新增</button></div>
+          <div class="body">
+            <div class="twrap"><table>
+              <tr><th style="width:96px">單號</th><th>供應商</th><th style="width:78px">狀態</th><th style="width:88px">金額</th></tr>
+              <tr><td class="num">PO-0714</td><td>大成食品</td><td><span class="chip wn">待簽核</span></td><td class="num">128,400</td></tr>
+              <tr><td class="num">PO-0713</td><td>聯華實業</td><td><span class="chip nt">已核准</span></td><td class="num">64,200</td></tr>
+              <tr><td class="num">PO-0712</td><td>泰山企業</td><td><span class="chip nt">已核准</span></td><td class="num">231,900</td></tr>
+            </table></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <div>
+      <p class="flabel"><span class="tag next">建議</span> <span class="good">版面不動,只有細進度條</span></p>
+      <div class="frame"><div class="app" style="height:250px">
+        <div class="stage">
+          <div class="top"><span class="crumb">採購<i>/</i>採購單</span><button class="btn pri">新增</button>
+            <div class="prog" id="prog"><i></i></div>
+          </div>
+          <div class="body dim" id="newBody">
+            <div class="twrap"><table>
+              <tr><th style="width:96px">單號</th><th>供應商</th><th style="width:78px">狀態</th><th style="width:88px">金額</th></tr>
+              <tr><td class="num">PO-0714</td><td>大成食品</td><td><span class="chip wn">待簽核</span></td><td class="num">128,400</td></tr>
+              <tr><td class="num">PO-0713</td><td>聯華實業</td><td><span class="chip nt">已核准</span></td><td class="num">64,200</td></tr>
+              <tr><td class="num">PO-0712</td><td>泰山企業</td><td><span class="chip nt">已核准</span></td><td class="num">231,900</td></tr>
+            </table></div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="why">
+    <h3>依據</h3>
+    <ul>
+      <li><b>CLS ≤ 0.1</b> / <b>INP ≤ 200ms</b>(75 百分位)為官方硬閾值。<span class="src">web.dev</span></li>
+      <li><b>&lt;2s 不需任何載入指示</b>;Fiori 規定<b>延遲 1000ms 才顯示、最短顯示 500ms 防閃爍</b>;Salesforce 取 &gt;300ms。我方取 <b>延遲 400ms / 最短 500ms</b>,並明示此為<b>我方取值</b>(兩者無共識)。<span class="src">NN/g · Fiori · Salesforce</span></li>
+      <li class="bad">不採骨架屏:Viget(n=136)三組對照中 <b>skeleton 組全面最差</b>;且高密度表格若列高不符會<b>自己製造 CLS</b>。廣傳的「快 30–50%」查無原始研究。</li>
+      <li class="bad">禁列表逐項交錯淡入:<b>IEEE TVCG 2014</b> —— 過去無任何實證支持,最有利情境下效果仍極微,且延長最後一列可見時間。</li>
+      <li>作法:<span class="src">placeholderData: keepPreviousData</span>(TanStack Query 已在用,零新相依)。<br/>
+        <span class="bad">FMEA U7(P0)</span>:query key 必含 tenant —— 否則切租戶瞬間會閃出他租戶資料。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════ 4 規範卡 ═══════════ -->
+<section>
+  <div class="shead"><span class="snum">04</span><h2>照抄的正典 —— 不自創數值</h2></div>
+  <div class="grid3">
+    <div class="tok">
+      <h4>動效 · Carbon productive</h4>
+      <dl>
+        <dt>fast-01</dt><dd>70ms — hover / focus</dd>
+        <dt>fast-02</dt><dd>110ms — overlay 離場</dd>
+        <dt>moderate-01</dt><dd>150ms — 進場 / 展開</dd>
+        <dt>其餘</dt><dd>0ms</dd>
+      </dl>
+      <p style="margin:8px 0 0;color:var(--ink3);font-size:11px">IBM 明標企業生產力用途,且與已採用的 IBM Plex 同源。既有 <span class="src">duration-150</span> 恰等於 moderate-01,<b>值不動,只補溯源</b>。</p>
+    </div>
+    <div class="tok">
+      <h4>鍵盤 · W3C ARIA APG</h4>
+      <table class="kb">
+        <tr><td><code>F2</code></td><td>切換編輯 / 導覽</td></tr>
+        <tr><td><code>Ctrl+Home</code></td><td>跳表首格</td></tr>
+        <tr><td><code>Home</code> / <code>End</code></td><td>列首 / 列末</td></tr>
+        <tr><td><code>Shift+Space</code></td><td>選整列</td></tr>
+        <tr><td><code>Esc</code></td><td>回導覽態</td></tr>
+      </table>
+      <p style="margin:8px 0 0;color:var(--ink3);font-size:11px">與 Excel 肌肉記憶高度重合;roving tabindex 使整個表格只有一個 Tab 停點。<b>照抄,不自創。</b></p>
+    </div>
+    <div class="tok">
+      <h4>密度 · Carbon / Cloudscape</h4>
+      <dl>
+        <dt>列高</dt><dd>34px(表頭同高)</dd>
+        <dt>間距</dt><dd>4 / 8 / 12 / 16 / 24</dd>
+        <dt>字階</dt><dd>見 §05(12 / 13 / 14…)</dd>
+      </dl>
+      <p style="margin:8px 0 0;color:var(--ink3);font-size:11px">Cloudscape 明載 compact <b>不得套用</b>於 alert、驗證訊息、select、日期選擇器(點擊目標)—— 本輪須逐處稽核。<br/>
+      WCAG 1.4.12 為可執行驗收:套 1.5/2/0.12/0.16 後版面不得裁切。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 5 視覺 ═══════════ -->
+<section>
+  <div class="shead"><span class="snum">05</span><h2>視覺 —— 修不合格與收斂字階,不是重新設計</h2></div>
+  <p class="lede">
+    上面四節的產品框<b>已套用本節結論</b>。範圍嚴格限於可量測者:對比度 3 條、字階 16 種 → 6 階。
+    <b>不做視覺重新設計</b> —— 證據不支持(見底部)。
+  </p>
+
+  <div class="pair">
+    <div>
+      <p class="flabel"><span class="tag now">現況</span> 16 種字級 · 最小配最低對比</p>
+      <div class="frame"><div style="background:var(--card);padding:13px">
+        <div style="border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;background:var(--head);border-bottom:1px solid var(--cell);font-size:11.5px;font-weight:600;color:#697585">欄位</div>
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;border-bottom:1px solid var(--line2);font-size:12.5px">
+            <span>供應商</span><span style="font-size:9px;color:#9aa4b1">(隱藏)</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:9.5px;color:#9aa4b1">supplier_id</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;border-bottom:1px solid var(--line2);font-size:12.5px">
+            <span>採購金額</span><span style="font-size:9px;color:#9aa4b1">設計限定</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:9.5px;color:#9aa4b1">amount</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;font-size:12.5px">
+            <span style="color:#9aa4b1">搜尋欄位…</span>
+            <span style="margin-left:auto;font-size:10.5px;color:#9aa4b1">07-29 14:22</span>
+          </div>
+        </div>
+        <p style="margin:9px 0 0;font-size:11px;color:var(--er)">
+          9px 配 2.52:1 —— 「隱藏」「設計限定」是<b>狀態資訊</b>,無豁免空間
+        </p>
+      </div></div>
+    </div>
+
+    <div>
+      <p class="flabel"><span class="tag next">建議</span> 6 階整數 · 列高不變 34px</p>
+      <div class="frame"><div style="background:var(--card);padding:13px">
+        <div style="border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden">
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;background:var(--head);border-bottom:1px solid var(--cell);font-size:var(--fs-xs);font-weight:600;color:var(--ink2)">欄位</div>
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;border-bottom:1px solid var(--line2);font-size:var(--fs-sm)">
+            <span>供應商</span><span style="font-size:var(--fs-xs);color:var(--ink-placeholder)">(隱藏)</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:var(--fs-xs);color:var(--ink-placeholder)">supplier_id</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;border-bottom:1px solid var(--line2);font-size:var(--fs-sm)">
+            <span>採購金額</span><span style="font-size:var(--fs-xs);color:var(--ink-placeholder)">設計限定</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:var(--fs-xs);color:var(--ink-placeholder)">amount</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;height:34px;padding:0 11px;font-size:var(--fs-sm)">
+            <span style="color:var(--ink-placeholder)">搜尋欄位…</span>
+            <span style="margin-left:auto;font-size:var(--fs-xs);color:var(--ink-placeholder)">07-29 14:22</span>
+          </div>
+        </div>
+        <p style="margin:9px 0 0;font-size:11px;color:var(--ok)">
+          最小 12px / 最低 4.68:1 · <b>列高與可見列數完全不變</b>
+        </p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="grid3" style="margin-top:14px">
+    <div class="tok">
+      <h4>字階:16 種 → 6 階</h4>
+      <dl>
+        <dt>xs</dt><dd>12 / 16 — 標籤·圖說(地板)</dd>
+        <dt>sm</dt><dd>13 / 18 — 表格·密集列表</dd>
+        <dt>base</dt><dd>14 / 20 — 內文·表單值</dd>
+        <dt>lg · xl · 2xl</dt><dd>16 · 20 · 24</dd>
+      </dl>
+      <p style="margin:8px 0 0;color:var(--ink3);font-size:11px">
+        原 16 種:8 / 8.5 / 9 / 9.5 / 10 / 10.5 / 11 / 11.5 / 12 / 12.5 / 13 / 14 / 15 / 16 / 17 / 21 —— <b>65% 宣告低於 12px</b>。
+      </p>
+    </div>
+    <div class="tok">
+      <h4>對比:修 3 條,其餘不動</h4>
+      <table class="kb">
+        <tr><td><code>ink-4</code> 2.52:1</td><td class="bad">拆兩 token</td></tr>
+        <tr><td>表頭 4.21:1</td><td class="bad">→ ink-2</td></tr>
+        <tr><td>空白輸入框 1.25:1</td><td class="bad">→ 3:1</td></tr>
+        <tr><td><b>表格框線</b> 1.25:1</td><td class="good">✅ 不動</td></tr>
+        <tr><td><b>類別色</b> 5.2–6.2:1</td><td class="good">✅ 不動</td></tr>
+      </table>
+    </div>
+    <div class="tok">
+      <h4>⚠️ 證據強度誠實標注</h4>
+      <p style="margin:0;color:var(--ink2);font-size:11.5px">
+        <b>有依據</b>:地板 12px(Carbon caption-01 / Fluent Caption1)· 12.5px 須換(sub-pixel rounding,三大系統皆無此值)· 內文 14px(三系統一致)· 全整數(Carbon 全階無小數)。
+      </p>
+      <p style="margin:7px 0 0;color:var(--er);font-size:11.5px">
+        <b>屬取捨非查得</b>:表格 <b>13/18</b> 這一階。Carbon 無 13px(其階 12→14),此階為自行插入。
+      </p>
+    </div>
+  </div>
+
+  <div class="why">
+    <h3>本節為何只修「可量測項」</h3>
+    <ul>
+      <li>對比度與字階是<b>正確性</b>問題,不是美感問題:2.52:1 的 9px 狀態文字<b>看不見</b>,同一資訊在不同頁面用不同大小顯示<b>本身就是錯的</b>。</li>
+      <li><b>效率不是理由</b> —— 「視覺質感 → 客觀效率」效果量小且方向無共識:統合分析 <b>g = 0.12</b>;2023 年 n=281 研究完成時間 <b>d = −0.06, p = 0.60</b>。原文:「there is still no consensus」。</li>
+      <li><b>SAP Fiori 官方</b>:compact 模式<b>字級不變,只縮元件尺寸與間距</b> → 密度靠間距不靠縮字。故列高維持 34px。<span class="src">官方</span></li>
+      <li class="bad">驗收線(FMEA U11,P0):字階收斂前後<b>單螢幕可見列數不得減少</b>。</li>
+      <li class="good">工藝感本身是另一回事,且<b>有可量測的目標與明確的投資窗口</b> —— 見 §06。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════ 6 工藝感 ═══════════ -->
+<section>
+  <div class="shead"><span class="snum">06</span><h2>工藝感 —— 有量表、有門檻、有窗口</h2></div>
+  <p class="lede">
+    「像不像玩具」過去是主觀爭論。<b>VisAWI</b>(Moshagen &amp; Thielsch 2010)四面向之一即 <b>Craftsmanship</b>,
+    逐字定義為「the skillful and coherent integration of all relevant design dimensions」—— <b>可前後測</b>。
+  </p>
+
+  <div class="grid3">
+    <div class="tok">
+      <h4>量表 · VisAWI-S(4 題)</h4>
+      <table class="kb">
+        <tr><td>Everything goes together on this site</td></tr>
+        <tr><td>The layout is pleasantly varied</td></tr>
+        <tr><td>The colour composition is attractive</td></tr>
+        <tr><td><b>The layout appears professionally designed</b></td></tr>
+      </table>
+      <p style="margin:8px 0 0;color:var(--ink3);font-size:11px">
+        與全版 <b>r = .91</b> · α = .81 · 7 點 Likert。官方門檻 <b>&gt; 4.5</b>(162 網站常模 M = 4.51)。
+      </p>
+      <p style="margin:6px 0 0;color:var(--er);font-size:11px">
+        ⚠️ 常模來自消費型網站,<b>B2B 內部工具無常模</b> → 以<b>自身前後測差異</b>為判準,絕對值僅參考。
+      </p>
+    </div>
+
+    <div class="tok">
+      <h4>瞄準 Craftsmanship,不追 Diversity</h4>
+      <p style="margin:0 0 8px;color:var(--ink2);font-size:11.5px">同內容美/醜兩版之敏感度(效果量 d):</p>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink2)"><span><b>Craftsmanship</b></span><span class="tabular">1.60</span></div>
+          <div style="height:9px;border:1px solid var(--c1-line);background:var(--c1-t)"><div style="height:100%;width:100%;background:var(--c1)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink2)"><span>Diversity</span><span class="tabular">0.49</span></div>
+          <div style="height:9px;border:1px solid var(--c1-line);background:var(--c1-t)"><div style="height:100%;width:31%;background:var(--c1)"></div></div>
+        </div>
+      </div>
+      <p style="margin:9px 0 0;color:var(--ink3);font-size:11px">
+        施力方向即其題目:<b>professionally designed · designed with care · lacks a concept (r)</b> ——
+        <b>一致性與概念完整</b>,不是增加變化。
+        <br/>正好與 §05 的字階收斂 / 對比一致 / 間距節奏<b>重合,不是額外的工</b>。
+      </p>
+    </div>
+
+    <div class="tok">
+      <h4>🔴 投資窗口 = 首次接觸</h4>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink2)"><span>50ms 首次印象</span><span class="good">強</span></div>
+          <div style="height:9px;border:1px solid var(--ok-line);background:var(--ok-t)"><div style="height:100%;width:100%;background:var(--ok)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink2)"><span>2 週</span><span style="color:var(--wn)">開始衰減</span></div>
+          <div style="height:9px;border:1px solid var(--wn-line);background:var(--wn-t)"><div style="height:100%;width:42%;background:var(--wn)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink2)"><span><b>7 週</b>(N=110)</span><span class="bad">歸零</span></div>
+          <div style="height:9px;border:1px solid var(--er-line);background:var(--er-t)"></div>
+        </div>
+      </div>
+      <p style="margin:9px 0 0;color:var(--ink2);font-size:11.5px">
+        Sauer &amp; Sonderegger 2022 逐字:「<b>We found no effect of visual aesthetics on user experience</b>
+        (including perceived usability as the chief outcome variable)」。
+      </p>
+    </div>
+  </div>
+
+  <div class="why" style="margin-top:14px">
+    <h3>因此:工藝要投在哪裡</h3>
+    <p style="margin:0 0 9px;color:var(--ink2)">
+      <b>R1 的目的是讓既有 Ragic 客戶遷移</b> —— demo、評估、onboarding,<b>正是效果最強的窗口</b>。優先序為首次接觸鏈:
+    </p>
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:11px">
+      <span class="chip c1">登入</span><span style="color:var(--ink4)">→</span>
+      <span class="chip c1">首頁</span><span style="color:var(--ink4)">→</span>
+      <span class="chip c1">第一次建表</span><span style="color:var(--ink4)">→</span>
+      <span class="chip c1">第一次填單</span>
+      <span style="margin-left:10px;color:var(--ink3);font-size:11.5px">優先於深層設定頁</span>
+    </div>
+    <ul>
+      <li class="bad"><b>不得承諾</b>:對已使用數月的日常使用者,工藝帶來持續的效率或滿意度收益(7 週歸零)。</li>
+      <li><b>降複雜度的正確做法</b>:目標是<b>避開高複雜度</b>,非「適度複雜」—— 倒 U 型<b>不成立</b>。Tuch 2012 逐字「related in a <b>linear</b> manner」;Reinecke 2013 亦證低複雜度與中複雜度受喜好程度相當。</li>
+      <li>高複雜度會<b>吃掉「照慣例做」的全部紅利</b>:原型性效果 d 由 <b>1.96 崩至 .24</b> → 先降複雜度,再談版型創新。</li>
+      <li>可自動計算並進 CI 的指標:<b>grid quality</b> · figure-ground contrast · visual clutter(Miniukovich 2015,八指標解釋美感 <b>49%</b> 變異)。</li>
+    </ul>
+  </div>
+
+  <div class="why" style="margin-top:12px">
+    <h3>🔴 應從規範中刪除的六條(無證據或方向相反)</h3>
+    <table class="kb expl" style="font-size:11.5px">
+      <tr><td>字型家族 ≤ 2</td><td><b>查無任何同儕審查實驗</b>測字體家族「數量」的效果</td></tr>
+      <tr><td><b>減少色彩數量</b></td><td class="bad"><b>方向相反</b> —— 低圖形介面主色較多反而評分較高,<b>企業表單正屬此類</b></td></tr>
+      <tr><td>留白越多越好</td><td>white space 僅在高圖形頁降低美感,其餘不顯著</td></tr>
+      <tr><td>對稱性</td><td>受性別調節;計算指標被模型剔除</td></tr>
+      <tr><td>複雜度倒 U</td><td>兩篇獨立研究否證,實為線性負向</td></tr>
+      <tr><td>好看 → 長期更好用</td><td>7 週實驗零效果</td></tr>
+    </table>
+    <p style="margin:9px 0 0;color:var(--er);font-size:11.5px">
+      ⚠️「減少色彩數量」<b>不得外推</b>為 chrome 使用裝飾色的授權 —— 該研究測的是<b>美感評分</b>而非資訊編碼,對象為一般網頁而非資料工具。
+    </p>
+  </div>
+</section>
+
+</div>
+<script>
+  // 示範用:同時觸發兩種載入模式,呈現差異。非產品動效。
+  const go = document.getElementById('go');
+  const oldStage = document.getElementById('oldStage');
+  const newBody = document.getElementById('newBody');
+  const prog = document.getElementById('prog');
+  const snapshot = oldStage.innerHTML;
+  let running = false;
+  go.addEventListener('click', () => {
+    if (running) return;
+    running = true;
+    /* 左:準確重現現況 —— `if (isLoading) return <div>載入中…</div>` 位於頁面元件頂層,
+       連同該頁自己的工具列一起被換掉,只有 rail 與狀態列(layout 層)存活。 */
+    oldStage.innerHTML = '<div class="blank">載入中…</div>';
+    // 右:保留內容,延遲 400ms 才顯示進度條(Fiori 防閃爍)
+    const t = setTimeout(() => { prog.classList.add('on'); newBody.classList.add('busy'); }, 400);
+    setTimeout(() => {
+      clearTimeout(t);
+      oldStage.innerHTML = snapshot;
+      prog.classList.remove('on');
+      newBody.classList.remove('busy');
+      running = false;
+    }, 1600);
+  });
+</script>
+</body>
+</html>
