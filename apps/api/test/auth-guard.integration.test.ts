@@ -14,6 +14,8 @@ let app: NestFastifyApplication
 let auth: Auth
 let cookieA = ""
 let cookieB = ""
+let orgA1Id = ""
+let orgA2Id = ""
 
 const savedEnv = {
   NODE_ENV: process.env.NODE_ENV,
@@ -83,6 +85,20 @@ beforeAll(async () => {
 
   cookieA = await onboard("a@weyver.test", "廠A管理員", "chang-a", "廠 A")
   cookieB = await onboard("b@weyver.test", "廠B管理員", "chang-b", "廠 B")
+
+  /* F-10:同一個人再開第二家 —— 這正是本產品的實際模式(一人導入 17 家),
+     也是跨分頁污染的必要前提。orgA2 建立後 active org 會停在 A2。 */
+  const org2 = await auth.api.createOrganization({
+    headers: new Headers({ cookie: cookieA }),
+    body: { name: "廠 A2", slug: "chang-a2" },
+  })
+  orgA2Id = org2?.id ?? ""
+  const orgs = await auth.api.listOrganizations({ headers: new Headers({ cookie: cookieA }) })
+  orgA1Id = orgs.find((o) => o.slug === "chang-a")?.id ?? ""
+  await auth.api.setActiveOrganization({
+    headers: new Headers({ cookie: cookieA }),
+    body: { organizationId: orgA1Id },
+  })
 }, 180_000)
 
 afterAll(async () => {
@@ -168,5 +184,103 @@ describe("🔴 成員撤銷必須立即生效(追溯稽核 P0)", () => {
     const after = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie } })
     expect(after.statusCode).toBe(403)
     expect((after.json() as { code: string }).code).toBe("NOT_ORG_MEMBER")
+  })
+})
+
+/* 🔴 F-10|分頁級租戶上下文。重現的是本產品的實際模式:**一個人管多家公司**,
+   多分頁各開一家。租戶原本綁在整個瀏覽器共用的 session 列上,
+   分頁 2 切公司會改到分頁 1 的租戶 → 分頁 1 的下一次寫入落到錯的公司。 */
+describe("F-10 分頁級租戶上下文", () => {
+  it("不帶 intent → 維持既有行為(以 session 的 active org 為準)", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieA } })
+    expect(res.statusCode).toBe(200)
+  })
+
+  it("intent 與 session 相同 → 一切照舊", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA, "x-weyver-org-intent": orgA1Id },
+    })
+    expect(res.statusCode).toBe(200)
+  })
+
+  it("🔴 讀取:intent 指向另一家自己的公司 → 放行,且讀到的是那一家", async () => {
+    /* 先在 A2 建一張表(用 intent 讀不到它才有意義) */
+    await auth.api.setActiveOrganization({
+      headers: new Headers({ cookie: cookieA }),
+      body: { organizationId: orgA2Id },
+    })
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: { cookie: cookieA },
+      payload: { name: "A2專用表", fields: [{ name: "欄", type: "text" }] },
+    })
+    expect(create.statusCode).toBe(201)
+    await auth.api.setActiveOrganization({
+      headers: new Headers({ cookie: cookieA }),
+      body: { organizationId: orgA1Id },
+    })
+
+    // session 現在是 A1;帶 A2 的 intent 讀 → 應看到 A2 的表
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA, "x-weyver-org-intent": orgA2Id },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(names(res)).toContain("A2專用表")
+
+    // 不帶 intent 則看到 A1 的,證明兩者確實解析到不同租戶
+    const plain = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieA } })
+    expect(names(plain)).not.toContain("A2專用表")
+  })
+
+  it("🔴 寫入:intent 與 session 不符 → 409 TENANT_CONTEXT_MISMATCH,**不寫入任何一邊**", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: { cookie: cookieA, "x-weyver-org-intent": orgA2Id },
+      payload: { name: "不該被建立的表", fields: [{ name: "欄", type: "text" }] },
+    })
+    expect(res.statusCode).toBe(409)
+    /* 信封維持統一四欄(AGENTS 橫切鐵則)—— 前端本來就知道自己送了哪個 intent,
+       目前的 active org 也讀得到,不需要伺服器回傳 */
+    expect((res.json() as { code: string }).code).toBe("TENANT_CONTEXT_MISMATCH")
+
+    for (const [label, intent] of [["A1", orgA1Id], ["A2", orgA2Id]] as const) {
+      const list = await app.inject({
+        method: "GET",
+        url: "/api/forms",
+        headers: { cookie: cookieA, "x-weyver-org-intent": intent },
+      })
+      expect(names(list), `${label} 不該有這張表`).not.toContain("不該被建立的表")
+    }
+  })
+
+  it("🔴 intent 指向**非成員**的公司 → 403,不是靜默採用(這是 intent 與授權結論的分界)", async () => {
+    const orgsB = await auth.api.listOrganizations({ headers: new Headers({ cookie: cookieB }) })
+    const orgBId = orgsB[0]?.id ?? ""
+    expect(orgBId).not.toBe("")
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA, "x-weyver-org-intent": orgBId },
+    })
+    expect(res.statusCode).toBe(403)
+    expect((res.json() as { code: string }).code).toBe("NOT_ORG_MEMBER")
+  })
+
+  it("intent 不改寫 session(否則污染會反向傳播回另一個分頁)", async () => {
+    await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA, "x-weyver-org-intent": orgA2Id },
+    })
+    const after = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieA } })
+    // 不帶 intent 仍是 A1 → session 未被改寫
+    expect(names(after)).not.toContain("A2專用表")
   })
 })

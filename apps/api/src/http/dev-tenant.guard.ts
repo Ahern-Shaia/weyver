@@ -9,7 +9,17 @@ import { ConfigService } from "@nestjs/config"
 import { Inject } from "@nestjs/common"
 import type { RequestWithTenant } from "./tenant-context.js"
 
-/* ⚠️ 開發 / 測試期 stub(prod 由 AuthGuard 接管,見 tenant.guard.ts 分派):
+/* 🔴 F-10 說明|**dev 車道對跨分頁租戶污染結構上免疫**,因此本檔不需改。
+
+   prod 的問題是租戶來自**整個瀏覽器共用**的 session 列(`activeOrganizationId`),
+   分頁 2 切公司會改到分頁 1 的租戶。而 dev 的租戶本來就由 `x-dev-tenant`
+   **每個請求各自帶**,天然是分頁級的 —— 沒有共用狀態可被污染。
+
+   **不要為了「dev/prod 一致」在這裡加 intent header 機制** —— 那會是一個
+   永遠不會觸發的分支,反而讓人以為 dev 有測到 mismatch 流程。
+   mismatch 對話框請以前端測試與 prod e2e 覆蓋。
+
+   ⚠️ 開發 / 測試期 stub(prod 由 AuthGuard 接管,見 tenant.guard.ts 分派):
    - 租戶識別暫取 x-dev-tenant header(F-2 後改為驗證過的 JWT tenant_id,剝除 client header — 鐵則 3)
    - production 一律拒絕(fail-closed):auth 未接不得對外服務 */
 @Injectable()

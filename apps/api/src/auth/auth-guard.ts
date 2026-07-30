@@ -11,6 +11,7 @@ import type { RequestWithTenant } from "../http/tenant-context.js"
 import { AUTH } from "./auth.tokens.js"
 import type { Auth } from "./auth.js"
 import { IdentityService } from "./identity.service.js"
+import { TenantContextMismatchError, isMutation, readOrgIntent } from "./org-intent.js"
 
 /* client 送來的任何租戶提示一律剝除:租戶只出自伺服器驗證的 session(鐵則 3 / docs/21 §4)。 */
 const CLIENT_TENANT_HEADERS = ["x-tenant-id", "x-dev-tenant", "x-dev-actor"] as const
@@ -54,7 +55,27 @@ export class AuthGuard implements CanActivate {
       })
     }
 
-    const tenantId = await this.identity.getTenantIdByOrg(orgId)
+    /* 🔴 F-10|分頁級租戶。`activeOrganizationId` 是**整個瀏覽器共用**的,
+       分頁 2 切公司會改到分頁 1 的租戶 → 分頁 1 的下一次寫入落到錯的公司。
+       intent header 讓每個請求帶上「這個分頁以為自己在哪」;
+       **語意與被剝除的 x-tenant-id 的差別見 org-intent.ts,改動前務必先讀。** */
+    const intentOrgId = readOrgIntent(request.headers)
+    let effectiveOrgId = orgId
+    if (intentOrgId !== null && intentOrgId !== orgId) {
+      /* 🔴 獨立查成員資格 —— 這一步是 intent 與授權結論的分界。拿掉它就是 BOLA。 */
+      if (!(await this.identity.isOrgMember(session.user.id, intentOrgId))) {
+        throw new ForbiddenException({
+          code: "NOT_ORG_MEMBER",
+          message: "not a member of the requested organization",
+        })
+      }
+      /* 讀放行(回頭看舊分頁合理),寫擋下(讓人明確決定寫進哪一家)。
+         **不寫回 session** —— 寫回等於把污染反向傳播到另一個分頁。 */
+      if (isMutation(request.method)) throw new TenantContextMismatchError()
+      effectiveOrgId = intentOrgId
+    }
+
+    const tenantId = await this.identity.getTenantIdByOrg(effectiveOrgId)
     if (tenantId === null) {
       throw new ForbiddenException({
         code: "TENANT_NOT_PROVISIONED",
