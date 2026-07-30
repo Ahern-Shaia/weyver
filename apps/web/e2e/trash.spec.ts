@@ -26,11 +26,13 @@ async function addRecord(request: Req, formId: number, 品名: string): Promise<
 test("刪記錄 → 回收桶顯示首欄值與表單名 → 還原後資料回來", async ({ page, request }) => {
   const stamp = String(Date.now()).slice(-6)
   const formId = await createForm(request, `E2E回收桶_${stamp}`)
-  await addRecord(request, formId, "醬油")
+  await addRecord(request, formId, `醬油_${stamp}`)
   await request.delete(`${API}/forms/${String(formId)}/records/1`, { headers: { "x-dev-tenant": "1" } })
 
   await page.goto("/app/settings/trash")
-  const row = page.getByRole("listitem").filter({ hasText: "醬油" })
+  /* 名稱帶 stamp:dev DB 會累積前幾輪(含手動實走)留下的同名回收項目,
+     用固定字串會匹配到多筆 */
+  const row = page.getByRole("listitem").filter({ hasText: `醬油_${stamp}` })
   await expect(row).toBeVisible({ timeout: 30_000 })
   // 標題是首欄值不是 #id;旁邊掛表單名
   await expect(row).toContainText(`E2E回收桶_${stamp}`)
@@ -43,7 +45,7 @@ test("刪記錄 → 回收桶顯示首欄值與表單名 → 還原後資料回�
     headers: { "x-dev-tenant": "1" },
   })
   const body = (await after.json()) as { records: { values: Record<string, unknown> }[] }
-  expect(body.records.map((r) => r.values["品名"])).toContain("醬油")
+  expect(body.records.map((r) => r.values["品名"])).toContain(`醬油_${stamp}`)
 })
 
 test("🔴 同名重建後還原表單 → 明確阻擋而非 500", async ({ page, request }) => {
