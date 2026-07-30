@@ -16,7 +16,7 @@ export const TRASH_RETENTION_DAYS = 30
 
 function readFormName(detail: unknown): string | null {
   if (typeof detail !== "object" || detail === null) return null
-  const value = (detail as Record<string, unknown>)["formName"]
+  const value = (detail as Record<string, unknown>).formName
   return typeof value === "string" ? value : null
 }
 

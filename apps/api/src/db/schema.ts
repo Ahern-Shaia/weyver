@@ -941,3 +941,140 @@ export const trashEntries = pgTable(
     check("trash_entry_state", sql`state IN ('trashed','restored','purged')`),
   ],
 )
+
+/* G-1 M1|事件匯流排 outbox。**與業務變更同一 tx 落列**(AGENTS ⚙️ Outbox pattern)。
+
+   為什麼需要它,而不是在 RecordService 直接呼叫通知 / 送 webhook:
+   - webhook 送出是網路 I/O,絕不能佔著業務交易
+   - 一份事件源同時餵通知與 webhook,不會出現「通知有、webhook 沒有」的漂移
+   - crash 不丟事件(這正是 `record.created` 過去從未送達的反面)
+
+   `sequence` 為 per (tenant, form, record) 遞增:業界一致**不保證投遞順序**
+   (Stripe / Shopify 皆明載),消費端靠此丟棄舊序號。 */
+export const eventOutbox = pgTable(
+  "event_outbox",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    // Standard Webhooks 命名:資源單數 + 動作過去式(record.created)
+    type: text("type").notNull(),
+    formId: bigint("form_id", { mode: "number" }),
+    recordId: bigint("record_id", { mode: "number" }),
+    actorId: bigint("actor_id", { mode: "number" }),
+    sequence: bigint("sequence", { mode: "number" }).notNull().default(0),
+    /* 🔴 只放**非敏感的參照資訊**,不放欄位值。
+       載荷在投遞當下依訂閱主體的 ACL 重算(webhook.md §4.4),
+       這裡先存下來就等於凍結了一份不受權限變更影響的快照。 */
+    meta: jsonb("meta").notNull().default({}),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    // 扇出完成即標記;未完成者由 cron 重掃(可重入)
+    fannedOutAt: timestamp("fanned_out_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("event_outbox_pending_idx")
+      .on(t.occurredAt)
+      .where(sql`fanned_out_at IS NULL`),
+    index("event_outbox_tenant_idx").on(t.tenantId, t.occurredAt),
+  ],
+)
+
+/* G-1 M3|Webhook 訂閱。URL 由租戶使用者自填 → SSRF 是 P0(docs/22 威脅前三)。
+
+   `secret` 存**明文**是刻意的:HMAC 簽章需要原始秘鑰才能計算,不像密碼可以只存 hash。
+   代價以「僅簽發時回傳一次 + DB 層 RLS + log redact」控制。
+   `secretPrev` 給零停機輪替:輪替後兩把並存,同一 header 出兩個簽章(Standard Webhooks)。 */
+export const webhookEndpoints = pgTable(
+  "webhook_endpoint",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    url: text("url").notNull(),
+    description: text("description"),
+    // 訂閱的事件型別;空陣列 = 全訂
+    eventTypes: text("event_types").array().notNull().default([]),
+    secret: text("secret").notNull(),
+    secretPrev: text("secret_prev"),
+    secretRotatedAt: timestamp("secret_rotated_at", { withTimezone: true }),
+    /* 啟用前挑戰(Slack url_verification / Notion verification_token 同模式):
+       未通過者不得投遞 —— 除了證明端點可控,也避免平台淪為打第三方的放大器 */
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verifyToken: text("verify_token"),
+    /* 🔴 載荷以此主體的欄位 ACL 產生,不是以觸發變更那位使用者的權限(§4.4)。
+       null = 僅送 thin(無欄位值),不需要主體 */
+    subjectActorId: bigint("subject_actor_id", { mode: "number" }),
+    // thin(預設)只帶參照;fat 需逐欄白名單
+    payloadMode: text("payload_mode").notNull().default("thin"),
+    fatFieldIds: bigint("fat_field_ids", { mode: "number" }).array().notNull().default([]),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    disabledReason: text("disabled_reason"),
+    // 自動停用的雙條件判定用(Svix:避免消費端一次短暫維護就被停)
+    firstFailureAt: timestamp("first_failure_at", { withTimezone: true }),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    createdBy: bigint("created_by", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("webhook_endpoint_tenant_idx").on(t.tenantId).where(sql`deleted_at IS NULL`),
+    check("webhook_endpoint_payload_mode", sql`payload_mode IN ('thin','fat')`),
+  ],
+)
+
+/* 投遞紀錄。欄位形狀刻意比照 `notification_delivery` —— 那套 cron 抽取 + 退避
+   已在 prod 驗證過,復用勝過為它引進 BullMQ(OQ-WH-1=A;且 BullMQ 的 group
+   併發是 Pro 商業功能,OSS-only 下引進也換不到順序保證)。 */
+export const webhookDeliveries = pgTable(
+  "webhook_delivery",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    endpointId: bigint("endpoint_id", { mode: "number" }).notNull(),
+    eventId: bigint("event_id", { mode: "number" }),
+    /* 對外的 webhook-id。**重送時沿用同一個**,消費端才去重得掉(GitHub 同做法) */
+    messageId: text("message_id").notNull(),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    responseCode: integer("response_code"),
+    // 截斷後存;秘鑰與授權 header 一律 redact
+    responseBody: text("response_body"),
+    lastError: text("last_error"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("webhook_delivery_due_idx")
+      .on(t.status, t.nextAttemptAt)
+      .where(sql`status = 'pending'`),
+    index("webhook_delivery_endpoint_idx").on(t.tenantId, t.endpointId, t.createdAt),
+    check("webhook_delivery_status", sql`status IN ('pending','sent','failed')`),
+  ],
+)
+
+/* G-1 M4|API 金鑰。**只存 hash** —— 與 webhook secret 不同,驗證時我們拿得到明文
+   (client 送上來),所以沒有存明文的理由。前綴另存供 UI 辨識(`wvk_live_ab12…`)。 */
+export const apiKeys = pgTable(
+  "api_key",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    name: text("name").notNull(),
+    keyHash: text("key_hash").notNull(),
+    keyPrefix: text("key_prefix").notNull(),
+    /* 以哪個 actor 的權限執行 —— 金鑰不得擁有超出該人的權限,
+       否則金鑰就成了提權管道(對齊 webhook 的 subjectActorId 同一原則) */
+    subjectActorId: bigint("subject_actor_id", { mode: "number" }).notNull(),
+    scopes: text("scopes").array().notNull().default([]),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdBy: bigint("created_by", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("api_key_hash_uq").on(t.keyHash),
+    index("api_key_tenant_idx").on(t.tenantId).where(sql`revoked_at IS NULL`),
+  ],
+)
