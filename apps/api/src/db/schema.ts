@@ -1078,3 +1078,80 @@ export const apiKeys = pgTable(
     index("api_key_tenant_idx").on(t.tenantId).where(sql`revoked_at IS NULL`),
   ],
 )
+
+/* G-2 M1|公開表單分享。把一張內部表單開放給**未登入者**填寫。
+
+   🔴 **`fieldIds` 是 opt-in 白名單,不是「排除清單」。**
+   若採排除制,日後有人在表單加一個成本欄,那一刻就外洩了 ——
+   安全預設必須是「新東西預設不公開」,而不是「記得去排除」。
+
+   `tokenHash`|分享網址帶的是高熵明文,DB 只存 hash(與 API 金鑰同理:
+   驗證時明文會被送上來,沒有存明文的必要)。 */
+export const publicFormShares = pgTable(
+  "public_form_share",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    tokenHash: text("token_hash").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    // opt-in 白名單:只有列在這裡的欄位會被渲染、被接受
+    fieldIds: bigint("field_ids", { mode: "number" }).array().notNull().default([]),
+    // 關閉條件(Fillout 最完整,取其三)
+    opensAt: timestamp("opens_at", { withTimezone: true }),
+    closesAt: timestamp("closes_at", { withTimezone: true }),
+    maxSubmissions: integer("max_submissions"),
+    closedMessage: text("closed_message"),
+    submissionCount: integer("submission_count").notNull().default(0),
+    /* 🔴 掃毒未就緒前預設禁附件(OQ-PF-6)。匿名者上傳的檔案在掃完前
+       不可被任何人取用,而本平台目前沒有掃毒(#102)—— 沒有就不要開。 */
+    allowAttachments: boolean("allow_attachments").notNull().default(false),
+    requireCaptcha: boolean("require_captcha").notNull().default(true),
+    active: boolean("active").notNull().default(true),
+    createdBy: bigint("created_by", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("public_form_share_token_uq").on(t.tokenHash),
+    index("public_form_share_tenant_idx").on(t.tenantId).where(sql`deleted_at IS NULL`),
+  ],
+)
+
+/* 🔴 匿名提交**不直接寫進動態表**,先落待審收件匣(OQ-PF-7)。
+
+   各家問卷平台都不隔離(Airtable 甚至提供 trigger 方便你串自動化),
+   因為問卷沒有這個需求。但 ERP 定位下,一筆匿名提交直接觸發簽核、
+   吃掉正式單號、污染主檔是不可接受的。**這是刻意不照抄業界的地方。**
+
+   隔離同時解掉三個問題:
+   - 自動編號不被匿名者消耗(也就不會被用來推算業務量)
+   - 唯一值衝突不會變成 existence oracle(提交當下不檢查唯一性)
+   - 公式 / 簽核 / 通知 / webhook 一律等到 promote 才觸發 */
+export const publicSubmissions = pgTable(
+  "public_submission",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    shareId: bigint("share_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    // 以欄位名為鍵的原始提交值(尚未進動態表)
+    values: jsonb("values").notNull(),
+    status: text("status").notNull().default("pending"),
+    // promote 後指向真正建立的記錄
+    recordId: bigint("record_id", { mode: "number" }),
+    rejectReason: text("reject_reason"),
+    // 只存 hash:留追查能力但不留可回推的個資
+    submitterIpHash: text("submitter_ip_hash"),
+    submitterUa: text("submitter_ua"),
+    reviewedBy: bigint("reviewed_by", { mode: "number" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("public_submission_inbox_idx").on(t.tenantId, t.status, t.createdAt),
+    index("public_submission_share_idx").on(t.shareId),
+    check("public_submission_status", sql`status IN ('pending','promoted','rejected')`),
+  ],
+)
