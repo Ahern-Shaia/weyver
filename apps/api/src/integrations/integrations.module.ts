@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common"
 import { AuthzModule } from "../authz/authz.module.js"
+import { ApiKeyService } from "./api-key.service.js"
 import { EventFanoutService } from "./event-fanout.service.js"
 import { EventService } from "./event.service.js"
 import { IntegrationsController } from "./integrations.controller.js"
@@ -15,7 +16,7 @@ import { WebhookService } from "./webhook.service.js"
 @Module({
   imports: [AuthzModule],
   controllers: [IntegrationsController],
-  providers: [EventService, EventFanoutService, WebhookService, WebhookDeliveryService],
-  exports: [EventService, EventFanoutService, WebhookService, WebhookDeliveryService],
+  providers: [EventService, EventFanoutService, WebhookService, WebhookDeliveryService, ApiKeyService],
+  exports: [EventService, EventFanoutService, WebhookService, WebhookDeliveryService, ApiKeyService],
 })
 export class IntegrationsModule {}

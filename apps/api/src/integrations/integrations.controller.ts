@@ -20,6 +20,7 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
+import { ApiKeyService } from "./api-key.service.js"
 import { EVENT_TYPES } from "./event.service.js"
 import { WebhookService } from "./webhook.service.js"
 
@@ -34,10 +35,22 @@ const createEndpointSchema = z.object({
 
 const verifySchema = z.object({ token: z.string().min(1).max(200) })
 
+const issueKeySchema = z.object({
+  name: z.string().min(1).max(80),
+  /* 以誰的身分執行。**不另給一套權限** —— 金鑰的權限恆等於這個人的權限,
+     否則它就成了繞過 authz 的側門。 */
+  subjectActorId: z.number().int().positive(),
+  scopes: z.array(z.enum(["read", "write"])).default(["read"]),
+  expiresInDays: z.number().int().min(1).max(3650).optional(),
+})
+
 @Controller("api/integrations")
 @UseGuards(TenantGuard, PermissionGuard)
 export class IntegrationsController {
-  constructor(@Inject(WebhookService) private readonly webhooks: WebhookService) {}
+  constructor(
+    @Inject(WebhookService) private readonly webhooks: WebhookService,
+    @Inject(ApiKeyService) private readonly apiKeys: ApiKeyService,
+  ) {}
 
   private assertAdmin(permissions: EffectivePermissions): void {
     if (!permissions.isAdmin) {
@@ -138,6 +151,47 @@ export class IntegrationsController {
   ): Promise<void> {
     this.assertAdmin(permissions)
     await this.webhooks.redeliver(tenant.tenantId, id)
+  }
+
+  @Get("api-keys")
+  async listKeys(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+  ) {
+    this.assertAdmin(permissions)
+    return { keys: await this.apiKeys.list(tenant.tenantId) }
+  }
+
+  @Post("api-keys")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async issueKey(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Body(new ZodValidationPipe(issueKeySchema)) body: z.infer<typeof issueKeySchema>,
+  ) {
+    this.assertAdmin(permissions)
+    /* 明文只在這一次回傳 */
+    return this.apiKeys.issue(tenant.tenantId, {
+      name: body.name,
+      subjectActorId: body.subjectActorId,
+      scopes: body.scopes,
+      expiresAt:
+        body.expiresInDays === undefined
+          ? undefined
+          : new Date(Date.now() + body.expiresInDays * 86_400_000),
+      createdBy: tenant.actorId,
+    })
+  }
+
+  @Delete("api-keys/:id")
+  @HttpCode(204)
+  async revokeKey(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<void> {
+    this.assertAdmin(permissions)
+    await this.apiKeys.revoke(tenant.tenantId, id)
   }
 
   @Delete("webhooks/:id")

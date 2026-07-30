@@ -10,6 +10,7 @@ import { MetadataService } from "../src/form-engine/metadata/metadata.service.js
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { EventFanoutService } from "../src/integrations/event-fanout.service.js"
+import { ApiKeyService } from "../src/integrations/api-key.service.js"
 import { EventService } from "../src/integrations/event.service.js"
 import { WebhookService } from "../src/integrations/webhook.service.js"
 
@@ -25,6 +26,7 @@ let db: DrizzleDb
 let ddl: DdlService
 let records: RecordService
 let webhooks: WebhookService
+let apiKeys: ApiKeyService
 let fanout: EventFanoutService
 let ddlKnex: Knex
 const destroyers: (() => Promise<void>)[] = []
@@ -60,6 +62,7 @@ beforeAll(async () => {
      用特權連線測會讓 grant 缺漏整個被遮住(本 session 已五度踩到)。 */
   records = new RecordService(appKnex, metadata, undefined, undefined, undefined, new EventService())
   webhooks = new WebhookService(new TenantDb(appDb))
+  apiKeys = new ApiKeyService(new TenantDb(appDb), db)
   const notifyStub = { emit: async () => 0 } as never
   fanout = new EventFanoutService(ddlKnex, notifyStub)
 }, 180_000)
@@ -252,5 +255,94 @@ describe("G-1 端點管理", () => {
     expect(Number(row?.consecutive_failures)).toBe(0)
     expect(row?.first_failure_at).toBeNull()
     expect(row?.disabled_at).toBeNull()
+  })
+})
+
+describe("G-1 API 金鑰", () => {
+  it("簽發後明文只回一次;DB 只存 hash", async () => {
+    const issued = await apiKeys.issue(tenantA, {
+      name: "ERP 同步",
+      subjectActorId: ALICE,
+      scopes: ["read"],
+      createdBy: ALICE,
+    })
+    expect(issued.key.startsWith("wvk_")).toBe(true)
+    const row = await ddlKnex("api_key").where({ id: issued.id }).first()
+    /* 🔴 DB 裡不能出現明文 —— 這是與 webhook secret 的關鍵差別 */
+    expect(row?.key_hash).not.toBe(issued.key)
+    expect(JSON.stringify(row)).not.toContain(issued.key)
+    expect(row?.key_prefix).toBe(issued.key.slice(0, 12))
+
+    const listed = await apiKeys.list(tenantA)
+    expect(JSON.stringify(listed)).not.toContain(issued.key)
+  })
+
+  it("有效金鑰解析出租戶與執行身分", async () => {
+    const issued = await apiKeys.issue(tenantA, {
+      name: "有效",
+      subjectActorId: ALICE,
+      scopes: ["read", "write"],
+      createdBy: ALICE,
+    })
+    const resolved = await apiKeys.resolve(issued.key)
+    expect(resolved?.tenantId).toBe(tenantA)
+    /* 🔴 金鑰以 subject 的身分執行,不另給一套權限 —— 否則是繞過 authz 的側門 */
+    expect(resolved?.actorId).toBe(ALICE)
+    expect(resolved?.scopes).toEqual(["read", "write"])
+  })
+
+  it.each([
+    ["亂編的", "wvk_totally-made-up-key-value"],
+    ["前綴不對", "sk_live_something"],
+    ["空字串", ""],
+  ])("%s 一律解析失敗", async (_label, key) => {
+    expect(await apiKeys.resolve(key)).toBeNull()
+  })
+
+  it("🔴 撤銷與過期都回 null,且不區分原因(不洩漏金鑰是否存在)", async () => {
+    const revoked = await apiKeys.issue(tenantA, {
+      name: "待撤銷",
+      subjectActorId: ALICE,
+      scopes: ["read"],
+      createdBy: ALICE,
+    })
+    await apiKeys.revoke(tenantA, revoked.id)
+    expect(await apiKeys.resolve(revoked.key)).toBeNull()
+
+    const expired = await apiKeys.issue(tenantA, {
+      name: "已過期",
+      subjectActorId: ALICE,
+      scopes: ["read"],
+      expiresAt: new Date(Date.now() - 1000),
+      createdBy: ALICE,
+    })
+    expect(await apiKeys.resolve(expired.key)).toBeNull()
+  })
+
+  it("🔴 B 租戶看不到也撤銷不了 A 的金鑰", async () => {
+    const issued = await apiKeys.issue(tenantA, {
+      name: "A 專用",
+      subjectActorId: ALICE,
+      scopes: ["read"],
+      createdBy: ALICE,
+    })
+    expect((await apiKeys.list(tenantB)).some((k) => k.id === issued.id)).toBe(false)
+
+    await apiKeys.revoke(tenantB, issued.id)
+    // B 的撤銷不該生效 —— A 的金鑰仍然可用
+    expect(await apiKeys.resolve(issued.key)).not.toBeNull()
+  })
+
+  it("使用後記錄 last_used_at(金鑰洩漏時要查得出是哪一把在被用)", async () => {
+    const issued = await apiKeys.issue(tenantA, {
+      name: "追蹤使用",
+      subjectActorId: ALICE,
+      scopes: ["read"],
+      createdBy: ALICE,
+    })
+    await apiKeys.resolve(issued.key)
+    await new Promise((r) => setTimeout(r, 150))
+    const row = await ddlKnex("api_key").where({ id: issued.id }).first()
+    expect(row?.last_used_at).not.toBeNull()
   })
 })
