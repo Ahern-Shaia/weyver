@@ -20,6 +20,7 @@ import { fieldDefs } from "../db/schema.js"
 import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { detectType, hasSpreadsheetFormula, sanitizeFilename } from "../storage/file-type.js"
+import { inspectContent } from "../storage/content-inspect.js"
 import { ImageProcessor } from "../storage/image-processor.js"
 import {
   STORAGE_DRIVER,
@@ -141,6 +142,18 @@ export class FilesService implements OnModuleInit {
         message: "不支援的檔案類型(以檔案內容判定,非副檔名)",
       })
     }
+    /* 🔴 F-11 M1|內容層檢查。magic bytes 只證明「開頭像某種格式」,
+       證明不了內容安全:`.docm` 改名 `.docx` 的 magic bytes 一樣是 PK、
+       PDF 可以夾 `/JavaScript`、PNG 尾巴可以附一整個 ZIP(polyglot)。
+       這三類都是**純資料型攻擊** —— 研究明言 ClamAV 擋不住,而這裡幾十行就擋掉。 */
+    const inspected = inspectContent(body, detected.mime)
+    if (!inspected.ok) {
+      throw new UnsupportedMediaTypeException({
+        code: "UNSAFE_FILE_CONTENT",
+        message: inspected.reason ?? "檔案內容不被接受",
+      })
+    }
+
     /* 🔴 儲存型 CSV 公式注入:合法的 CSV 也可能是攻擊載體
        (`=cmd|'/c calc'!A1` → 同事以 Excel 開啟即觸發 DDE)。
        型別白名單擋不住,必須看內容。**拒收而非靜默改寫** —— 上傳的是使用者的

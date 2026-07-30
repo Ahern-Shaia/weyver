@@ -1,0 +1,250 @@
+import { inflateRawSync } from "node:zlib"
+
+/* 🔴 F-11 M1|內容層檢查。**投報率高於 ClamAV,且不需要 4 GiB 常駐。**
+
+   magic bytes(`file-type.ts`)只證明「開頭像某種格式」,證明不了內容安全。
+   本檔補三個 [file-storage §殘留](../../../docs/modules/foundation/file-storage.md)
+   已點名、但一直沒做的破口:
+
+   1. **OOXML 巨集** —— `.docm` 改名 `.docx` 仍是巨集檔,magic bytes 一樣是 PK
+   2. **PDF 主動內容** —— `/JavaScript` `/OpenAction` `/Launch` `/EmbeddedFile`
+   3. **polyglot 尾部** —— PNG/WebP 未旋轉時位元組原封,**尾部附加的 ZIP 完整存活**
+      (zip 讀取器從檔尾找中央目錄)
+
+   ## 為什麼先做這些
+
+   研究對 ClamAV 的誠實評價:官方自陳「不是傳統防毒」,Splunk 實測偵測率 59.94%,
+   且它擋不住「純資料型攻擊」。而上面三項正好都是純資料型 —— ClamAV 不一定攔得住,
+   這裡卻幾十行就擋掉。
+
+   ## 刻意的限制
+
+   - **原則上只讀中央目錄**;唯一的例外是 `[Content_Types].xml`(見 `readEntryText`),
+     且輸出硬性限制 64KB —— 與「解開整包」不是一回事,zip bomb 的攻擊面在後者
+   - 全部只掃前後有限位元組,不做完整解析 —— 我們不是要寫一個 PDF parser */
+
+export interface InspectVerdict {
+  readonly ok: boolean
+  readonly reason?: string
+}
+
+const OK: InspectVerdict = { ok: true }
+
+/* ── OOXML ────────────────────────────────────────────────────────────────
+   zip 的中央目錄在檔尾:EOCD(`PK\x05\x06`)→ 目錄起點 → 逐筆讀檔名。
+   只讀檔名,不讀內容、不解壓。 */
+
+const EOCD_SIG = 0x0605_4b50
+const CEN_SIG = 0x0201_4b50
+/* EOCD 最小 22 bytes;comment 最長 65535 → 從檔尾往回找的上限 */
+const EOCD_SEARCH = 22 + 0xff_ff
+
+function findEocd(buf: Buffer): number {
+  const start = Math.max(0, buf.length - EOCD_SEARCH)
+  for (let i = buf.length - 22; i >= start; i -= 1) {
+    if (buf.readUInt32LE(i) === EOCD_SIG) return i
+  }
+  return -1
+}
+
+export function listZipEntryNames(buf: Buffer, limit = 2000): string[] | null {
+  const eocd = findEocd(buf)
+  if (eocd < 0) return null
+  const count = buf.readUInt16LE(eocd + 10)
+  const centralSize = buf.readUInt32LE(eocd + 12)
+  /* 🔴 中央目錄起點要**由檔尾回推**,不能直接用 EOCD 記的 offset。
+
+     zip 附加在別的檔案後面時(polyglot),記載的 offset 是相對於 zip 自身起點,
+     與它在整個檔案中的絕對位置差了一個前綴長度。真實的 zip 讀取器都會回推 ——
+     若我們不回推,就會**比攻擊者手上的解壓工具更無能**:解析不到就以為安全。
+     實測正是如此:PNG+ZIP 的 polyglot 用記載 offset 讀不到任何條目。 */
+  const derived = eocd - centralSize
+  let offset =
+    derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG ? derived : buf.readUInt32LE(eocd + 16)
+  const names: string[] = []
+  for (let i = 0; i < Math.min(count, limit); i += 1) {
+    if (offset + 46 > buf.length || buf.readUInt32LE(offset) !== CEN_SIG) break
+    const nameLen = buf.readUInt16LE(offset + 28)
+    const extraLen = buf.readUInt16LE(offset + 30)
+    const commentLen = buf.readUInt16LE(offset + 32)
+    const nameStart = offset + 46
+    if (nameStart + nameLen > buf.length) break
+    names.push(buf.toString("utf8", nameStart, nameStart + nameLen))
+    offset = nameStart + nameLen + extraLen + commentLen
+  }
+  return names
+}
+
+/* 巨集的兩個證據:`vbaProject.bin` 存在,或 [Content_Types].xml 宣告 macroEnabled。
+   兩者都查 —— 只查其一都能被繞過。 */
+const MACRO_ENTRY = /(^|\/)vbaProject\.bin$/i
+
+export function inspectOoxml(buf: Buffer): InspectVerdict {
+  const names = listZipEntryNames(buf)
+  if (names === null) return { ok: false, reason: "無法解析 Office 檔案結構" }
+  if (names.some((n) => MACRO_ENTRY.test(n))) {
+    return { ok: false, reason: "檔案含巨集(vbaProject.bin),基於安全考量不接受" }
+  }
+  /* [Content_Types].xml 宣告 macroEnabled 的檔案即使沒有 vbaProject 也拒 ——
+     它宣告了自己是巨集格式,沒有理由讓它進來。
+
+     🔴 這一項**必須解壓才讀得到**(zip 內容是 deflate 過的,直接在原始位元組
+     搜字串搜不到)。但只解**這一個條目**且硬性限制輸出大小 —— 與「解開整包」
+     是兩回事,zip bomb 的攻擊面在後者。 */
+  if (names.includes("[Content_Types].xml")) {
+    const xml = readEntryText(buf, "[Content_Types].xml")
+    if (xml !== null && xml.includes("macroEnabled")) {
+      return { ok: false, reason: "檔案宣告為啟用巨集格式,基於安全考量不接受" }
+    }
+  }
+  return OK
+}
+
+/* 解壓單一條目,輸出硬上限 64KB([Content_Types].xml 實務上 <2KB)。
+   解不開就回 null —— 讀不到宣告不等於有巨集,那由 vbaProject 檢查負責。 */
+const ENTRY_MAX_BYTES = 64 * 1024
+
+function readEntryText(buf: Buffer, wanted: string): string | null {
+  const eocd = findEocd(buf)
+  if (eocd < 0) return null
+  const count = buf.readUInt16LE(eocd + 10)
+  const centralSize = buf.readUInt32LE(eocd + 12)
+  const derived = eocd - centralSize
+  let offset =
+    derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG ? derived : buf.readUInt32LE(eocd + 16)
+  const prefix = derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG
+    ? derived - buf.readUInt32LE(eocd + 16)
+    : 0
+
+  for (let i = 0; i < count; i += 1) {
+    if (offset + 46 > buf.length || buf.readUInt32LE(offset) !== CEN_SIG) return null
+    const method = buf.readUInt16LE(offset + 10)
+    const compSize = buf.readUInt32LE(offset + 20)
+    const rawSize = buf.readUInt32LE(offset + 24)
+    const nameLen = buf.readUInt16LE(offset + 28)
+    const extraLen = buf.readUInt16LE(offset + 30)
+    const commentLen = buf.readUInt16LE(offset + 32)
+    const localOffset = buf.readUInt32LE(offset + 42) + prefix
+    const name = buf.toString("utf8", offset + 46, offset + 46 + nameLen)
+
+    if (name === wanted) {
+      if (rawSize > ENTRY_MAX_BYTES || compSize > ENTRY_MAX_BYTES) return null
+      if (localOffset + 30 > buf.length) return null
+      const localNameLen = buf.readUInt16LE(localOffset + 26)
+      const localExtraLen = buf.readUInt16LE(localOffset + 28)
+      const dataStart = localOffset + 30 + localNameLen + localExtraLen
+      const data = buf.subarray(dataStart, dataStart + compSize)
+      try {
+        const out = method === 0 ? data : inflateRawSync(data, { maxOutputLength: ENTRY_MAX_BYTES })
+        return out.toString("utf8")
+      } catch {
+        return null
+      }
+    }
+    offset = offset + 46 + nameLen + extraLen + commentLen
+  }
+  return null
+}
+
+/* ── PDF ──────────────────────────────────────────────────────────────────
+   不寫 PDF parser。只找主動內容的關鍵字 —— 誤判的代價是「使用者要另存一份」,
+   漏判的代價是「開啟即執行」。這個不對稱決定了寧可嚴一點。 */
+
+const PDF_DANGEROUS = [
+  "/JavaScript",
+  "/JS",
+  "/OpenAction",
+  "/AA",
+  "/Launch",
+  "/EmbeddedFile",
+  "/RichMedia",
+] as const
+
+export function inspectPdf(buf: Buffer): InspectVerdict {
+  const text = buf.toString("latin1")
+  const hit = PDF_DANGEROUS.find((k) => text.includes(k))
+  if (hit !== undefined) {
+    return { ok: false, reason: `PDF 含主動內容(${hit}),基於安全考量不接受` }
+  }
+  return OK
+}
+
+/* ── polyglot 尾部 ────────────────────────────────────────────────────────
+   影像格式有明確結尾標記,之後不應該還有資料。附加在後面的 ZIP 會被 zip
+   讀取器找到(它從檔尾找中央目錄),形成「看起來是圖、也真的是壓縮檔」的 polyglot。
+
+   目前靠 `octet-stream + attachment + nosniff` 擋住觸發,但那是**易碎的安全** ——
+   任何一處改成 inline 或直出 CDN 就破功。在入口擋掉才是結構性的。 */
+
+const TRAILING_SLACK = 16
+
+/* 影像裡不該存在 zip 中央目錄。這是對 polyglot 的**直接**檢查,
+   而尾部長度只是輔助。
+
+   🔴 為什麼需要這一條:JPEG 的結尾偵測是向後找最後一個 `FFD9`,
+   攻擊者只要讓附加的 ZIP **以 `FFD9` 結尾**,end 就會等於檔案長度、
+   尾部長度為 0 而通過 —— 但 zip 讀取器仍從檔尾找得到中央目錄,polyglot 存活。
+   直接問「這裡面有沒有 zip」才擋得住,且不依賴任何格式的結尾偵測是否精準。 */
+function looksLikeZip(buf: Buffer): boolean {
+  const eocd = findEocd(buf)
+  if (eocd < 0) return false
+  const centralSize = buf.readUInt32LE(eocd + 12)
+  const derived = eocd - centralSize
+  /* 同時要求中央目錄真的在那裡 —— 只比對 4 bytes 簽章會有偶然誤判 */
+  return derived >= 0 && derived + 4 <= buf.length && buf.readUInt32LE(derived) === CEN_SIG
+}
+
+export function inspectImageTail(buf: Buffer, mime: string): InspectVerdict {
+  if (looksLikeZip(buf)) {
+    return { ok: false, reason: "影像檔內含壓縮檔結構(polyglot),不接受" }
+  }
+  const end = imageEndOffset(buf, mime)
+  if (end === null) return OK
+  const trailing = buf.length - end
+  if (trailing > TRAILING_SLACK) {
+    return {
+      ok: false,
+      reason: `影像結尾後仍有 ${String(trailing)} 位元組資料(可能是附加的壓縮檔),不接受`,
+    }
+  }
+  return OK
+}
+
+function imageEndOffset(buf: Buffer, mime: string): number | null {
+  if (mime === "image/png") {
+    // IEND chunk:長度(4)+ "IEND"(4)+ CRC(4)
+    const idx = buf.lastIndexOf(Buffer.from("IEND", "latin1"))
+    return idx < 0 ? null : idx + 8
+  }
+  if (mime === "image/jpeg") {
+    // EOI marker FFD9
+    for (let i = buf.length - 2; i >= 0; i -= 1) {
+      if (buf[i] === 0xff && buf[i + 1] === 0xd9) return i + 2
+    }
+    return null
+  }
+  if (mime === "image/gif") {
+    const idx = buf.lastIndexOf(0x3b) // trailer ';'
+    return idx < 0 ? null : idx + 1
+  }
+  if (mime === "image/webp") {
+    // RIFF 標頭第 4 byte 起為 chunk size(不含前 8 bytes)
+    if (buf.length < 12) return null
+    return 8 + buf.readUInt32LE(4)
+  }
+  return null
+}
+
+/* ── 統一入口 ─────────────────────────────────────────────────────────── */
+
+export function inspectContent(buf: Buffer, mime: string): InspectVerdict {
+  if (mime === "application/pdf") return inspectPdf(buf)
+  if (mime.startsWith("image/")) return inspectImageTail(buf, mime)
+  if (
+    mime.startsWith("application/vnd.openxmlformats-officedocument") ||
+    mime === "application/zip"
+  ) {
+    return inspectOoxml(buf)
+  }
+  return OK
+}
