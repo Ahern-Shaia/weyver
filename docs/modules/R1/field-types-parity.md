@@ -339,8 +339,13 @@ Dataverse 官方那句最精準:「The data that is transferred is the data at t
 
 **B-1 🔴 推翻 §0-bis「影子欄保留 30 天」—— 這個設計是錯的。**
 PG 16 官方 limits.html 逐字:「**Columns that have been dropped from the table also contribute to
-the maximum column limit.**」1600 欄上限,**DROP 掉的欄位仍佔額度**,只有 `VACUUM FULL` / `pg_repack`
-重建整表才回收。設計期反覆改型別本就是高頻行為 → 30 天窗口會讓影子欄堆積撞硬牆。
+the maximum column limit.**」1600 欄上限,**DROP 掉的欄位仍佔額度**。
+⚠️ **2026-07-30 更正**:原文寫「只有 `VACUUM FULL` / `pg_repack` 重建整表才回收」—— **這是錯的**。
+本機實測(PG 16,300 次 add/drop 循環):`VACUUM FULL` **後 `pg_attribute` 的 dropped 仍是 300、
+`max_attnum` 仍是 301**,完全沒有回收。PG 核心開發者 David Rowley 於 pgsql-hackers 明言
+「We just never recycle attnums」;`pg_repack` 走 relfilenode swap,不動 `pg_attribute`。
+**唯一解是建新表 + `INSERT INTO new SELECT` + 換名**。詳見 [H-2 recycle-bin](recycle-bin.md) §0.5。
+設計期反覆改型別本就是高頻行為 → 30 天窗口會讓影子欄堆積撞硬牆(此結論不變,且比原本更嚴重)。
 **前例對照:Baserow 的備份欄只留 120 分鐘**(`MINUTES_UNTIL_ACTION_CLEANED_UP` 預設 120),
 且其原始碼自承「fast but **not suitable for actually backing up the data to prevent data loss**」。
 → **改用 side table 存 old_value(jsonb)**;短窗口(小時級)才用影子欄。
