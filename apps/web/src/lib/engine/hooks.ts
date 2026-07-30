@@ -18,6 +18,7 @@ import {
   type ViewFilterCondition,
   type ViewSort,
   actionResultSchema,
+  apiKeySchema,
   approvalDefDtoSchema,
   approvalInstanceDtoSchema,
   buttonDtoSchema,
@@ -33,6 +34,8 @@ import {
   reverseRelationGroupSchema,
   trashItemSchema,
   userNameSchema,
+  webhookDeliverySchema,
+  webhookEndpointSchema,
   viewDtoSchema,
 } from "./schemas"
 import type { ViewGroup } from "./schemas"
@@ -766,5 +769,122 @@ export function usePurgeTrash() {
     mutationFn: (entryId: number) =>
       engineFetch(`/trash/${String(entryId)}`, z.unknown(), { method: "DELETE" }),
     onSuccess: () => invalidate([trashKeys.list]),
+  })
+}
+
+/* G-1 整合設定 */
+export const integrationKeys = {
+  webhooks: ["integrations", "webhooks"] as const,
+  deliveries: (id: number) => ["integrations", "webhooks", id, "deliveries"] as const,
+  apiKeys: ["integrations", "api-keys"] as const,
+}
+
+export function useWebhooks() {
+  return useQuery({
+    queryKey: integrationKeys.webhooks,
+    queryFn: () =>
+      engineFetch("/integrations/webhooks", z.object({ endpoints: z.array(webhookEndpointSchema) })),
+    staleTime: 15_000,
+  })
+}
+
+export function useCreateWebhook() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { url: string; description?: string; eventTypes: string[] }) =>
+      engineFetch(
+        "/integrations/webhooks",
+        z.object({ id: z.number(), secret: z.string(), verifyToken: z.string() }),
+        { method: "POST", body: input },
+      ),
+    onSuccess: () => invalidate([integrationKeys.webhooks]),
+  })
+}
+
+export function useWebhookAction() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { id: number; action: "enable" | "disable" | "test" }) =>
+      engineFetch(`/integrations/webhooks/${String(input.id)}/${input.action}`, z.unknown(), {
+        method: "POST",
+      }),
+    onSuccess: () => invalidate([integrationKeys.webhooks]),
+  })
+}
+
+export function useRotateWebhookSecret() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (id: number) =>
+      engineFetch(
+        `/integrations/webhooks/${String(id)}/rotate-secret`,
+        z.object({ secret: z.string() }),
+        { method: "POST" },
+      ),
+    onSuccess: () => invalidate([integrationKeys.webhooks]),
+  })
+}
+
+export function useDeleteWebhook() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (id: number) =>
+      engineFetch(`/integrations/webhooks/${String(id)}`, z.unknown(), { method: "DELETE" }),
+    onSuccess: () => invalidate([integrationKeys.webhooks]),
+  })
+}
+
+export function useWebhookDeliveries(endpointId: number | null) {
+  return useQuery({
+    queryKey: integrationKeys.deliveries(endpointId ?? -1),
+    queryFn: () =>
+      engineFetch(
+        `/integrations/webhooks/${String(endpointId)}/deliveries`,
+        z.object({ deliveries: z.array(webhookDeliverySchema) }),
+      ),
+    enabled: endpointId !== null,
+    staleTime: 5_000,
+  })
+}
+
+export function useRedeliver(endpointId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (deliveryId: number) =>
+      engineFetch(`/integrations/deliveries/${String(deliveryId)}/redeliver`, z.unknown(), {
+        method: "POST",
+      }),
+    onSuccess: () => invalidate([integrationKeys.deliveries(endpointId)]),
+  })
+}
+
+export function useApiKeys() {
+  return useQuery({
+    queryKey: integrationKeys.apiKeys,
+    queryFn: () =>
+      engineFetch("/integrations/api-keys", z.object({ keys: z.array(apiKeySchema) })),
+    staleTime: 15_000,
+  })
+}
+
+export function useIssueApiKey() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { name: string; subjectActorId: number; scopes: string[] }) =>
+      engineFetch(
+        "/integrations/api-keys",
+        z.object({ id: z.number(), key: z.string(), keyPrefix: z.string() }),
+        { method: "POST", body: input },
+      ),
+    onSuccess: () => invalidate([integrationKeys.apiKeys]),
+  })
+}
+
+export function useRevokeApiKey() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (id: number) =>
+      engineFetch(`/integrations/api-keys/${String(id)}`, z.unknown(), { method: "DELETE" }),
+    onSuccess: () => invalidate([integrationKeys.apiKeys]),
   })
 }

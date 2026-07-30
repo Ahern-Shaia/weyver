@@ -518,3 +518,40 @@ export const restoreBlockerSchema = z.discriminatedUnion("kind", [
   }),
 ])
 export type RestoreBlocker = z.infer<typeof restoreBlockerSchema>
+
+/* G-1 整合(webhook / API 金鑰) */
+export const webhookEndpointSchema = z.object({
+  id: z.number(),
+  url: z.string(),
+  description: z.string().nullable(),
+  eventTypes: z.array(z.string()),
+  verified: z.boolean(),
+  disabledAt: z.string().nullable(),
+  disabledReason: z.string().nullable(),
+  createdAt: z.string(),
+})
+export type WebhookEndpoint = z.infer<typeof webhookEndpointSchema>
+
+export const webhookDeliverySchema = z.object({
+  id: z.number(),
+  messageId: z.string(),
+  eventType: z.string(),
+  status: z.string(),
+  attempts: z.number(),
+  responseCode: z.number().nullable(),
+  lastError: z.string().nullable(),
+  createdAt: z.string(),
+  sentAt: z.string().nullable(),
+})
+export type WebhookDelivery = z.infer<typeof webhookDeliverySchema>
+
+export const apiKeySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  keyPrefix: z.string(),
+  scopes: z.array(z.string()),
+  lastUsedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  createdAt: z.string(),
+})
+export type ApiKeyView = z.infer<typeof apiKeySchema>

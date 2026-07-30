@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Table2,
   Trash2,
+  Webhook,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -40,6 +41,7 @@ const NAV = [
 const SETTINGS_NAV = [
   { href: "/app/settings/permissions", label: "權限", icon: KeyRound },
   { href: "/app/settings/notifications", label: "通知設定", icon: BellRing },
+  { href: "/app/settings/integrations", label: "整合", icon: Webhook },
   { href: "/app/settings/trash", label: "資源回收桶", icon: Trash2 },
   { href: "/app/settings/security", label: "帳號安全", icon: ShieldCheck },
 ] as const
