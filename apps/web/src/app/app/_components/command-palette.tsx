@@ -1,8 +1,9 @@
 "use client"
-import { KeyRound, Lock, Plus, Search, Table2 } from "lucide-react"
+import { Lock, Plus, Search, Table2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { useCategories, useForms } from "@/lib/engine/hooks"
+import { SETTINGS_NAV } from "./settings-nav"
 
 /* R1·UP-1 ⌘K 導航搜尋(client-side,資料源=三態 forms list → 零後端、零洩漏)。
    表單(含分類徽章)/ 固定動作即時過濾;↑↓↵ 鍵盤。跨表記錄搜尋歸 views-list/P1-I。 */
@@ -45,14 +46,16 @@ export function CommandPalette(): ReactNode {
   const catName = useMemo(() => new Map((cats ?? []).map((c) => [c.id, c.name])), [cats])
 
   const items = useMemo<Item[]>(() => {
+    /* 🔴 設定頁全數列入 —— rail 收斂後這是它們唯一的「一次操作」路徑。 */
     const actions: Item[] = [
       { key: "new", label: "新增表單", icon: <Plus size={15} />, href: "/app/builder" },
-      {
-        key: "perm",
-        label: "權限設定",
-        icon: <KeyRound size={15} />,
-        href: "/app/settings/permissions",
-      },
+      ...SETTINGS_NAV.map((s) => ({
+        key: `set-${s.href}`,
+        label: s.label,
+        hint: "設定",
+        icon: <s.icon size={15} />,
+        href: s.href,
+      })),
     ]
     const formItems: Item[] = (forms ?? [])
       .filter((f) => f.parentFormId === null && !f.locked)

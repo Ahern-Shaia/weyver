@@ -51,8 +51,10 @@ test("通知:鈴鐺未讀 → 面板顯示 → 全部標為已讀", async ({ pag
   await seedPendingApproval(request)
 
   await page.goto("/app")
-  const bell = page.getByRole("button", { name: "通知", exact: true })
-  await expect(bell).toHaveAttribute("title", /則未讀/, { timeout: 30_000 })
+  /* 未讀數必須在**無障礙名稱**上而非 title —— aria-label 於名稱計算優先於 title,
+     放 title 等同螢幕閱讀器聽不到筆數(R1·UX-1 M2 修正之既有缺陷)。 */
+  const bell = page.getByRole("button", { name: /^通知/ })
+  await expect(bell).toHaveAccessibleName(/則未讀/, { timeout: 30_000 })
 
   await bell.click()
   const panel = page.locator(".shadow-overlay")
@@ -60,7 +62,7 @@ test("通知:鈴鐺未讀 → 面板顯示 → 全部標為已讀", async ({ pag
   await expect(panel.getByText("待簽核").first()).toBeVisible()
 
   await panel.getByRole("button", { name: "全部標為已讀" }).click()
-  await expect(bell).toHaveAttribute("title", "通知", { timeout: 30_000 })
+  await expect(bell).toHaveAccessibleName("通知", { timeout: 30_000 })
 })
 
 test("通知內容不含欄位值(欄位級權限使「過濾收件人」失效)", async ({ page, request }) => {

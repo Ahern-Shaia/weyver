@@ -36,7 +36,7 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })
 }
 
-export function NotificationBell(): ReactNode {
+export function NotificationBell({ collapsed = true }: { readonly collapsed?: boolean }): ReactNode {
   const [open, setOpen] = useState(false)
   const { data } = useNotifications()
   const markRead = useMarkNotificationsRead()
@@ -76,14 +76,20 @@ export function NotificationBell(): ReactNode {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={unread > 0 ? `通知(${unread} 則未讀)` : "通知"}
-        aria-label="通知"
-        className="relative flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors duration-150 hover:bg-primary-t hover:text-primary"
+        /* 🔴 筆數放 aria-label 而非 title —— aria-label 在無障礙名稱計算上優先於 title,
+           原本 `aria-label="通知"` 代表螢幕閱讀器使用者從來聽不到未讀數(title 只服務滑鼠)。
+           title 僅收合態需要:展開態筆數已以徽章呈現於標籤旁。 */
+        {...(collapsed ? { title: unread > 0 ? `通知(${unread} 則未讀)` : "通知" } : {})}
+        aria-label={unread > 0 ? `通知(${unread} 則未讀)` : "通知"}
+        className={`relative flex items-center rounded-sm text-ink-2 transition-colors duration-75 hover:bg-primary-t hover:text-primary ${
+          collapsed ? "size-9 justify-center" : "h-[30px] w-full gap-2.5 px-2 text-[13px]"
+        }`}
       >
-        <Bell size={17} strokeWidth={1.9} />
+        <Bell size={17} strokeWidth={1.9} className="shrink-0" />
+        {collapsed ? null : <span>通知</span>}
         {unread > 0 ? (
           /* 方框非 pill(docs/14);等寬字避免位數變動時抖動 */
-          <span className="absolute right-0.5 top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-xs border border-er-line bg-er px-[3px] font-mono text-[9.5px] font-semibold text-white">
+          <span className={`flex h-[16px] min-w-[16px] items-center justify-center rounded-xs border border-er-line bg-er px-[3px] font-mono text-[12px] font-semibold leading-none text-white ${collapsed ? "absolute right-0.5 top-0.5" : "ml-auto"}`}>
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
@@ -91,7 +97,7 @@ export function NotificationBell(): ReactNode {
 
       {open ? (
         <div className="absolute bottom-0 left-11 z-50 w-[340px] overflow-hidden rounded-md border border-line bg-card shadow-overlay">
-          <div className="flex h-[30px] items-center border-b border-line bg-head px-2.5 text-[11.5px] font-semibold">
+          <div className="flex min-h-[30px] items-center border-b border-line bg-head px-2.5 text-[12px] font-semibold">
             通知
             {unread > 0 ? (
               <button

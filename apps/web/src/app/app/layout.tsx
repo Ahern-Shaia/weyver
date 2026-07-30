@@ -2,17 +2,14 @@
 
 import { applyTheme, THEMES, type ThemeId } from "@weyver/ui/theme-switcher"
 import {
-  BellRing,
   Check,
-  KeyRound,
   LayoutGrid,
   LogOut,
   Palette,
-  ShieldCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings2,
   Table2,
-  Share2,
-  Trash2,
-  Webhook,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -30,54 +27,60 @@ import { TenantContextGuard } from "./_components/tenant-context-guard"
 import { NotificationBell } from "./_components/notification-bell"
 import { StatusBar } from "./_components/status-bar"
 
-/* /app/* 受保護區 + app-shell(R1·UP-1:左 icon rail + 全域 status bar + ⌘K)。
+/* /app/* 受保護區 + app-shell(左側導覽 + 全域 status bar + ⌘K)。
    強制登入僅 production(對齊後端 TenantGuard dev/prod);登入後自動設 active org。
-   單域 rail(只表單域;OQ-RWB-6=C)——不放空的業務域 tab(計算/生產/ISO R1 未起)。 */
+   單域導覽(只表單域;OQ-RWB-6=C)——不放空的業務域 tab(計算/生產/ISO R1 未起)。
+
+   🔴 R1·UX-1 M2|由 10 個純圖示改為「預設展開含文字標籤、可收合成圖示態」。
+   依據:Material 3 明載 collapsed rail 目的地 3–7 個、**>7 必須改用 expanded rail**;
+   WinUI 明載 icon-only 為**空間不足時的降級態**非預設;NN/g 明載文字標籤
+   **須隨時可見不靠 hover**。設定六項收進單一入口(S22 設定中心),
+   同批把六項全數加進 ⌘K —— 否則它們會同時失去「一次點擊」與「鍵盤可達」。 */
 const ENFORCED =
   process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_ENFORCE_AUTH === "1"
 
 const NAV = [
   { href: "/app", label: "工作區", icon: LayoutGrid },
   { href: "/app/builder", label: "我的表單", icon: Table2 },
+  { href: "/app/settings", label: "設定", icon: Settings2 },
 ] as const
 
-const SETTINGS_NAV = [
-  { href: "/app/settings/permissions", label: "權限", icon: KeyRound },
-  { href: "/app/settings/notifications", label: "通知設定", icon: BellRing },
-  { href: "/app/settings/public-forms", label: "公開表單", icon: Share2 },
-  { href: "/app/settings/integrations", label: "整合", icon: Webhook },
-  { href: "/app/settings/trash", label: "資源回收桶", icon: Trash2 },
-  { href: "/app/settings/security", label: "帳號安全", icon: ShieldCheck },
-] as const
+/* 收合偏好跨分頁共用是正確的(純 UI 偏好,非租戶上下文)——
+   與 F-10 刻意不用 localStorage 存 org 的理由不同,那裡的跨分頁共用正是缺陷本身。 */
+const RAIL_KEY = "weyver.rail.collapsed"
 
-function RailLink({
+function NavItem({
   href,
   label,
   icon: Icon,
   active,
+  collapsed,
 }: {
   readonly href: string
   readonly label: string
   readonly icon: typeof Table2
   readonly active: boolean
+  readonly collapsed: boolean
 }): ReactNode {
+  const base = "flex items-center rounded-sm transition-colors duration-75"
+  const tone = active
+    ? "bg-primary-t text-primary font-medium"
+    : "text-ink-2 hover:bg-head hover:text-ink"
   return (
     <Link
       href={href}
-      title={label}
+      /* 收合態才需要 tooltip;展開態文字已在,重複的 title 只會製造噪音 */
+      {...(collapsed ? { title: label } : {})}
       aria-label={label}
-      className={
-        active
-          ? "flex size-9 items-center justify-center rounded-md bg-primary-t text-primary"
-          : "flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors duration-150 hover:bg-head hover:text-ink"
-      }
+      className={`${base} ${tone} ${collapsed ? "size-9 justify-center" : "h-[30px] gap-2.5 px-2 text-[13px]"}`}
     >
-      <Icon size={18} strokeWidth={1.9} />
+      <Icon size={17} strokeWidth={1.9} className="shrink-0" />
+      {collapsed ? null : <span className="truncate">{label}</span>}
     </Link>
   )
 }
 
-function ThemeMenu(): ReactNode {
+function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState<ThemeId>("navy")
   useEffect(() => {
@@ -89,11 +92,14 @@ function ThemeMenu(): ReactNode {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title="配色主題"
+        {...(collapsed ? { title: "配色主題" } : {})}
         aria-label="配色主題"
-        className="flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors duration-150 hover:bg-head hover:text-ink"
+        className={`flex items-center rounded-sm text-ink-2 transition-colors duration-75 hover:bg-head hover:text-ink ${
+          collapsed ? "size-9 justify-center" : "h-[30px] w-full gap-2.5 px-2 text-[13px]"
+        }`}
       >
-        <Palette size={17} strokeWidth={1.9} />
+        <Palette size={17} strokeWidth={1.9} className="shrink-0" />
+        {collapsed ? null : <span>配色主題</span>}
       </button>
       {open ? (
         <>
@@ -137,6 +143,13 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   const { data: activeOrg } = useActiveOrganization()
   const { data: orgs } = authClient.useListOrganizations()
 
+  /* 預設展開(WinUI:icon-only 是降級態不是預設);偏好於掛載後才套用,
+     避免 SSR 與 client 首次 render 不一致造成版面跳動(CLS)。 */
+  const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => {
+    if (window.localStorage.getItem(RAIL_KEY) === "1") setCollapsed(true)
+  }, [])
+
   /* 🔴 F-10|把「這個分頁在哪家公司」釘進 HTTP client。
 
      必須在其他請求發出**之前**設定,否則首批請求會退回 session 行為。
@@ -172,37 +185,82 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-surface">
       <div className="flex min-h-0 flex-1">
-        {/* 左 icon rail(單域) */}
-        <nav className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-line bg-card py-2.5">
+        <nav
+          aria-label="主導覽"
+          className={`flex shrink-0 flex-col gap-0.5 border-r border-line bg-card py-2.5 ${
+            collapsed ? "w-14 items-center px-0" : "w-[172px] px-2"
+          }`}
+        >
           <Link
             href="/app"
-            title="Weyver 織雲"
-            className="mb-1.5 flex size-9 items-center justify-center rounded-md bg-primary text-[14px] font-bold text-white"
+            {...(collapsed ? { title: "Weyver 織雲 — 回工作區" } : {})}
+            aria-label="Weyver 織雲 — 回工作區"
+            className={`mb-2 flex items-center rounded-sm ${collapsed ? "justify-center" : "gap-2 px-0.5"}`}
           >
-            W
+            <span className="flex size-[30px] shrink-0 items-center justify-center rounded-md bg-primary text-[14px] font-bold text-white">
+              W
+            </span>
+            {/* 產品名而非租戶名 —— 租戶身分歸狀態列(docs/14 §3.1);
+                兩處都顯示是冗餘,且會讓「這是哪家公司」出現兩個真實來源。 */}
+            {collapsed ? null : (
+              <span className="truncate text-[13px] font-semibold text-ink">Weyver</span>
+            )}
           </Link>
+
           {NAV.map((item) => (
-            <RailLink key={item.href} {...item} active={isActive(item.href)} />
+            <NavItem key={item.href} {...item} active={isActive(item.href)} collapsed={collapsed} />
           ))}
-          <div className="mt-auto flex flex-col items-center gap-1">
-            <NotificationBell />
-            {SETTINGS_NAV.map((item) => (
-              <RailLink key={item.href} {...item} active={isActive(item.href)} />
-            ))}
-            <ThemeMenu />
+
+          <div className="mt-auto flex flex-col gap-0.5">
+            <NotificationBell collapsed={collapsed} />
+            <ThemeMenu collapsed={collapsed} />
             {session ? (
               <button
                 type="button"
                 onClick={() => void onLogout()}
-                title={`登出(${session.user.email})`}
+                {...(collapsed ? { title: `登出(${session.user.email})` } : {})}
                 aria-label="登出"
-                className="flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors duration-150 hover:bg-er-t hover:text-er"
+                className={`flex items-center rounded-sm text-ink-2 transition-colors duration-75 hover:bg-er-t hover:text-er ${
+                  collapsed ? "size-9 justify-center" : "h-[30px] gap-2.5 px-2 text-[13px]"
+                }`}
               >
-                <LogOut size={17} strokeWidth={1.9} />
+                <LogOut size={17} strokeWidth={1.9} className="shrink-0" />
+                {collapsed ? null : <span className="truncate">登出</span>}
               </button>
             ) : null}
+
+            <button
+              type="button"
+              onClick={() => {
+                setCollapsed((v) => {
+                  const next = !v
+                  window.localStorage.setItem(RAIL_KEY, next ? "1" : "0")
+                  return next
+                })
+              }}
+              title={collapsed ? "展開導覽" : "收合導覽"}
+              aria-label={collapsed ? "展開導覽" : "收合導覽"}
+              aria-expanded={!collapsed}
+              className={`mt-0.5 flex items-center rounded-sm text-ink-3 transition-colors duration-75 hover:bg-head hover:text-ink ${
+                collapsed ? "size-9 justify-center" : "h-[28px] gap-2.5 px-2 text-[12px]"
+              }`}
+            >
+              {collapsed ? (
+                <PanelLeftOpen size={16} strokeWidth={1.9} />
+              ) : (
+                <>
+                  <PanelLeftClose size={16} strokeWidth={1.9} className="shrink-0" />
+                  <span>收合</span>
+                </>
+              )}
+            </button>
+
             {process.env.NODE_ENV !== "production" ? (
-              <span className="font-mono text-[8.5px] text-ink-4">dev</span>
+              <span
+                className={`font-mono text-[12px] text-ink-3 ${collapsed ? "text-center" : "px-2"}`}
+              >
+                dev
+              </span>
             ) : null}
           </div>
         </nav>
