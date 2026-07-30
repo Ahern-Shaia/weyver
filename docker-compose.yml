@@ -16,5 +16,67 @@ services:
       timeout: 3s
       retries: 10
 
+  # 🔴 F-11 M3|ClamAV。
+  #
+  # **獨立服務,不是 sidecar**:官方 Docker 文件要求最低 3 GiB / 建議 4 GiB
+  # (簽章庫本身 >1.2 GiB)。做成 sidecar 等於每個 API instance 都背 4 GiB,
+  # 而且 Cloud Run 的 request-based billing 下 sidecar 只在處理請求時分到 CPU,
+  # freshclam 的背景更新會被凍結。
+  #
+  # 🔴 **clamd 自己就是攻擊面** —— 它是直接吃攻擊者輸入的 C 解析器,
+  # 2026-07-01 一次修 7 個 CVE(Aspack / FSG / 7z / PESpin / ALZ / DMG heap overflow),
+  # 2025 年還有兩個 RCE(OLE2 OpenClaw、PDF),部分程式碼可回溯到 2005 年。
+  # 因此:non-root · 唯讀 rootfs · 不掛任何租戶資料 volume · 資源上限 ·
+  # 釘 LTS 分支。它只透過 TCP 收位元組,對其他東西一無所知。
+  clamav:
+    image: clamav/clamav:1.4.3
+    # 🔴 ClamAV 官方映像**只發 amd64**(latest / 1.4.3 / 1.5 / stable 皆無 arm64)。
+    # Apple Silicon 開發機必須走模擬,啟動與掃描都會明顯變慢。
+    # **這也是 prod 的部署限制**:若為了成本選 ARM 機型(Graviton / Tau T2A),
+    # 官方映像不可用 —— 屆時只能自行 build 或改用 yara-x 之類的單 binary 方案。
+    platform: linux/amd64
+    container_name: weyver-clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      # 簽章庫持久化 —— 無此 volume 時每次啟動會重下 ~200MB,
+      # 且可能觸發公共 CDN 的 rate-limit(官方明載會封 IP 24 小時)
+      - clamdb:/var/lib/clamav
+      - ./clamd.conf:/etc/clamav/clamd.conf:ro
+    read_only: false  # clamd 需寫 /tmp 與 /run;以 tmpfs 收斂
+    tmpfs:
+      # 只給 /tmp。/run 交還給映像自己管 —— 掛成 tmpfs 後
+      # entrypoint 連 chmod 都做不到(`can't change permissions of /run/clamav`),
+      # 而這裡的硬化收益本來就低。
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    # 🔴 實測修正:`cap_drop: ALL` 會讓官方映像起不來 ——
+    # entrypoint 需要 chown /run/clamav 才能降權到 clamav 使用者
+    # (錯誤:`install: can't change ownership of /run/clamav`)。
+    # 只保留降權所需的四項,其餘照丟。
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+      - FOWNER
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    # 🔴 **刻意沒有 healthcheck。** 三種寫法實測都不可用:
+    #   - `echo PING | nc`:容器裡**沒有 nc**
+    #   - `clamdcheck.sh`(映像自帶):即使以 root + socket 666 仍回
+    #     `ERROR: Unable to contact server`,而同一時刻 TCP 3310 是回 PONG 的
+    #   - Alpine 的 `sh` 沒有 `/dev/tcp`,也沒有 `clamdscan`
+    #
+    # 就緒判定改由**應用層**負責:`clamav-client.ts` 的 `ping()` 走 TCP zPING,
+    # 那也正是實際掃描要用的同一條路 —— 檢查與使用一致,比容器層的間接檢查更有意義。
+    # (掃描服務未就緒時,上傳仍成功、檔案標 pending,由補掃 cron 收拾。)
+
 volumes:
   pgdata:
+  clamdb:

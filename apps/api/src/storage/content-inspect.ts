@@ -78,6 +78,49 @@ export function listZipEntryNames(buf: Buffer, limit = 2000): string[] | null {
   return names
 }
 
+/* 🔴 壓縮比檢查 —— 我們自己擋 zip bomb,不依賴 clamd。
+
+   **實測(2026-07-30,clamd 1.4.3,設定含 `AlertExceedsMax yes`、`MaxScanSize 100M`):
+   一個壓縮後 199KB、解開 200MB 的 zip,clamd 回報 `clean`。**
+
+   研究把「`AlertExceedsMax` 預設 `no` 會讓超限檔案跳過不掃並回 OK」列為最危險的
+   假安全,而把它設成 `yes` 是它給的緩解。實機驗證顯示**那個緩解不足** ——
+   至少對這個形狀的 bomb 沒有生效(同一次實測中,超過 `StreamMaxLength` 的
+   30MB 串流則正確回 `INSTREAM size limit exceeded. ERROR`,證明設定確實有載入)。
+
+   但我們有更好的辦法:zip 的中央目錄**自己就記了每個條目的未壓縮大小**。
+   不必解壓、不必信任掃描器,讀那個欄位算比例即可,而且是確定性的。 */
+const MAX_UNCOMPRESSED_BYTES = 512 * 1024 * 1024
+const MAX_COMPRESSION_RATIO = 200
+
+export function inspectZipBomb(buf: Buffer): InspectVerdict {
+  const eocd = findEocd(buf)
+  if (eocd < 0) return OK
+  const count = buf.readUInt16LE(eocd + 10)
+  const centralSize = buf.readUInt32LE(eocd + 12)
+  const derived = eocd - centralSize
+  let offset =
+    derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG ? derived : buf.readUInt32LE(eocd + 16)
+
+  let totalRaw = 0
+  for (let i = 0; i < count; i += 1) {
+    if (offset + 46 > buf.length || buf.readUInt32LE(offset) !== CEN_SIG) break
+    totalRaw += buf.readUInt32LE(offset + 24)
+    const nameLen = buf.readUInt16LE(offset + 28)
+    offset = offset + 46 + nameLen + buf.readUInt16LE(offset + 30) + buf.readUInt16LE(offset + 32)
+  }
+  if (totalRaw > MAX_UNCOMPRESSED_BYTES) {
+    return { ok: false, reason: `壓縮檔解開後過大(${Math.round(totalRaw / 1024 / 1024)}MB),不接受` }
+  }
+  if (buf.length > 0 && totalRaw / buf.length > MAX_COMPRESSION_RATIO) {
+    return {
+      ok: false,
+      reason: `壓縮比異常(${Math.round(totalRaw / buf.length)}:1),可能是壓縮炸彈`,
+    }
+  }
+  return OK
+}
+
 /* 🔴 巨集偵測。**檔名不是可靠的判準。**
 
    最初只比對 `vbaProject.bin` 這個檔名,實測發現可繞:OPC 規範允許 part 用
@@ -94,6 +137,8 @@ const MACRO_ENTRY = /(^|\/)vbaProject\.bin$/i
 const MACRO_CONTENT_TYPES = ["vbaProject", "macroEnabled", "macrosheet"] as const
 
 export function inspectOoxml(buf: Buffer): InspectVerdict {
+  const bomb = inspectZipBomb(buf)
+  if (!bomb.ok) return bomb
   const names = listZipEntryNames(buf)
   if (names === null) return { ok: false, reason: "無法解析 Office 檔案結構" }
   if (names.some((n) => MACRO_ENTRY.test(n))) {

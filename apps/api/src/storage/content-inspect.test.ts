@@ -1,6 +1,12 @@
 import { deflateRawSync } from "node:zlib"
 import { describe, expect, it } from "vitest"
-import { inspectContent, inspectOoxml, inspectPdf, listZipEntryNames } from "./content-inspect.js"
+import {
+  inspectContent,
+  inspectOoxml,
+  inspectPdf,
+  inspectZipBomb,
+  listZipEntryNames,
+} from "./content-inspect.js"
 
 /* 🔴 F-11 M1。**樣本是真的組出來的 zip / PNG / PDF 位元組**,不是假字串 ——
    這些檢查的價值全在「能不能解析真實結構」,用假資料測等於沒測。 */
@@ -237,5 +243,39 @@ describe("polyglot 尾部資料", () => {
 describe("不認識的型別不擋(交由既有白名單把關)", () => {
   it("text/csv 放行", () => {
     expect(inspectContent(Buffer.from("a,b\n1,2"), "text/csv").ok).toBe(true)
+  })
+})
+
+/* 🔴 zip bomb。**這一組的樣本形狀,實測會讓 clamd 回報 clean。**
+
+   2026-07-30 對 clamd 1.4.3(設定含 `AlertExceedsMax yes` / `MaxScanSize 100M`)
+   實測:壓縮後 199KB、解開 200MB 的 zip → `clean`。
+   研究把「設 AlertExceedsMax=yes」列為緩解,實機顯示不足。
+   所以這道防線放在我們自己這邊,且是確定性的 —— 讀中央目錄記載的未壓縮大小。 */
+describe("zip bomb", () => {
+  it("🔴 高壓縮比 → 拒(clamd 對同型樣本回 clean)", () => {
+    const bomb = buildZip([{ name: "big.bin", data: Buffer.alloc(200 * 1024 * 1024) }])
+    expect(bomb.length).toBeLessThan(1024 * 1024) // 確認樣本真的很小
+    const verdict = inspectZipBomb(bomb)
+    expect(verdict.ok).toBe(false)
+    expect(verdict.reason).toMatch(/解開後過大|壓縮比異常/)
+  })
+
+  it("正常 Office 檔案的壓縮比不誤判", () => {
+    const zip = buildZip([
+      { name: "[Content_Types].xml", data: Buffer.from(CONTENT_TYPES_PLAIN) },
+      { name: "word/document.xml", data: Buffer.from("<w:document>" + "x".repeat(2000) + "</w:document>") },
+    ])
+    expect(inspectZipBomb(zip).ok).toBe(true)
+    expect(inspectOoxml(zip).ok).toBe(true)
+  })
+
+  it("非 zip 不受影響", () => {
+    expect(inspectZipBomb(Buffer.from("%PDF-1.7")).ok).toBe(true)
+  })
+
+  it("🔴 走 inspectContent(docx mime)也擋得住", () => {
+    const bomb = buildZip([{ name: "big.bin", data: Buffer.alloc(300 * 1024 * 1024) }])
+    expect(inspectContent(bomb, DOCX_MIME).ok).toBe(false)
   })
 })
