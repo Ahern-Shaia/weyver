@@ -7,6 +7,7 @@ import { useActiveOrganization, useSession } from "@/lib/auth/client"
 import { useCategories, useForms } from "@/lib/engine/hooks"
 import type { FormSummary } from "@/lib/engine/schemas"
 import { PendingApprovals } from "./_components/pending-approvals"
+import { RecentForms } from "./_components/recent-forms"
 
 /* R1·UP-1 工作區首頁 = 分類目錄(取代卡牆;docs/27 D3)。表單依 form_categories 分組密集列出,
    未分類殿後,空分類隱藏(不洩業務域);三態:可讀→可點、鎖定→顯示不可點、敏感→後端已隱藏。 */
@@ -140,6 +141,7 @@ export default function WorkspaceHome(): ReactNode {
         ) : (
           <>
             <PendingApprovals />
+            <RecentForms />
             {visibleCats.map((g) => (
               <Section key={g.c.id} title={g.c.name} forms={g.forms} />
             ))}

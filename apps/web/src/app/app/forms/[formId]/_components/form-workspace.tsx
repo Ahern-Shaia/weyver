@@ -5,6 +5,8 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
 import { type ReactNode, useEffect, useRef, useState } from "react"
+import { recordFormVisit } from "@/lib/recent-forms"
+import { useTenantScope } from "@/lib/use-tenant-scope"
 import { ImportBatches, importBatchKey } from "./import-batches"
 import { CalendarView } from "./calendar-view"
 import { ChartView } from "./chart-view"
@@ -73,6 +75,13 @@ export function FormWorkspace(): ReactNode {
   const createView = useCreateView(formId)
   const updateView = useUpdateView(formId)
   const deleteView = useDeleteView(formId)
+
+  /* R1·UX-1 M4|記錄「最近使用」。**表單真的載到才記** —— 若 404 或無權,
+     記下去只會讓首頁出現點不開的項目。 */
+  const scope = useTenantScope()
+  useEffect(() => {
+    if (form) recordFormVisit(scope, formId)
+  }, [form, formId, scope])
 
   // 一次性:載入時套用共通預設檢視(OQ-VL-4 lazy default;之後尊重使用者選擇)
   const appliedDefault = useRef(false)
