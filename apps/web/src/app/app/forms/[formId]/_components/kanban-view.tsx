@@ -2,8 +2,8 @@
 
 import { DndContext, type DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core"
 import { type ReactNode, useState } from "react"
-import { formatFieldValue } from "@/app/app/builder/_components/field-value"
-import { choicesOf } from "@/app/app/builder/_components/field-value"
+import { formatFieldValue } from "@/components/form/value"
+import { choicesOf } from "@/components/form/value"
 import { describeEngineError } from "@/lib/engine/client"
 import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"
 import { useUpdateRecord } from "@/lib/engine/hooks"

@@ -1,7 +1,7 @@
 "use client"
 
-import { formatFieldValue, toSubmitValue } from "@/app/app/builder/_components/field-value"
-import { gridEditData, gridKind, isGridEditable } from "@/app/app/builder/_components/grid-cells"
+import { formatFieldValue, toSubmitValue } from "@/components/form/value"
+import { gridEditData, gridKind, isGridEditable } from "@/components/form/grid-cells"
 import { useMemberNames } from "@/lib/engine/authz"
 import { GroupedView } from "./grouped-view"
 import { describeEngineError } from "@/lib/engine/client"

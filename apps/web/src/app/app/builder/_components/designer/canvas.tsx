@@ -42,10 +42,10 @@ import {
   Zap,
 } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ActionsDesigner } from "./actions-designer"
-import { ConditionalFormatPanel } from "./conditional-format-panel"
-import { FieldSettingsPanel, StaticSettingsPanel } from "./field-settings-panel"
-import { PrintSettingsPanel } from "./print-settings-panel"
+import { ActionsDesigner } from "@/app/app/builder/_components/designer/actions"
+import { ConditionalFormatPanel } from "@/app/app/builder/_components/designer/conditional-format"
+import { FieldSettingsPanel, StaticSettingsPanel } from "@/app/app/builder/_components/designer/field-settings"
+import { PrintSettingsPanel } from "@/app/app/builder/_components/output/print-settings"
 
 /* R1·UP-3 M2+M3 2D 格線畫布(OQ-FD2-7=A)。layout metadata → CSS grid;dnd-kit 拖曳重定位;
    欄位設定 / 靜態元素(文字·圖片)/ 分段 皆 layout 草稿;「儲存版面」PUT(純 metadata,零 DDL)。 */

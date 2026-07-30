@@ -3,7 +3,7 @@
 import { useMemberNames } from "@/lib/engine/authz"
 import { describeEngineError } from "@/lib/engine/client"
 import { useForm, useRecords } from "@/lib/engine/hooks"
-import { formatFieldValue } from "./field-value"
+import { formatFieldValue } from "@/components/form/value"
 
 export function RecordsListPanel({ formId }: { formId: number }) {
   const formQuery = useForm(formId)

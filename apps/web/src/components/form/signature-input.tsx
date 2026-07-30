@@ -4,7 +4,7 @@ import { deleteFile, describeEngineError, uploadFile } from "@/lib/engine/client
 import type { AttachmentItem, FieldDto } from "@/lib/engine/schemas"
 import { Eraser, PenLine } from "lucide-react"
 import { type ReactNode, type PointerEvent as ReactPointerEvent, useRef, useState } from "react"
-import { ImageThumb } from "./image-input"
+import { ImageThumb } from "@/components/form/image-input"
 
 /* R1·UP-4b 簽名欄(OQ-IS-5=A canvas → PNG → 既有上傳管線;OQ-IS-6=A 自建零相依)。
 

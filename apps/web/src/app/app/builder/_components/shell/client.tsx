@@ -5,13 +5,13 @@ import { Table2 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { parseAsInteger, useQueryState } from "nuqs"
 import { useState } from "react"
-import { FormListRail } from "./form-list-rail"
-import { FormWorkspace } from "./form-workspace"
-import { NewFormPanel } from "./new-form-panel"
+import { FormListRail } from "@/app/app/builder/_components/shell/form-list"
+import { FormWorkspace } from "@/app/app/builder/_components/shell/workspace"
+import { NewFormPanel } from "@/app/app/builder/_components/shell/new-form"
 
 /* 匯入面板拉入 SheetJS(~380KB)→ 動態載入,不進 builder 主 bundle(僅點「匯入」才載)*/
 const ExcelImportPanel = dynamic(
-  () => import("./excel-import-panel").then((m) => m.ExcelImportPanel),
+  () => import("@/app/app/builder/_components/excel/panel").then((m) => m.ExcelImportPanel),
   { ssr: false, loading: () => <div className="p-6 text-[12px] text-ink-3">載入匯入工具…</div> },
 )
 

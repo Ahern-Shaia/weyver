@@ -1,6 +1,6 @@
 import type { CellValueType, FieldDto } from "@/lib/engine/schemas"
 import { describe, expect, it } from "vitest"
-import { choicesOf, formatFieldValue, toSubmitValue } from "./field-value"
+import { choicesOf, formatFieldValue, toSubmitValue } from "@/components/form/value"
 
 function field(type: CellValueType, options: Record<string, unknown> = {}): FieldDto {
   return { id: 1, name: "f", type, required: false, unique: false, options, position: 0 }

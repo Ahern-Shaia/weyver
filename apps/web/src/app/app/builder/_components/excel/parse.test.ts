@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { utils, write } from "xlsx"
-import { parseSheet, readWorkbook } from "./excel-parse"
+import { parseSheet, readWorkbook } from "@/app/app/builder/_components/excel/parse"
 
 /* 🔴 追溯稽核 #106|原本寫死首工作表 + 寫死第一列當標題。
    客戶的舊 Excel 幾乎必有「說明 / 範本」前置表,或前幾列是公司抬頭 ——

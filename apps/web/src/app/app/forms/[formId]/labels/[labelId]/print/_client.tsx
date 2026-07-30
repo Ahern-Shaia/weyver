@@ -3,7 +3,7 @@
 import { Printer } from "lucide-react"
 import { useParams, useSearchParams } from "next/navigation"
 import { type ReactNode, useMemo } from "react"
-import { formatFieldValue } from "@/app/app/builder/_components/field-value"
+import { formatFieldValue } from "@/components/form/value"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { useForm, useLabels, useRecords } from "@/lib/engine/hooks"
 import {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { inferColumnType, normalizeColumnNames, toImportValue } from "./excel-import"
+import { inferColumnType, normalizeColumnNames, toImportValue } from "@/app/app/builder/_components/excel/import"
 
 describe("inferColumnType", () => {
   it("空欄 → text", () => {

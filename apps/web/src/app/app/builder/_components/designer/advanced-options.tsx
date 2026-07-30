@@ -4,7 +4,7 @@ import type { FieldDto, FormSummary } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
-import type { PendingField } from "./edit-form-panel"
+import type { PendingField } from "@/app/app/builder/_components/shell/edit-form"
 
 /* R1·UP-4c 順帶重整:自 `edit-form-panel`(422 行,超過 400 紅線)抽出進階欄型設定
    —— autoNumber 編號規則 / link 目標表 / lookup 來源 / rollup 聚合。

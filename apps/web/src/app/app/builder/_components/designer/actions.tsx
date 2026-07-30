@@ -15,7 +15,7 @@ import {
   useForms,
 } from "@/lib/engine/hooks"
 import type { ApprovalStep, ButtonConfig, FormDto } from "@/lib/engine/schemas"
-import { LabelsPanel } from "./labels-panel"
+import { LabelsPanel } from "@/app/app/builder/_components/output/labels"
 
 /* R1·後續-1 M4 設計器:表單掛自訂按鈕(動作型別 + 映射)+ 簽核定義(步驟 + 簽核角色 + 金額條件)。
    欄位映射為簡表(目標欄 ← 來源欄/固定值),對映後端封閉 allowlist config。 */

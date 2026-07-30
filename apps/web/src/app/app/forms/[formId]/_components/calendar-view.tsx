@@ -3,7 +3,7 @@
 import { Select } from "@weyver/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { type ReactNode, useMemo, useState } from "react"
-import { formatFieldValue } from "@/app/app/builder/_components/field-value"
+import { formatFieldValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
 import { useCalendarRange } from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"

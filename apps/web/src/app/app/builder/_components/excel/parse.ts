@@ -1,5 +1,5 @@
 import { read, utils } from "xlsx"
-import { normalizeColumnNames } from "./excel-import"
+import { normalizeColumnNames } from "@/app/app/builder/_components/excel/import"
 
 /* SheetJS 薄封裝(前端解析,原檔不上傳;OQ-GEI-3=A)。
    以 raw:false 取「格式化文字」(貨幣符號 / 日期字串保留),餵型別推斷 heuristic。 */

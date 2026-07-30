@@ -8,10 +8,10 @@ import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
-import { AttachmentInput } from "./attachment-input"
-import { choicesOf } from "./field-value"
-import { ImageInput } from "./image-input"
-import { SignatureInput } from "./signature-input"
+import { AttachmentInput } from "@/components/form/attachment-input"
+import { choicesOf } from "@/components/form/value"
+import { ImageInput } from "@/components/form/image-input"
+import { SignatureInput } from "@/components/form/signature-input"
 
 /* metadata(cellValueType)→ 輸入元件 map(A4)。值以「原始編輯字串 / 陣列 / 布林」保存於
    填單 state;送出前由 toSubmitValue(field-value.ts)轉成後端型別。 */

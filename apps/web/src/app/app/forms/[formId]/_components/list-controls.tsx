@@ -1,6 +1,6 @@
 "use client"
 
-import { choicesOf, toSubmitValue } from "@/app/app/builder/_components/field-value"
+import { choicesOf, toSubmitValue } from "@/components/form/value"
 import { OPERATOR_LABEL, fieldOperators, operatorNeedsValue } from "@/lib/engine/field-filters"
 import type { GROUP_DATE_UNITS } from "@/lib/engine/schemas"
 import type {

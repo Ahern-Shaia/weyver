@@ -10,8 +10,8 @@ import { Button } from "@weyver/ui/button"
 import { cn } from "@weyver/ui/lib/utils"
 import { Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { FieldInput } from "./field-input"
-import { toSubmitValue } from "./field-value"
+import { FieldInput } from "@/components/form/field-input"
+import { toSubmitValue } from "@/components/form/value"
 
 /* 公式欄即時預覽:以填單當前值 client 端算(與後端同引擎);循環 / 錯誤時各欄回 —,不炸整表 */
 function computeHeaderPreview(

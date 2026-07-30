@@ -3,10 +3,10 @@
 import { Segmented } from "@weyver/ui/segmented"
 import { useState } from "react"
 import { useForm, useRecords } from "@/lib/engine/hooks"
-import { EditFormPanel } from "./edit-form-panel"
-import { RecordFormPanel } from "./record-form-panel"
-import { RecordGridPanel } from "./record-grid-panel"
-import { RecordsListPanel } from "./records-list-panel"
+import { EditFormPanel } from "@/app/app/builder/_components/shell/edit-form"
+import { RecordFormPanel } from "@/app/app/builder/_components/records/form-panel"
+import { RecordGridPanel } from "@/app/app/builder/_components/records/grid-panel"
+import { RecordsListPanel } from "@/app/app/builder/_components/records/list-panel"
 
 const MODES = [
   { label: "設計", value: "design" },

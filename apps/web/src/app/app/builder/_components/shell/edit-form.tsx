@@ -8,10 +8,10 @@ import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
 import { StatusChip, type StatusTone } from "@weyver/ui/status-chip"
 import { useState } from "react"
-import { AdvancedFieldOptions } from "./advanced-field-options"
-import { type ChoiceRow, ChoicesEditor, rowsToOptions } from "./choices-editor"
-import { DesignCanvas } from "./design-canvas"
-import { FieldPalette } from "./field-palette"
+import { AdvancedFieldOptions } from "@/app/app/builder/_components/designer/advanced-options"
+import { type ChoiceRow, ChoicesEditor, rowsToOptions } from "@/app/app/builder/_components/designer/choices-editor"
+import { DesignCanvas } from "@/app/app/builder/_components/designer/canvas"
+import { FieldPalette } from "@/app/app/builder/_components/designer/palette"
 
 const STATE_TONE: Record<string, StatusTone> = {
   ready: "ok",

@@ -1,6 +1,6 @@
 import type { CellValueType, FieldDto } from "@/lib/engine/schemas"
 import { describe, expect, it } from "vitest"
-import { gridEditData, gridKind, isGridEditable } from "./grid-cells"
+import { gridEditData, gridKind, isGridEditable } from "@/components/form/grid-cells"
 
 function field(type: CellValueType): FieldDto {
   return { id: 1, name: "f", type, required: false, unique: false, options: {}, position: 0 }

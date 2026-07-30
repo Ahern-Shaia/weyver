@@ -1,8 +1,8 @@
 "use client"
 
-import { FieldInput } from "@/app/app/builder/_components/field-input"
-import { toSubmitValue } from "@/app/app/builder/_components/field-value"
-import { ImageThumb } from "@/app/app/builder/_components/image-input"
+import { FieldInput } from "@/components/form/field-input"
+import { toSubmitValue } from "@/components/form/value"
+import { ImageThumb } from "@/components/form/image-input"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"

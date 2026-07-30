@@ -4,9 +4,9 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, X } from "lu
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
-import { ConvertTypePanel } from "./convert-type-panel"
-import { OptionsEditorPanel } from "./options-editor-panel"
-import { RelookupPanel } from "./relookup-panel"
+import { ConvertTypePanel } from "@/app/app/builder/_components/designer/convert-type"
+import { OptionsEditorPanel } from "@/app/app/builder/_components/designer/options-editor"
+import { RelookupPanel } from "@/app/app/builder/_components/designer/relookup"
 import {
   DEFAULT_VARIABLES,
   type DefaultValue,

@@ -10,14 +10,14 @@ import { BUILDABLE_TYPES, fieldTypeMeta } from "@/lib/engine/field-types"
 import { useCreateForm } from "@/lib/engine/hooks"
 import type { CellValueType, CreateFormInput } from "@/lib/engine/schemas"
 import { z } from "zod"
-import { inferColumnType, toImportValue } from "./excel-import"
+import { inferColumnType, toImportValue } from "@/app/app/builder/_components/excel/import"
 import {
   columnValues,
   MAX_IMPORT_ROWS,
   type ParsedSheet,
   parseSheet,
   readWorkbook,
-} from "./excel-parse"
+} from "@/app/app/builder/_components/excel/parse"
 
 const IMPORT_TYPES = BUILDABLE_TYPES.filter((t) => t !== "autoNumber")
 const PREVIEW_ROWS = 8
