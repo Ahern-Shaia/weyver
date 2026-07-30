@@ -180,3 +180,11 @@ export class LayoutVersionConflictError extends DomainError {
     super(`版面已被其他人修改(你的版本 ${String(expected)},目前 ${String(current)}),請重新載入後再存`)
   }
 }
+
+/* 簽核中 / 已核准的記錄不得硬刪(AGENTS 鐵則 4:過帳後不可刪改)。
+   保留期到期的排程 purge 也走同一條線 —— 逾期不是硬刪已核准單據的理由。 */
+export class RecordApprovalLockedError extends DomainError {
+  constructor(readonly recordId: number) {
+    super(`記錄 ${String(recordId)} 有簽核紀錄,不得永久刪除`)
+  }
+}

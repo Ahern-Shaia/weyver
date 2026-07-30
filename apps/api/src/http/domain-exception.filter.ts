@@ -26,6 +26,7 @@ import {
   LayoutVersionConflictError,
   OptionInUseError,
   OptionRenameConflictError,
+  RecordApprovalLockedError,
   RecordNotFoundError,
   RequiredFieldError,
   SystemManagedFieldError,
@@ -52,6 +53,9 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof RecordNotFoundError) {
     return { status: HttpStatus.NOT_FOUND, code: "RECORD_NOT_FOUND" }
+  }
+  if (error instanceof RecordApprovalLockedError) {
+    return { status: HttpStatus.CONFLICT, code: "APPROVAL_LOCKED" }
   }
   if (error instanceof VersionConflictError) {
     return { status: HttpStatus.CONFLICT, code: "VERSION_CONFLICT" }

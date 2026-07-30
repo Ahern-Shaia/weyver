@@ -897,3 +897,44 @@ export const fieldConversionSnapshots = pgTable(
     index("field_conversion_snapshot_expiry_idx").on(t.expiresAt),
   ],
 )
+
+/* H-2 回收桶索引(**租戶資料 → RLS 車道**,與 records 同級)。
+
+   本表**不是刪除的真實來源** —— 真實來源仍是各實體自己的 `deleted_at`。
+   本表是「使用者看得到、能還原」的**索引 + 刪除當下的快照**:
+   - `title` 是刪除當下的顯示名。不存的話,還原清單得回查已刪的 metadata 才知道那是什麼。
+   - `relatedIds` 抄 Baserow `trash_entry.related_items`:記下**當初連帶刪了什麼**
+     (刪表單時一併軟刪的欄位)。沒有它,還原表單會把「刪表之前就已個別刪掉的欄位」
+     一起復活 —— 那不是使用者要的。
+
+   🔴 **purge job 不依賴本表**:它直接掃各表的 `deleted_at`。
+   沒有 entry 的軟刪資料照樣會被硬刪(合規不能有死角),掃到時順手把對應 entry 標 purged。 */
+export const trashEntries = pgTable(
+  "trash_entry",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: bigint("resource_id", { mode: "number" }).notNull(),
+    // record/field 的所屬表單;form 自身則等於 resourceId。權限過濾以此為軸
+    formId: bigint("form_id", { mode: "number" }),
+    title: text("title").notNull(),
+    relatedIds: bigint("related_ids", { mode: "number" }).array().notNull().default([]),
+    detail: jsonb("detail").notNull().default({}),
+    deletedBy: bigint("deleted_by", { mode: "number" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+    purgeAfter: timestamp("purge_after", { withTimezone: true }).notNull(),
+    state: text("state").notNull().default("trashed"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // 同一資源同時至多一筆「在回收桶裡」;還原後再刪可再開一筆
+    uniqueIndex("trash_entry_active_uq")
+      .on(t.tenantId, t.resourceType, t.resourceId)
+      .where(sql`state = 'trashed'`),
+    index("trash_entry_list_idx").on(t.tenantId, t.state, t.deletedAt),
+    index("trash_entry_purge_idx").on(t.purgeAfter).where(sql`state = 'trashed'`),
+    check("trash_entry_type", sql`resource_type IN ('record','form','field')`),
+    check("trash_entry_state", sql`state IN ('trashed','restored','purged')`),
+  ],
+)

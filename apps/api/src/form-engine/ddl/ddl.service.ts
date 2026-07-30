@@ -31,6 +31,7 @@ import {
   type FormWithFields,
 } from "../metadata/metadata.service.js"
 import type { AddFieldSpec, CreateFormSpec } from "../specs/form-specs.js"
+import { TrashService } from "../trash/trash.service.js"
 
 const DDL_STATEMENT_TIMEOUT = "10s"
 /* 轉換會取 ACCESS EXCLUSIVE;拿不到就放棄而非排隊(排隊會連帶卡住後續讀者) */
@@ -65,6 +66,8 @@ export class DdlService {
     @Optional() @Inject(FormulaService) private readonly formula?: FormulaService,
     // F-6 M2 配額(C5 DDL DoS);optional 使既有單元測建構不受影響
     @Optional() @Inject(QuotaService) private readonly quota?: QuotaService,
+    // H-2 回收桶;optional 使既有單元測建構不受影響
+    @Optional() @Inject(TrashService) private readonly trash?: TrashService,
   ) {}
 
   async createForm(
@@ -460,17 +463,42 @@ export class DdlService {
     await this.audit(tenantId, formId, "moveField", { fieldId, direction }, "", "ok")
   }
 
-  /* 欄位下架 = metadata soft-delete;物理欄保留(資料不毀,清理 job 之後收)*/
-  async dropField(tenantId: number, formId: number, fieldId: number): Promise<void> {
+  /* 欄位下架 = metadata soft-delete;物理欄保留至保留期屆滿,由 TrashPurgeService 真 DROP COLUMN。
+     🔴 注意 attnum **永不回收**(本機實測:`VACUUM FULL` 後 dropped 仍在,docs H-2 §0.5)——
+     DROP COLUMN 回收的是儲存,不是 1,600 欄的額度。 */
+  async dropField(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    actorId?: number,
+  ): Promise<void> {
     await this.readyForm(tenantId, formId)
-    await this.metadata.softDeleteField(tenantId, fieldId)
+    const { name } = await this.metadata.softDeleteField(tenantId, fieldId)
+    await this.trash?.recordStandalone({
+      tenantId,
+      resourceType: "field",
+      resourceId: fieldId,
+      formId,
+      title: name,
+      deletedBy: actorId ?? null,
+    })
     await this.metadata.bumpVersion(tenantId, formId)
     await this.audit(tenantId, formId, "dropField", { fieldId }, "", "ok")
   }
 
-  /* 表單下架 = metadata soft-delete;物理表保留(回復可能,清理 job 之後收)*/
-  async dropForm(tenantId: number, formId: number): Promise<void> {
-    await this.metadata.softDeleteForm(tenantId, formId)
+  /* 表單下架 = metadata soft-delete(連帶軟刪其欄位);物理表保留至保留期屆滿。 */
+  async dropForm(tenantId: number, formId: number, actorId?: number): Promise<void> {
+    const { name, cascadedFieldIds } = await this.metadata.softDeleteForm(tenantId, formId)
+    await this.trash?.recordStandalone({
+      tenantId,
+      resourceType: "form",
+      resourceId: formId,
+      formId,
+      title: name,
+      // 只記**這次**連帶刪的,還原時才不會把先前個別刪掉的欄位一起復活
+      relatedIds: cascadedFieldIds,
+      deletedBy: actorId ?? null,
+    })
     await this.audit(tenantId, formId, "dropForm", {}, "", "ok")
   }
 

@@ -173,7 +173,7 @@ export class MetadataService {
     })
   }
 
-  async softDeleteField(tenantId: number, fieldId: number): Promise<void> {
+  async softDeleteField(tenantId: number, fieldId: number): Promise<{ name: string }> {
     const updated = await this.tenantDb.withTenant(tenantId, (tx) =>
       tx
         .update(fieldDefs)
@@ -185,9 +185,11 @@ export class MetadataService {
             isNull(fieldDefs.deletedAt),
           ),
         )
-        .returning({ id: fieldDefs.id }),
+        .returning({ id: fieldDefs.id, name: fieldDefs.name }),
     )
-    if (updated.length === 0) throw new FieldNotFoundError(fieldId)
+    const row = updated[0]
+    if (row === undefined) throw new FieldNotFoundError(fieldId)
+    return { name: row.name }
   }
 
   /* 只換 options,不動型別 —— 選項增刪改名走此路徑(資料改寫由 OptionService 負責)。 */
@@ -235,17 +237,23 @@ export class MetadataService {
     if (updated.length === 0) throw new FieldNotFoundError(fieldId)
   }
 
-  async softDeleteForm(tenantId: number, formId: number): Promise<void> {
-    await this.tenantDb.withTenant(tenantId, async (tx) => {
+  /* 回傳**這次連帶軟刪的欄位 id**(Baserow `trash_entry.related_items` 同義)。
+     還原表單時只復活這些 —— 不然「刪表之前就已個別刪掉的欄位」會一起回來。 */
+  async softDeleteForm(
+    tenantId: number,
+    formId: number,
+  ): Promise<{ name: string; cascadedFieldIds: number[] }> {
+    return this.tenantDb.withTenant(tenantId, async (tx) => {
       const updated = await tx
         .update(formDefs)
         .set({ deletedAt: new Date(), updatedAt: new Date() })
         .where(
           and(eq(formDefs.tenantId, tenantId), eq(formDefs.id, formId), isNull(formDefs.deletedAt)),
         )
-        .returning({ id: formDefs.id })
-      if (updated.length === 0) throw new FormNotFoundError(formId)
-      await tx
+        .returning({ id: formDefs.id, name: formDefs.name })
+      const form = updated[0]
+      if (form === undefined) throw new FormNotFoundError(formId)
+      const fields = await tx
         .update(fieldDefs)
         .set({ deletedAt: new Date() })
         .where(
@@ -255,6 +263,8 @@ export class MetadataService {
             isNull(fieldDefs.deletedAt),
           ),
         )
+        .returning({ id: fieldDefs.id })
+      return { name: form.name, cascadedFieldIds: fields.map((f) => f.id) }
     })
   }
 

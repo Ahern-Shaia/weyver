@@ -15,6 +15,7 @@ import {
   FieldValueError,
   FormNotReadyError,
   InvalidFilterError,
+  RecordApprovalLockedError,
   RecordNotFoundError,
   RequiredFieldError,
   SystemManagedFieldError,
@@ -40,6 +41,7 @@ import { applyKeyset, decodeCursor, encodeCursor, type SortKey } from "./keyset.
 import { GROUP_DATE_UNITS } from "./record-specs.js"
 import type { CalendarQuery, GroupAggregateFn, PivotQuery } from "./record-specs.js"
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
+import { TRASH_RETENTION_DAYS } from "../trash/trash.service.js"
 
 interface ResolvedField {
   readonly row: FieldDefRow
@@ -824,7 +826,7 @@ export class RecordService {
       case "max":
         return `max(${alias})::text`
       default:
-        return `count(*)::bigint`
+        return "count(*)::bigint"
     }
   }
 
@@ -847,7 +849,7 @@ export class RecordService {
       case "max":
         return `max(${col})::text`
       default:
-        return `count(*)::bigint`
+        return "count(*)::bigint"
     }
   }
 
@@ -1191,9 +1193,129 @@ export class RecordService {
           .whereNull("deleted_at")
           .update({ deleted_at: trx.fn.now(), updated_by: actorId })
         if (count === 0) throw new RecordNotFoundError(recordId)
+        /* 🔴 H-2:回收桶 entry 與軟刪**同一 tx**。分開寫會出現「刪掉了但回收桶裡沒有」——
+           那正是使用者永遠找不回來的情況。此處走 knex 而非 TrashService(drizzle),
+           純粹因為**車道不同就是不同交易**,同 tx 的保證優先於服務邊界的整潔。 */
+        await trx("trash_entry")
+          .insert({
+            tenant_id: tenantId,
+            resource_type: "record",
+            resource_id: recordId,
+            form_id: formId,
+            title: `#${String(recordId)}`,
+            deleted_by: actorId,
+            purge_after: trx.raw(`now() + interval '${String(TRASH_RETENTION_DAYS)} days'`),
+          })
+          .onConflict()
+          .ignore()
       },
       { actorId, own: policy?.isScopedToOwn?.(formId, "delete") === true },
     )
+  }
+
+  /* H-2 M2|記錄還原。動態表在 knex 車道 → 由本服務執行,TrashService 只結案 entry。
+     「違反後加約束」的檢查在此:欄位可能在刪除之後才加上 required / unique。 */
+  async restoreRecord(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    actorId: number,
+  ): Promise<{ ok: true } | { ok: false; violations: string[] }> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    return this.inTenantTx(tenantId, async (trx) => {
+      const row = await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId, id: recordId })
+        .whereNotNull("deleted_at")
+        .first<Record<string, unknown> | undefined>()
+      if (row === undefined) throw new RecordNotFoundError(recordId)
+
+      const violations = await this.conflictsFor(trx, tenantId, resolved, row)
+      if (violations.length > 0) return { ok: false as const, violations }
+
+      await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId, id: recordId })
+        .update({ deleted_at: null, updated_by: actorId })
+      await trx("trash_entry")
+        .where({
+          tenant_id: tenantId,
+          resource_type: "record",
+          resource_id: recordId,
+          state: "trashed",
+        })
+        .update({ state: "restored", resolved_at: trx.fn.now() })
+      return { ok: true as const }
+    })
+  }
+
+  /* dry-run 用:只讀不寫,回傳「還原後會違反什麼」。 */
+  async probeRestoreConflicts(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+  ): Promise<string[]> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    return this.inTenantTx(tenantId, async (trx) => {
+      const row = await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId, id: recordId })
+        .whereNotNull("deleted_at")
+        .first<Record<string, unknown> | undefined>()
+      return row === undefined ? [] : this.conflictsFor(trx, tenantId, resolved, row)
+    })
+  }
+
+  /* 「違反後加約束」—— 欄位可能在記錄被刪之後才加上 required / unique。
+     Salesforce 的欄位 undelete 也不保證還原所有約束,差別在它讓人手動補、我們選擇先擋下。 */
+  private async conflictsFor(
+    trx: Knex.Transaction,
+    tenantId: number,
+    resolved: ResolvedForm,
+    row: Record<string, unknown>,
+  ): Promise<string[]> {
+    const violations: string[] = []
+    for (const f of resolved.fields) {
+      const col = physicalColumnName(f.row.id)
+      const value = row[col]
+      if (f.row.required && (value === null || value === undefined)) {
+        violations.push(`${f.row.name}(現在是必填,但這筆是空的)`)
+        continue
+      }
+      if (f.row.isUnique && value !== null && value !== undefined) {
+        const dupe = await trx
+          .withSchema(DATA_SCHEMA)
+          .table(resolved.table)
+          .where({ tenant_id: tenantId })
+          .andWhere(col, value as never)
+          .whereNull("deleted_at")
+          .first<{ id: number } | undefined>("id")
+        if (dupe !== undefined) violations.push(`${f.row.name}(值與現有記錄重複)`)
+      }
+    }
+    return violations
+  }
+
+  /* 🔴 立即硬刪(OQ-RB-8,個資法刪除請求)。**繞過保留期**,不可回復。
+     簽核中 / 已核准的記錄不得硬刪(AGENTS 鐵則 4)—— 與排程 purge 同一條線。 */
+  async hardDeleteRecord(tenantId: number, formId: number, recordId: number): Promise<void> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    await this.inTenantTx(tenantId, async (trx) => {
+      const locked = await trx("approval_instance")
+        .where({ tenant_id: tenantId, form_id: formId, record_id: recordId })
+        .whereIn("status", ["pending", "approved"])
+        .first<{ id: number } | undefined>("id")
+      if (locked !== undefined) throw new RecordApprovalLockedError(recordId)
+      await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId, id: recordId })
+        .whereNotNull("deleted_at")
+        .delete()
+    })
   }
 
   /* A5|header + lines 單一 transaction(ERP 單據骨架):

@@ -25,6 +25,7 @@ const EXPECTED_CRON_JOBS = [
   "reliability.cleanup",
   "billing.usageRollup",
   "notifications.dispatch",
+  "trash.purge",
 ] as const
 
 let container: StartedPostgreSqlContainer

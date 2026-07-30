@@ -4,6 +4,7 @@ import { FilesModule } from "../files/files.module.js"
 import { ReliabilityModule } from "../reliability/reliability.module.js"
 import { FormsController } from "./api/forms.controller.js"
 import { RecordsController } from "./api/records.controller.js"
+import { TrashController } from "./api/trash.controller.js"
 import { DdlService } from "./ddl/ddl.service.js"
 import { FormulaService } from "./formula/formula.service.js"
 import { LayoutService } from "./layout/layout.service.js"
@@ -16,11 +17,13 @@ import { RelationService } from "./relations/relation.service.js"
 import { RelookupService } from "./relations/relookup.service.js"
 import { ReverseRelationService } from "./relations/reverse-relation.service.js"
 import { RollupService } from "./relations/rollup.service.js"
+import { TrashPurgeService } from "./trash/trash-purge.service.js"
+import { TrashService } from "./trash/trash.service.js"
 
 @Module({
   // FilesModule 單向被 import(其自身不 import 本模組)→ RecordService 可注入 FilesService 綁定附件
   imports: [AuthzModule, FilesModule, ReliabilityModule],
-  controllers: [FormsController, RecordsController],
+  controllers: [FormsController, RecordsController, TrashController],
   providers: [
     MetadataService,
     AccessPreviewService,
@@ -34,6 +37,8 @@ import { RollupService } from "./relations/rollup.service.js"
     ReverseRelationService,
     RollupService,
     LayoutService,
+    TrashService,
+    TrashPurgeService,
   ],
   exports: [
     MetadataService,
@@ -48,6 +53,8 @@ import { RollupService } from "./relations/rollup.service.js"
     ReverseRelationService,
     RollupService,
     LayoutService,
+    TrashService,
+    TrashPurgeService,
   ],
 })
 export class FormEngineModule {}

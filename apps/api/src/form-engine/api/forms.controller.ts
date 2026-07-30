@@ -159,7 +159,7 @@ export class FormsController {
     @Tenant() tenant: TenantContext,
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<void> {
-    await this.ddl.dropForm(tenant.tenantId, formId)
+    await this.ddl.dropForm(tenant.tenantId, formId, tenant.actorId)
   }
 
   @Post(":formId/fields")
@@ -416,6 +416,6 @@ export class FormsController {
     @Param("formId", ParseIntPipe) formId: number,
     @Param("fieldId", ParseIntPipe) fieldId: number,
   ): Promise<void> {
-    await this.ddl.dropField(tenant.tenantId, formId, fieldId)
+    await this.ddl.dropField(tenant.tenantId, formId, fieldId, tenant.actorId)
   }
 }
