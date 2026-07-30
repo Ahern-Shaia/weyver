@@ -24,7 +24,9 @@ import {
   useActiveOrganization,
   useSession,
 } from "@/lib/auth/client"
+import { setTabOrgIntent } from "@/lib/engine/client"
 import { CommandPalette } from "./_components/command-palette"
+import { TenantContextGuard } from "./_components/tenant-context-guard"
 import { NotificationBell } from "./_components/notification-bell"
 import { StatusBar } from "./_components/status-bar"
 
@@ -135,6 +137,15 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   const { data: activeOrg } = useActiveOrganization()
   const { data: orgs } = authClient.useListOrganizations()
 
+  /* 🔴 F-10|把「這個分頁在哪家公司」釘進 HTTP client。
+
+     必須在其他請求發出**之前**設定,否則首批請求會退回 session 行為。
+     值取自 `useActiveOrganization()`(這個 hook 的值是本分頁 render 時的快照),
+     **不從 localStorage 取** —— localStorage 跨分頁共用,用它等於換個地方犯同樣的錯。 */
+  useEffect(() => {
+    setTabOrgIntent(activeOrg?.id ?? null)
+  }, [activeOrg?.id])
+
   useEffect(() => {
     if (isPending) return
     if (ENFORCED && !session) {
@@ -195,7 +206,9 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
             ) : null}
           </div>
         </nav>
-        <main className="min-h-0 flex-1">{children}</main>
+        <main className="min-h-0 flex-1">
+          <TenantContextGuard>{children}</TenantContextGuard>
+        </main>
       </div>
       <StatusBar org={activeOrg?.name ?? null} />
       <CommandPalette />

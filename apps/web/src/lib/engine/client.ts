@@ -14,6 +14,33 @@ export function setDevTenant(tenantId: string): void {
   window.localStorage.setItem(DEV_TENANT_KEY, tenantId)
 }
 
+/* 🔴 F-10|分頁級租戶上下文。
+
+   租戶原本只存在伺服器端 session 列的 `activeOrganizationId`,而那是**整個瀏覽器共用**的。
+   分頁 2 切公司會改到分頁 1 的租戶 → 分頁 1 的下一次寫入落到錯的公司。
+
+   解法是每個請求帶上「這個分頁以為自己在哪家」,伺服器**獨立驗成員資格**後採用。
+   語意與被剝除的 `x-tenant-id` 的差別見後端 `auth/org-intent.ts`。
+
+   **這個值由 app layout 在取得 active org 時設定,不從 localStorage 推**
+   —— localStorage 同樣是跨分頁共用的,用它等於換一個地方犯同樣的錯。 */
+const ORG_INTENT_HEADER = "x-weyver-org-intent"
+let tabOrgIntent: string | null = null
+
+export function setTabOrgIntent(orgId: string | null): void {
+  tabOrgIntent = orgId
+}
+
+/* 🔴 **所有** 對引擎的請求都必須經過這裡。
+   FMEA T2:漏帶的路徑會靜默退回 session 行為,等於沒修 —— 所以只留這一個出口。 */
+export function engineHeaders(extra: Readonly<Record<string, string>> = {}): Record<string, string> {
+  return {
+    "x-dev-tenant": getDevTenant(),
+    ...(tabOrgIntent === null ? {} : { [ORG_INTENT_HEADER]: tabOrgIntent }),
+    ...extra,
+  }
+}
+
 export class EngineApiError extends Error {
   constructor(
     readonly status: number,
@@ -55,11 +82,10 @@ export async function engineFetch<T>(
      沒有 body 就沒有內容型別可宣告,這也是正確的 HTTP 語意。 */
   const response = await fetch(`${BASE}${path}`, {
     method: init.method ?? "GET",
-    headers: {
+    headers: engineHeaders({
       ...(init.body === undefined ? {} : { "content-type": "application/json" }),
       ...(init.idempotencyKey === undefined ? {} : { "idempotency-key": init.idempotencyKey }),
-      "x-dev-tenant": getDevTenant(),
-    },
+    }),
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
   })
 
@@ -92,7 +118,7 @@ export async function uploadFile(
   body.append("file", file)
   const response = await fetch(`${BASE}/forms/${formId}/files?fieldId=${fieldId}`, {
     method: "POST",
-    headers: { "x-dev-tenant": getDevTenant() },
+    headers: engineHeaders(),
     body,
   })
   if (!response.ok) {
@@ -119,7 +145,7 @@ export async function analyzeImport(
   const query = sheet === undefined ? "" : `?sheet=${encodeURIComponent(sheet)}`
   const response = await fetch(`${BASE}/forms/${formId}/import/analyze${query}`, {
     method: "POST",
-    headers: { "x-dev-tenant": getDevTenant() },
+    headers: engineHeaders(),
     body,
   })
   if (!response.ok) {
@@ -139,7 +165,7 @@ export async function analyzeImport(
 export async function fetchFileBlob(key: string, variant?: "thumb"): Promise<Blob> {
   const query = variant === undefined ? "" : `?variant=${variant}`
   const response = await fetch(`${BASE}/files/${key}${query}`, {
-    headers: { "x-dev-tenant": getDevTenant() },
+    headers: engineHeaders(),
   })
   if (!response.ok) {
     const raw: unknown = await response.json().catch(() => ({}))
@@ -168,6 +194,6 @@ export async function downloadFile(key: string, name: string): Promise<void> {
 export async function deleteFile(key: string): Promise<void> {
   await fetch(`${BASE}/files/${key}`, {
     method: "DELETE",
-    headers: { "x-dev-tenant": getDevTenant() },
+    headers: engineHeaders(),
   })
 }
