@@ -555,3 +555,27 @@ export const apiKeySchema = z.object({
   createdAt: z.string(),
 })
 export type ApiKeyView = z.infer<typeof apiKeySchema>
+
+/* G-2 公開表單 */
+export const publicShareSchema = z.object({
+  id: z.number(),
+  formId: z.number(),
+  title: z.string(),
+  fieldIds: z.array(z.number()),
+  active: z.boolean(),
+  closesAt: z.string().nullable(),
+  maxSubmissions: z.number().nullable(),
+  submissionCount: z.number(),
+  createdAt: z.string(),
+})
+export type PublicShare = z.infer<typeof publicShareSchema>
+
+export const publicSubmissionSchema = z.object({
+  id: z.number(),
+  shareId: z.number(),
+  formId: z.number(),
+  values: z.record(z.string(), z.unknown()),
+  status: z.string(),
+  createdAt: z.string(),
+})
+export type PublicSubmission = z.infer<typeof publicSubmissionSchema>

@@ -29,6 +29,8 @@ import {
   listResponseSchema,
   notificationListSchema,
   notificationSettingsSchema,
+  publicShareSchema,
+  publicSubmissionSchema,
   recordRowSchema,
   restoreBlockerSchema,
   reverseRelationGroupSchema,
@@ -886,5 +888,75 @@ export function useRevokeApiKey() {
     mutationFn: (id: number) =>
       engineFetch(`/integrations/api-keys/${String(id)}`, z.unknown(), { method: "DELETE" }),
     onSuccess: () => invalidate([integrationKeys.apiKeys]),
+  })
+}
+
+/* G-2 公開表單 */
+export const publicFormKeys = {
+  shares: ["public-forms"] as const,
+  inbox: ["public-forms", "inbox"] as const,
+}
+
+export function usePublicShares() {
+  return useQuery({
+    queryKey: publicFormKeys.shares,
+    queryFn: () => engineFetch("/public-forms", z.object({ shares: z.array(publicShareSchema) })),
+    staleTime: 15_000,
+  })
+}
+
+export function useCreateShare() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      formId: number
+      title: string
+      fieldIds: number[]
+      maxSubmissions?: number
+    }) =>
+      engineFetch("/public-forms", z.object({ id: z.number(), token: z.string() }), {
+        method: "POST",
+        body: input,
+      }),
+    onSuccess: () => invalidate([publicFormKeys.shares]),
+  })
+}
+
+export function useShareToggle() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { id: number; action: "open" | "close" }) =>
+      engineFetch(`/public-forms/${String(input.id)}/${input.action}`, z.unknown(), {
+        method: "POST",
+      }),
+    onSuccess: () => invalidate([publicFormKeys.shares]),
+  })
+}
+
+export function useSubmissionInbox() {
+  return useQuery({
+    queryKey: publicFormKeys.inbox,
+    queryFn: () =>
+      engineFetch(
+        "/public-forms/inbox",
+        z.object({ submissions: z.array(publicSubmissionSchema) }),
+      ),
+    staleTime: 10_000,
+  })
+}
+
+export function useReviewSubmission() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { id: number; action: "promote" | "reject"; reason?: string }) =>
+      engineFetch(
+        `/public-forms/inbox/${String(input.id)}/${input.action}`,
+        z.unknown(),
+        input.action === "reject"
+          ? { method: "POST", body: { reason: input.reason ?? "不符需求" } }
+          : { method: "POST" },
+      ),
+    /* promote 會建立真記錄 → 表單清單與記錄快取都要失效 */
+    onSuccess: () => invalidate([publicFormKeys.inbox, publicFormKeys.shares, formKeys.all]),
   })
 }
