@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| 狀態 | 🚧 **APPROVED — OQ-PC-1..9 已裁定(2026-07-30,全採建議),進 M1** |
+| 狀態 | ✅ **SHIPPED v1.0(2026-07-30,M1→M3+M5)** — OQ-PC-1..9 全採建議;**M4 小圖表列殘留** |
 | 建立 | 2026-07-30 |
 | 上游 | docs/25 §F(pivot 5 / 圖表 4 / 儀表板 4 人月,皆 ⬜)· [views-group-kanban-calendar](views-group-kanban-calendar.md) v1.0 之 group-stats 地基 |
 | 依賴 | F-1(GROUPING SETS 聚合 + 同一 RLS role 的計數保證)· authz(記錄級 + 欄位級)· views-list(view_def) |
@@ -297,6 +297,40 @@ pivot 走 `GROUPING SETS`(要小計),chart 走單一 `GROUP BY`(不要小計)—
 
 ---
 
+## 4.7 落地結果(2026-07-30)
+
+| 里程碑 | 內容 | 結果 |
+|---|---|---|
+| **M1 pivot 引擎** | grouping set 笛卡兒積 · `date_trunc` 物化成具名欄 · `/pivot` 回長表 · 欄軸 top-N | ✅ 6 條整合測 |
+| **M2 pivot 前端** | 長表→密集矩陣(以鍵查找非索引)· 軸設定 UI · 雙向小計 | ✅ |
+| **M3 圖表** | ECharts 6 tree-shaken + 自寫 wrapper · bar/line/pie · 與 pivot 分岔執行 | ✅ |
+| **M4 小圖表 widget** | ⏳ **列殘留**(見下) | — |
+| **M5 收尾** | e2e 5 條 · FMEA 回填 · docs/25 覆蓋率 · **更正 docs/10 §131** | ✅ |
+
+**驗證**|api 589 + web 87 + e2e 5 全綠。實走:雙軸交叉表含稀疏格留白與雙向小計正確
+(北×新單 300 / 列小計北 350 / 欄小計新單 600);圖表 canvas 繪出且描述正確。
+
+### 🔴 實走揪出的兩個 a11y 問題(研究未預見)
+
+1. **ECharts 只內建簡體 `ZH`**,而 `aria.enabled` 的自動描述會**直接覆寫容器的 `aria-label`**
+   → 繁中產品出現簡體描述。已註冊 `zh-TW` locale 模板(含 aria / toolbox / 時間 / 圖表型別名)。
+2. **自動描述在直角座標系下會把「分類索引, 值」一起唸出** —— 實走看到「中 為 0,300」,
+   其中 `0` 是 x 軸索引,對螢幕閱讀器是**錯誤資訊**。
+   試過改帶 `{name, value}` **無效**(category 軸下 ECharts 把整個 value 當座標對)→
+   改為**自訂描述**,`decal` 色盲紋理保留。
+
+> 研究說「a11y 是一行開關」—— 那句話對 `decal` 成立,對**自動描述不成立**。
+> 這是文件層級的正確與實作層級的正確之間的落差,只有實走看得到。
+
+### M4 小圖表列為殘留(誠實說明)
+
+`widget_def` + 可釘在列表頁/表單頁 + 可見群組尚未實作。**未做的不假裝有做**。
+它與已完成的三項不同:需要新資料表、新的權限層(widget 級 all-or-nothing)、
+以及在既有 2D 設計器上加「插入小圖表」的互動 —— 那是另一個里程碑的量體。
+OQ-PC-9 的裁定(widget 級 all-or-nothing)仍有效,實作時直接沿用。
+
+---
+
 ## 12. 失效場景反思(FMEA)— pre-mortem 預列
 
 | # | 場景 | 預定緩解 | Sev |
@@ -313,8 +347,29 @@ pivot 走 `GROUPING SETS`(要小計),chart 走單一 `GROUP BY`(不要小計)—
 
 ---
 
+### 12.2 實作後回填(2026-07-30)
+
+| # | 結果 |
+|---|---|
+| P1 欄標頭洩漏 | ✅ 欄標頭只從本查詢的 grouping set 導出。測試:ALICE 建北/中/南、BOB 只有北 → BOB 的 `colHeaders` 僅 `["北"]`。**已反向驗證** |
+| P2 hidden 欄當軸 | ✅ 軸與 measure 皆過 `assertReadable` |
+| P3 匯出/分享繞過權限 | ✅ R1 不做公開分享;匯出沿用既有權限鏈 |
+| P4 `date_trunc` 被 planner 拒絕 | ✅ 內層 subquery 物化成具名欄 `d0..dN`;日期軸測試通過 |
+| P5 欄位爆炸 | ✅ 欄軸 top-N ≤100、總格數 ≤20,000,截斷明示 |
+| P6 稀疏格錯位 | ✅ 以 `(rowKeys, colKeys)` 為鍵查找而非索引;實走驗證缺格留白 |
+| P7 ECharts SSR CJK | ✅ 一律 client-only |
+| P8 圖表無 a11y | ✅ `decal` 紋理 + 自訂描述 + 資料表;**但過程中發現自動描述本身有錯**(§4.7) |
+| P9 widget 可見群組被繞過 | ⏳ M4 未做,不適用 |
+
+**殘留**|(a) M4 小圖表 widget;(b) 甘特/地圖(ECharts 有,需額外資料語意設計);
+(c) 拖拉式儀表板(OQ-PC-7=A 明確不做,列 R2);(d) ECharts 鍵盤導覽缺陷([#18585](https://github.com/apache/echarts/issues/18585))——
+以資料表作為等價途徑緩解,非根治。
+
+---
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-07-30 | **v1.0 SHIPPED**(M4 除外) | M1→M3 + M5 落地(§4.7)。**核心決斷成立**:pivot 與 group-stats 共用引擎,只改 grouping set 產生規則(前綴 rollup → 兩組前綴笛卡兒積),RLS/交易/filter/聚合/截斷全部不動。回長表、前端轉置。**實走揪出兩個研究未預見的 a11y 問題**:ECharts 只內建簡體且自動描述覆寫 `aria-label`;自動描述在直角座標系下把軸索引唸成資料值(§4.7)—— 研究說「a11y 是一行開關」對 `decal` 成立、對自動描述不成立。**M4 小圖表列殘留並說明理由**。api 589 + web 87 + e2e 5 全綠 | Claude Code |
 | 2026-07-30 | v0.1 | M0 DRAFT。承 docs/25 §F 之 pivot(5)+ 圖表(4)+ 儀表板(4)。**兩路深度研究推翻原規劃兩個前提**:(a) **Ragic 的資料儀表板根本不可拖拉**(官方逐字「依據表單中的位置,從左到右、從上到下依序排列」),可拖曳的是**小圖表 widgets**,且首頁為受限直欄版面 → `docs/10` §131「拖拉排版」記載有誤需更正,拖拉式儀表板非 parity 必要項;(b) **業界一致回長表**,沒有一家回動態寬表(Metabase/Superset/Cube 原始碼),PG result set 1,664 欄為硬天花板。**最省的結論**:F-1 的 group-stats 只需改 grouping set 產生器(前綴 rollup → 兩組前綴笛卡兒積),RLS/交易/filter/聚合/截斷全部不動。**§0.5 洩漏面主角是維度值清單而非聚合值** —— CVE-2024-55951(Metabase filter values 跨 sandbox 快取共用)為直接可引之公開事件。圖表庫維持 ECharts(Apache-2.0 + a11y 一行開關 + 甘特/地圖一次補齊),但不用 `echarts-for-react`。OQ-PC-1..9 待裁定 | Claude Code |
