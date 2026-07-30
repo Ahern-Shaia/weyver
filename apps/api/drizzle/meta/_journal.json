@@ -225,6 +225,20 @@
       "when": 1785417600000,
       "tag": "0031_trash_entry",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785417900000,
+      "tag": "0032_trash_entry_scope_by_form",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785418200000,
+      "tag": "0033_approval_instance_rls",
+      "breakpoints": true
     }
   ]
 }

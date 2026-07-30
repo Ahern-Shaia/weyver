@@ -14,6 +14,12 @@ import { fieldDefs, formDefs, trashEntries } from "../../db/schema.js"
 
 export const TRASH_RETENTION_DAYS = 30
 
+function readFormName(detail: unknown): string | null {
+  if (typeof detail !== "object" || detail === null) return null
+  const value = (detail as Record<string, unknown>)["formName"]
+  return typeof value === "string" ? value : null
+}
+
 export type TrashResourceType = "record" | "form" | "field"
 
 export interface TrashEntryRow {
@@ -22,6 +28,8 @@ export interface TrashEntryRow {
   readonly resourceId: number
   readonly formId: number | null
   readonly title: string
+  /* 刪除當下的表單名快照。表單本身被刪後,即時查表只會得到「表單 #729」 */
+  readonly formName: string | null
   readonly deletedBy: number | null
   readonly deletedAt: Date
   readonly purgeAfter: Date
@@ -94,6 +102,7 @@ export class TrashService {
     formId: number | null
     title: string
     relatedIds?: readonly number[]
+    detail?: Record<string, unknown>
     deletedBy: number | null
   }): Promise<void> {
     await this.tenantDb.withTenant(input.tenantId, (tx) => this.record(tx, input))
@@ -129,6 +138,7 @@ export class TrashService {
       resourceId: r.resourceId,
       formId: r.formId,
       title: r.title,
+      formName: readFormName(r.detail),
       deletedBy: r.deletedBy,
       deletedAt: r.deletedAt,
       purgeAfter: r.purgeAfter,

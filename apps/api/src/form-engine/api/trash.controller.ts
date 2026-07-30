@@ -38,12 +38,13 @@ interface TrashItemDto {
   readonly resourceId: number
   readonly formId: number | null
   readonly title: string
+  readonly formName: string | null
   readonly deletedBy: number | null
   readonly deletedAt: string
   readonly purgeAfter: string
 }
 
-@Controller("trash")
+@Controller("api/trash")
 @UseGuards(TenantGuard, PermissionGuard)
 export class TrashController {
   constructor(
@@ -79,6 +80,7 @@ export class TrashController {
         resourceId: r.resourceId,
         formId: r.formId,
         title: r.title,
+        formName: r.formName,
         deletedBy: r.deletedBy,
         deletedAt: r.deletedAt.toISOString(),
         purgeAfter: r.purgeAfter.toISOString(),
@@ -97,8 +99,11 @@ export class TrashController {
     const entry = await this.assertVisible(tenant, permissions, entryId)
     const plan = await this.trash.planRestore(tenant.tenantId, entryId)
     if (plan === null) throw new NotFoundException({ code: "NOT_FOUND", message: "trash entry" })
+    /* 父表單已刪時不 probe:probe 要讀欄位 metadata,而那會在表單已入回收桶時丟錯。
+       這種情況 planRestore 早已給出 parentDeleted 阻擋,再 probe 也沒有新資訊。 */
+    const parentGone = plan.blockers.some((b) => b.kind === "parentDeleted")
     const extra =
-      entry.resourceType === "record" && entry.formId !== null
+      entry.resourceType === "record" && entry.formId !== null && !parentGone
         ? await this.probeRecord(tenant, entry.formId, entry.resourceId)
         : []
     return { blockers: [...plan.blockers, ...extra], relatedCount: plan.relatedCount }

@@ -472,7 +472,7 @@ export class DdlService {
     fieldId: number,
     actorId?: number,
   ): Promise<void> {
-    await this.readyForm(tenantId, formId)
+    const { form } = await this.readyForm(tenantId, formId)
     const { name } = await this.metadata.softDeleteField(tenantId, fieldId)
     await this.trash?.recordStandalone({
       tenantId,
@@ -480,6 +480,8 @@ export class DdlService {
       resourceId: fieldId,
       formId,
       title: name,
+      // 表單名快照:表單後來被刪時,回收桶才不會只剩「表單 #729」
+      detail: { formName: form.name },
       deletedBy: actorId ?? null,
     })
     await this.metadata.bumpVersion(tenantId, formId)

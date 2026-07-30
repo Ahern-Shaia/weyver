@@ -928,9 +928,12 @@ export const trashEntries = pgTable(
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   },
   (t) => [
-    // 同一資源同時至多一筆「在回收桶裡」;還原後再刪可再開一筆
+    /* 同一資源同時至多一筆「在回收桶裡」;還原後再刪可再開一筆。
+       🔴 **必須含 form_id**:記錄 id 是每張動態表各自的 identity,表 A 和表 B 都有 record 1。
+       漏掉 form_id 時,第二張表刪 record 1 會撞第一張表那筆,
+       而插入是 ON CONFLICT DO NOTHING → entry 被靜默吞掉,記錄刪了但回收桶裡沒有(0032)。 */
     uniqueIndex("trash_entry_active_uq")
-      .on(t.tenantId, t.resourceType, t.resourceId)
+      .on(t.tenantId, t.resourceType, sql`COALESCE(${t.formId}, 0)`, t.resourceId)
       .where(sql`state = 'trashed'`),
     index("trash_entry_list_idx").on(t.tenantId, t.state, t.deletedAt),
     index("trash_entry_purge_idx").on(t.purgeAfter).where(sql`state = 'trashed'`),

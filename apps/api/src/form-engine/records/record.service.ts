@@ -181,6 +181,7 @@ function computeResetKey(
 
 interface ResolvedForm {
   readonly table: string
+  readonly name: string
   readonly byName: ReadonlyMap<string, ResolvedField>
   readonly fields: readonly ResolvedField[]
   readonly isSubtable: boolean
@@ -1186,6 +1187,21 @@ export class RecordService {
     await this.inTenantTx(
       tenantId,
       async (trx) => {
+        /* 🔴 標題必須在刪除**當下**取,而且要是首欄值不是 id ——
+           回收桶列出「#1」等於什麼都沒說,使用者要看的是「醬油」。
+           取法對齊前端 `titleOf`(首欄值,fallback 記錄 #id)。 */
+        const before = await trx
+          .withSchema(DATA_SCHEMA)
+          .table(resolved.table)
+          .where({ tenant_id: tenantId, id: recordId })
+          .whereNull("deleted_at")
+          .first<Record<string, unknown> | undefined>()
+        const firstField = resolved.fields[0]
+        const head =
+          before === undefined || firstField === undefined
+            ? undefined
+            : before[physicalColumnName(firstField.row.id)]
+
         const count = await trx
           .withSchema(DATA_SCHEMA)
           .table(resolved.table)
@@ -1202,7 +1218,13 @@ export class RecordService {
             resource_type: "record",
             resource_id: recordId,
             form_id: formId,
-            title: `#${String(recordId)}`,
+            title:
+              head === undefined || head === null || head === ""
+                ? `記錄 #${String(recordId)}`
+                : String(head).slice(0, 120),
+            /* 表單名也存快照:表單被刪之後,回收桶裡的記錄若靠即時查表就只剩「表單 #729」,
+               使用者無從得知那批記錄原本屬於什麼。與 title 同理 —— 顯示所需的一切在刪除當下固化。 */
+            detail: JSON.stringify({ formName: resolved.name }),
             deleted_by: actorId,
             purge_after: trx.raw(`now() + interval '${String(TRASH_RETENTION_DAYS)} days'`),
           })
@@ -1302,7 +1324,10 @@ export class RecordService {
   /* 🔴 立即硬刪(OQ-RB-8,個資法刪除請求)。**繞過保留期**,不可回復。
      簽核中 / 已核准的記錄不得硬刪(AGENTS 鐵則 4)—— 與排程 purge 同一條線。 */
   async hardDeleteRecord(tenantId: number, formId: number, recordId: number): Promise<void> {
-    const resolved = await this.resolveForm(tenantId, formId)
+    /* 🔴 刻意**不走 resolveForm**:那會在表單本身已在回收桶時丟 FormNotFoundError,
+       而「父表單也被刪了」正是硬刪記錄最常見的情境(瀏覽器實走抓到,原本回一個
+       誤導的 404「form 733 not found」)。硬刪只需要物理表名,而它由 formId 直接導出。 */
+    const table = physicalTableName(formId)
     await this.inTenantTx(tenantId, async (trx) => {
       const locked = await trx("approval_instance")
         .where({ tenant_id: tenantId, form_id: formId, record_id: recordId })
@@ -1311,7 +1336,7 @@ export class RecordService {
       if (locked !== undefined) throw new RecordApprovalLockedError(recordId)
       await trx
         .withSchema(DATA_SCHEMA)
-        .table(resolved.table)
+        .table(table)
         .where({ tenant_id: tenantId, id: recordId })
         .whereNotNull("deleted_at")
         .delete()
@@ -1477,6 +1502,7 @@ export class RecordService {
       loaded.form.layout === null ? null : layoutSchema.safeParse(loaded.form.layout)
     return {
       table: physicalTableName(loaded.form.id),
+      name: loaded.form.name,
       byName: new Map(fields.map((f) => [f.row.name, f])),
       fields,
       isSubtable: loaded.form.parentFormId !== null,

@@ -100,6 +100,37 @@ describe("H-2 回收桶", () => {
     expect(days).toBeLessThan(31)
   })
 
+  it("🔴 兩張不同表的 record 1 各自入桶(記錄 id 是每表獨立的 identity)", async () => {
+    /* 瀏覽器實走抓到的 bug:唯一索引漏了 form_id → 第二張表刪它的 record 1 時撞第一張表那筆,
+       而插入走 ON CONFLICT DO NOTHING,entry 被**靜默吞掉** —— 記錄刪了但回收桶裡沒有。
+       整合測原本抓不到,因為每個案例都用剛建的表 + 遞增 id,從不跨表撞號。 */
+    const formX = await makeForm(tenantA, "撞號X")
+    const formY = await makeForm(tenantA, "撞號Y")
+    const recX = await records.createRecord(tenantA, formX, { 品名: "X的第一筆" }, ALICE)
+    const recY = await records.createRecord(tenantA, formY, { 品名: "Y的第一筆" }, ALICE)
+    expect(recX.id).toBe(recY.id) // 兩張表各自從 1 開始 —— 這就是撞號的來源
+
+    await records.softDeleteRecord(tenantA, formX, recX.id, ALICE)
+    await records.softDeleteRecord(tenantA, formY, recY.id, ALICE)
+
+    const items = await trash.list(tenantA)
+    expect(items.some((i) => i.formId === formX && i.resourceId === recX.id)).toBe(true)
+    expect(items.some((i) => i.formId === formY && i.resourceId === recY.id)).toBe(true)
+  })
+
+  it("記錄的回收桶項目帶表單名快照(表單被刪後仍看得出原屬何處)", async () => {
+    const formId = await makeForm(tenantA, "快照表單名")
+    const rec = await records.createRecord(tenantA, formId, { 品名: "罐頭" }, ALICE)
+    await records.softDeleteRecord(tenantA, formId, rec.id, ALICE)
+    await ddl.dropForm(tenantA, formId, ALICE)
+
+    const hit = (await trash.list(tenantA)).find(
+      (i) => i.resourceType === "record" && i.formId === formId,
+    )
+    expect(hit?.formName).toBe("快照表單名")
+    expect(hit?.title).toBe("罐頭") // 標題也是快照,不是 #id
+  })
+
   it("🔴 B 租戶看不到 A 刪的東西(RLS,非應用層過濾)", async () => {
     const formId = await makeForm(tenantA, "隔離測試")
     const rec = await records.createRecord(tenantA, formId, { 品名: "米" }, ALICE)
@@ -290,6 +321,39 @@ describe("H-2 保留期硬刪", () => {
       .where({ id: rec.id })
       .first()
     expect(gone).toBeUndefined()
+  })
+
+  it("🔴 父表單已在回收桶時,記錄仍可永久刪除", async () => {
+    /* 瀏覽器實走抓到:hardDeleteRecord 原本走 resolveForm,而表單已軟刪 →
+       丟 FormNotFoundError,使用者看到誤導的 404「form 733 not found」。
+       「父表單也被刪了」正是硬刪記錄最常見的情境。 */
+    const formId = await makeForm(tenantA, "父已入桶")
+    const rec = await records.createRecord(tenantA, formId, { 品名: "孤兒記錄" }, ALICE)
+    await records.softDeleteRecord(tenantA, formId, rec.id, ALICE)
+    await ddl.dropForm(tenantA, formId, ALICE)
+
+    await expect(records.hardDeleteRecord(tenantA, formId, rec.id)).resolves.toBeUndefined()
+    const gone = await ddlKnex
+      .withSchema("data")
+      .table(`t${String(formId)}`)
+      .where({ id: rec.id })
+      .first()
+    expect(gone).toBeUndefined()
+  })
+
+  it("🔴 簽核中的記錄連立即硬刪也擋(不只排程 purge)", async () => {
+    const formId = await makeForm(tenantA, "立即硬刪保護")
+    const rec = await records.createRecord(tenantA, formId, { 品名: "已核准" }, ALICE)
+    await records.softDeleteRecord(tenantA, formId, rec.id, ALICE)
+    await ddlKnex("approval_instance").insert({
+      tenant_id: tenantA,
+      def_id: 1,
+      form_id: formId,
+      record_id: rec.id,
+      status: "approved",
+      submitted_by: ALICE,
+    })
+    await expect(records.hardDeleteRecord(tenantA, formId, rec.id)).rejects.toThrow()
   })
 
   it("未逾期的不動", async () => {
