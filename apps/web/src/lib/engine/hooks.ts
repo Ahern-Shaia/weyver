@@ -267,6 +267,47 @@ export function useCalendarRange(
   })
 }
 
+/* F-2 樞紐分析。回**長表**,由前端轉置成密集矩陣(業界一致做法)。 */
+export const pivotResultSchema = z.object({
+  cells: z.array(
+    z.object({
+      rowKeys: z.array(z.string().nullable()),
+      colKeys: z.array(z.string().nullable()),
+      count: z.number(),
+      measures: z.record(z.string(), z.unknown()),
+    }),
+  ),
+  rowHeaders: z.array(z.array(z.string())),
+  colHeaders: z.array(z.array(z.string())),
+  truncated: z.boolean(),
+})
+export type PivotResult = z.infer<typeof pivotResultSchema>
+
+export interface PivotSpec {
+  readonly rowGroupBy: readonly ViewGroup[]
+  readonly colGroupBy: readonly ViewGroup[]
+  readonly aggregates: readonly { field: string; fn: string }[]
+}
+
+export function usePivot(formId: number, spec: PivotSpec | null, query: RecordQuery) {
+  return useQuery({
+    queryKey: [...formKeys.records(formId), "pivot", spec, query],
+    enabled: spec !== null && spec.rowGroupBy.length > 0,
+    queryFn: () =>
+      engineFetch(`/forms/${formId}/records/pivot`, pivotResultSchema, {
+        method: "POST",
+        body: {
+          rowGroupBy: spec?.rowGroupBy ?? [],
+          colGroupBy: spec?.colGroupBy ?? [],
+          aggregates: spec?.aggregates ?? [],
+          filters: query.filters,
+          combinator: query.combinator,
+          ...(query.q !== undefined && query.q !== "" ? { q: query.q } : {}),
+        },
+      }),
+  })
+}
+
 export function useGroupStats(
   formId: number,
   query: RecordQuery,
