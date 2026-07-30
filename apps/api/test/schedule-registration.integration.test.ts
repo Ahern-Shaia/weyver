@@ -26,6 +26,8 @@ const EXPECTED_CRON_JOBS = [
   "billing.usageRollup",
   "notifications.dispatch",
   "trash.purge",
+  "event.fanout",
+  "webhook.deliver",
 ] as const
 
 let container: StartedPostgreSqlContainer

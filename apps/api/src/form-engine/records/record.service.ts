@@ -42,6 +42,7 @@ import { GROUP_DATE_UNITS } from "./record-specs.js"
 import type { CalendarQuery, GroupAggregateFn, PivotQuery } from "./record-specs.js"
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 import { TRASH_RETENTION_DAYS } from "../trash/trash.service.js"
+import { EVENT_TYPES, EventService } from "../../integrations/event.service.js"
 
 interface ResolvedField {
   readonly row: FieldDefRow
@@ -222,6 +223,8 @@ export class RecordService {
     @Optional() @Inject(FilesService) private readonly files?: FilesService,
     // F-6 M2 記錄配額(只在 bulk 路徑檢核:單筆做全表 count 於大表為 seq scan)
     @Optional() @Inject(QuotaService) private readonly quota?: QuotaService,
+    /* G-1 M1 事件匯流排;optional 使既有單元測 new RecordService(knex, metadata) 不受影響 */
+    @Optional() @Inject(EventService) private readonly events?: EventService,
   ) {}
 
   /* 讀時公式注入:formula 欄之值不儲存,讀取時以其他欄計算後併入(docs OQ-FML-8 之讀時算模式)。
@@ -910,9 +913,19 @@ export class RecordService {
     const resolved = await this.resolveForm(tenantId, formId)
     const withDefaults = await this.applyDefaults(resolved, values, actorId)
     this.assertWritable(resolved, formId, withDefaults, policy)
-    const record = await this.inTenantTx(tenantId, (trx) =>
-      this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null),
-    )
+    const record = await this.inTenantTx(tenantId, async (trx) => {
+      const created = await this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null)
+      /* 🔴 事件與資料**同一 tx**(G-1 M1)。分開寫就會回到 `record.created`
+         宣告了卻從沒發射過的老問題 —— 只是這次是「有時候發射」,更難查。 */
+      await this.events?.emitInTx(trx, {
+        tenantId,
+        type: EVENT_TYPES.recordCreated,
+        formId,
+        recordId: created.id,
+        actorId,
+      })
+      return created
+    })
     await this.bindFiles(tenantId, formId, resolved, record.id, withDefaults)
     const [enriched] = await this.withComputed(
       tenantId,
@@ -1168,6 +1181,13 @@ export class RecordService {
       tenantId,
       async (trx) => {
         await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
+        await this.events?.emitInTx(trx, {
+          tenantId,
+          type: EVENT_TYPES.recordUpdated,
+          formId,
+          recordId,
+          actorId,
+        })
       },
       /* 範圍受限時只能改自己的:RESTRICTIVE policy 的 USING 同樣管 UPDATE 的選列 */
       { actorId, own: policy?.isScopedToOwn?.(formId, "edit") === true },
@@ -1230,6 +1250,13 @@ export class RecordService {
           })
           .onConflict()
           .ignore()
+        await this.events?.emitInTx(trx, {
+          tenantId,
+          type: EVENT_TYPES.recordDeleted,
+          formId,
+          recordId,
+          actorId,
+        })
       },
       { actorId, own: policy?.isScopedToOwn?.(formId, "delete") === true },
     )

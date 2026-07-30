@@ -8,6 +8,7 @@ import { ApprovalLockInterceptor } from "./actions/approval-lock.interceptor.js"
 import { AuthModule } from "./auth/auth.module.js"
 import { BillingModule } from "./billing/billing.module.js"
 import { NotificationsModule } from "./notifications/notifications.module.js"
+import { IntegrationsModule } from "./integrations/integrations.module.js"
 import { UsageModule } from "./billing/usage.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
 import { validateEnv } from "./config/env.js"
@@ -36,6 +37,7 @@ import { ViewsModule } from "./views/views.module.js"
     /* F-8:@Global,須早於 AuthModule(TenantGuard 注入 EntitlementService)*/
     BillingModule,
     NotificationsModule,
+    IntegrationsModule,
     UsageModule,
     StorageModule,
     AuthzModule,
