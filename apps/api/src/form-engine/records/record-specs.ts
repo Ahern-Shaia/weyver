@@ -113,3 +113,19 @@ export const calendarQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(2000).default(1000),
 })
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>
+
+/* 🔴 F-2 樞紐分析(OQ-PC-1=A 長表 / PC-2=A 欄軸 1 層 / PC-4=A top-N)。
+
+   **pivot ≠ 雙軸 group-by**:計算層是(同一條 GROUPING SETS),但契約層三處本質不同 ——
+   輸出是二維的、**欄軸基數是查詢的輸出而非輸入**(故欄軸無法 keyset 分頁,必須一次全取)、
+   欄標頭被提升到 schema 位置因而進入權限面。詳見 docs/modules/R1/pivot-and-charts.md §4.1 */
+export const pivotQuerySchema = z.object({
+  /* 列軸 ≤3(對齊 F-1 分組 / Airtable / Teable);欄軸 1 層(Airtable 亦僅 1) */
+  rowGroupBy: z.array(groupBySchema).min(1).max(3),
+  colGroupBy: z.array(groupBySchema).max(1).default([]),
+  aggregates: z.array(aggregateSpecSchema).max(10).default([]),
+  filters: listQuerySchema.shape.filters,
+  combinator: z.enum(["and", "or"]).optional(),
+  q: z.string().max(200).optional(),
+})
+export type PivotQuery = z.infer<typeof pivotQuerySchema>

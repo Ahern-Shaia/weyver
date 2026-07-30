@@ -480,3 +480,184 @@ describe("F-1 行事曆區間查詢", () => {
     expect(res.truncated).toBe(true)
   })
 })
+
+/* 🔴 F-2 樞紐分析。引擎與 group-stats 共用,差別只在 grouping set 的產生規則:
+   前綴 rollup → **兩組前綴的笛卡兒積**(Metabase 的 breakout-combination 定義)。
+
+   最重要的兩條是 P1(欄標頭洩漏)與 P4(date_trunc 表達式被 planner 拒絕)。 */
+describe("F-2 樞紐分析", () => {
+  async function salesForm(name: string): Promise<{ formId: number; statusFieldId: number }> {
+    const created = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name,
+        fields: [
+          { name: "區域", type: "singleSelect", options: { choices: ["北", "中", "南"] } },
+          { name: "狀態", type: "singleSelect", options: { choices: ["新單", "已完成"] } },
+          { name: "金額", type: "money" },
+          { name: "下單日", type: "date" },
+        ],
+      }),
+      ALICE,
+    )
+    return {
+      formId: created.form.id,
+      statusFieldId: created.fields.find((f) => f.name === "狀態")?.id ?? 0,
+    }
+  }
+
+  const pivotQ = (over: Record<string, unknown>) => ({
+    rowGroupBy: [{ field: "區域", dir: "asc" as const }],
+    colGroupBy: [],
+    aggregates: [],
+    filters: [],
+    ...over,
+  })
+
+  it("**雙軸交叉:列軸 × 欄軸各自成格,且有兩軸的小計層**", async () => {
+    const { formId } = await salesForm(`雙軸_${String(Date.now()).slice(-6)}`)
+    for (const [r, c] of [
+      ["北", "新單"],
+      ["北", "新單"],
+      ["北", "已完成"],
+      ["南", "已完成"],
+    ] as const) {
+      await records.createRecord(tenantA, formId, { 區域: r, 狀態: c }, ALICE)
+    }
+    const res = await records.pivot(
+      tenantA,
+      formId,
+      pivotQ({ colGroupBy: [{ field: "狀態", dir: "asc" }] }),
+      allPerms(formId),
+      ALICE,
+    )
+    const cell = (r: string, c: string) =>
+      res.cells.find((x) => x.rowKeys[0] === r && x.colKeys[0] === c)
+    expect(cell("北", "新單")?.count).toBe(2)
+    expect(cell("北", "已完成")?.count).toBe(1)
+    expect(cell("南", "已完成")?.count).toBe(1)
+    // 列小計(只有列軸、無欄軸)
+    const rowTotal = res.cells.find((x) => x.rowKeys[0] === "北" && x.colKeys.length === 0)
+    expect(rowTotal?.count).toBe(3)
+    // 欄小計(只有欄軸、無列軸)
+    const colTotal = res.cells.find((x) => x.rowKeys.length === 0 && x.colKeys[0] === "已完成")
+    expect(colTotal?.count).toBe(2)
+  })
+
+  it("值(measure)可與列軸/欄軸同時計算", async () => {
+    const { formId } = await salesForm(`值_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "新單", 金額: "100.0000" }, ALICE)
+    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "新單", 金額: "50.0000" }, ALICE)
+    const res = await records.pivot(
+      tenantA,
+      formId,
+      pivotQ({
+        colGroupBy: [{ field: "狀態", dir: "asc" }],
+        aggregates: [{ field: "金額", fn: "sum" }],
+      }),
+      allPerms(formId),
+      ALICE,
+    )
+    const cell = res.cells.find((x) => x.rowKeys[0] === "北" && x.colKeys[0] === "新單")
+    expect(Number(cell?.measures["sum:金額"])).toBe(150)
+  })
+
+  it("🔴 P4:日期軸(date_trunc 表達式)不被 planner 拒絕 —— 須先物化成具名欄", async () => {
+    const { formId } = await salesForm(`日期軸_${String(Date.now()).slice(-6)}`)
+    for (const d of ["2026-01-05", "2026-01-20", "2026-03-01"]) {
+      await records.createRecord(tenantA, formId, { 區域: "北", 下單日: d }, ALICE)
+    }
+    /* 表達式 breakout 同時出現在 GROUPING SETS 與 GROUPING() 時,
+       planner 的 matcher 會視為不同運算式而整句拒絕(Metabase nest_for_pivot.clj)。
+       本專案的日期分組正是 date_trunc,故此測試直接命中該陷阱。 */
+    const res = await records.pivot(
+      tenantA,
+      formId,
+      {
+        rowGroupBy: [{ field: "下單日", dir: "asc", unit: "month" }],
+        colGroupBy: [{ field: "區域", dir: "asc" }],
+        aggregates: [],
+        filters: [],
+      },
+      allPerms(formId),
+      ALICE,
+    )
+    const jan = res.cells.find(
+      (x) => String(x.rowKeys[0]).startsWith("2026-01") && x.colKeys[0] === "北",
+    )
+    expect(jan?.count).toBe(2)
+  })
+
+  it("🔴 P1:欄標頭只列出使用者看得到的維度值(CVE-2024-55951 的形狀)", async () => {
+    const { formId } = await salesForm(`欄標頭洩漏_${String(Date.now()).slice(-6)}`)
+    // ALICE 建三個區域的單,BOB 只建一個
+    for (const r of ["北", "中", "南"]) {
+      await records.createRecord(tenantA, formId, { 區域: r, 狀態: "新單" }, ALICE)
+    }
+    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "已完成" }, BOB)
+
+    const scoped = new EffectivePermissions(
+      false,
+      new Map([[formId, new Set(["view"] as const)]]),
+      new Map(),
+      new Set(),
+      new Map([[formId, new Set(["view"] as const)]]),
+    )
+    const res = await records.pivot(
+      tenantA,
+      formId,
+      {
+        rowGroupBy: [{ field: "狀態", dir: "asc" }],
+        colGroupBy: [{ field: "區域", dir: "asc" }],
+        aggregates: [],
+        filters: [],
+      },
+      scoped,
+      BOB,
+    )
+    // BOB 只看得到自己那筆(北)—— 欄標頭不得列出「中」「南」
+    const cols = res.colHeaders.map((c) => c[0])
+    expect(cols).toEqual(["北"])
+  })
+
+  it("🔴 P2:隱藏欄不得作為軸", async () => {
+    const { formId, statusFieldId } = await salesForm(`隱藏軸_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "新單" }, ALICE)
+    const hidden = new EffectivePermissions(
+      false,
+      new Map([[formId, new Set(["view"] as const)]]),
+      new Map([[statusFieldId, "hidden" as const]]),
+      new Set(),
+    )
+    await expect(
+      records.pivot(
+        tenantA,
+        formId,
+        {
+          rowGroupBy: [{ field: "區域", dir: "asc" }],
+          colGroupBy: [{ field: "狀態", dir: "asc" }],
+          aggregates: [],
+          filters: [],
+        },
+        hidden,
+        ALICE,
+      ),
+    ).rejects.toThrow()
+  })
+
+  it("篩選同時作用於 pivot(母體與列表一致)", async () => {
+    const { formId } = await salesForm(`母體_${String(Date.now()).slice(-6)}`)
+    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "新單" }, ALICE)
+    await records.createRecord(tenantA, formId, { 區域: "南", 狀態: "新單" }, ALICE)
+    const res = await records.pivot(
+      tenantA,
+      formId,
+      pivotQ({ filters: [{ field: "區域", op: "eq", value: "北" }] }),
+      allPerms(formId),
+      ALICE,
+    )
+    const total = res.cells.filter((c) => c.rowKeys.length === 1)
+    expect(total).toHaveLength(1)
+    expect(total[0]?.rowKeys[0]).toBe("北")
+  })
+})

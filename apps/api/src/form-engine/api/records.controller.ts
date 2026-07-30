@@ -20,7 +20,7 @@ import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
-import { calendarQuerySchema, listQuerySchema } from "../records/record-specs.js"
+import { calendarQuerySchema, listQuerySchema, pivotQuerySchema } from "../records/record-specs.js"
 import type { RecordRow } from "../records/record-specs.js"
 import { RecordService } from "../records/record.service.js"
 import {
@@ -108,6 +108,20 @@ export class RecordsController {
 
   /* 🔴 F-1 行事曆:區間重疊查詢(非 group-by —— 一筆可佔多格)。
      半開區間 [from, to),to 排他,對齊 RFC 5545 / Google Calendar。 */
+  /* 🔴 F-2 樞紐分析。回**長表**(業界無一家回動態寬表;PG result set 1,664 欄為硬天花板)。
+     欄標頭只從本查詢導出,不從選項定義/metadata/快取取值(CVE-2024-55951 的形狀)。 */
+  @Post("pivot")
+  @HttpCode(200)
+  @RequiresFormAction("view")
+  async pivot(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(pivotQuerySchema)) body: z.infer<typeof pivotQuerySchema>,
+  ): Promise<unknown> {
+    return this.records.pivot(tenant.tenantId, formId, body, permissions, tenant.actorId)
+  }
+
   @Post("calendar")
   @HttpCode(200)
   @RequiresFormAction("view")

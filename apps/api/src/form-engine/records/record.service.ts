@@ -38,7 +38,7 @@ import {
 import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
 import { applyKeyset, decodeCursor, encodeCursor, type SortKey } from "./keyset.js"
 import { GROUP_DATE_UNITS } from "./record-specs.js"
-import type { CalendarQuery, GroupAggregateFn } from "./record-specs.js"
+import type { CalendarQuery, GroupAggregateFn, PivotQuery } from "./record-specs.js"
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 
 interface ResolvedField {
@@ -78,6 +78,26 @@ export interface GroupStatsRow {
   readonly count: number
   readonly aggregates: Record<string, unknown>
 }
+
+/* pivot 的一格。長表:呼叫端以 (rowKeys, colKeys) 為鍵轉置成密集矩陣。 */
+export interface PivotCell {
+  readonly rowKeys: readonly (string | null)[]
+  readonly colKeys: readonly (string | null)[]
+  readonly count: number
+  readonly measures: Record<string, unknown>
+}
+
+export interface PivotResult {
+  readonly cells: readonly PivotCell[]
+  readonly rowHeaders: readonly (readonly string[])[]
+  readonly colHeaders: readonly (readonly string[])[]
+  readonly truncated: boolean
+}
+
+/* 欄軸 distinct 上限(OQ-PC-4=A):超過走 top-N + 明示截斷。
+   Google Sheets 的 PivotGroupLimit 即此形態;Superset #35981 實證 20k×10 即凍瀏覽器。 */
+const MAX_PIVOT_COLS = 100
+const MAX_PIVOT_CELLS = 20_000
 
 export interface GroupStatsResult {
   readonly groups: readonly GroupStatsRow[]
@@ -646,6 +666,166 @@ export class RecordService {
       },
       { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
     )
+  }
+
+  /* 🔴 F-2 樞紐分析。**引擎層與 group-stats 共用,只有 grouping set 的產生規則不同**:
+     group-stats 是「前綴 rollup」(g1)(g1,g2)(g1,g2,g3);
+     pivot 是「**兩組前綴的笛卡兒積**」(列軸前綴 × 欄軸前綴)——
+     這正是 Metabase 的 breakout-combination 定義。**不用 `CUBE`**:CUBE(n) 是 2ⁿ 組,
+     3 列軸 + 1 欄軸時 16 組 vs 明列 8 組。
+
+     **輸出長表**(OQ-PC-1=A):業界無一家回動態寬表(Metabase / Superset / Cube 皆前端轉置),
+     且 PG result set 上限 1,664 欄是硬天花板;寬表的 JSON key 會變成使用者資料。
+
+     🔴 **欄標頭只從這條查詢導出** —— 禁從單選欄的選項定義 / metadata / 快取取值。
+     CVE-2024-55951(Metabase filter values 被跨 sandbox 使用者快取共用)洩漏的正是維度值清單。 */
+  async pivot(
+    tenantId: number,
+    formId: number,
+    q: PivotQuery,
+    policy?: FieldAccessPolicy,
+    actorId: number | null = null,
+  ): Promise<PivotResult> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    const axes = [...q.rowGroupBy, ...q.colGroupBy]
+    const exprs: string[] = []
+    for (const g of axes) {
+      const field = resolved.byName.get(g.field)
+      if (field === undefined) throw new UnknownFieldError(g.field)
+      /* 隱藏欄不得當軸 —— 欄標頭的值本身即是資料(FMEA P2) */
+      this.assertReadable(resolved, formId, g.field, policy)
+      exprs.push(this.groupExpression(field, g))
+    }
+    const aggSelects: string[] = []
+    for (const [i, a] of q.aggregates.entries()) {
+      const field = resolved.byName.get(a.field)
+      if (field === undefined) throw new UnknownFieldError(a.field)
+      this.assertReadable(resolved, formId, a.field, policy)
+      aggSelects.push(`${this.aggregateExpression(field, a.fn)} AS a${String(i)}`)
+    }
+
+    const rowCount = q.rowGroupBy.length
+    const colCount = q.colGroupBy.length
+    /* 笛卡兒積:列軸前綴(含空)× 欄軸前綴(含空),去掉全空那一組 */
+    const sets: string[] = []
+    for (let r = 0; r <= rowCount; r++) {
+      for (let c = 0; c <= colCount; c++) {
+        if (r === 0 && c === 0) continue
+        const cols = [
+          ...Array.from({ length: r }, (_, i) => `d${String(i)}`),
+          ...Array.from({ length: c }, (_, i) => `d${String(rowCount + i)}`),
+        ]
+        sets.push(`(${cols.join(", ")})`)
+      }
+    }
+
+    return this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        let inner = this.baseQuery(trx, tenantId, resolved).clearSelect().clearOrder()
+        inner = this.applyQueryPredicates(inner, resolved, formId, { ...q, sort: [], limit: 1 } as unknown as ListQuery, policy)
+        /* 🔴 §0.3 陷阱 1:breakout 若是**表達式**(本專案的日期分組正是 date_trunc),
+           在 GROUPING SETS 與 GROUPING() 中各自出現時 planner 視為不同運算式而拒絕 query。
+           故先在內層 subquery **物化成具名欄** d0..dN 再聚合。 */
+        const innerSelects = [
+          ...exprs.map((e, i) => `${e} AS d${String(i)}`),
+          ...q.aggregates.map((a) => {
+            const f = resolved.byName.get(a.field)
+            return `"${f?.column ?? ""}" AS m${String(q.aggregates.indexOf(a))}`
+          }),
+        ]
+        inner = inner.select(trx.raw(innerSelects.join(", ")))
+
+        const outerAgg = q.aggregates.map(
+          (a, i) => `${this.aggregateOnAlias(`m${String(i)}`, a.fn)} AS a${String(i)}`,
+        )
+        const selects = [
+          ...axes.map((_, i) => `d${String(i)}`),
+          "count(*)::bigint AS n",
+          ...outerAgg,
+          `GROUPING(${axes.map((_, i) => `d${String(i)}`).join(", ")}) AS gmask`,
+        ]
+        void aggSelects
+
+        const sql = trx
+          .select(trx.raw(selects.join(", ")))
+          .from(inner.as("src"))
+          .groupByRaw(`GROUPING SETS (${sets.join(", ")})`)
+        const rows = (await sql) as Record<string, unknown>[]
+
+        const cells: PivotCell[] = rows.map((r) => {
+          const mask = Number(r.gmask ?? 0)
+          const total = axes.length
+          /* GROUPING() 的 bit:1 = 該欄未參與此 grouping set(即小計層) */
+          const present = (i: number): boolean => ((mask >> (total - 1 - i)) & 1) === 0
+          const rowKeys: (string | null)[] = []
+          for (let i = 0; i < rowCount; i++) {
+            if (!present(i)) break
+            const v = r[`d${String(i)}`]
+            rowKeys.push(v === null || v === undefined ? null : String(v))
+          }
+          const colKeys: (string | null)[] = []
+          for (let i = 0; i < colCount; i++) {
+            if (!present(rowCount + i)) break
+            const v = r[`d${String(rowCount + i)}`]
+            colKeys.push(v === null || v === undefined ? null : String(v))
+          }
+          const measures: Record<string, unknown> = {}
+          for (const [i, a] of q.aggregates.entries()) {
+            measures[`${a.fn}:${a.field}`] = r[`a${String(i)}`] ?? null
+          }
+          return { rowKeys, colKeys, count: Number(r.n), measures }
+        })
+
+        /* 欄標頭:只從本查詢的結果導出(禁從選項定義 / metadata / 快取)。
+           top-N:欄軸高基數會凍瀏覽器(Superset #35981 實證 20k×10 即凍)。 */
+        const colTotals = new Map<string, number>()
+        for (const c of cells) {
+          if (c.rowKeys.length > 0 || c.colKeys.length !== colCount || colCount === 0) continue
+          colTotals.set(c.colKeys.map((k) => k ?? GROUP_EMPTY).join(" "), c.count)
+        }
+        const sortedCols = [...colTotals.entries()].sort((a, b) => b[1] - a[1])
+        const colHeaders = sortedCols.slice(0, MAX_PIVOT_COLS).map(([k]) => k.split(" "))
+        const colsTruncated = sortedCols.length > MAX_PIVOT_COLS
+
+        const rowHeaderSet = new Set<string>()
+        for (const c of cells) {
+          if (c.rowKeys.length !== rowCount || c.colKeys.length > 0) continue
+          rowHeaderSet.add(c.rowKeys.map((k) => k ?? GROUP_EMPTY).join(" "))
+        }
+        const rowHeaders = [...rowHeaderSet].slice(0, MAX_GROUPS).map((k) => k.split(" "))
+
+        return {
+          cells: cells.slice(0, MAX_PIVOT_CELLS),
+          rowHeaders,
+          colHeaders,
+          truncated:
+            cells.length > MAX_PIVOT_CELLS || colsTruncated || rowHeaderSet.size > MAX_GROUPS,
+        }
+      },
+      { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
+    )
+  }
+
+  /* 對已物化的別名做聚合(pivot 的外層) */
+  private aggregateOnAlias(alias: string, fn: GroupAggregateFn): string {
+    switch (fn) {
+      case "count":
+      case "filled":
+        return `count(${alias})::bigint`
+      case "empty":
+        return `count(*) FILTER (WHERE ${alias} IS NULL)::bigint`
+      case "sum":
+        return `sum(${alias})::text`
+      case "avg":
+        return `avg(${alias})::text`
+      case "min":
+        return `min(${alias})::text`
+      case "max":
+        return `max(${alias})::text`
+      default:
+        return `count(*)::bigint`
+    }
   }
 
   /* 聚合運算式。fn 為受控白名單;identifier 由 metadata 解析。 */

@@ -128,7 +128,7 @@ Enterprise Plan **按年付費**(至少 1 年承諾)。
 - **列表視圖 + 篩選 + 排序 + 分組**
 - **樞紐分析(Pivot)**
 - **圖表**|Bar / Line / Pie / Gantt / 儀表板
-- **儀表板(Dashboard)**|拖拉排版 + 多圖表組合
+- **儀表板(Dashboard)**|⚠️ **2026-07-30 更正**:原記「拖拉排版 + 多圖表組合」與官方文件不符。Ragic 的[資料儀表板](https://www.ragic.com/intl/zh-TW/doc/7/dashboard-report)是**自動生成、單表單、不可拖拉** —— 官方逐字「各欄位統計數據會**依據表單中的位置,從左到右、從上到下依序排列**顯示」。**真正可拖曳的是[小圖表 widgets](https://www.ragic.com/intl/zh-TW/doc/122/widgets)**(可插在表單頁/列表頁任意位置、可設可見群組);[首頁](https://www.ragic.com/intl/zh-TW/doc/90/customizing-your-database-home)則為**受限直欄版面**(「區塊只能在各自的直欄內調整位置」)。詳見 [F-2 pivot-and-charts](modules/R1/pivot-and-charts.md) §1.2
 - **SQL 客製報表**|進階客戶可寫 SQL 客製查詢
 - **匯出**|Excel / PDF / CSV / 列印模板
 
