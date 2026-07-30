@@ -119,3 +119,47 @@ test("行事曆:跨月事件在兩個月都顯示", async ({ page, request }) =>
     timeout: 15_000,
   })
 })
+
+test("樞紐:雙軸交叉表 + 雙向小計", async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-6)
+  const formId = await createForm(request, `E2E樞紐_${stamp}`, [
+    { name: "區域", type: "singleSelect", options: { choices: ["北", "南"] } },
+    { name: "狀態", type: "singleSelect", options: { choices: ["新單", "完成"] } },
+  ])
+  await addRecord(request, formId, { 區域: "北", 狀態: "新單" })
+  await addRecord(request, formId, { 區域: "北", 狀態: "新單" })
+  await addRecord(request, formId, { 區域: "南", 狀態: "完成" })
+
+  await page.goto(`/app/forms/${String(formId)}?mode=pivot`)
+  await expect(page.getByLabel("列軸 1", { exact: true })).toBeVisible({ timeout: 30_000 })
+  await page.getByLabel("加入欄軸").click()
+  await page.getByLabel("欄軸 1", { exact: true }).selectOption("狀態")
+
+  // 北×新單 = 2;列小計「北」= 2;欄小計「新單」= 2
+  const table = page.locator("table")
+  await expect(table).toContainText("新單", { timeout: 15_000 })
+  await expect(table.locator("tbody tr").first()).toContainText("2")
+})
+
+test("圖表:繪出 canvas 且附可讀資料表", async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-6)
+  const formId = await createForm(request, `E2E圖表_${stamp}`, [
+    { name: "區域", type: "singleSelect", options: { choices: ["北", "南"] } },
+  ])
+  await addRecord(request, formId, { 區域: "北" })
+  await addRecord(request, formId, { 區域: "南" })
+
+  await page.goto(`/app/forms/${String(formId)}?mode=chart`)
+  await expect(page.getByLabel("圖表類型")).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator("canvas")).toBeVisible({ timeout: 15_000 })
+
+  /* a11y:圖表必須有正確的描述(不是 ECharts 自動生成那個會唸出軸索引的版本),
+     且旁邊要有資料表 —— ECharts 鍵盤導覽有已知缺陷,純圖形不可用 */
+  const desc = await page.locator('[role="img"]').getAttribute("aria-label")
+  expect(desc).toContain("北")
+  /* 每個分類只帶一個數值 —— ECharts 自動描述在 category 軸下會唸成「北 0,1」
+     (0 是 x 軸索引),那是錯誤資訊。此處斷言不出現「值, 值」的兩數格式。 */
+  expect(desc).not.toMatch(/\d+,\d+/)
+  expect(desc).toMatch(/北 \d+/)
+  await expect(page.getByText("圖表資料")).toBeVisible()
+})
