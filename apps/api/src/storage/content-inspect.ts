@@ -26,6 +26,9 @@ import { inflateRawSync } from "node:zlib"
 export interface InspectVerdict {
   readonly ok: boolean
   readonly reason?: string
+  /* true 代表原始位元組掃描不足以下結論(PDF 物件流 / 加密)——
+     不是「有問題」,是「這裡看不完全,要交給真正的解析器」(doc §1.4) */
+  readonly opaque?: boolean
 }
 
 const OK: InspectVerdict = { ok: true }
@@ -205,12 +208,7 @@ const PDF_DANGEROUS = [
    `/AcroForm` 是可填寫表單的正常構件(報價單常見),拒了誤傷太大。 */
 const PDF_OPAQUE = ["/ObjStm", "/Encrypt"] as const
 
-export interface PdfVerdict extends InspectVerdict {
-  /* true 代表原始位元組掃描不足以下結論(物件流 / 加密),需要真正的解析器 */
-  readonly opaque?: boolean
-}
-
-export function inspectPdf(buf: Buffer): PdfVerdict {
+export function inspectPdf(buf: Buffer): InspectVerdict {
   const text = buf.toString("latin1")
   const hit = PDF_DANGEROUS.find((k) => text.includes(k))
   if (hit !== undefined) {

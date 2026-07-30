@@ -13,13 +13,17 @@ describe("env schema — BETTER_AUTH_SECRET(F-2 M1)", () => {
   })
 
   it("production secret 過短(<32)→ 拒", () => {
-    expect(() => validateEnv({ NODE_ENV: "production", BETTER_AUTH_SECRET: "tooshort" })).toThrow()
+    expect(() => validateEnv({ NODE_ENV: "production",
+      // F-11:prod 停用掃毒須顯式承認;本測試聚焦其他驗證,故明示關閉
+      MALWARE_SCAN_ACK_DISABLED: "1", BETTER_AUTH_SECRET: "tooshort" })).toThrow()
   })
 
   it("production 提供合法 secret → 採用(不覆寫為佔位)", () => {
     const secret = "a".repeat(48)
     const env = validateEnv({
       NODE_ENV: "production",
+      // F-11:prod 停用掃毒須顯式承認;本測試聚焦其他驗證,故明示關閉
+      MALWARE_SCAN_ACK_DISABLED: "1",
       BETTER_AUTH_SECRET: secret,
       APP_DATABASE_URL: "postgres://weyver_app_login:pw@db:5432/weyver",
     })
@@ -39,7 +43,9 @@ describe("env schema — APP_DATABASE_URL(app 車道不得為特權連線)", () 
 
   it("production 未設 → fail-fast", () => {
     expect(() =>
-      validateEnv({ NODE_ENV: "production", BETTER_AUTH_SECRET: secret }),
+      validateEnv({ NODE_ENV: "production",
+      // F-11:prod 停用掃毒須顯式承認;本測試聚焦其他驗證,故明示關閉
+      MALWARE_SCAN_ACK_DISABLED: "1", BETTER_AUTH_SECRET: secret }),
     ).toThrow(/APP_DATABASE_URL/)
   })
 
@@ -48,6 +54,8 @@ describe("env schema — APP_DATABASE_URL(app 車道不得為特權連線)", () 
     expect(() =>
       validateEnv({
         NODE_ENV: "production",
+      // F-11:prod 停用掃毒須顯式承認;本測試聚焦其他驗證,故明示關閉
+      MALWARE_SCAN_ACK_DISABLED: "1",
         BETTER_AUTH_SECRET: secret,
         DATABASE_URL: url,
         APP_DATABASE_URL: url,
@@ -58,6 +66,8 @@ describe("env schema — APP_DATABASE_URL(app 車道不得為特權連線)", () 
   it("production 設成不同角色 → 通過", () => {
     const env = validateEnv({
       NODE_ENV: "production",
+      // F-11:prod 停用掃毒須顯式承認;本測試聚焦其他驗證,故明示關閉
+      MALWARE_SCAN_ACK_DISABLED: "1",
       BETTER_AUTH_SECRET: secret,
       DATABASE_URL: "postgres://weyver:pw@db:5432/weyver",
       APP_DATABASE_URL: "postgres://weyver_app_login:pw@db:5432/weyver",

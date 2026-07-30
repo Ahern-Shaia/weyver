@@ -22,6 +22,7 @@ const savedEnv = {
   DATABASE_URL: process.env.DATABASE_URL,
   APP_DATABASE_URL: process.env.APP_DATABASE_URL,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+  MALWARE_SCAN_ACK_DISABLED: process.env.MALWARE_SCAN_ACK_DISABLED,
 }
 
 function cookiesFrom(headers: Headers): string {
@@ -62,6 +63,8 @@ beforeAll(async () => {
 
   // prod 模式 → TenantGuard 分派至真實 AuthGuard(非 dev header)
   process.env.NODE_ENV = "production"
+  /* F-11:prod 停用掃毒須顯式承認(掃毒器 M3 才接);此處聚焦 auth 驗證 */
+  process.env.MALWARE_SCAN_ACK_DISABLED = "1"
   process.env.BETTER_AUTH_SECRET = "x".repeat(48)
   process.env.DATABASE_URL = uri
   /* prod 模式禁止 app 車道與 migration 車道同一角色(否則 RLS 被 BYPASSRLS 旁路),

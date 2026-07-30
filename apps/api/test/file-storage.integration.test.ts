@@ -661,3 +661,85 @@ describe("🔴 上傳端點的錯誤信封(升 Fastify 5 後的回歸防線)", (
     expect(res.body).not.toContain("FST_ERR")
   })
 })
+
+/* 🔴 F-11 M2|下載閘。deny-by-default:只有 clean / skipped 放行。
+
+   **pending 也要擋**是這整件事的分界 —— 上傳完成到掃描完成之間若可下載,
+   掃毒等於沒有意義。error 同樣擋:供應端 fail-closed,「掃不出結果」不等於「安全」。 */
+describe("F-11 下載閘", () => {
+  async function setScan(key: string, status: string): Promise<void> {
+    await pool.query("UPDATE file_object SET scan_status = $1 WHERE key = $2", [status, key])
+  }
+
+  const tenant = () => ({ tenantId: tenantA, actorId: 7 })
+  const full = () => permsOf(["view"], new Map([[attachFieldId, "read"]]))
+
+  it("掃毒未啟用時上傳標 skipped → 可下載(過渡期不讓既有功能壞掉)", async () => {
+    const { body } = await upload(A(), "報價.pdf", Buffer.from("%PDF-1.7\nquote"))
+    const row = await pool.query("SELECT scan_status FROM file_object WHERE key = $1", [
+      String(body.key),
+    ])
+    expect(row.rows[0]?.scan_status).toBe("skipped")
+    await expect(filesService.openForDownload(tenant(), full(), String(body.key))).resolves.toBeDefined()
+  })
+
+  it("🔴 pending → 擋(這是掃毒有沒有意義的分界)", async () => {
+    const { body } = await upload(A(), "待掃.pdf", Buffer.from("%PDF-1.7\npending"))
+    await setScan(String(body.key), "pending")
+    await expect(
+      filesService.openForDownload(tenant(), full(), String(body.key)),
+    ).rejects.toMatchObject({ status: 409 })
+  })
+
+  it("🔴 infected → 擋,且訊息明確", async () => {
+    const { body } = await upload(A(), "壞檔.pdf", Buffer.from("%PDF-1.7\nbad"))
+    await setScan(String(body.key), "infected")
+    await expect(
+      filesService.openForDownload(tenant(), full(), String(body.key)),
+    ).rejects.toMatchObject({ status: 403 })
+  })
+
+  it("🔴 error → 擋(供應端 fail-closed:掃不出結果不等於安全)", async () => {
+    const { body } = await upload(A(), "掃壞.pdf", Buffer.from("%PDF-1.7\nerr"))
+    await setScan(String(body.key), "error")
+    await expect(
+      filesService.openForDownload(tenant(), full(), String(body.key)),
+    ).rejects.toMatchObject({ status: 409 })
+  })
+
+  it("clean → 放行", async () => {
+    const { body } = await upload(A(), "乾淨.pdf", Buffer.from("%PDF-1.7\nok"))
+    await setScan(String(body.key), "clean")
+    await expect(
+      filesService.openForDownload(tenant(), full(), String(body.key)),
+    ).resolves.toBeDefined()
+  })
+
+  it("🔴 縮圖走同一條閘(衍生物不得繞過原檔的判定)", async () => {
+    const png = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      Buffer.from([0, 0, 0, 0]),
+      Buffer.from("IEND", "latin1"),
+      Buffer.from([0xae, 0x42, 0x60, 0x82]),
+    ])
+    const { body, statusCode } = await upload(A(), "圖.png", png)
+    if (statusCode !== 201) return // 影像處理環境不可用時跳過
+    await setScan(String(body.key), "infected")
+    await expect(
+      filesService.openForDownload(tenant(), full(), String(body.key), "thumb"),
+    ).rejects.toMatchObject({ status: 403 })
+  })
+
+  it("感染檔仍可刪除(刪除不是取用)", async () => {
+    const { body } = await upload(A(), "要刪的壞檔.pdf", Buffer.from("%PDF-1.7\nbad2"))
+    await setScan(String(body.key), "infected")
+    const editor = permsOf(["view", "edit"], new Map([[attachFieldId, "write"]]))
+    await expect(filesService.remove(tenant(), editor, String(body.key))).resolves.toBeUndefined()
+  })
+
+  it("sha256 於上傳當下記錄(綁定掃的與放行的是同一份位元組)", async () => {
+    const { body } = await upload(A(), "雜湊.pdf", Buffer.from("%PDF-1.7\nhash"))
+    const row = await pool.query("SELECT sha256 FROM file_object WHERE key = $1", [String(body.key)])
+    expect(String(row.rows[0]?.sha256)).toMatch(/^[0-9a-f]{64}$/)
+  })
+})

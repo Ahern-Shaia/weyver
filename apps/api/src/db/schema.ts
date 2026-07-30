@@ -438,15 +438,35 @@ export const fileObjects = pgTable(
     mime: text("mime").notNull(),
     size: bigint("size", { mode: "number" }).notNull(),
     status: text("status").notNull().default("pending"),
+    /* 🔴 F-11|掃描狀態。**刻意不複用上面的 `status`** —— 那是
+       `pending|bound|orphaned` 的**生命週期**語意,與掃描結果正交。
+       共用會出現「pending 到底是還沒綁記錄還是還沒掃完」這種永遠講不清的狀態。 */
+    scanStatus: text("scan_status").notNull().default("pending"),
+    scanEngine: text("scan_engine"),
+    scanSigVersion: text("scan_sig_version"),
+    scanDetail: text("scan_detail"),
+    scanAttempts: integer("scan_attempts").notNull().default(0),
+    scannedAt: timestamp("scanned_at", { withTimezone: true }),
+    scanNextAttemptAt: timestamp("scan_next_attempt_at", { withTimezone: true }),
+    /* 綁定掃的與放行的是同一份位元組(ESET CA8840 即真實 TOCTOU 換 handle 案例) */
+    sha256: text("sha256"),
     createdBy: bigint("created_by", { mode: "number" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
     index("file_object_tenant_form_idx").on(t.tenantId, t.formId),
+    /* 補掃 cron 的取件掃描 */
+    index("file_object_scan_due_idx")
+      .on(t.scanStatus, t.scanNextAttemptAt)
+      .where(sql`scan_status IN ('pending','error')`),
     index("file_object_record_idx").on(t.tenantId, t.formId, t.recordId),
     index("file_object_status_idx").on(t.tenantId, t.status),
     check("file_object_status", sql`status IN ('pending','bound','orphaned')`),
+    check(
+      "file_object_scan_status",
+      sql`scan_status IN ('pending','clean','infected','error','skipped')`,
+    ),
   ],
 )
 

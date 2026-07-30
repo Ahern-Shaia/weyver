@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import type { Readable } from "node:stream"
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -55,7 +56,31 @@ interface FileObjectRow {
   readonly mime: string
   readonly size: string | number
   readonly status: FileStatus
+  readonly scan_status: ScanStatus
+  readonly scan_detail: string | null
 }
+
+/* 上傳當下的初始掃描狀態。
+
+   - 掃毒未啟用(過渡期)→ 一律 `skipped`,否則所有 PDF / Office 附件立刻下不了
+   - 影像 → `skipped`:已被 sharp 完整解碼重編碼(位元組非原始輸入),
+     加上 M1 的 polyglot 檢查已擋掉尾部附加資料。研究說「只掃高風險型別可降
+     ~80% 掃描量」,這就是那個 80%
+   - 其餘 → `pending`,掃完才可下載 */
+function scanStatusOnUpload(
+  mime: string,
+  inspected: { opaque?: boolean },
+  scanEnabled: boolean,
+): ScanStatus {
+  if (!scanEnabled) return "skipped"
+  if (mime.startsWith("image/") && inspected.opaque !== true) return "skipped"
+  return "pending"
+}
+
+/* F-11|掃描狀態。**只有 clean 可被取用** —— 其餘一律 deny(含 pending 與 error)。
+   AWS 的兩套實作(CDK construct 的 bucket policy、GuardDuty 的 tag)都是這個形狀:
+   預設拒絕、掃乾淨才放行,且明確承認「第三態」(error / unsupported)存在。 */
+export type ScanStatus = "pending" | "clean" | "infected" | "error" | "skipped"
 
 function num(value: string | number): number {
   return typeof value === "number" ? value : Number(value)
@@ -72,6 +97,10 @@ export class FilesService implements OnModuleInit {
     @Inject(ImageProcessor) private readonly images: ImageProcessor,
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
+
+  private get scanEnabled(): boolean {
+    return this.config.get<string>("MALWARE_SCAN_MODE") === "required"
+  }
 
   /* FMEA S10|部署順序防護:0014 未套用時於**開機**即明示失敗,而非等到使用者上傳才 500。
      prod fail-fast(容器不啟動 → 部署顯性失敗);dev/test 只告警,避免尚未 migrate 的本機無法啟動。 */
@@ -198,6 +227,17 @@ export class FilesService implements OnModuleInit {
         mime: detected.mime,
         size: storedSize,
         status: "pending" satisfies FileStatus,
+        /* 🔴 F-11|新上傳一律從 `pending` 起算 —— 在掃完之前下不了。
+
+           唯一例外是**確定掃不出東西的型別**:影像已被 sharp 完整解碼重編碼
+           (image-processing),位元組已非原始輸入;加上 M1 的 polyglot 檢查
+           已擋掉尾部附加資料 → 標 `skipped` 而非 `pending`。
+           研究建議「只掃高風險型別可降 ~80% 掃描量」,這就是那個 80%。
+
+           `opaque` 的 PDF(物件流 / 加密)反而**更需要**掃 —— 原始位元組
+           掃描看不進去,那正是 ClamAV 的守備範圍(doc §1.4)。 */
+        scan_status: scanStatusOnUpload(detected.mime, inspected, this.scanEnabled),
+        sha256: createHash("sha256").update(processed.body).digest("hex"),
         created_by: tenant.actorId,
       }),
     )
@@ -212,7 +252,7 @@ export class FilesService implements OnModuleInit {
     key: string,
     variant?: "thumb",
   ): Promise<{ readonly stream: Readable; readonly meta: FileDto }> {
-    const row = await this.requireFile(tenant, key)
+    const row = await this.requireReadableFile(tenant, key)
     const formId = num(row.form_id)
     const fieldId = num(row.field_id)
     if (!permissions.hasAction(formId, "view")) {
@@ -372,6 +412,18 @@ export class FilesService implements OnModuleInit {
     }
   }
 
+  /* 🔴 取用檔案內容的**唯一**入口。與 `requireFile` 分開命名,是為了讓
+     「要拿內容」與「只要 metadata」在呼叫端就看得出差別 ——
+     刪除感染檔是合理的(走 `requireFile`),下載它不是。 */
+  private async requireReadableFile(
+    tenant: TenantContext,
+    key: string,
+  ): Promise<FileObjectRow> {
+    const row = await this.requireFile(tenant, key)
+    this.assertScanned(row)
+    return row
+  }
+
   private async requireFile(tenant: TenantContext, key: string): Promise<FileObjectRow> {
     // key 形狀先驗(FMEA S4):不符即當不存在,絕不進 driver
     if (!isValidKey(key)) {
@@ -387,5 +439,33 @@ export class FilesService implements OnModuleInit {
       throw new NotFoundException({ code: "FILE_NOT_FOUND", message: "檔案不存在" })
     }
     return row
+  }
+
+  /* 🔴 下載閘。**deny-by-default** —— 只有 `clean` 與 `skipped` 放行。
+
+     `skipped` 是掃毒上線**之前**就存在的舊檔:回填時刻意不標成 `clean`
+     (我們沒掃過,不該宣稱乾淨),但也不能一夕之間讓所有既有附件變成不可下載。
+     這是一次性的相容窗口,新上傳一律從 `pending` 起算。
+
+     `pending` 也擋:上傳完成到掃描完成之間若可下載,掃毒等於沒有意義。
+     `error` 也擋:供應端 fail-closed(接受端才 fail-open)——
+     「掃不出結果」不等於「安全」。
+
+     ⚠️ 此方法必須是**唯一**的取用判斷點。若日後新增取用路徑(presigned 簽發、
+     匯出打包、webhook 附載)未經過它,整條閘門就不存在(FMEA M1)。 */
+  private assertScanned(row: FileObjectRow): void {
+    if (row.scan_status === "clean" || row.scan_status === "skipped") return
+    if (row.scan_status === "infected") {
+      throw new ForbiddenException({
+        code: "FILE_INFECTED",
+        message: "這個檔案被判定為惡意檔案,無法下載",
+      })
+    }
+    /* pending / error 一律回同一種訊息:不告訴對方「掃描失敗」還是「還在掃」,
+       那是關於我們掃描能力的資訊。 */
+    throw new ConflictException({
+      code: "FILE_SCAN_PENDING",
+      message: "檔案安全檢查尚未完成,請稍後再試",
+    })
   }
 }

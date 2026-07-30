@@ -38,6 +38,15 @@ export const envSchema = z
        prod 選 s3 時 bucket/keys 必填(見 superRefine),避免執行期才爆(FMEA S8)。 */
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     // local 驅動根目錄:**必須位於 webroot 外**(docs/22);預設為 repo 外的暫存目錄
+    /* 🔴 F-11|掃毒模式。`off` 時上傳一律標 `skipped`(不掃、可下載),
+       `required` 時標 `pending`(掃完才可下載)。
+
+       預設 `off` 是**過渡期的刻意選擇**:掃毒器(M3)尚未接上,
+       若預設 `required` 會讓所有 PDF / Office 附件立刻下不了。
+       但 prod 用 `off` 必須**顯式承認**(見 env.ts 的 refine)——
+       不讓「忘了設定」與「決定不掃」長得一樣。 */
+    MALWARE_SCAN_MODE: z.enum(["off", "required"]).default("off"),
+    MALWARE_SCAN_ACK_DISABLED: z.string().optional(),
     STORAGE_LOCAL_DIR: z.string().default(".weyver-storage"),
     STORAGE_BUCKET: z.string().optional(),
     STORAGE_ENDPOINT: z.string().url().optional(),
@@ -69,6 +78,20 @@ export const envSchema = z
         message:
           "APP_DATABASE_URL is required in production and must differ from DATABASE_URL " +
           "(point it at a LOGIN role granted weyver_app; the migration role bypasses RLS)",
+      })
+    }
+    /* 🔴 prod 關閉掃毒必須顯式承認 —— 否則「忘了設定」與「決定不掃」長得一樣,
+       而前者會在稽核時變成「你說有掃但其實沒有」。同 APP_DATABASE_URL 的 fail-fast 精神。 */
+    if (
+      env.NODE_ENV === "production" &&
+      env.MALWARE_SCAN_MODE === "off" &&
+      env.MALWARE_SCAN_ACK_DISABLED !== "1"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["MALWARE_SCAN_MODE"],
+        message:
+          "production 下停用掃毒需顯式承認:設 MALWARE_SCAN_ACK_DISABLED=1,或改用 MALWARE_SCAN_MODE=required",
       })
     }
     if (env.STORAGE_DRIVER === "s3") {
