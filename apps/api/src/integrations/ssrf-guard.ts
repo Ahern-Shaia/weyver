@@ -1,6 +1,7 @@
 import dns from "node:dns/promises"
 import net from "node:net"
 import https from "node:https"
+import { DomainError } from "../form-engine/errors.js"
 
 /* 🔴 G-1 M2|SSRF 防護。**使用者填的 URL** 是 docs/22 威脅前三之一。
 
@@ -28,7 +29,11 @@ import https from "node:https"
    - **無開關**。n8n 有完整 SSRF 服務卻**預設 `enabled: false`**(issue #28035)
      —— 預設關等於沒有。本模組不提供停用選項。 */
 
-export class SsrfBlockedError extends Error {
+/* 🔴 必須繼承 `DomainError`,否則不會被全域 filter 映射。
+   瀏覽器實走抓到:原本繼承 `Error` → 落到 500「internal error」,
+   使用者填了內網位址只看到一句無意義的錯誤,不知道自己踩到什麼。
+   **擋下來不等於做完了 —— 擋下的理由要說得出來。** */
+export class SsrfBlockedError extends DomainError {
   constructor(readonly reason: string) {
     super(`目標位址不被允許:${reason}`)
   }

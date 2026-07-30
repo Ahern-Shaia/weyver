@@ -33,6 +33,7 @@ import {
   UnknownFieldError,
   VersionConflictError,
 } from "../form-engine/errors.js"
+import { SsrfBlockedError } from "../integrations/ssrf-guard.js"
 import { IdentifierError } from "../form-engine/identifiers.js"
 
 interface ErrorEnvelope {
@@ -53,6 +54,9 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof RecordNotFoundError) {
     return { status: HttpStatus.NOT_FOUND, code: "RECORD_NOT_FOUND" }
+  }
+  if (error instanceof SsrfBlockedError) {
+    return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "TARGET_NOT_ALLOWED" }
   }
   if (error instanceof RecordApprovalLockedError) {
     return { status: HttpStatus.CONFLICT, code: "APPROVAL_LOCKED" }
