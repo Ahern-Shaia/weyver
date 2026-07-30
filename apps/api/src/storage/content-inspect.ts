@@ -169,9 +169,26 @@ function readEntryText(buf: Buffer, wanted: string): string | null {
 }
 
 /* ── PDF ──────────────────────────────────────────────────────────────────
-   不寫 PDF parser。只找主動內容的關鍵字 —— 誤判的代價是「使用者要另存一份」,
-   漏判的代價是「開啟即執行」。這個不對稱決定了寧可嚴一點。 */
 
+   關鍵字表**對照 PDFiD(Didier Stevens)的實際原始碼**,不是憑印象列。
+   PDFiD 標為 risky 並在 disarm 時處理的是:
+   `/JS` `/JavaScript` `/AA` `/OpenAction` `/JBIG2Decode` `/RichMedia` `/Launch`;
+   另監控 `/AcroForm` `/EmbeddedFile` `/XFA` `/ObjStm` `/Encrypt`。
+
+   ## 🔴 這個做法有結構性上限,必須講明
+
+   我們掃的是**原始位元組**。PDF 1.5 起的 `/ObjStm`(物件流)會把物件
+   **壓縮**起來 —— 放在裡面的 `/JavaScript` 在原始位元組中根本不存在,
+   這個掃描看不到。PDFiD 有同樣的限制,那正是它把 `/ObjStm` 列為訊號的原因。
+
+   **但 `/ObjStm` 不能拒**:現代 PDF 幾乎都有(壓縮 xref 是預設行為),
+   拒了等於拒掉大部分正常檔案。`/Encrypt` 同理 —— 加密的請款單在 ERP 場景很常見。
+
+   → **這正是 ClamAV 仍然有價值的地方**:它會解析 PDF 結構、解開物件流,
+   做我們這裡做不到的事。兩者是**互補而非替代** ——
+   malware-scanning.md §1.3 的定位描述應據此修正。 */
+
+/* 拒絕:這些在 ERP 附件情境幾乎沒有正當用途,而漏判的代價是「開啟即執行」 */
 const PDF_DANGEROUS = [
   "/JavaScript",
   "/JS",
@@ -180,15 +197,26 @@ const PDF_DANGEROUS = [
   "/Launch",
   "/EmbeddedFile",
   "/RichMedia",
+  "/JBIG2Decode", // CVE-2009-0658 等一系列解碼器漏洞的入口
+  "/XFA", // Adobe 專有表單,已被多個 RCE 利用
 ] as const
 
-export function inspectPdf(buf: Buffer): InspectVerdict {
+/* 不拒、但代表「這個檔的內容我們掃不完全」。留給 scan_status 與 ClamAV 處理。
+   `/AcroForm` 是可填寫表單的正常構件(報價單常見),拒了誤傷太大。 */
+const PDF_OPAQUE = ["/ObjStm", "/Encrypt"] as const
+
+export interface PdfVerdict extends InspectVerdict {
+  /* true 代表原始位元組掃描不足以下結論(物件流 / 加密),需要真正的解析器 */
+  readonly opaque?: boolean
+}
+
+export function inspectPdf(buf: Buffer): PdfVerdict {
   const text = buf.toString("latin1")
   const hit = PDF_DANGEROUS.find((k) => text.includes(k))
   if (hit !== undefined) {
     return { ok: false, reason: `PDF 含主動內容(${hit}),基於安全考量不接受` }
   }
-  return OK
+  return { ok: true, opaque: PDF_OPAQUE.some((k) => text.includes(k)) }
 }
 
 /* ── polyglot 尾部 ────────────────────────────────────────────────────────

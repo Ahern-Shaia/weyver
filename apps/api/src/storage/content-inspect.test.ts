@@ -143,15 +143,41 @@ describe("PDF 主動內容", () => {
     expect(inspectPdf(pdf("1 0 obj << /Type /Catalog >> endobj")).ok).toBe(true)
   })
 
+  /* 關鍵字表對照 PDFiD 原始碼(Didier Stevens),不是憑印象列 */
   it.each([
     ["/JavaScript", "1 0 obj << /S /JavaScript /JS (app.alert\\(1\\)) >> endobj"],
     ["/OpenAction", "1 0 obj << /OpenAction 2 0 R >> endobj"],
     ["/Launch", "1 0 obj << /S /Launch /F (calc.exe) >> endobj"],
     ["/EmbeddedFile", "1 0 obj << /Type /EmbeddedFile >> endobj"],
+    ["/AA", "1 0 obj << /AA << /O 2 0 R >> >> endobj"],
+    ["/RichMedia", "1 0 obj << /Subtype /RichMedia >> endobj"],
+    ["/JBIG2Decode", "1 0 obj << /Filter /JBIG2Decode >> endobj"],
+    ["/XFA", "1 0 obj << /XFA 2 0 R >> endobj"],
   ])("🔴 含 %s 的 PDF 被拒", (_label, body) => {
     const verdict = inspectPdf(pdf(body))
     expect(verdict.ok).toBe(false)
     expect(verdict.reason).toMatch(/主動內容/)
+  })
+
+  /* 🔴 誠實標注這個做法的上限:原始位元組掃描看不進物件流。
+     不拒(現代 PDF 幾乎都有 /ObjStm),但標記為「掃不完全」。 */
+  it("🔴 /ObjStm 不拒,但標記為掃描不完全(需要真正的解析器)", () => {
+    const verdict = inspectPdf(pdf("1 0 obj << /Type /ObjStm /N 3 >> stream ... endstream"))
+    expect(verdict.ok).toBe(true)
+    expect(verdict.opaque).toBe(true)
+  })
+
+  it("加密 PDF 同樣標記為掃不完全(ERP 常見加密請款單,不能直接拒)", () => {
+    expect(inspectPdf(pdf("trailer << /Encrypt 5 0 R >>")).opaque).toBe(true)
+  })
+
+  it("一般 PDF 不被標記", () => {
+    expect(inspectPdf(pdf("1 0 obj << /Type /Catalog >> endobj")).opaque).toBe(false)
+  })
+
+  /* AcroForm 是可填寫表單的正常構件(報價單常見)—— PDFiD 有監控但我們不拒 */
+  it("/AcroForm 放行(誤傷太大)", () => {
+    expect(inspectPdf(pdf("1 0 obj << /AcroForm 2 0 R >> endobj")).ok).toBe(true)
   })
 })
 
