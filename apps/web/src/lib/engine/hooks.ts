@@ -29,7 +29,9 @@ import {
   notificationListSchema,
   notificationSettingsSchema,
   recordRowSchema,
+  restoreBlockerSchema,
   reverseRelationGroupSchema,
+  trashItemSchema,
   userNameSchema,
   viewDtoSchema,
 } from "./schemas"
@@ -726,5 +728,43 @@ export function useSaveNotificationPref() {
     }) =>
       engineFetch("/notifications/prefs", z.unknown(), { method: "POST", body: input }),
     onSuccess: () => invalidate([notificationKeys.settings]),
+  })
+}
+
+/* H-2 回收桶 */
+export const trashKeys = { list: ["trash"] as const }
+
+export function useTrash() {
+  return useQuery({
+    queryKey: trashKeys.list,
+    queryFn: () =>
+      engineFetch(
+        "/trash",
+        z.object({ items: z.array(trashItemSchema), retentionDays: z.number() }),
+      ),
+    staleTime: 15_000,
+  })
+}
+
+export function useRestoreTrash() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (entryId: number) =>
+      engineFetch(
+        `/trash/${String(entryId)}/restore`,
+        z.object({ ok: z.boolean(), blockers: z.array(restoreBlockerSchema) }),
+        { method: "POST" },
+      ),
+    /* 還原會讓表單 / 記錄重新出現 → 表單清單也得失效,否則還原完看不到東西 */
+    onSuccess: () => invalidate([trashKeys.list, formKeys.all]),
+  })
+}
+
+export function usePurgeTrash() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (entryId: number) =>
+      engineFetch(`/trash/${String(entryId)}`, z.unknown(), { method: "DELETE" }),
+    onSuccess: () => invalidate([trashKeys.list]),
   })
 }

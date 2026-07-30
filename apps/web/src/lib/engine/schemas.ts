@@ -493,3 +493,28 @@ export const notificationSettingsSchema = z.object({
   prefs: z.array(notificationPrefSchema),
 })
 export type NotificationSettings = z.infer<typeof notificationSettingsSchema>
+
+/* H-2 回收桶 */
+export const trashItemSchema = z.object({
+  id: z.number(),
+  resourceType: z.enum(["record", "form", "field"]),
+  resourceId: z.number(),
+  formId: z.number().nullable(),
+  title: z.string(),
+  formName: z.string().nullable(),
+  deletedBy: z.number().nullable(),
+  deletedAt: z.string(),
+  purgeAfter: z.string(),
+})
+export type TrashItem = z.infer<typeof trashItemSchema>
+
+export const restoreBlockerSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("parentDeleted"), message: z.string() }),
+  z.object({ kind: z.literal("nameConflict"), message: z.string(), conflictName: z.string() }),
+  z.object({
+    kind: z.literal("constraintViolation"),
+    message: z.string(),
+    fields: z.array(z.string()),
+  }),
+])
+export type RestoreBlocker = z.infer<typeof restoreBlockerSchema>
