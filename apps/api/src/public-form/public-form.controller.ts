@@ -1,5 +1,5 @@
 import crypto from "node:crypto"
-import { Body, Controller, Get, Headers, Ip, Param, Post } from "@nestjs/common"
+import { Body, Controller, Get, Headers, Inject, Ip, Param, Post } from "@nestjs/common"
 import { Throttle } from "@nestjs/throttler"
 import { z } from "zod"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
@@ -31,7 +31,11 @@ const MIN_FILL_SECONDS = 2
 
 @Controller("api/public/forms")
 export class PublicFormController {
-  constructor(private readonly forms: PublicFormService) {}
+  /* 🔴 必須顯式 `@Inject()`。本專案的 tsconfig 未開 `emitDecoratorMetadata`,
+     裸建構子參數拿不到 design:paramtypes → Nest 注入 undefined,
+     而且**編譯期完全看不出來**:type-check 過、整合測也過(它們直接 new 服務,
+     繞過 DI),只有真的把 app 跑起來打那條路由才會炸。 */
+  constructor(@Inject(PublicFormService) private readonly forms: PublicFormService) {}
 
   /* 取表單定義。限流較寬(同一批人可能反覆整理頁面),但仍要有 ——
      否則這個端點會變成免費的 token 爆破入口。 */
