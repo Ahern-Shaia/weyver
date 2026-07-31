@@ -48,8 +48,44 @@ export const tenants = pgTable("tenants", {
      台灣(UTC+8)在 01/01 08:00 前開的單會拿到**去年**的年度序號、單號日期段也印成去年
      —— 對已列印的憑證是不可回收的錯誤。分界一律以租戶所在時區判定。 */
   timezone: text("timezone").notNull().default("Asia/Taipei"),
+  /* R1·A-1 M1 租戶設定。皆有預設或 nullable → 既有租戶零遷移。
+     `default_*` 是**預設值**語意:個人可覆寫語言(見 userPrefs),幣別目前無個人軸。 */
+  taxId: text("tax_id"),
+  logoFileKey: text("logo_file_key"),
+  defaultLocale: text("default_locale").notNull().default("zh-Hant"),
+  defaultCurrency: text("default_currency").notNull().default("TWD"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+/* 🔴 R1·A-1 M1|個人設定(OQ-SC-2=A 預設+可覆寫 / OQ-SC-3=A 動態繼承)。
+
+   **欄位為 NULL = 繼承租戶值**,不是「關閉」—— 與 notification_pref 的
+   「缺列 = 繼承上層」同一語意。改租戶預設會即時反映到所有未自訂者。
+
+   選動態繼承而非「建帳號時複製」:兩家講法相反(Confluence 動態 /
+   Google Workspace 只套用到新帳號,且附帶不可逆陷阱「can't switch back」),
+   取前者因為「有列才覆寫」天然就是動態繼承、零額外機制。
+
+   ⚠️ `displayTimezone` 只影響**畫面上時間戳怎麼寫出來**;
+   業務日界線是 `tenants.timezone`(autoNumber 日期段靠它),**個人不可覆寫**。
+   兩者混用會讓報表的「今天」隨看的人而變。 */
+export const userPrefs = pgTable(
+  "user_pref",
+  {
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    actorId: bigint("actor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    locale: text("locale"),
+    displayTimezone: text("display_timezone"),
+    /* 跨裝置 UI 偏好的後續退路。M1 不寫入 —— 先建欄不建 UI 會是死控件。 */
+    ui: jsonb("ui"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.actorId] })],
+)
 
 /* F-8 M1|每日用量快照(OQ-SB-7=A)。**append-only,計費憑據不可改**(承 AGENTS「傳票不可變」)。
    粒度 = 日 × 租戶 × 指標碼;指標碼而非固定欄位 → 日後改「計費使用者」定義時
@@ -719,7 +755,7 @@ export const notificationPrefs = pgTable(
        → 每次改租戶層偏好都新增一列而非更新,解析時取到過期值(e2e 實際踩到)。 */
     scopeId: bigint("scope_id", { mode: "number" }).notNull().default(0),
     /* 有序層級:0 靜音 < 10 與我相關(預設)< 20 新資料+與我相關 < 30 全部 < 40 自訂。
-       **有序才可繼承與比較** —— 這正是改用 enum 而非布林開關的主因。 */
+     **有序才可繼承與比較** —— 這正是改用 enum 而非布林開關的主因。 */
     level: smallint("level").notNull(),
     /* 僅 level=40(自訂)有效;GitLab 式「與我相關之上加選」保持有序 */
     customEvents: jsonb("custom_events"),
@@ -743,7 +779,7 @@ export const notificationSettings = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     /* 軸 0 總開關。承 Ragic:關閉時下層設定**鎖住且不發送**,但設定保留不清空。
-       **例外**:簽核逾期一律發送(裁定 ④),故此欄不影響 approval.overdue。 */
+     **例外**:簽核逾期一律發送(裁定 ④),故此欄不影響 approval.overdue。 */
     enabled: boolean("enabled").notNull().default(true),
     /* 軸 2:事件碼 → 通道開關。缺鍵 = 用系統預設 */
     channels: jsonb("channels"),
@@ -991,9 +1027,7 @@ export const eventOutbox = pgTable(
     fannedOutAt: timestamp("fanned_out_at", { withTimezone: true }),
   },
   (t) => [
-    index("event_outbox_pending_idx")
-      .on(t.occurredAt)
-      .where(sql`fanned_out_at IS NULL`),
+    index("event_outbox_pending_idx").on(t.occurredAt).where(sql`fanned_out_at IS NULL`),
     index("event_outbox_tenant_idx").on(t.tenantId, t.occurredAt),
   ],
 )
@@ -1065,9 +1099,7 @@ export const webhookDeliveries = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("webhook_delivery_due_idx")
-      .on(t.status, t.nextAttemptAt)
-      .where(sql`status = 'pending'`),
+    index("webhook_delivery_due_idx").on(t.status, t.nextAttemptAt).where(sql`status = 'pending'`),
     index("webhook_delivery_endpoint_idx").on(t.tenantId, t.endpointId, t.createdAt),
     check("webhook_delivery_status", sql`status IN ('pending','sent','failed')`),
   ],
