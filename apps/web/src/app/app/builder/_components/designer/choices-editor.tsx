@@ -49,20 +49,6 @@ export function rowsToOptions(rows: readonly ChoiceRow[]): {
   return { choices, colors }
 }
 
-export function optionsToRows(options: Record<string, unknown>): ChoiceRow[] {
-  const choices = Array.isArray(options.choices)
-    ? options.choices.filter((c): c is string => typeof c === "string")
-    : []
-  const colors = (options.colors ?? {}) as Record<string, unknown>
-  return choices.map((name, index) => {
-    const stored = colors[name]
-    const tone = CHIP_TONES.includes(stored as ChipTone)
-      ? (stored as ChipTone)
-      : (AUTO_TONES[index % AUTO_TONES.length] ?? "c1")
-    return { name, tone }
-  })
-}
-
 export function ChoicesEditor({
   rows,
   onChange,
