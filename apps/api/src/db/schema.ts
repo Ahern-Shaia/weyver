@@ -1208,3 +1208,39 @@ export const publicSubmissions = pgTable(
     check("public_submission_status", sql`status IN ('pending','promoted','rejected')`),
   ],
 )
+
+/* 🔴 R1·A-1 M2|成員狀態(停權)。**逐成員而非逐帳號** ——
+   一個 Better Auth 帳號可屬多個 org,甲公司停權不得影響他在乙公司的存取。
+   故停權的語意是「擋進入該租戶」而非「擋登入產品」(見 migration 0040 檔頭)。
+   缺列 = active,既有成員零遷移。 */
+export const memberStates = pgTable(
+  "member_state",
+  {
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    actorId: bigint("actor_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("active"),
+    suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    suspendedBy: bigint("suspended_by", { mode: "number" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.actorId] })],
+)
+
+/* 🔴 初始密碼是**一次性憑證**不是密碼(ASVS §V6.4.1:短效期 **或** 用過即失效 —— 兩者都做)。
+   本表**不存密碼本身**,只記「該帳號持有一組未使用的初始憑證」;雜湊仍由 Better Auth 保管。
+   刻意無 RLS:登入流程須在租戶語境建立**之前**判斷是否強制改密碼(同 `tenants`)。
+   收斂改走權限 —— app 車道只有 SELECT / UPDATE,**無 INSERT**,簽發只能走服務層特權路徑。 */
+export const initialCredentials = pgTable("initial_credential", {
+  authUserId: text("auth_user_id").primaryKey(),
+  issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  issuedByActorId: bigint("issued_by_actor_id", { mode: "number" }).notNull(),
+  issuedInTenantId: bigint("issued_in_tenant_id", { mode: "number" })
+    .notNull()
+    .references(() => tenants.id),
+})
