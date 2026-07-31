@@ -14,7 +14,7 @@ test("工作區:分類目錄 + status bar + ⌘K 導航 + 記錄頁動作列", a
 
   // 3) ⌘K 導航:開啟 → 搜尋 → Enter 進 Object Page
   await page.keyboard.press("ControlOrMeta+k")
-  const cmd = page.getByPlaceholder("搜尋表單、動作…")
+  const cmd = page.getByPlaceholder("搜尋表單、記錄、設定…")
   await expect(cmd).toBeVisible()
   await cmd.fill("採購")
   await page.keyboard.press("Enter")
