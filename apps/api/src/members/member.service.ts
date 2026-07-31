@@ -115,6 +115,12 @@ export class MemberService {
     readonly name: string
     readonly createAuthUser: (email: string, name: string, password: string) => Promise<string>
     readonly addToOrg: (authUserId: string) => Promise<void>
+    /* 🔴 建帳號後**必須主動**把 Weyver 的 actor 列建起來。
+       平時那是 AuthGuard 的 JIT upsert 做的,但新人此刻還沒登入過 ——
+       期待它已經存在的話,建立當下就查不到 actorId。
+       ⚠️ 首版漏了這一步,而整合測試的 stub 正好替它插了 users 列 → 測試綠、真實路徑 500。
+       **stub 做了真實路徑不會做的事**,是這個模組第三次踩到同型問題。 */
+    readonly provisionActor: (authUserId: string, email: string, name: string) => Promise<number>
   }): Promise<CreatedMember> {
     const email = input.email.trim().toLowerCase()
 
@@ -133,8 +139,10 @@ export class MemberService {
     }
 
     const password = generateInitialPassword()
-    const authUserId = await input.createAuthUser(email, input.name.trim(), password)
+    const name = input.name.trim()
+    const authUserId = await input.createAuthUser(email, name, password)
     await input.addToOrg(authUserId)
+    const actorId = await input.provisionActor(authUserId, email, name)
 
     const expiresAt = initialPasswordExpiry(new Date())
     /* 走特權車道:`initial_credential` 刻意無 RLS(登入流程需在租戶語境之前查它),
@@ -146,16 +154,7 @@ export class MemberService {
       issuedInTenantId: input.tenantId,
     })
 
-    const [row] = await this.db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.authUserId, authUserId))
-      .limit(1)
-    if (row === undefined) {
-      throw new BadRequestException({ code: "USER_NOT_PROVISIONED", message: "帳號建立未完成" })
-    }
-
-    return { actorId: row.id, email, initialPassword: password, expiresAt }
+    return { actorId, email, initialPassword: password, expiresAt }
   }
 
   async setStatus(

@@ -85,6 +85,29 @@ export class IdentityService {
     return result.rows.length > 0
   }
 
+  /* R1·A-1 M2|租戶 → org 反查。建成員需要 org id 才能呼叫 `addMember`。 */
+  async getOrgIdByTenant(tenantId: number): Promise<string | null> {
+    const rows = await this.db
+      .select({ orgId: tenants.authOrgId })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1)
+    return rows[0]?.orgId ?? null
+  }
+
+  /* R1·A-1 M2|該 org 的全部成員 → actorId。
+     `member` 是 Better Auth 的表(Tier-1,非 RLS)→ 走特權車道,與 isOrgMember 同。
+     以 org 為界即為租戶範圍,故此處不需再另加 tenant 條件。 */
+  async listMemberActorIds(authOrgId: string): Promise<number[]> {
+    const result = await this.db.execute(
+      sql`SELECT u.id AS id
+            FROM "member" m
+            JOIN users u ON u.auth_user_id = m."userId"
+           WHERE m."organizationId" = ${authOrgId} AND u.deleted_at IS NULL`,
+    )
+    return result.rows.map((r) => Number((r as { id: number | string }).id))
+  }
+
   async getActorIdByUser(authUserId: string): Promise<number | null> {
     const rows = await this.db
       .select({ id: users.id })

@@ -94,13 +94,25 @@ describe("初始密碼規格(研究結論的可執行版本)", () => {
 })
 
 describe("建立成員", () => {
+  /* 🔴 stub 必須模擬**真實路徑的分工**,不能順手多做事。
+
+     首版的 `createAuthUser` 直接 `insert(users)` —— 但真實路徑裡
+     `signUpEmail` 只建 Better Auth 的 user,Weyver 的 actor 列平時是
+     AuthGuard 的 JIT upsert 建的,而新人此刻**還沒登入過**。
+     於是測試綠、真實 API 回 `USER_NOT_PROVISIONED`。
+     **stub 做了真實路徑不會做的事**,把缺口補掉了 —— 這是本模組第三次踩同型問題。
+
+     改成三段各司其職:建帳號只回 id、加入 org 空操作、provisionActor 才建 actor 列。 */
   const stubAuth = (authUserId: string) => ({
-    createAuthUser: async (email: string, name: string, password: string): Promise<string> => {
+    createAuthUser: async (_email: string, _name: string, password: string): Promise<string> => {
       expect(password).toHaveLength(15) // 服務層真的把產生的密碼交出去
-      await db.insert(users).values({ authUserId, email, name })
       return authUserId
     },
     addToOrg: async (): Promise<void> => undefined,
+    provisionActor: async (id: string, email: string, name: string): Promise<number> => {
+      const [row] = await db.insert(users).values({ authUserId: id, email, name }).returning()
+      return row?.id ?? 0
+    },
   })
 
   it("🔴 建立後回傳明文一次 + 效期;帳號進 users", async () => {
