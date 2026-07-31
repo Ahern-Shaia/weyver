@@ -200,8 +200,19 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   /* 根層 overflow-auto(非 hidden):正常情況內容剛好填滿視窗、不出現捲軸;
      只有內容真的溢出時才捲 —— 即 WCAG 1.4.12「使用者加大行高/字距」的情境,
      此時內容可捲到而非被永久裁掉。
-     ⚠️ 不可改為在 `main` 上加 overflow:設計器等頁面的內部版面假設 main 不自成
-     捲動容器,加了會使右側面板蓋住工具列(實測 designer / image-* e2e 失敗)。 */
+
+     🔴 `main` 為**垂直捲動的擁有者**(#140)。
+     沒有它的話,內容長的頁面會讓**整個 app shell** 一起捲:實測 integrations 與 trash
+     的導覽軌位移 1200px、狀態列跑到 -520(捲出畫面),notifications 位移 107。
+     逐頁自己加 `h-full overflow-y-auto` 已被證實靠不住 —— 三頁漏掉,
+     而正確的那幾頁是各自記得加的。捲動的擁有權應該由 shell 保證,不是逐頁自律。
+
+     ⚠️ **此處原本有一條禁令**:「不可在 main 上加 overflow,會使右側面板蓋住工具列
+     (實測 designer / image-* e2e 失敗)」。**該禁令的成因已於 #140 移除** ——
+     真正的問題不是 main 自成捲動容器,而是**設計器工具列自己會溢出**
+     (單一 flex row + `ml-auto`,無 min-w-0 無 overflow)。工具列拆成
+     「左側可捲 + 右側固定」之後,加上 overflow-y 實測 designer / image-* /
+     layout-narrow 共 13 條全綠。**限制是真的,但它的成因變了。** */
   return (
     <div className="flex h-screen flex-col overflow-auto bg-surface">
       <div className="flex min-h-0 flex-1">
@@ -286,7 +297,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
             ) : null}
           </div>
         </nav>
-        <main className="min-h-0 min-w-0 flex-1">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <TenantContextGuard>{children}</TenantContextGuard>
         </main>
       </div>

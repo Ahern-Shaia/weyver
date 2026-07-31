@@ -49,3 +49,53 @@ for (const width of WIDTHS) {
     expect(m.saveOnTop).toBe(true)
   })
 }
+
+/* 🔴 垂直軸的同一條不變量:**內容再長,導覽軌與狀態列都不准跟著捲走。**
+
+   量測過的實況(修前):integrations / trash 的導覽軌位移 **1200px**、
+   狀態列跑到 **-520**(捲出畫面外);notifications 位移 107。
+   —— UX-1 特地做的「已連線 / 更新時間」信任訊號,在最長的兩頁上根本看不到。
+
+   逐頁自己加 `h-full overflow-y-auto` 已被證實靠不住(七頁裡三頁漏掉),
+   故改由 `main` 統一擁有垂直捲動;這組測試守的是那個保證。 */
+const LONG_PAGES = [
+  "/app/settings/integrations",
+  "/app/settings/trash",
+  "/app/settings/notifications",
+  "/app/settings/permissions",
+  "/app/settings/company",
+  "/app",
+] as const
+
+for (const path of LONG_PAGES) {
+  test(`${path}:捲到底,導覽軌與狀態列不動`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 700 })
+    await page.goto(path)
+    await page.waitForTimeout(1_200)
+    const before = await page.evaluate(() =>
+      Math.round((document.querySelector("nav") as HTMLElement).getBoundingClientRect().top),
+    )
+
+    await page.mouse.wheel(0, 1_500)
+    await page.waitForTimeout(400)
+
+    const after = await page.evaluate(() => {
+      const nav = document.querySelector("nav") as HTMLElement
+      const root = document.querySelector("div.h-screen") as HTMLElement
+      const bar = Array.from(document.querySelectorAll("*")).find(
+        (e) => e.textContent?.trim() === "已連線",
+      ) as HTMLElement | undefined
+      return {
+        navTop: Math.round(nav.getBoundingClientRect().top),
+        rootScrollTop: Math.round(root.scrollTop),
+        barTop: bar === undefined ? null : Math.round(bar.getBoundingClientRect().top),
+        winH: window.innerHeight,
+      }
+    })
+
+    expect(after.navTop).toBe(before) // 導覽軌不位移
+    expect(after.rootScrollTop).toBe(0) // app shell 本身不捲
+    if (after.barTop !== null) expect(after.barTop).toBeLessThan(after.winH) // 狀態列仍在畫面內
+    if (after.barTop !== null) expect(after.barTop).toBeGreaterThan(0)
+  })
+}
