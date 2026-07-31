@@ -70,7 +70,7 @@ export class AuthGuard implements CanActivate {
         })
       }
       /* 讀放行(回頭看舊分頁合理),寫擋下(讓人明確決定寫進哪一家)。
-         **不寫回 session** —— 寫回等於把污染反向傳播到另一個分頁。 */
+       **不寫回 session** —— 寫回等於把污染反向傳播到另一個分頁。 */
       if (isMutation(request.method)) throw new TenantContextMismatchError()
       effectiveOrgId = intentOrgId
     }

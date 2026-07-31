@@ -2,12 +2,7 @@ import { hash, verify } from "@node-rs/argon2"
 import { betterAuth } from "better-auth"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { organization, twoFactor } from "better-auth/plugins"
-import {
-  BACKUP_CODE_COUNT,
-  generateBackupCode,
-  hashBackupCode,
-  isHashed,
-} from "./backup-codes.js"
+import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
 import type { Pool } from "pg"
 
@@ -86,6 +81,8 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
       : { trustedOrigins: [...options.trustedOrigins] }),
     emailAndPassword: {
       enabled: true,
+      /* 多因子地板(63B-4 §3.1.1.2 後半);單因子的 15 字由 before hook 執行 —— 見該處註解 */
+      minPasswordLength: 8,
       password: {
         hash: (password: string): Promise<string> => hash(password),
         verify: (data: { hash: string; password: string }): Promise<boolean> =>
@@ -111,6 +108,36 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
     /* 🔴 兩個 MFA 安全修補(追溯稽核 #111)。 */
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        /* 🔴 (0) 密碼長度:單因子 **15**,已啟用 MFA 者 8(OQ-SC-9=C)。
+
+           NIST SP 800-63B-**4** §3.1.1.2 逐字:「Verifiers and CSPs SHALL require
+           passwords that are used as a **single-factor** authentication mechanism to be
+           a minimum of **15 characters**… MAY allow passwords that are only used as part
+           of **multi-factor** authentication processes to be shorter but SHALL require
+           them to be a minimum of **eight characters**.」
+
+           ⚠️ **rev 3 的臨時/隨機密碼 6 字豁免已在 rev 4 被刪除**,無例外可援引。
+           Better Auth 的 `minPasswordLength` 是 **instance 級**、無法逐使用者分流,
+           故 instance 設 8(多因子地板),15 這一段在此 hook 執行。
+
+           註冊時定義上還沒有 MFA → 一律 15。 */
+        if (ctx.path === "/sign-up/email" || ctx.path === "/change-password") {
+          const body = ctx.body as { password?: unknown; newPassword?: unknown } | undefined
+          const pw = typeof body?.newPassword === "string" ? body.newPassword : body?.password
+          if (typeof pw === "string" && pw.length < 15) {
+            /* 註冊時無 session → mfaOn 為 false → 一律 15,正是我們要的。
+               改密碼時使用者已認證,由 ctx 取既有 session 判斷是否已啟用 MFA。 */
+            const current = (ctx.context as { session?: { user?: { twoFactorEnabled?: unknown } } })
+              .session
+            const mfaOn = current?.user?.twoFactorEnabled === true
+            if (!mfaOn) {
+              throw new APIError("BAD_REQUEST", {
+                code: "PASSWORD_TOO_SHORT",
+                message: "密碼至少 15 個字;若已啟用二步驟驗證則可 8 個字",
+              })
+            }
+          }
+        }
         /* (1) 備用碼:plugin 以 `storedCodes.includes(使用者輸入)` 比對,而我們存的是雜湊
                → 必須把使用者輸入也雜湊。這是「單向雜湊」在此 plugin 架構下成立的另一半。 */
         if (ctx.path === "/two-factor/verify-backup-code") {

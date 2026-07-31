@@ -108,6 +108,18 @@ export class IdentityService {
     return result.rows.map((r) => Number((r as { id: number | string }).id))
   }
 
+  /* R1·A-1 M3|actor → Better Auth user id 反查。
+     裝置清單 / 認證稽核都以 `auth_user_id` 為界(session 與 auth_audit 都用它),
+     而 `TenantContext` 只帶 actorId(dev 路徑根本沒有 session)。 */
+  async getAuthUserIdByActor(actorId: number): Promise<string | null> {
+    const rows = await this.db
+      .select({ authUserId: users.authUserId })
+      .from(users)
+      .where(eq(users.id, actorId))
+      .limit(1)
+    return rows[0]?.authUserId ?? null
+  }
+
   async getActorIdByUser(authUserId: string): Promise<number | null> {
     const rows = await this.db
       .select({ id: users.id })

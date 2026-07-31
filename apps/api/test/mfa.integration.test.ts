@@ -27,9 +27,7 @@ function secretFromUri(totpUri: string): string {
 }
 
 /* 註冊 → 啟用 2FA(enable 回 URI+backup;verifyTotp 才真正啟用)→ 回登入所需素材。 */
-async function enroll(
-  email: string,
-): Promise<{ secret: string; backupCodes: readonly string[] }> {
+async function enroll(email: string): Promise<{ secret: string; backupCodes: readonly string[] }> {
   const signUp = await auth.api.signUpEmail({
     body: { email, password: PASSWORD, name: email },
     returnHeaders: true,
@@ -246,5 +244,35 @@ describe("🔴 TOTP 重放防護(RFC 6238 §5.2,追溯稽核 #111)", () => {
         body: { code },
       }),
     ).rejects.toThrow()
+  })
+})
+
+/* 🔴 R1·A-1 M3 / OQ-SC-9=C|密碼長度政策。
+
+   NIST SP 800-63B-**4** §3.1.1.2 逐字:單因子 **SHALL** 至少 **15 字元**;
+   僅用於多因子流程者 MAY 較短但 **SHALL** 至少 8。
+   ⚠️ **rev 3 的「CSP 隨機產生者可 6 字」豁免在 rev 4 已被刪除**,無例外可援引。
+
+   Better Auth 的 `minPasswordLength` 是 **instance 級**、無法逐使用者分流,
+   故 instance 設 8(多因子地板),15 這一段在 `hooks.before` 執行。
+   註冊時定義上還沒有 MFA → 一律 15。 */
+describe("🔴 密碼長度政策(63B-4 §3.1.1.2)", () => {
+  it("🔴 註冊時少於 15 字被擋 —— 此時定義上還沒有 MFA", async () => {
+    await expect(
+      auth.api.signUpEmail({
+        body: { email: "short@weyver.test", name: "短", password: "short12345678" },
+      }),
+    ).rejects.toThrow()
+  })
+
+  it("15 字可通過", async () => {
+    const r = await auth.api.signUpEmail({
+      body: { email: "long15@weyver.test", name: "長", password: "s3cret-passw0rd" },
+    })
+    expect(r.user.email).toBe("long15@weyver.test")
+  })
+
+  it("Better Auth instance 的地板維持 8(多因子情境的合法下限)", () => {
+    expect(auth.options.emailAndPassword?.minPasswordLength).toBe(8)
   })
 })

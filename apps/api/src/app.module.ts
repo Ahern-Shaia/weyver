@@ -11,6 +11,7 @@ import { NotificationsModule } from "./notifications/notifications.module.js"
 import { IntegrationsModule } from "./integrations/integrations.module.js"
 import { SearchModule } from "./search/search.module.js"
 import { MembersModule } from "./members/members.module.js"
+import { SecurityModule } from "./security/security.module.js"
 import { SettingsModule } from "./settings/settings.module.js"
 import { PublicFormModule } from "./public-form/public-form.module.js"
 import { UsageModule } from "./billing/usage.module.js"
@@ -44,6 +45,7 @@ import { ViewsModule } from "./views/views.module.js"
     IntegrationsModule,
     SearchModule,
     MembersModule,
+    SecurityModule,
     SettingsModule,
     PublicFormModule,
     UsageModule,
