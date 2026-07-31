@@ -18,7 +18,7 @@ test("認證流程:註冊公司 → 進工作區 → 登出 → 登入", async (
   await page.getByRole("textbox", { name: "公司名稱" }).fill(orgName)
   await page.getByRole("textbox", { name: "您的姓名" }).fill("測試員")
   await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼(至少 8 碼)" }).fill(password)
+  await page.getByRole("textbox", { name: "密碼(至少 15 碼)" }).fill(password)
   await page.getByRole("button", { name: "建立並進入" }).click()
 
   // 進入受保護工作區;頂欄顯示公司名(email 收進登出鈕 tooltip,不佔版面)

@@ -73,7 +73,7 @@ export default function RegisterPage(): React.ReactNode {
             placeholder="you@company.com"
           />
         </Field>
-        <Field label="密碼(至少 8 碼)">
+        <Field label="密碼(至少 15 碼)">
           <Input
             type="password"
             value={password}
