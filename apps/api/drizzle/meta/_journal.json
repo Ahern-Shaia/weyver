@@ -288,6 +288,13 @@
       "when": 1785500003000,
       "tag": "0040_member_management",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1785500004000,
+      "tag": "0041_auth_audit",
+      "breakpoints": true
     }
   ]
 }

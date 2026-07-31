@@ -1244,3 +1244,23 @@ export const initialCredentials = pgTable("initial_credential", {
     .notNull()
     .references(() => tenants.id),
 })
+
+/* 🔴 R1·A-1 M3|認證事件稽核(保留 6 個月;台灣資安分級辦法附表十)。
+   `action_audit` 的 form_id / record_id 皆 NOT NULL,結構上放不了認證事件 → 另立一表。
+   `authUserId` / `tenantId` 皆可為 NULL:登入失敗發生在租戶語境建立**之前**,
+   而那正是最需要記錄的事件之一;強制 NOT NULL 等於把它排除在稽核外。
+   **只記 metadata** —— OWASP Logging 禁記清單含密碼 / token / session id。 */
+export const authAudits = pgTable(
+  "auth_audit",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    authUserId: text("auth_user_id"),
+    tenantId: bigint("tenant_id", { mode: "number" }),
+    event: text("event").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    detail: jsonb("detail"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_audit_user_idx").on(t.authUserId, t.createdAt)],
+)
