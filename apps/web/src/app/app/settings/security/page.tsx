@@ -5,6 +5,7 @@ import { Input } from "@weyver/ui/input"
 import { QRCodeSVG } from "qrcode.react"
 import { type FormEvent, useState } from "react"
 import { twoFactor, useSession } from "@/lib/auth/client"
+import { totpErrorMessage } from "@/lib/auth/totp-error"
 
 type Enroll = { readonly totpURI: string; readonly backupCodes: readonly string[] }
 
@@ -49,7 +50,7 @@ export default function SecurityPage(): React.ReactNode {
     const res = await twoFactor.verifyTotp({ code })
     setBusy(false)
     if (res.error) {
-      setError("驗證碼錯誤,請重新輸入 app 上的 6 碼")
+      setError(totpErrorMessage(res.error))
       return
     }
     setEnroll(null)
@@ -76,7 +77,8 @@ export default function SecurityPage(): React.ReactNode {
       <div>
         <h1 className="text-[16px] font-semibold text-ink">二步驟驗證</h1>
         <p className="mt-1 text-[12px] text-ink-3">
-          登入時除密碼外,再輸入 authenticator app(Google Authenticator / 1Password / Authy)產生的一次性碼,大幅降低帳號被盜風險。
+          登入時除密碼外,再輸入 authenticator app(Google Authenticator / 1Password /
+          Authy)產生的一次性碼,大幅降低帳號被盜風險。
         </p>
       </div>
 

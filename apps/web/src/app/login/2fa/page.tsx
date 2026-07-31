@@ -5,6 +5,7 @@ import { Input } from "@weyver/ui/input"
 import { type FormEvent, useState } from "react"
 import { AuthShell, Field } from "@/lib/auth/auth-shell"
 import { organization, twoFactor } from "@/lib/auth/client"
+import { totpErrorMessage } from "@/lib/auth/totp-error"
 
 /* 登入第二步(F-4 MFA):密碼步回 twoFactorRedirect 後導向此頁。
    輸入 authenticator 6 碼(或改用備用碼)驗證 → 發完整 session → 設 active org → 進 /app。 */
@@ -31,7 +32,7 @@ export default function TwoFactorChallengePage(): React.ReactNode {
       : await twoFactor.verifyTotp({ code })
     if (result.error) {
       setBusy(false)
-      setError(useBackup ? "備用碼錯誤或已使用" : "驗證碼錯誤")
+      setError(totpErrorMessage(result.error, useBackup))
       return
     }
     await finish()
