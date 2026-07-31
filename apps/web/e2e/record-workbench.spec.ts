@@ -65,7 +65,8 @@ test("Object Page:狀態章 + 金額彙總 + 清單列狀態/金額", async ({ p
 
   // 金額彙總 + 左欄清單列同時帶狀態與金額(triage 訊號)
   await expect(page.getByText("128400.0000").first()).toBeVisible()
-  const listItem = page.getByRole("button", { name: /PO-.*待審.*128400/ })
+  /* 記錄清單項於 R1·UX-1 M5 改為 APG listbox 的 option(原為隱含 button role) */
+  const listItem = page.getByRole("option", { name: /PO-.*待審.*128400/ })
   await expect(listItem).toBeVisible()
 })
 
@@ -98,7 +99,7 @@ test("inline 編輯:就地改狀態 → 版本遞增 + 清單與狀態章同步"
   await expect(page.getByText("已儲存")).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText("#1 · v2")).toBeVisible()
   // 狀態章與左欄清單同步(同一份 query cache)
-  await expect(page.getByRole("button", { name: /PO-.*已核准/ })).toBeVisible()
+  await expect(page.getByRole("option", { name: /PO-.*已核准/ })).toBeVisible()
   // 已回到檢視模式(不再有輸入框)
   await expect(page.getByRole("combobox")).toBeHidden()
 })

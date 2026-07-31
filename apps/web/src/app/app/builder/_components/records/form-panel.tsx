@@ -11,6 +11,7 @@ import { cn } from "@weyver/ui/lib/utils"
 import { Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { FieldInput } from "@/components/form/field-input"
+import { useGridKeyboard } from "@/components/form/use-grid-keyboard"
 import { toSubmitValue } from "@/components/form/value"
 
 /* 公式欄即時預覽:以填單當前值 client 端算(與後端同引擎);循環 / 錯誤時各欄回 —,不炸整表 */
@@ -65,6 +66,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
   const hasChild = childForm !== null
   const childFields = childQuery.data?.fields ?? []
   const pending = createRecord.isPending || saveWithLines.isPending
+  const grid = useGridKeyboard(lines.length, childFields.length)
 
   const set = (name: string, value: unknown) => setValues((prev) => ({ ...prev, [name]: value }))
   const addLine = () => setLines((prev) => [...prev, { key: `l${lineSeq++}`, values: {} }])
@@ -209,7 +211,14 @@ export function RecordFormPanel({ formId }: { formId: number }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-[12px]">
+                <table
+                  ref={grid.containerRef as React.RefObject<HTMLTableElement>}
+                  role="grid"
+                  aria-label="明細子表"
+                  aria-rowcount={lines.length}
+                  aria-colcount={childFields.length}
+                  className="min-w-full border-collapse text-[12px]"
+                >
                   <thead>
                     <tr className="bg-head">
                       <th className="w-8 border-b border-cell px-2 py-1.5 text-left font-semibold text-ink-4">
@@ -236,10 +245,12 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                         <td className="border-b border-line-2 px-2 py-1 font-mono text-ink-4">
                           {index + 1}
                         </td>
-                        {childFields.map((field) => (
+                        {childFields.map((field, colIndex) => (
                           <td
                             key={field.id}
-                            className="border-b border-l border-line-2 px-1.5 py-1"
+                            role="gridcell"
+                            {...grid.cellProps(index, colIndex)}
+                            className="border-b border-l border-line-2 px-1.5 py-1 focus:outline-2 focus:outline-offset-[-2px] focus:outline-primary"
                           >
                             <FieldInput
                               field={field}

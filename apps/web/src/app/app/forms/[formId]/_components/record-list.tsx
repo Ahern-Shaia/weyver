@@ -31,6 +31,9 @@ export function RecordList({
 }): ReactNode {
   const statusField = fields.find((f) => f.type === "singleSelect")
   const moneyField = fields.find((f) => f.type === "money")
+  const rovingId =
+    records.find((r) => r.id === selectedId)?.id ?? records[0]?.id ?? null
+
   return (
     <div data-noprint className="flex w-60 shrink-0 flex-col border-r border-line bg-card">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -39,18 +42,50 @@ export function RecordList({
           {records.length}
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      {/* R1·UX-1 M5|W3C ARIA APG **listbox** pattern(非 grid —— 這是單選清單不是表格)。
+          必要鍵位僅 ↑↓;`Home`/`End` 於原文標為 Optional,此處一併提供。
+          roving tabindex:整份清單只有一個 Tab 停點。 */}
+      <div
+        className="flex-1 overflow-y-auto"
+        role="listbox"
+        aria-label="記錄清單"
+        onKeyDown={(e) => {
+          if (records.length === 0) return
+          const idx = records.findIndex((r) => r.id === selectedId)
+          const cur = idx < 0 ? 0 : idx
+          let next: number | null = null
+          if (e.key === "ArrowDown") next = Math.min(records.length - 1, cur + 1)
+          else if (e.key === "ArrowUp") next = Math.max(0, cur - 1)
+          else if (e.key === "Home") next = 0
+          else if (e.key === "End") next = records.length - 1
+          if (next === null) return
+          e.preventDefault()
+          const target = records[next]
+          if (!target) return
+          onSelect(target.id)
+          e.currentTarget
+            .querySelector<HTMLElement>(`[data-record-option="${String(target.id)}"]`)
+            ?.focus()
+        }}
+      >
         {loading ? (
           <div className="px-3 py-2 text-[11.5px] text-ink-4">載入記錄…</div>
         ) : records.length === 0 ? (
           <div className="px-3 py-3 text-[11.5px] text-ink-4">尚無記錄。</div>
         ) : (
+          /* 🔴 roving tabindex 必須**恰有一個**停點:
+             選取項若不在清單中(換表單 / 記錄被刪),退回第一項 ——
+             否則整份清單沒有任何 tabIndex 0,鍵盤進不去(與 U4 的「出不去」同類缺陷)。 */
           records.map((r) => {
             const active = selectedId === r.id
             return (
               <button
                 type="button"
                 key={r.id}
+                role="option"
+                aria-selected={active}
+                data-record-option={r.id}
+                tabIndex={r.id === rovingId ? 0 : -1}
                 onClick={() => onSelect(r.id)}
                 className={
                   active

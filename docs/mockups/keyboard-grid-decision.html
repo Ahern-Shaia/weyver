@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weyver — 鍵盤支援決策稿(R1·UX-1 M5)</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --font:"IBM Plex Sans","IBM Plex Sans TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --surface:#f6f7f9;--card:#fff;--head:#f1f3f5;--label:#f4f6f8;
+    --ink:#16191f;--ink2:#3d4753;--ink3:#697585;--ink4:#9aa4b1;
+    --line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;
+    --primary:#22568a;--primary-d:#1a476f;--primary-t:#eaf1f8;
+    --link:#1160b4;
+    --ok:#1a7a43;--ok-line:#c4e0ce;--ok-t:#eaf4ee;
+    --wn:#96590a;--wn-line:#e7d3ad;--wn-t:#f8f1e2;
+    --er:#b3261e;--er-line:#e9c9c6;--er-t:#f9ecea;
+    --nt:#4a5560;--nt-line:#d6dbe0;--nt-t:#eef0f2;
+    --radius-xs:3px;--radius-sm:4px;--radius-md:6px;
+    --fs-xs:12px;--fs-sm:13px;--fs-base:14px;
+  }
+  body{margin:0;background:#e9ebef;color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .page{max-width:1180px;margin:0 auto;padding:36px 22px 90px}
+  h1{font-size:21px;font-weight:700;letter-spacing:-.015em;margin:0 0 6px}
+  h2{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:0 0 3px}
+  .lede{color:var(--ink3);max-width:900px;margin:0 0 8px}
+  .lede b{color:var(--ink2);font-weight:600}
+  section{margin:32px 0 0;border-top:1px solid #d9dde2;padding-top:20px}
+  .shead{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .snum{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink4)}
+  .src{font-family:var(--mono);font-size:11px;color:var(--ink3);background:var(--head);border:1px solid var(--line);border-radius:var(--radius-xs);padding:0 4px}
+  .bad{color:var(--er);font-weight:600}.good{color:var(--ok);font-weight:600}
+  .why{margin-top:12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--card);padding:12px 14px}
+  .why h3{margin:0 0 7px;font-size:12px;font-weight:600;color:var(--ink3);letter-spacing:.03em;text-transform:uppercase}
+  .why ul{margin:0;padding-left:17px}.why li{margin:4px 0;color:var(--ink2)}
+
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .frame{border:1px solid #d9dde2;border-radius:var(--radius-md);background:var(--card);overflow:hidden}
+  .fhead{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--head);font-size:12px;font-weight:600}
+  .tag{border:1px solid;border-radius:var(--radius-xs);padding:0 5px;font-size:11px;font-weight:600;line-height:17px}
+  .tag.now{color:var(--nt);border-color:var(--nt-line);background:var(--nt-t)}
+  .tag.next{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t)}
+  .fbody{padding:12px}
+
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{background:var(--head);border-bottom:1px solid var(--cell);border-left:1px solid var(--cell);padding:5px 8px;text-align:left;font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap}
+  th:first-child{border-left:0;width:30px;color:var(--ink3)}
+  td{border-bottom:1px solid var(--line2);border-left:1px solid var(--line2);padding:3px 5px;height:32px}
+  td:first-child{border-left:0;font-family:var(--mono);font-size:12px;color:var(--ink3);text-align:center;padding:3px 8px}
+  td input{width:100%;border:1px solid var(--line);border-radius:var(--radius-xs);height:24px;padding:0 6px;font-family:var(--font);font-size:13px;color:var(--ink);background:var(--card)}
+  td input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-color:var(--primary)}
+  td.num input{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tfoot td{background:var(--label);border-top:2px solid var(--cell);font-weight:600;height:30px}
+
+  /* APG grid 態 */
+  .apg td{padding:0}
+  .apg .cellbtn{display:flex;align-items:center;width:100%;height:32px;padding:0 8px;border:0;background:transparent;font-family:var(--font);font-size:13px;color:var(--ink);text-align:left;cursor:default}
+  .apg .cellbtn.num{justify-content:flex-end;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .apg td:focus-within{outline:2px solid var(--primary);outline-offset:-2px}
+  .apg .cellbtn:focus{outline:none;background:var(--primary-t)}
+  .apg td.editing{outline:2px solid var(--primary);outline-offset:-2px}
+  .apg td.editing input{border:0;height:32px;border-radius:0;background:var(--card)}
+  .apg td.editing input:focus{outline:none}
+
+  .hint{margin-top:9px;font-size:12px;color:var(--ink3);display:flex;flex-wrap:wrap;gap:5px 12px}
+  kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 5px;background:var(--head);color:var(--ink2)}
+  .live{margin-top:9px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--label);padding:7px 9px;font-family:var(--mono);font-size:12px;color:var(--ink2);min-height:31px}
+  .live b{color:var(--primary)}
+  .tabprobe{margin-top:9px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink3)}
+  .tabprobe button{border:1px solid var(--line);background:var(--card);border-radius:var(--radius-sm);height:26px;padding:0 9px;font-size:12px;font-family:var(--font);color:var(--ink2)}
+  .tabprobe button:focus{outline:2px solid var(--primary);outline-offset:1px}
+
+  .cmp{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+  .cmp th{background:var(--head);text-align:left;padding:7px 10px;border:1px solid var(--line)}
+  .cmp td{border:1px solid var(--line);padding:7px 10px;height:auto;vertical-align:top}
+  .cmp td:first-child{font-family:var(--font);text-align:left;color:var(--ink);font-size:13px;width:26%}
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>鍵盤支援決策稿</h1>
+<p class="lede">
+  模組 <b>R1·UX-1 M5</b>|<b>這份是給你判斷「要不要做」用的,不是實作預告。</b>
+  兩邊都可以真的按 —— 請點進表格實際操作,再決定。
+</p>
+
+<!-- ═══════ 0 先講清楚查到什麼 ═══════ -->
+<section>
+  <div class="shead"><span class="snum">00</span><h2>先修正:設計文件把目標搞錯了</h2></div>
+  <div class="why" style="margin-top:10px">
+    <h3>實作前查程式碼的結果</h3>
+    <ul>
+      <li><span class="src">line-items.tsx</span> —— 設計文件原本指定的目標,但它是<b>唯讀顯示表</b>,儲存格是純文字、沒有 input。
+        <span class="bad">APG grid 的核心(<kbd>F2</kbd> 切換編輯 / <kbd>Enter</kbd> 進編輯 / 英數直接輸入)在這裡無處可用。</span></li>
+      <li><span class="src">builder/_components/records/form-panel.tsx</span> —— <b>真正可編輯的子表在這裡</b>,
+        <span class="src">&lt;table&gt;</span> 內每格是 <span class="src">FieldInput</span>。這才是唯一適用 grid pattern 的面。</li>
+      <li><span class="src">collection-view.tsx</span> —— Glide canvas,自帶鍵盤,<b>明確不動</b>。</li>
+      <li><span class="src">record-list.tsx</span> —— 按鈕清單,屬 <b>listbox</b> 非 grid(不同規範)。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 1 可操作對照 ═══════ -->
+<section>
+  <div class="shead"><span class="snum">01</span><h2>實際按按看 —— 可編輯子表</h2></div>
+  <p class="lede">兩邊資料相同。<b>先點左邊第一格,一路按 <kbd>Tab</kbd>;再點右邊,用方向鍵移動、<kbd>F2</kbd> 或 <kbd>Enter</kbd> 編輯。</b></p>
+
+  <div class="pair">
+    <!-- 現況 -->
+    <div class="frame">
+      <div class="fhead"><span class="tag now">現況</span> 每格一個 input,靠 Tab 逐格移動</div>
+      <div class="fbody">
+        <table id="tblNow">
+          <thead><tr><th>#</th><th>品名</th><th>規格</th><th style="text-align:right">數量</th><th style="text-align:right">單價</th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td>合計</td><td></td><td></td><td class="num" style="text-align:right;font-family:var(--mono)" id="qtyNow">—</td><td class="num" style="text-align:right;font-family:var(--mono)" id="amtNow">—</td></tr></tfoot>
+        </table>
+        <div class="hint">
+          <span><kbd>Tab</kbd> 下一格</span><span><kbd>Shift</kbd>+<kbd>Tab</kbd> 上一格</span>
+          <span class="bad">無方向鍵移動</span><span class="bad">無 Ctrl+Home</span>
+        </div>
+        <div class="live" id="liveNow">按鍵紀錄:—</div>
+        <div class="tabprobe"><button type="button">前一個焦點</button><span>← Tab 進出測試 →</span><button type="button">後一個焦點</button></div>
+      </div>
+    </div>
+
+    <!-- APG -->
+    <div class="frame">
+      <div class="fhead"><span class="tag next">APG grid</span> 方向鍵導覽,F2 / Enter 才進編輯</div>
+      <div class="fbody">
+        <table id="tblApg" class="apg" role="grid" aria-label="明細子表">
+          <thead><tr><th>#</th><th>品名</th><th>規格</th><th style="text-align:right">數量</th><th style="text-align:right">單價</th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td>合計</td><td></td><td></td><td class="num" style="text-align:right;font-family:var(--mono)" id="qtyApg">—</td><td class="num" style="text-align:right;font-family:var(--mono)" id="amtApg">—</td></tr></tfoot>
+        </table>
+        <div class="hint">
+          <span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 移動(不環繞)</span>
+          <span><kbd>F2</kbd>/<kbd>Enter</kbd> 編輯</span><span><kbd>Esc</kbd> 回導覽</span>
+          <span><kbd>Home</kbd>/<kbd>End</kbd> 列首末</span><span><kbd>Ctrl</kbd>+<kbd>Home</kbd> 表首</span>
+          <span>英數直接輸入</span>
+        </div>
+        <div class="live" id="liveApg">按鍵紀錄:—</div>
+        <div class="tabprobe"><button type="button">前一個焦點</button><span>← 只有 1 個 Tab 停點 →</span><button type="button">後一個焦點</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why">
+    <h3>按完之後,請注意這幾件事</h3>
+    <ul>
+      <li><b>Tab 次數</b>|左邊要走完 5 列 × 4 欄需按 <b>20 次 Tab</b>;右邊整個表格<b>只有 1 個 Tab 停點</b>,進出表格各 1 次。</li>
+      <li><b>離開表格</b>|左邊必須一路 Tab 到底才能離開;右邊按一次 <kbd>Tab</kbd> 就跳出去。<span class="bad">(這是 FMEA U4 —— 做壞了會變鍵盤陷阱,屬 WCAG A 級違規)</span></li>
+      <li><b>誤改風險</b>|左邊每格恆為 input,方向鍵在輸入框內是移動游標,<b>不小心打字就改到資料</b>;右邊導覽態不吃輸入,要 <kbd>F2</kbd> 才進編輯。</li>
+      <li><b>學習成本</b>|右邊的鍵位與 Excel 幾乎相同(<kbd>F2</kbd> / <kbd>Ctrl</kbd>+<kbd>Home</kbd> / <kbd>Esc</kbd>),目標客戶是 Excel 與 Ragic 重度使用者。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════ 2 決策 ═══════ -->
+<section>
+  <div class="shead"><span class="snum">02</span><h2>要不要做 —— 三個選項</h2></div>
+  <table class="cmp">
+    <thead><tr><th>選項</th><th>得到什麼</th><th>成本 / 風險</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>A 完整 APG grid</b><br/><span style="color:var(--ink3);font-size:12px">只做可編輯子表</span></td>
+        <td>Tab 由 20 次降為 1 次;導覽/編輯分離避免誤改;鍵位對齊 Excel 肌肉記憶;<span class="good">符合 W3C 官方規範</span></td>
+        <td>roving tabindex 實作錯即成鍵盤陷阱(<span class="bad">WCAG A 級違規</span>);需逐鍵 e2e;與 <span class="src">FieldInput</span> 15 種型別的互動需逐一驗(下拉/日期/附件各有自己的鍵盤行為)</td>
+      </tr>
+      <tr>
+        <td><b>B 只做最小集</b><br/><span style="color:var(--ink3);font-size:12px">方向鍵 + Esc,不做編輯態切換</span></td>
+        <td>方向鍵可跨格移動,不必狂按 Tab</td>
+        <td>仍是「每格恆為 input」,誤改風險不變;<span class="bad">半套的鍵盤反而更難預期</span></td>
+      </tr>
+      <tr>
+        <td><b>C 不做</b></td>
+        <td>零成本零風險;Tab 本來就能用(WCAG 2.1.1 鍵盤可操作性<b>已滿足</b>)</td>
+        <td>子表逐格 Tab 對每天填幾十列的使用者是持續成本;與 Ragic / Excel 慣例有落差</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="why">
+    <h3>誠實的判斷依據</h3>
+    <ul>
+      <li><b>不做不違反無障礙。</b> WCAG 2.1.1 只要求「可用鍵盤操作」,現況 Tab 可達即已滿足。APG grid pattern 是<b>最佳實務</b>,不是合規門檻。</li>
+      <li><b>值不值得,取決於子表的實際使用量。</b> 若 pilot 客戶的採購單/進貨單常態是 20–50 列明細,A 的回收很快;若多為 3–5 列,差異有限。<span class="bad">這一點我沒有數據,需要你的領域判斷。</span></li>
+      <li><b>風險集中在 U4。</b> roving tabindex 做錯會造成鍵盤陷阱,那比「要多按幾次 Tab」嚴重得多。做的話 e2e 必須逐鍵斷言可 Tab 出。</li>
+      <li><b>Glide 那一面不受影響</b> —— 集合視圖已自帶鍵盤,本案不動它。</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+<script>
+const ROWS = [
+  ["鋼板 SS400", "3mm × 4×8", 120, 850],
+  ["鋁擠型 6063", "40×40 T型", 60, 420],
+  ["不鏽鋼管 304", "Ø25 × 1.5t", 200, 310],
+  ["六角螺栓 M10", "白鐵 全牙", 500, 12],
+  ["矽利康 中性", "300ml 透明", 24, 95],
+];
+const fmt = (n) => n.toLocaleString("zh-TW");
+
+/* ── 現況:每格一個 input ── */
+const nowBody = document.querySelector("#tblNow tbody");
+ROWS.forEach((r, i) => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td>${i + 1}</td>` + r.map((v, c) =>
+    `<td class="${c >= 2 ? "num" : ""}"><input value="${v}" data-c="${c}" /></td>`).join("");
+  nowBody.appendChild(tr);
+});
+
+/* ── APG:每格一個按鈕,roving tabindex ── */
+const apgBody = document.querySelector("#tblApg tbody");
+ROWS.forEach((r, i) => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td><button class="cellbtn" tabindex="-1" data-r="${i}" data-c="-1" style="justify-content:center;color:var(--ink3);font-family:var(--mono)">${i + 1}</button></td>` +
+    r.map((v, c) => `<td><button class="cellbtn ${c >= 2 ? "num" : ""}" tabindex="-1" role="gridcell" data-r="${i}" data-c="${c}">${v}</button></td>`).join("");
+  apgBody.appendChild(tr);
+});
+
+const cells = () => [...apgBody.querySelectorAll(".cellbtn")];
+const at = (r, c) => apgBody.querySelector(`.cellbtn[data-r="${r}"][data-c="${c}"]`);
+let cur = { r: 0, c: -1 };
+const COLS = [-1, 0, 1, 2, 3];
+
+function setRoving(r, c) {
+  cells().forEach((b) => { b.tabIndex = -1; });
+  const t = at(r, c);
+  if (!t) return;
+  t.tabIndex = 0;
+  cur = { r, c };
+  t.focus();
+}
+setRoving(0, -1);
+// 讓整個 grid 只有一個 Tab 停點:初始那格 tabindex=0,其餘 -1
+at(0, -1).tabIndex = 0;
+
+const liveApg = document.getElementById("liveApg");
+const say = (el, msg) => { el.innerHTML = "按鍵紀錄:<b>" + msg + "</b>"; };
+
+function recalcApg() {
+  let q = 0, a = 0;
+  ROWS.forEach((r, i) => {
+    const qv = Number(at(i, 2)?.textContent ?? 0);
+    const pv = Number(at(i, 3)?.textContent ?? 0);
+    q += isFinite(qv) ? qv : 0;
+    a += (isFinite(qv) ? qv : 0) * (isFinite(pv) ? pv : 0);
+  });
+  document.getElementById("qtyApg").textContent = fmt(q);
+  document.getElementById("amtApg").textContent = fmt(a);
+}
+function recalcNow() {
+  let q = 0, a = 0;
+  [...nowBody.rows].forEach((tr) => {
+    const qv = Number(tr.querySelector('input[data-c="2"]').value);
+    const pv = Number(tr.querySelector('input[data-c="3"]').value);
+    q += isFinite(qv) ? qv : 0;
+    a += (isFinite(qv) ? qv : 0) * (isFinite(pv) ? pv : 0);
+  });
+  document.getElementById("qtyNow").textContent = fmt(q);
+  document.getElementById("amtNow").textContent = fmt(a);
+}
+recalcApg(); recalcNow();
+nowBody.addEventListener("input", recalcNow);
+nowBody.addEventListener("keydown", (e) => {
+  say(document.getElementById("liveNow"), e.key === "Tab" ? (e.shiftKey ? "Shift+Tab → 上一格" : "Tab → 下一格") : e.key + " → 在輸入框內(不移動格)");
+});
+
+function enterEdit(btn) {
+  const td = btn.parentElement;
+  const c = Number(btn.dataset.c);
+  if (c < 0) return;
+  const old = btn.textContent;
+  td.classList.add("editing");
+  const inp = document.createElement("input");
+  inp.value = old;
+  if (c >= 2) inp.style.textAlign = "right";
+  btn.style.display = "none";
+  td.appendChild(inp);
+  inp.focus(); inp.select();
+  const commit = (save) => {
+    if (save) btn.textContent = inp.value;
+    inp.remove();
+    td.classList.remove("editing");
+    btn.style.display = "";
+    btn.focus();
+    recalcApg();
+  };
+  inp.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") { ev.preventDefault(); commit(true); say(liveApg, "Enter → 存檔並回導覽態"); }
+    else if (ev.key === "Escape") { ev.preventDefault(); commit(false); say(liveApg, "Esc → 取消,值還原"); }
+    else if (ev.key === "F2") { ev.preventDefault(); commit(true); say(liveApg, "F2 → 回導覽態"); }
+    ev.stopPropagation();
+  });
+  inp.addEventListener("blur", () => { if (td.classList.contains("editing")) commit(true); });
+}
+
+document.getElementById("tblApg").addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT") return;
+  const r = cur.r, c = cur.c;
+  const ci = COLS.indexOf(c);
+  let handled = true;
+  if (e.key === "ArrowDown") { if (r < ROWS.length - 1) setRoving(r + 1, c), say(liveApg, "↓ 下一列(到底不環繞)"); else say(liveApg, "↓ 已在最後一列 —— 不環繞"); }
+  else if (e.key === "ArrowUp") { if (r > 0) setRoving(r - 1, c), say(liveApg, "↑ 上一列"); else say(liveApg, "↑ 已在第一列 —— 不環繞"); }
+  else if (e.key === "ArrowRight") { if (ci < COLS.length - 1) setRoving(r, COLS[ci + 1]), say(liveApg, "→ 下一欄"); else say(liveApg, "→ 已在最後一欄 —— 不環繞"); }
+  else if (e.key === "ArrowLeft") { if (ci > 0) setRoving(r, COLS[ci - 1]), say(liveApg, "← 上一欄"); else say(liveApg, "← 已在第一欄 —— 不環繞"); }
+  else if (e.key === "Home" && !e.ctrlKey) { setRoving(r, COLS[0]); say(liveApg, "Home → 本列第一格"); }
+  else if (e.key === "End" && !e.ctrlKey) { setRoving(r, COLS[COLS.length - 1]); say(liveApg, "End → 本列最後一格"); }
+  else if (e.key === "Home" && e.ctrlKey) { setRoving(0, COLS[0]); say(liveApg, "Ctrl+Home → 整表第一格"); }
+  else if (e.key === "End" && e.ctrlKey) { setRoving(ROWS.length - 1, COLS[COLS.length - 1]); say(liveApg, "Ctrl+End → 整表最後一格"); }
+  else if (e.key === "F2" || e.key === "Enter") { enterEdit(at(r, c)); say(liveApg, e.key + " → 進入編輯態"); }
+  else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && /[\w一-龥]/.test(e.key)) {
+    const b = at(r, c);
+    if (b && Number(b.dataset.c) >= 0) { enterEdit(b); const inp = b.parentElement.querySelector("input"); inp.value = e.key; say(liveApg, "「" + e.key + "」→ 直接進編輯並取代內容"); }
+  }
+  else if (e.key === "Tab") { handled = false; say(liveApg, "Tab → 離開整個表格(只有 1 個停點)"); }
+  else handled = false;
+  if (handled) e.preventDefault();
+});
+apgBody.addEventListener("click", (e) => {
+  const b = e.target.closest(".cellbtn");
+  if (b) setRoving(Number(b.dataset.r), Number(b.dataset.c));
+});
+</script>
+</body>
+</html>

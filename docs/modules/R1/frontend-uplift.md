@@ -2,6 +2,15 @@
 
 > 🚧 **狀態:APPROVED v1.0(2026-07-31)— OQ-FUX-1..14 全採建議,M1 已完成**
 > **裁定摘要**|1=A rail 設定六項收進 S22 設定中心 · 2=A 預設展開可收合 · 3=A docs/14 全採六項校正 · 4=B 邊做邊拆(先 folder 化) · 5=B 鍵盤只做子表+列表 · 6=A Carbon productive token · 7=A 首頁補最近使用+待我處理 · 8=B 維持 compact-only 但修誤套 · 9=A keepPreviousData+延遲細進度條 · 10=A reduced-motion 維持現況 · 11=A 對比三條全修 · 12=A 字階收斂整數六階 · 13=A 視覺規範進 CI · 14=A VisAWI-S 前後測+首次接觸鏈優先。
+> **M5 已完成(2026-07-31)**|🔴 **決策稿階段再次推翻目標**:`line-items.tsx` 是**唯讀顯示表**(儲存格純文字、無 input),grid pattern 的核心(`F2`/`Enter` 進編輯 / 英數直接輸入)**無處可用**;真正可編輯的子表在 `builder/_components/records/form-panel.tsx`。已產決策稿 `docs/mockups/keyboard-grid-decision.html`(兩邊可實際按)供裁定,裁定採 **A 完整 APG grid**。
+>
+> **落地**|`components/form/use-grid-keyboard.ts`(照抄 APG:方向鍵不環繞 · `Home`/`End` · `Ctrl+Home`/`End` · `F2`/`Enter` 進編輯 · 英數直接進編輯取代原值 · `Esc` 回導覽 · roving tabindex)掛上可編輯子表;`record-list.tsx` 套 **listbox**(不同規範:僅 ↑↓ 為必要,`Home`/`End` 原文標 Optional)。**`collection-view`(Glide canvas)明確不動**,並以 e2e 斷言其未被加上 grid 標記。
+>
+> 🔴 **實作中抓到兩個 roving tabindex 的對偶缺陷**|(a) **出不去** = 攔截 `Tab` → 鍵盤陷阱(FMEA U4,反向驗證確認測試會轉紅);(b) **進不來** = 選取項不在清單中時**無任何項目持有 tabIndex 0**,鍵盤根本無法進入 listbox(實作首版即犯,由 e2e 抓到)。兩者同源:**roving 必須恰有一個停點**,多了少了都是缺陷。
+>
+> **連帶**|記錄清單項的 role 由隱含 `button` 改為 `option`,`record-workbench.spec` 兩處斷言同步更新 —— 語意變更的正確連帶,非測試遷就實作。
+> **驗證**|web 98 單元(+6)· `grid-keyboard.spec` 6 測綠 · 全 e2e **65 綠 / 4 失敗**(失敗集合與既有基線相同,零新增)。
+>
 > **M4 已完成(2026-07-31)**|🔴 **開工前查證推翻了本文件 §2.3 的判斷**:「待我簽核」**早已實作並掛在首頁**(`pending-approvals.tsx`,含「無待簽則不渲染」的誠實處理),v0.1 沿用 task #108 的描述未查證即記為「缺」。**M4 實際範圍因此縮為只做「最近使用」。**
 >
 > **作法偏離原計畫,理由如下**|原訂「新端點 + 測試」。改為**本地記錄 formId + 渲染時對照 `useForms()` 授權清單解析**:那份清單本就 tenant-scoped 且經三態可見性過濾,故跨租戶 / 越權 / 已刪除的 id **比對不到就不出現**,安全性由建構保證,且省下一張新表與每次開表單的熱路徑寫入。**代價誠實記錄:per-device**,換機器即無;日後若需跨裝置(或需真實使用頻率數據以複核 OQ-1 的設定頁假設)再改後端 `form_access` 表。
@@ -475,8 +484,27 @@ Cloudscape 明載 compact **不可取代** comfortable 且**必須可切換**〔
 ### 4.2 首頁補第二層防線(A-1 + 2.3)
 首頁分類目錄之上加固定區:**最近使用(5–8)** + **待我簽核 / 指派我的**。不加 KPI 數字磚(docs/24 + `feedback_no_dev_phase_in_product_ui`)。→ OQ-FUX-7。
 
-### 4.3 網格鍵盤照抄 APG(B-4 + 2.4)
-HTML 表格面實作 APG grid pattern,含 roving tabindex。**照抄不自創** —— 這正是「不用 vibe」的最佳案例:有官方成文規範且與使用者既有 Excel 肌肉記憶重合。→ OQ-FUX-5。
+### 4.3 鍵盤照抄 APG(B-4 + 2.4)
+
+**照抄不自創** —— 有官方成文規範,且與使用者既有 Excel 肌肉記憶重合。
+
+> 🔴 **2026-07-31 範圍收斂**|原寫「子表 + 列表」,實作前查程式碼發現「列表」一詞涵蓋**三個性質不同的面**,照字面做會誤套。逐一定調:
+
+| 檔案 | 實際是什麼 | 套用 | 理由 |
+|---|---|---|---|
+| 🔴 ~~`line-items.tsx`~~(115 行) | **唯讀顯示表** —— 儲存格是純文字,**無 input** | ❌ **不適用** | **2026-07-31 二次更正**:grid pattern 的核心(`F2` 切換編輯 / `Enter` 進編輯 / 英數直接輸入)在唯讀表**無處可用**。設計稿階段指錯目標 |
+| ✅ `builder/_components/records/form-panel.tsx` | **可編輯子表** —— `<table>` 內每格為 `FieldInput` | ✅ **APG grid pattern** | **唯一真正適用的面**;填單逐格輸入為日常高頻 |
+| `record-list.tsx`(87 行) | **按鈕清單**(master-detail 左欄,點選切換記錄) | ✅ **APG listbox pattern** | 語意是單選清單非表格。**兩者是不同規範,混用會做出錯的東西** |
+| `collection-view.tsx`(329 行) | **Glide Data Grid(canvas)** | ❌ **明確不動** | 自帶鍵盤;正是 FMEA U3 警告的衝突面 |
+| `form-matrix.tsx` 等權限矩陣 | HTML 表格 | ⏳ 延後 | 低頻管理面(OQ-5=B) |
+
+**grid pattern 要點**(W3C 官方,見 §0.2 B-4):方向鍵**不環繞** · `Home`/`End` 列首末 · `Ctrl+Home`/`Ctrl+End` 表首末 · `Enter` 進編輯 · `F2` 切換編輯/導覽 · 英數直接進編輯 · `Esc` 回導覽 · `Shift+Space` 選列 · **roving tabindex:整個 grid 只有一個 Tab 停點**。
+
+**listbox pattern 要點**(W3C 官方,2026-07-31 回一手查證):
+- **必要**:`Down Arrow` 移至下一項 · `Up Arrow` 移至上一項 · role `listbox` + `option` · `aria-selected`
+- **選用**:`Home` / `End`(原文標 Optional)· type-ahead(建議用於 7 項以上)
+- **焦點管理**:`aria-activedescendant` 為 roving tabindex 的**替代方案**,兩者擇一
+- ⚠️ **原文未規定邊界是否環繞** —— 與 grid 的「明訂不環繞」不同,不得把 grid 的規則套過來
 
 ### 4.4 密度與可及性(B-4 / B-5 + 2.5)
 - 列高改走固定階梯(建議 24 / 28 / 32 預設 / 40,對齊 Carbon 概念);**表頭列高 = 資料列高**。
@@ -640,7 +668,7 @@ E-3:2 週開始衰減、**7 週歸零**。而 **R1 的目的是 land 既有 Ragi
 | **2** | rail 預設型態 | A 預設 icon+label 展開、可收合並記憶 · B 預設收合 icon-only · C 固定展開 | **A** —— WinUI/Material/Slack 三方先例;icon-only 應是使用者選擇而非預設 |
 | **3** | docs/14 校正範圍 | A 全採 §4.7 六項 · B 只改過期結構圖(1) · C 不動 | **A** —— (1) 是會誤導施工的實害;(2)(3) 是誠實標注證據強度,屬 `feedback_design_evidence_anchored` 要求 |
 | **4** | 結構債處理時機 | A 先整地再做 UX · B 邊做邊拆 · C 只拆被動到的 | **B** —— A 產生無行為變更的大 diff 難驗證;C 會留下 33 檔目錄。折衷:先做 `builder/_components` folder 化(純 rename,風險低、可機械驗證),超行檔案在被本模組動到時才拆 |
-| **5** | ARIA APG 鍵盤範圍 | A 全面 · B 只做子表 + 列表 · C 延後 | **B** —— 子表與列表是日常高頻;權限矩陣等低頻面延後。全面做風險與工時皆高 |
+| **5** | ARIA APG 鍵盤範圍 | A 全面 · B 只做子表 + 列表 · C 延後 | **B**,並於實作前**收斂**:`line-items` 套 grid · `record-list` 套 **listbox**(不同規範)· `collection-view`(Glide canvas)**明確排除** · 權限矩陣延後。詳 §4.3 |
 | **6** | 動效規範來源 | A **引用 Carbon productive token**(70/110/150,easing 成對)· B 維持「近乎無動效」措辭 · C 自訂數值 | **A** —— B 查無外部依據(C-1/C-8);**C 已被證明是本文件 v0.1 犯過的錯**。Carbon 明標企業生產力用途且與 IBM Plex 同源;既有 `duration-150` 恰等於 `moderate-01`,**值不動只補溯源**,零回歸 |
 | **9** | 🔴 全頁替換式載入(9 處)| A **改 `keepPreviousData` + 延遲 400ms 細進度條** · B 改骨架屏 · C 維持 | **A** —— B 有反向實證(Viget n=136 全面最差)且列高不符會自製 CLS;A 用既有 TanStack Query,零新相依。**這是本輪最高價值修正**:直接消除視覺阻斷與版面跳動 |
 | **11** | 🔴 對比度 3 條不合格 | A **全修**(`ink-4` 拆兩 token / 表頭 / 輸入框邊框)· B 只修輸入框 · C 不修 | **A** —— R1 目標 AA,三條皆為實測不合格。**框線與類別色明確不動**(D-1 證實合規) |
@@ -661,7 +689,7 @@ E-3:2 週開始衰減、**7 週歸零**。而 **R1 的目的是 land 既有 Ragi
 | M2 | rail 收斂 + 展開/收合(OQ-1/2)| Playwright MCP 實走 + **點擊數對照表** |
 | M3 | `builder/_components` folder 化(OQ-4)| 純 rename,`pnpm build` + 既有 e2e 全綠 |
 | M4 | 首頁最近使用 + 待我簽核(OQ-7)| 新端點測試 + e2e |
-| M5 | APG 鍵盤:子表 + 列表(OQ-5)| 鍵盤 e2e(逐鍵斷言) |
+| M5 | APG 鍵盤:**`records/form-panel` 可編輯子表** grid + `record-list` listbox(OQ-5,§4.3 二次收斂)| 鍵盤 e2e 逐鍵斷言;**U4 為 P0:必測可 Tab 出**;`FieldInput` 15 型別互動須逐一驗 |
 | M6 | 密度誤套修正 + 1.4.12 CI 檢查(OQ-8)| 注入 CSS 截圖比對 |
 | **M7** | **載入模式:9 處改 `keepPreviousData` + 延遲細進度條(OQ-9)** | **CLS 量測前後對照**(切表單路徑),須 ≤0.1 |
 | M8 | motion token 化(OQ-6)| token 落 CSS |
@@ -678,7 +706,7 @@ E-3:2 週開始衰減、**7 週歸零**。而 **R1 的目的是 land 既有 Ragi
 |---|---|---|---|
 | U1 | rail 收斂後常用設定變兩次點擊 | **P0** | §3 驗收線:先量六項頻率;高頻者不進設定中心 |
 | U2 | folder 化 rename 漏改 import 致 build 綠但執行期壞 | P1 | 純 rename 不改邏輯;`pnpm build` + 全 e2e;逐檔 grep 舊路徑 |
-| U3 | APG 鍵盤與 Glide canvas 鍵盤衝突 | P1 | 只在 HTML 表格面實作;焦點邊界測試 |
+| U3 | APG 鍵盤與 Glide canvas 鍵盤衝突 | P1 | **`collection-view` 明確不動**(§4.3);e2e 須斷言 Glide 面鍵盤行為未變 |
 | U4 | roving tabindex 實作錯誤致鍵盤陷阱(WCAG A 級違規) | **P0** | 逐鍵 e2e 斷言可 Tab 出;`Esc` 必回導覽 |
 | U5 | 「最近使用」洩漏跨租戶或越權表單 | **P0** | 走既有 tenant-scoped + forms 三態可見性;e2e 斷 B 租戶不可見 |
 | U6 | docs/14 改錯造成後續施工偏離 | P1 | 更正處註明 supersede 來源與日期 |
