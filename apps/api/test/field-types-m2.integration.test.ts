@@ -61,8 +61,23 @@ describe("R1·UP-4 M2 autoNumber pattern + 選項擴充", () => {
         ],
       }),
     )
-    const now = new Date()
-    const ym = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}`
+    /* 🔴 期望值必須用**租戶時區**算,不能用 UTC。
+
+       autoNumber 的日期段以 `tenants.timezone`(預設 Asia/Taipei)判定 ——
+       那正是它存在的理由:台灣 UTC+8 若走 UTC,01/01 08:00 前開的單會拿到
+       去年的年度序號,而那是已列印憑證上不可回收的錯誤。
+
+       本測試原本用 `getUTCFullYear/getUTCMonth`,於是每天 **16:00–24:00 UTC**
+       這 8 小時(台北的隔日 00:00–08:00)必定失敗 —— 2026-08-01 00:43(台北)
+       跑整套時實際踩到:程式得 202608、測試得 202607。
+       ⚠️ 測試自己踩了它所驗證的那個 bug。 */
+    const ym = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+    })
+      .format(new Date())
+      .replace("-", "")
     const r1 = await records.createRecord(tenantA, form.id, { 備註: "a" }, ACTOR)
     const r2 = await records.createRecord(tenantA, form.id, { 備註: "b" }, ACTOR)
     expect(r1.values.單號).toBe(`PO${ym}0001`)
