@@ -1,6 +1,12 @@
 "use client"
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { z } from "zod"
 import { engineFetch } from "./client"
 import {
@@ -85,6 +91,8 @@ export function useForm(formId: number | null) {
 export function useRecords(formId: number | null) {
   return useQuery({
     queryKey: formKeys.records(formId ?? -1),
+    /* M7:切表單時保留前一份資料,避免整頁塌陷再長回(視覺阻斷 + CLS) */
+    placeholderData: keepPreviousData,
     queryFn: () =>
       engineFetch<ListResponse>(`/forms/${formId}/records?limit=50`, listResponseSchema),
     enabled: formId !== null,
@@ -347,6 +355,7 @@ function toQueryBody(query: RecordQuery): Record<string, unknown> {
 export function useInfiniteRecordsQuery(formId: number, query: RecordQuery, pageSize = 200) {
   return useInfiniteQuery({
     queryKey: [...formKeys.records(formId), "query", query],
+    placeholderData: keepPreviousData,
     queryFn: ({ pageParam }) =>
       engineFetch<ListResponse>(`/forms/${formId}/records/query`, listResponseSchema, {
         method: "POST",

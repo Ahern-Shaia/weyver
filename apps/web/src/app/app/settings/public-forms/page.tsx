@@ -14,6 +14,7 @@ import {
   useShareToggle,
   useSubmissionInbox,
 } from "@/lib/engine/hooks"
+import { BusyBar } from "@/components/busy-indicator"
 
 /* G-2 M4|公開表單設定 + 待審收件匣。
 
@@ -94,10 +95,10 @@ export default function PublicFormsPage(): ReactNode {
     }
   }
 
-  if (isLoading) return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
 
   return (
-    <div className="mx-auto max-w-[820px] p-6">
+    <div className="relative mx-auto max-w-[820px] p-6">
+      <BusyBar busy={isLoading} />
       <h2 className="text-[15px] font-semibold">公開表單</h2>
       <p className="mt-1 text-[11.5px] text-ink-3">
         把一張表單開放給未登入的外部人填寫。提交內容會先進待審收件匣,

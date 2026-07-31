@@ -44,3 +44,14 @@
     overflow: visible !important;
   }
 }
+
+/* R1·UX-1 M7|載入進度條。走 transform(compositor 可獨力處理,跳過 layout 與 paint)。
+   非確定性進度 —— 僅表示「正在進行」,不宣稱完成度。 */
+@keyframes busyslide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}

@@ -16,6 +16,7 @@ import {
   useWebhookDeliveries,
   useWebhooks,
 } from "@/lib/engine/hooks"
+import { BusyBar } from "@/components/busy-indicator"
 
 /* G-1 M5|整合設定(Webhook + API 金鑰)。
 
@@ -140,10 +141,10 @@ export default function IntegrationsPage(): ReactNode {
     }
   }
 
-  if (isLoading) return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
 
   return (
-    <div className="mx-auto max-w-[820px] p-6">
+    <div className="relative mx-auto max-w-[820px] p-6">
+      <BusyBar busy={isLoading} />
       <h2 className="text-[15px] font-semibold">整合</h2>
       <p className="mt-1 text-[11.5px] text-ink-3">
         把資料變更推送到外部系統,或讓外部系統以 API 存取。兩者都只有管理員能設定。

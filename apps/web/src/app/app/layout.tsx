@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { type ReactNode, useEffect, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import {
   authClient,
   organization,
@@ -21,6 +21,7 @@ import {
   useActiveOrganization,
   useSession,
 } from "@/lib/auth/client"
+import { useQueryClient } from "@tanstack/react-query"
 import { setTabOrgIntent } from "@/lib/engine/client"
 import { CommandPalette } from "./_components/command-palette"
 import { TenantContextGuard } from "./_components/tenant-context-guard"
@@ -158,6 +159,20 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   useEffect(() => {
     setTabOrgIntent(activeOrg?.id ?? null)
   }, [activeOrg?.id])
+
+  /* 🔴 切公司 → 丟棄整份查詢快取。
+
+     query key 是 `["forms"]` 這種不含租戶的形狀,若不清,切公司後 React Query
+     會把**前一家公司的快取**當成現有資料直接顯示(isLoading=false),直到重取完成。
+     這不是命名空間問題而是語意問題:**換公司後手上的資料全部來自別家,應該作廢。**
+     加 keepPreviousData(M7)會讓這個既有缺陷更明顯,故先修。 */
+  const queryClient = useQueryClient()
+  const prevOrg = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    const id = activeOrg?.id ?? null
+    if (prevOrg.current !== undefined && prevOrg.current !== id) queryClient.clear()
+    prevOrg.current = id
+  }, [activeOrg?.id, queryClient])
 
   useEffect(() => {
     if (isPending) return

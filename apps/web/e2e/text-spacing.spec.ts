@@ -42,6 +42,9 @@ async function findClipped(page: Page): Promise<Clipped[]> {
          (文字仍可由 title / 完整值取得),排除以免誤報 */
       if (el.classList.contains("truncate") || cs.textOverflow === "ellipsis") continue
       if (el.className.toString().includes("line-clamp")) continue
+      /* 純裝飾元素(aria-hidden 且無文字)不承載內容,1.4.12 的「內容遺失」與其無關 ——
+         例:進度條軌道。本專案的 BusyBar 即因此被首版檢查誤報。 */
+      if (el.getAttribute("aria-hidden") === "true" && (el.textContent ?? "").trim() === "") continue
       out.push({
         tag: el.tagName.toLowerCase(),
         text: (el.textContent ?? "").trim().slice(0, 40),

@@ -8,6 +8,7 @@ import {
 } from "@/lib/engine/hooks"
 import { Select } from "@weyver/ui/select"
 import { type ReactNode, useState } from "react"
+import { BusyBar, FirstLoad } from "@/components/busy-indicator"
 
 /* H-1 M4 通知設定(docs/mockups/notification-flow.html 步驟 4-5)。
 
@@ -44,9 +45,9 @@ export default function NotificationSettingsPage(): ReactNode {
   const savePref = useSaveNotificationPref()
   const [formId, setFormId] = useState<string>("")
 
-  if (isLoading || data === undefined) {
-    return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
-  }
+  /* 只有「完全沒有資料可顯示」才佔位(同時讓 TS 收窄);
+     後續重取由 BusyBar 表示,內容保留不塌陷 */
+  if (data === undefined) return <FirstLoad />
 
   const enabled = data.enabled
   const selectedForm = formId === "" ? null : Number(formId)
@@ -66,8 +67,13 @@ export default function NotificationSettingsPage(): ReactNode {
     saveSettings.mutate({ enabled, channels: next })
   }
 
+  /* 只有「完全沒有資料可顯示」才佔位;後續重取由 BusyBar 表示,內容保留不塌陷 */
+
+
+
   return (
-    <div className="mx-auto max-w-[720px] p-6">
+    <div className="relative mx-auto max-w-[720px] p-6">
+      <BusyBar busy={isLoading} />
       <h2 className="text-[15px] font-semibold">通知設定</h2>
       <p className="mt-1 text-[11.5px] text-ink-3">設定要接收哪些通知,以及用什麼方式接收。</p>
 

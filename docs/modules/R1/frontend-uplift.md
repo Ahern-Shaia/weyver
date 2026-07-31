@@ -2,6 +2,16 @@
 
 > 🚧 **狀態:APPROVED v1.0(2026-07-31)— OQ-FUX-1..14 全採建議,M1 已完成**
 > **裁定摘要**|1=A rail 設定六項收進 S22 設定中心 · 2=A 預設展開可收合 · 3=A docs/14 全採六項校正 · 4=B 邊做邊拆(先 folder 化) · 5=B 鍵盤只做子表+列表 · 6=A Carbon productive token · 7=A 首頁補最近使用+待我處理 · 8=B 維持 compact-only 但修誤套 · 9=A keepPreviousData+延遲細進度條 · 10=A reduced-motion 維持現況 · 11=A 對比三條全修 · 12=A 字階收斂整數六階 · 13=A 視覺規範進 CI · 14=A VisAWI-S 前後測+首次接觸鏈優先。
+> **M7 已完成(2026-07-31)**|載入模式由「整頁替換成一行載入中…」改為**保留內容 + 延遲細進度條**。
+>
+> 🔴 **開工即發現一個比 M7 本身嚴重的既有缺陷**|query key 是 `["forms"]` 這種**不含租戶**的形狀 → 切公司後 React Query 會把**前一家公司的快取當現有資料直接顯示**(`isLoading=false`),直到重取完成。這不是命名空間問題而是語意問題:**換公司後手上的資料全部來自別家,應當作廢**。修法為切 org 時 `queryClient.clear()`(一處,勝過為 20 個 hook 各加租戶前綴)。`keepPreviousData` 會放大此缺陷,故列為 M7 前提先修。
+>
+> **落地**|`components/busy-indicator.tsx`:`useDelayedBusy`(延遲 400ms 才顯示、顯示後最短 500ms 防閃爍)+ `BusyBar`(**absolute 定位不佔版面流**,FMEA U8)+ `FirstLoad`(僅首次載入、無資料可保留時)。設定四頁改為 `if (data === undefined) return <FirstLoad />` —— **同時滿足語意(真的沒東西可顯示)與型別收窄**,避免為了移除守衛而到處補 `?.`。records 查詢加 `placeholderData: keepPreviousData`。
+>
+> **1.4.12 檢查抓到自己人**|`BusyBar` 的軌道是 `h-0.5 overflow-hidden` 被檢查誤報。已補排除條件:**`aria-hidden` 且無文字的純裝飾元素**不承載內容,與 1.4.12 的「內容遺失」無關。
+>
+> **驗證**|web 98 單元 · 1.4.12 五 surface 綠 · 全 e2e **68 綠 / 6 失敗**(4 個既有基線;`image-signature` 兩支**單獨連跑兩次皆 3 綠**,屬完整套件下的不穩定,非 M7)。
+>
 > **M6 已完成(2026-07-31)**|**密度誤套修正**:錯誤 / 驗證訊息 **34 處**由 10.5–12px 提到 **13px(inline)/ 14px(區塊警示框)** —— Cloudscape 明載 compact **不得套用**於 alert / 說明 / 表單驗證訊息;固定高度改 `min-h`(`input` / `select` / 狀態章),`input` 字級 12→13px。
 >
 > **WCAG 1.4.12 做成可執行檢查**|`e2e/text-spacing.spec.ts` 注入官方要求的 `line-height 1.5 / 段距 2 / 字距 0.12 / 詞距 0.16`,再逐元素比對 `scrollHeight > clientHeight 且 overflow:hidden`(排除刻意的 `truncate` / `line-clamp`),涵蓋 5 個 surface。**反向驗證確認會轉紅。**

@@ -5,6 +5,7 @@ import { AlertTriangle, RotateCcw, Trash2 } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { usePurgeTrash, useRestoreTrash, useTrash } from "@/lib/engine/hooks"
 import type { RestoreBlocker, TrashItem } from "@/lib/engine/schemas"
+import { BusyBar, FirstLoad } from "@/components/busy-indicator"
 
 /* H-2 M4|資源回收桶。
 
@@ -60,12 +61,13 @@ export default function TrashPage(): ReactNode {
     )
   }
 
-  if (isLoading || data === undefined) {
-    return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
-  }
+  /* 只有「完全沒有資料可顯示」才佔位(同時讓 TS 收窄);
+     後續重取由 BusyBar 表示,內容保留不塌陷 */
+  if (data === undefined) return <FirstLoad />
 
   return (
-    <div className="mx-auto max-w-[720px] p-6">
+    <div className="relative mx-auto max-w-[720px] p-6">
+      <BusyBar busy={isLoading} />
       <h2 className="text-[15px] font-semibold">資源回收桶</h2>
       <p className="mt-1 text-[11.5px] text-ink-3">
         刪除的項目會保留 {data.retentionDays} 天,之後永久刪除且無法復原。
