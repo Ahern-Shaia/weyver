@@ -44,7 +44,7 @@ function FormCard({ form }: { readonly form: FormSummary }): ReactNode {
   return (
     <Link
       href={`/app/forms/${form.id}`}
-      className="group rounded-md border border-line bg-card px-3 py-2.5 transition-colors duration-150 hover:border-primary hover:bg-primary-t"
+      className="group rounded-md border border-line bg-card px-3 py-2.5 transition-colors duration-fast-01 ease-productive-exit hover:border-primary hover:bg-primary-t"
     >
       <div className="flex items-center gap-2">
         <Table2
@@ -114,7 +114,7 @@ export default function WorkspaceHome(): ReactNode {
           </span>
           <Link
             href="/app/builder"
-            className="ml-auto flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-medium text-white transition-colors duration-150 hover:bg-primary-d"
+            className="ml-auto flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-medium text-white transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-d"
           >
             <Plus size={14} strokeWidth={2} />
             新增表單

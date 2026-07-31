@@ -102,13 +102,13 @@ function PaletteGroup({
             disabled={disabled}
             onClick={() => onPick(type)}
             className={cn(
-              "group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[12px] text-ink-2 transition-colors duration-150",
+              "group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[12px] text-ink-2 transition-colors duration-fast-01 ease-productive-exit",
               disabled
                 ? "cursor-not-allowed opacity-45"
                 : "cursor-pointer hover:bg-primary-t hover:text-primary",
             )}
           >
-            <span className="inline-flex size-6 items-center justify-center rounded-md bg-label font-mono text-[10px] font-semibold text-ink-3 transition-colors duration-150 group-hover:bg-primary group-hover:text-white">
+            <span className="inline-flex size-6 items-center justify-center rounded-md bg-label font-mono text-[10px] font-semibold text-ink-3 transition-colors duration-fast-01 ease-productive-exit group-hover:bg-primary group-hover:text-white">
               {meta.mark}
             </span>
             {meta.label}

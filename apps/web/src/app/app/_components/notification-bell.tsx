@@ -81,7 +81,7 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
            title 僅收合態需要:展開態筆數已以徽章呈現於標籤旁。 */
         {...(collapsed ? { title: unread > 0 ? `通知(${unread} 則未讀)` : "通知" } : {})}
         aria-label={unread > 0 ? `通知(${unread} 則未讀)` : "通知"}
-        className={`relative flex items-center rounded-sm text-ink-2 transition-colors duration-75 hover:bg-primary-t hover:text-primary ${
+        className={`relative flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t hover:text-primary ${
           collapsed ? "size-9 justify-center" : "h-[30px] w-full gap-2.5 px-2 text-[13px]"
         }`}
       >
@@ -127,7 +127,7 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
                     key={n.id}
                     type="button"
                     onClick={() => onOpen(n)}
-                    className={`flex w-full gap-2 border-b border-line-2 px-2.5 py-2.5 text-left transition-colors duration-150 hover:bg-field ${
+                    className={`flex w-full gap-2 border-b border-line-2 px-2.5 py-2.5 text-left transition-colors duration-fast-01 ease-productive-exit hover:bg-field ${
                       n.read ? "" : "bg-primary-t"
                     }`}
                   >

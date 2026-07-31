@@ -63,7 +63,7 @@ function NavItem({
   readonly active: boolean
   readonly collapsed: boolean
 }): ReactNode {
-  const base = "flex items-center rounded-sm transition-colors duration-75"
+  const base = "flex items-center rounded-sm transition-colors duration-fast-01 ease-productive-exit"
   const tone = active
     ? "bg-primary-t text-primary font-medium"
     : "text-ink-2 hover:bg-head hover:text-ink"
@@ -95,7 +95,7 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
         onClick={() => setOpen((v) => !v)}
         {...(collapsed ? { title: "配色主題" } : {})}
         aria-label="配色主題"
-        className={`flex items-center rounded-sm text-ink-2 transition-colors duration-75 hover:bg-head hover:text-ink ${
+        className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
           collapsed ? "size-9 justify-center" : "h-[30px] w-full gap-2.5 px-2 text-[13px]"
         }`}
       >
@@ -120,7 +120,7 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
                   setTheme(item.id)
                   setOpen(false)
                 }}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] text-ink-2 transition-colors duration-150 hover:bg-head"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head"
               >
                 <span
                   style={{ backgroundColor: item.hex }}
@@ -242,7 +242,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
                 onClick={() => void onLogout()}
                 {...(collapsed ? { title: `登出(${session.user.email})` } : {})}
                 aria-label="登出"
-                className={`flex items-center rounded-sm text-ink-2 transition-colors duration-75 hover:bg-er-t hover:text-er ${
+                className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-er-t hover:text-er ${
                   collapsed ? "size-9 justify-center" : "h-[30px] gap-2.5 px-2 text-[13px]"
                 }`}
               >
@@ -263,7 +263,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
               title={collapsed ? "展開導覽" : "收合導覽"}
               aria-label={collapsed ? "展開導覽" : "收合導覽"}
               aria-expanded={!collapsed}
-              className={`mt-0.5 flex items-center rounded-sm text-ink-3 transition-colors duration-75 hover:bg-head hover:text-ink ${
+              className={`mt-0.5 flex items-center rounded-sm text-ink-3 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
                 collapsed ? "size-9 justify-center" : "h-[28px] gap-2.5 px-2 text-[12px]"
               }`}
             >

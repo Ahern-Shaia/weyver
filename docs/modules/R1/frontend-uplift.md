@@ -2,6 +2,15 @@
 
 > 🚧 **狀態:APPROVED v1.0(2026-07-31)— OQ-FUX-1..14 全採建議,M1 已完成**
 > **裁定摘要**|1=A rail 設定六項收進 S22 設定中心 · 2=A 預設展開可收合 · 3=A docs/14 全採六項校正 · 4=B 邊做邊拆(先 folder 化) · 5=B 鍵盤只做子表+列表 · 6=A Carbon productive token · 7=A 首頁補最近使用+待我處理 · 8=B 維持 compact-only 但修誤套 · 9=A keepPreviousData+延遲細進度條 · 10=A reduced-motion 維持現況 · 11=A 對比三條全修 · 12=A 字階收斂整數六階 · 13=A 視覺規範進 CI · 14=A VisAWI-S 前後測+首次接觸鏈優先。
+> **M8 已完成(2026-07-31)**|動效改引 **Carbon productive token**(`--transition-duration-fast-01` 70ms hover/focus · `fast-02` 110ms overlay 離場 · `moderate-01` 150ms 進場/展開 · easing `productive-entrance/exit`)。硬編 duration **零殘留**;原 `duration-75` 是 **Tailwind 預設值非 Carbon 值**,一併對齊為 70ms。
+>
+> 🔴 **build 抓到 M5 遺留的 Hooks 規則違反**|`useGridKeyboard` 被放在 early return **之後**,載入狀態切換時 hook 呼叫順序會變而崩潰。**type-check 抓不到,只有 lint 會** —— 而 M5 當時**我沒跑 `pnpm lint`**,這是我自己的流程漏。已移至所有 early return 之前(列數/欄數於資料未到時為 0,不影響正確性)。
+>
+> 🔴 **命名空間踩坑:token 靜默失效**|首版用 `--duration-*`,但 **Tailwind 4 由 `--transition-duration-*` 產生 `duration-*` utility** → class **完全沒產出**,過場變成瞬間完成。而 **type-check / lint / build 全數通過**,只有去查**產出的 CSS** 才發現。教訓已寫入 tokens.css 註解。
+> **驗證方式因此升級**:不只看原始碼與 build 是否過,要 `grep` 產出的 CSS 確認 utility 與值(實測 `.duration-fast-01{...70ms}`、`.ease-productive-exit{...cubic-bezier(.2,0,1,.9)}` 皆正確)。
+>
+> **驗證**|web 98 單元 · lint 0 error · production build 過 · 全 e2e **70 綠 / 4 失敗**(失敗集合等同既有基線,零新增;為本模組至今最高通過數)。
+>
 > **M7 已完成(2026-07-31)**|載入模式由「整頁替換成一行載入中…」改為**保留內容 + 延遲細進度條**。
 >
 > 🔴 **開工即發現一個比 M7 本身嚴重的既有缺陷**|query key 是 `["forms"]` 這種**不含租戶**的形狀 → 切公司後 React Query 會把**前一家公司的快取當現有資料直接顯示**(`isLoading=false`),直到重取完成。這不是命名空間問題而是語意問題:**換公司後手上的資料全部來自別家,應當作廢**。修法為切 org 時 `queryClient.clear()`(一處,勝過為 20 個 hook 各加租戶前綴)。`keepPreviousData` 會放大此缺陷,故列為 M7 前提先修。

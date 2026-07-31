@@ -92,6 +92,20 @@
   --font-sans: var(--font-plex-sans), "IBM Plex Sans TC", "Noto Sans TC", "PingFang TC", system-ui,
     sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ── 動效:**Carbon productive** token(R1·UX-1 M8)────────────────
+     選它不是因為好聽:IBM 明標為**企業生產力軟體**設計,且與本專案已採用的
+     IBM Plex 同源。原「近乎無動效」措辭與 120/150ms 數值**查無出處**,已刪。
+     跨系統唯一共識:**進場減速、離場加速、離場短於進場、生產力情境用較短一檔**。
+     ⚠️ 既有 `duration-150` 恰等於 `moderate-01` —— 值不動,只補命名與出處。
+     ⚠️ **命名空間**:Tailwind 4 由 `--transition-duration-*` 產生 `duration-*` utility。
+     用 `--duration-*` 會**靜默產不出 class**(過場變成瞬間完成),且 type-check /
+     lint / build 全數通過 —— 首版即踩此坑,只有查產出的 CSS 才發現。 */
+  --transition-duration-fast-01: 70ms; /* hover / focus 色彩過渡 */
+  --transition-duration-fast-02: 110ms; /* overlay 離場 */
+  --transition-duration-moderate-01: 150ms; /* overlay 進場 / 行內展開 */
+  --ease-productive-entrance: cubic-bezier(0, 0, 0.38, 0.9);
+  --ease-productive-exit: cubic-bezier(0.2, 0, 1, 0.9);
 }
 
 /* ── 三配色主題(主色家族;結構/狀態/功能色跨主題共用)──── */
@@ -106,7 +120,8 @@
   --color-primary-t: #edeef0;
 }
 
-/* ── 動效:互動平滑(150ms);尊重 reduced-motion ────────── */
+/* ── reduced-motion:採 Cloudscape「全部歸零」式(R1·UX-1 OQ-10=A 維持現況)。
+   日後若引入位移/縮放類動效,改採 WebKit 立場「換掉而非全關」。 ────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

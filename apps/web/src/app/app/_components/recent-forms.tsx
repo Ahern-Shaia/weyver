@@ -46,7 +46,7 @@ export function RecentForms(): ReactNode {
           <Link
             key={f.id}
             href={`/app/forms/${f.id}`}
-            className={`flex items-center gap-2.5 px-3 py-2 transition-colors duration-75 hover:bg-primary-t ${
+            className={`flex items-center gap-2.5 px-3 py-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t ${
               i === 0 ? "" : "border-t border-line-2"
             }`}
           >

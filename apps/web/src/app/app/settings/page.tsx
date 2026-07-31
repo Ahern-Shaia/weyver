@@ -21,7 +21,7 @@ export default function SettingsHubPage(): ReactNode {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 transition-colors duration-75 hover:bg-primary-t ${
+              className={`flex items-center gap-3 px-4 py-3 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t ${
                 i === 0 ? "" : "border-t border-line-2"
               }`}
             >

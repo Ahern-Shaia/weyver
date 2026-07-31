@@ -58,11 +58,11 @@ export function BusyBar({ busy }: { readonly busy: boolean }): ReactNode {
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-line-2 transition-opacity duration-[110ms] ${
+      className={`pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-line-2 transition-opacity duration-fast-02 ease-productive-exit ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <span className="block h-full w-1/3 animate-[busyslide_1.1s_cubic-bezier(0,0,.38,.9)_infinite] bg-primary" />
+      <span className="block h-full w-1/3 animate-[busyslide_1.1s_var(--ease-productive-entrance)_infinite] bg-primary" />
     </span>
   )
 }

@@ -57,7 +57,13 @@ export function RecordFormPanel({ formId }: { formId: number }) {
   const [error, setError] = useState<string | null>(null)
   const [savedNo, setSavedNo] = useState<string | null>(null)
 
-  if (formQuery.isLoading) return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
+  /* 🔴 Hook 必須在任何 early return **之前**呼叫(Rules of Hooks)。
+     子表列數/欄數於資料未到時為 0,不影響正確性;放到 return 之後會讓
+     載入狀態切換時 hook 呼叫順序改變而崩潰(M5 首版即誤置,由 build 的 lint 抓到)。 */
+  const childFieldCount = childQuery.data?.fields.length ?? 0
+  const grid = useGridKeyboard(lines.length, childFieldCount)
+
+  if (formQuery.isLoading) return <div className="p-6 text-[13px] text-ink-3">載入中…</div>
   if (formQuery.data === undefined) {
     return <div className="p-6 text-[13px] text-er">載入失敗</div>
   }
@@ -66,7 +72,6 @@ export function RecordFormPanel({ formId }: { formId: number }) {
   const hasChild = childForm !== null
   const childFields = childQuery.data?.fields ?? []
   const pending = createRecord.isPending || saveWithLines.isPending
-  const grid = useGridKeyboard(lines.length, childFields.length)
 
   const set = (name: string, value: unknown) => setValues((prev) => ({ ...prev, [name]: value }))
   const addLine = () => setLines((prev) => [...prev, { key: `l${lineSeq++}`, values: {} }])
@@ -240,7 +245,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                     {lines.map((line, index) => (
                       <tr
                         key={line.key}
-                        className="group transition-colors duration-150 hover:bg-head/60"
+                        className="group transition-colors duration-fast-01 ease-productive-exit hover:bg-head/60"
                       >
                         <td className="border-b border-line-2 px-2 py-1 font-mono text-ink-4">
                           {index + 1}

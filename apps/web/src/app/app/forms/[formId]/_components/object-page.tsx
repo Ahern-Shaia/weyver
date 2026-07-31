@@ -453,7 +453,7 @@ function ActBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[12px] transition-colors duration-150 disabled:opacity-50 ${
+      className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[12px] transition-colors duration-fast-01 ease-productive-exit disabled:opacity-50 ${
         danger
           ? "border-er-line text-er hover:bg-er-t"
           : "border-line bg-card text-ink-2 hover:bg-head"
