@@ -6,6 +6,7 @@ import {
   Share2,
   Trash2,
   UserRound,
+  UsersRound,
   Webhook,
   type LucideIcon,
 } from "lucide-react"
@@ -36,6 +37,13 @@ export const SETTINGS_NAV: readonly SettingsNavItem[] = [
     label: "公司設定",
     desc: "公司資料、統編、時區與地區預設",
     icon: Building2,
+    scope: "tenant",
+  },
+  {
+    href: "/app/settings/members",
+    label: "成員",
+    desc: "新增同事、停用離職者",
+    icon: UsersRound,
     scope: "tenant",
   },
   {

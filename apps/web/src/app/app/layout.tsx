@@ -141,7 +141,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   const router = useRouter()
   const pathname = usePathname()
   const { data: session, isPending } = useSession()
-  const { data: activeOrg } = useActiveOrganization()
+  const { data: activeOrg, isPending: orgPending } = useActiveOrganization()
   const { data: orgs } = authClient.useListOrganizations()
 
   /* 預設展開(WinUI:icon-only 是降級態不是預設);偏好於掛載後才套用,
@@ -169,10 +169,17 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   const queryClient = useQueryClient()
   const prevOrg = useRef<string | null | undefined>(undefined)
   useEffect(() => {
+    /* 🔴 **解析完成前不得判定「換公司」**。
+       `useActiveOrganization()` 載入中時 `data` 為 undefined,`?? null` 會讓它
+       看起來像「沒有公司」;等真實 org 到達就被誤判成一次切換 →
+       `clear()` 把**剛飛回來的查詢連同進行中的請求一起清掉**,
+       頁面因此永遠停在載入中(實測:登入後首次進入成員頁必現)。
+       登入後第一次解析是**初始化不是切換**,故等 pending 結束再記錄基準。 */
+    if (orgPending) return
     const id = activeOrg?.id ?? null
     if (prevOrg.current !== undefined && prevOrg.current !== id) queryClient.clear()
     prevOrg.current = id
-  }, [activeOrg?.id, queryClient])
+  }, [activeOrg?.id, orgPending, queryClient])
 
   useEffect(() => {
     if (isPending) return
