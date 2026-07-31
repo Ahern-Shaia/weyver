@@ -44,7 +44,10 @@ import {
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActionsDesigner } from "@/app/app/builder/_components/designer/actions"
 import { ConditionalFormatPanel } from "@/app/app/builder/_components/designer/conditional-format"
-import { FieldSettingsPanel, StaticSettingsPanel } from "@/app/app/builder/_components/designer/field-settings"
+import {
+  FieldSettingsPanel,
+  StaticSettingsPanel,
+} from "@/app/app/builder/_components/designer/field-settings"
 import { PrintSettingsPanel } from "@/app/app/builder/_components/output/print-settings"
 
 /* R1·UP-3 M2+M3 2D 格線畫布(OQ-FD2-7=A)。layout metadata → CSS grid;dnd-kit 拖曳重定位;
@@ -78,10 +81,7 @@ function overlaps(a: Box, b: Box): boolean {
   return colHit && rowHit
 }
 
-function boxesOf(
-  layout: Layout,
-  exclude: { kind: "field" | "static"; id: string },
-): Box[] {
+function boxesOf(layout: Layout, exclude: { kind: "field" | "static"; id: string }): Box[] {
   const out: Box[] = []
   for (const [id, f] of Object.entries(layout.fields)) {
     if (exclude.kind === "field" && id === exclude.id) continue
@@ -269,14 +269,17 @@ export function DesignCanvas({
   const save = (): void => {
     if (idx < 0) return
     /* 🔴 帶上載入時的版本(#109):整表覆寫下,不帶就是「後寫者蓋掉整張版面」 */
-    putLayout.mutate({ ...effective, expectedVersion: layoutResp?.version }, {
-      onSuccess: () => {
-        setHist([])
-        setIdx(-1)
-        setMsg("版面已儲存")
+    putLayout.mutate(
+      { ...effective, expectedVersion: layoutResp?.version },
+      {
+        onSuccess: () => {
+          setHist([])
+          setIdx(-1)
+          setMsg("版面已儲存")
+        },
+        onError: (e) => setMsg(describeEngineError(e)),
       },
-      onError: (e) => setMsg(describeEngineError(e)),
-    })
+    )
   }
 
   const onDragEnd = (e: DragEndEvent): void => {
@@ -314,54 +317,63 @@ export function DesignCanvas({
   return (
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col bg-surface">
+        {/* 🔴 #140|工具列分兩段:左側工具群窄寬度時**自己橫捲**,右側主要動作固定不捲。
+
+            原本是單一 flex row + 儲存鈕 `ml-auto`。工具列沒有 `min-w-0` 也沒有 overflow,
+            視窗窄時整列**溢出畫布欄、壓到右側欄位設定面板底下** —— 儲存鈕實測 l=1029
+            而面板 l=1024,`elementFromPoint` 取到的是面板,按鈕點不到(designer e2e 逾時)。
+
+            不把整列設成可捲:那會讓「儲存版面」也跟著捲走,主要動作不該需要先捲動才按得到。 */}
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line bg-card px-4 text-[12px]">
-          <span className="font-semibold text-ink-2">版面設計</span>
-          <TB onClick={() => addStatic("text")} icon={<Type size={13} />}>
-            文字
-          </TB>
-          <TB onClick={() => addStatic("image")} icon={<ImageIcon size={13} />}>
-            圖片
-          </TB>
-          <TB onClick={addSection} icon={<Rows3 size={13} />}>
-            分段
-          </TB>
-          <TB onClick={() => setShowActions((v) => !v)} icon={<Zap size={13} />}>
-            動作/簽核
-          </TB>
-          <TB onClick={() => setShowPrint((v) => !v)} icon={<Printer size={13} />}>
-            列印
-          </TB>
-          <TB onClick={() => setShowFormats((v) => !v)} icon={<Palette size={13} />}>
-            條件式格式
-          </TB>
-          <div className="ml-1 flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={undo}
-              disabled={!dirty}
-              title="復原 (Ctrl+Z)"
-              aria-label="復原"
-              className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
-            >
-              <Undo2 size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={redo}
-              disabled={!canRedo}
-              title="取消復原 (Ctrl+Shift+Z)"
-              aria-label="取消復原"
-              className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
-            >
-              <Redo2 size={13} />
-            </button>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+            <span className="shrink-0 font-semibold text-ink-2">版面設計</span>
+            <TB onClick={() => addStatic("text")} icon={<Type size={13} />}>
+              文字
+            </TB>
+            <TB onClick={() => addStatic("image")} icon={<ImageIcon size={13} />}>
+              圖片
+            </TB>
+            <TB onClick={addSection} icon={<Rows3 size={13} />}>
+              分段
+            </TB>
+            <TB onClick={() => setShowActions((v) => !v)} icon={<Zap size={13} />}>
+              動作/簽核
+            </TB>
+            <TB onClick={() => setShowPrint((v) => !v)} icon={<Printer size={13} />}>
+              列印
+            </TB>
+            <TB onClick={() => setShowFormats((v) => !v)} icon={<Palette size={13} />}>
+              條件式格式
+            </TB>
+            <div className="ml-1 flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={undo}
+                disabled={!dirty}
+                title="復原 (Ctrl+Z)"
+                aria-label="復原"
+                className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
+              >
+                <Undo2 size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={redo}
+                disabled={!canRedo}
+                title="取消復原 (Ctrl+Shift+Z)"
+                aria-label="取消復原"
+                className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
+              >
+                <Redo2 size={13} />
+              </button>
+            </div>
           </div>
-          {dirty ? <span className="text-[12px] text-warn">● 未儲存</span> : null}
+          {dirty ? <span className="shrink-0 text-[12px] text-warn">● 未儲存</span> : null}
           <button
             type="button"
             onClick={save}
             disabled={!dirty || putLayout.isPending}
-            className="ml-auto rounded-xs bg-primary px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-primary-d disabled:opacity-40"
+            className="shrink-0 rounded-xs bg-primary px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-primary-d disabled:opacity-40"
           >
             {putLayout.isPending ? "儲存中…" : "儲存版面"}
           </button>

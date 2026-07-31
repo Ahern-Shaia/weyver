@@ -47,7 +47,7 @@ export function BuilderClient() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-y-hidden overflow-x-auto">
       <div className="flex min-h-0 flex-1">
         <FormListRail
           activeFormId={formId}

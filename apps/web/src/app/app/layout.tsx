@@ -286,7 +286,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
             ) : null}
           </div>
         </nav>
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 min-w-0 flex-1">
           <TenantContextGuard>{children}</TenantContextGuard>
         </main>
       </div>
