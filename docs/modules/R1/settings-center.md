@@ -169,6 +169,80 @@ CJEU C-582/14 *Breyer* 認定動態 IP 在特定條件下構成個資 —— ⚠
 
 ---
 
+### 0.5 M2 研究|把同事加進租戶
+
+> **緣起**|實作前發現 M0 漏了一層硬前提:`requireEmailVerificationOnInvitation: true` 已設(#99 修 CVE-2026-53514),但 `sendVerificationEmail` **從未實作** → **邀請永遠無法被接受**。
+
+#### (a) 🔴 先更正一個我自己的錯誤推論
+
+原本推測「改用『管理員自行轉發邀請連結』就能避開 email 驗證前提」。**讀原始碼後不成立。**
+Better Auth 1.6.23 `dist/plugins/organization/routes/crud-invites.mjs` 的 accept 路徑:
+
+```js
+if (invitation.email.toLowerCase() !== session.user.email.toLowerCase()) throw FORBIDDEN
+if (shouldRequireVerifiedEmailForInvitationIdAction({...}) && !session.user.emailVerified) throw FORBIDDEN
+```
+
+→ 驗證檢核**依旗標判定,與連結怎麼送達無關**;且接受者的帳號 email 必須與被邀 email 完全一致
+(連結本身不是通行證)。**投遞管道換掉解決不了前提。**
+
+#### (b) Ragic parity(一手:本地官方文件庫 `doc/3.html 管理內部使用者`)
+
+Ragic **兩條路都有**,不是二擇一:
+
+> 「新增使用者後的**邀請信**或是**重送邀請信**都會寄出自訂認證信內容。」
+> 「如果有**設定預設密碼**,使用者將需要用該密碼登入,如果沒有預設密碼,則會**隨機產生 10 碼密碼**。使用者以預設密碼登入後,就可以設置新密碼。」
+
+另外兩條 M0 完全沒列到的:
+
+> 🔴 **停權語意反直覺**|「當有員工離職時,**推薦作法是將離職員工的帳號停權**…不建議直接刪除使用者,避免失去使用者的資料。」
+> 「注意:**被停權的使用者仍然可以登入 Ragic**,並且存取開放給 EVERYONE 權限的資料。」
+> → **停權 ≠ 擋登入**。憑直覺實作一定會做成「停權就擋在登入頁」,那與 parity 不符。
+
+> **資料管理者權限轉移**|離職 / 職務調動時,把「表單權限 + 被指派的資料 + 簽核對象」整批轉給另一人。
+
+Ragic 的使用者本身**就是一張表單**(可自行加欄位、列表頁大量修改)—— 與「表單引擎是 substrate」同源。
+
+#### (c) 🔴 標準面:Ragic 的做法在現行標準下**有兩處不合格**
+
+**NIST SP 800-63B-4 沒有「臨時密碼」專章,而且刪掉了 rev 3 的豁免。**
+rev 3 §5.1.1.1 原有「Memorized secrets chosen randomly by the CSP or verifier SHALL be at least **6 characters**」——
+**63B-4 全文查無此句**。適用的是 §3.1.1.2 第 1 條:
+
+> 「Verifiers and CSPs SHALL require passwords that are used as a **single-factor** authentication mechanism to be a minimum of **15 characters** in length. Verifiers and CSPs MAY allow passwords that are only used as part of **multi-factor** authentication processes to be shorter but SHALL require them to be a minimum of **eight characters**.」
+
+→ **Ragic 的「隨機 10 碼」在單因子下不足**;要縮短到 8 的**唯一合法路徑是強制綁 MFA**。
+另:§3.1.1.1「Passwords SHALL either be chosen by the subscriber **or assigned randomly by the CSP**」——
+系統隨機指派**本身合規**。
+
+**OWASP ASVS 5.0.0 §V6.4.1(L1)** 是初始密碼的權威條文:
+
+> 「system generated initial passwords or activation codes are securely randomly generated, **follow the existing password policy**, and **expire after a short period of time or after they are initially used**. These initial secrets **must not be permitted to become the long term password**.」
+
+**🔴 §V6.4.6(L3)明確反對管理員自選密碼**:
+
+> 「Verify that administrative users can initiate the password reset process for the user, but that this **does not allow them to change or choose the user's password**. **This prevents a situation where they know the user's password.**」
+
+→ **Ragic 的「設定預設密碼」違反這條。**(誠實標注:V6.4.6 為 L3 非 L1 強制)
+
+**業界做法**|Entra / Google Workspace / Okta **暫時密碼與啟用信兩路都給**;
+Okta 在管理員設密碼時**預設勾選** "User must change password on first login";
+Salesforce 只走信件(「Generate password and notify user immediately」)。
+⚠️ 四家官方文件**皆未載明暫時密碼的絕對時效上限**(查無)。
+
+**反面**|CISA Secure by Design Alert 逐字「**Years of evidence have demonstrated that relying upon
+thousands of customers to change their passwords is insufficient**」,建議「time-limited setup passwords
+that disable themselves when a setup process is complete」。
+⚠️ 該文針對**產品出廠預設密碼**,不是逐人建帳號;可類比的只有「可預測 / 重複使用」風險,
+**不能直接當成反對本模型的證據**。
+
+#### (d) 一個意外的收斂
+
+15 字元的隨機密碼**唸不出來** —— 那本身就是「不要用口頭傳遞、改成畫面顯示一次 + 複製」的理由,
+正好與「管理員自行用 LINE 轉發」的選擇一致。**限制推著設計往對的方向走。**
+
+---
+
 ## 1. 目標與範圍
 
 ### 1.1 目標
@@ -228,6 +302,18 @@ UI 採 **Grafana `secureJsonFields` 模式** —— 只回「已設定 / 最後�
 | **10** | 密碼「複雜度 / 定期更換」旋鈕 | A **不做** · B 做但預設關 + 開啟時警語 + 記稽核 · C 照客戶要求做 | **B** —— 63B-4 對兩者皆為 **`SHALL NOT`**(rev.3 只是 `SHOULD NOT`),NCSC 亦逐字反對;但台灣客戶內稽可能硬性要求。做成「預設關 + 明示違反 63B-4 §3.1.1.2 + 記錄誰為了哪張稽核開的」,把選擇權與責任一起交出去。⚠️ **「稽核標準真的要求定期更換」未取得一手證據**(PCI/ISO 皆二手或付費牆),不得寫進文案當理由 |
 | **11** | 外洩密碼字典比對 | A **做**(63B-4 為 `SHALL`)· B 不做 | **A** —— 原文要求**整串比對非子字串**;OSS-only 下用本地 k-anonymity 清單或 HIBP range API(後者需評估對外請求,見 §1.2 不做的事) |
 | **12** | 認證日誌保留期 | A **6 個月**(台灣資安分級辦法附表十)· B 90 天(GitHub)· C 30 天 | **A** —— 客戶多為台灣企業,取較長的法定下限;量極小(每人每日數列) |
+
+### 3.1 M2 新增之開放問題(承 §0.5)
+
+| # | 問題 | 選項 | 建議 |
+|---|---|---|---|
+| **13** | 🔴 把同事加進租戶的模型 | A **管理員建帳號 + 系統產生一次性初始密碼**(不需 SMTP)· B 邀請信(需先做 email 驗證)· C 兩者都做 | **A 先做,B 列殘留** —— Ragic **兩條都有**,故 A 不是偏離 parity;而 B 卡在 email 驗證且 dev 無 SMTP。A 做完「第二個員工進不來」就解了,B 是加法 |
+| **14** | 🔴 初始密碼長度 | A **15 字**(63B-4 單因子門檻)· B 8 字 + **強制綁 MFA** · C 10 字(照 Ragic) | **A** —— 63B-4 **刪掉了 rev 3 的 6 字豁免**,單因子無例外;C 直接不合格。B 合法但把 MFA 變成入職必經,對產線人員摩擦過大。15 字唸不出來 → UI 顯示一次 + 複製鍵(§0.5(d)) |
+| **15** | 🔴 管理員可否**自選**初始密碼 | A **不可,只能系統產生** · B 可(Ragic parity) | **A** —— ASVS 5.0.0 §V6.4.6 逐字反對「does not allow them to change or choose the user's password」,理由是「prevents a situation where they know the user's password」。⚠️ 該條為 **L3 非 L1**,且**此處刻意不照 Ragic** —— 明知而為,理由記錄在此 |
+| **16** | 初始密碼的生命週期 | A **單次使用 + 短效期 + 首次登入強制改** · B 只做強制改 | **A** —— ASVS §V6.4.1 逐字要求「expire after a short period of time **or** after they are initially used」且「must not be permitted to become the long term password」。效期取 **72 小時**(⚠️ 業界四家皆未載明上限,此為本專案取值) |
+| **17** | 🔴 停權語意 | A **照 Ragic:仍可登入,只失去授權資料** · B 直接擋登入 | **B** —— **此處刻意不照 Ragic**。Ragic 的語意來自它有 EVERYONE 公開資料的前提;Weyver 定位是取代 ERP,離職者仍能登入公司系統對稽核不可解釋。改為擋登入 + 保留資料(仍不刪除,承 Ragic 的「不建議刪除」)。**若你要 parity 優先請改判 A** |
+| **18** | 資料管理者權限轉移 | A **納入 M2** · B 列殘留與 #104 簽核代理人一起做 | **B** —— 它同時牽動表單權限 / 記錄指派 / 簽核對象三處,與 #104(代理人 / 動態主管解析)是同一批問題;硬塞進 M2 會讓這個模組失焦 |
+| **19** | 使用者是否做成「一張表單」 | A **固定頁面**(先) · B 照 Ragic 做成引擎上的表單(可自行加欄位) | **A** —— B 很符合定位且值得做,但它是**引擎能力的延伸**不是設定中心的一部分;先把人加得進來,B 列入 R1 後續 |
 
 ---
 
