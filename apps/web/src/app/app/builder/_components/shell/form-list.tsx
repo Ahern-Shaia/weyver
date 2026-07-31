@@ -51,13 +51,13 @@ export function FormListRail({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {forms.isLoading ? (
-          <div className="p-3 text-[11.5px] text-ink-4">載入中…</div>
+          <div className="p-3 text-[11.5px] text-ink-3">載入中…</div>
         ) : forms.isError ? (
           <div className="p-3 text-[13px] text-er">
             無法連線引擎:{describeEngineError(forms.error)}
           </div>
         ) : (forms.data?.length ?? 0) === 0 ? (
-          <div className="p-3 text-[11.5px] text-ink-4">尚無表單。點「+ 新增」建立第一張。</div>
+          <div className="p-3 text-[11.5px] text-ink-3">尚無表單。點「+ 新增」建立第一張。</div>
         ) : (
           <ul>
             {forms.data?.map((form) => {
@@ -80,7 +80,7 @@ export function FormListRail({
                     </span>
                     <span className="flex-1 truncate">{form.name}</span>
                     {form.parentFormId !== null ? (
-                      <span className="shrink-0 text-[9px] text-ink-4">子表</span>
+                      <span className="shrink-0 text-[9px] text-ink-3">子表</span>
                     ) : null}
                   </button>
                 </li>

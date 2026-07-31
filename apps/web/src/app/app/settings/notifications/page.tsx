@@ -80,7 +80,7 @@ export default function NotificationSettingsPage(): ReactNode {
       {/* 軸 0 */}
       <section className="mt-5 border border-line-2">
         <div className="flex items-center gap-2 border-b border-line-2 bg-label px-2.5 py-2 text-[11.5px] font-semibold">
-          <span className="font-mono text-[10px] text-ink-4">軸 0</span>接收通知
+          <span className="font-mono text-[10px] text-ink-3">軸 0</span>接收通知
         </div>
         <div className="p-2.5">
           <label className="flex items-center gap-2.5">
@@ -91,7 +91,7 @@ export default function NotificationSettingsPage(): ReactNode {
               className="size-[13px] accent-primary"
             />
             <span className="text-[12px] font-medium">{enabled ? "開啟" : "已停止"}</span>
-            <span className="ml-auto text-[10.5px] text-ink-4">
+            <span className="ml-auto text-[10.5px] text-ink-3">
               關閉後將不會收到任何通知,下方設定一併停用
             </span>
           </label>
@@ -105,14 +105,14 @@ export default function NotificationSettingsPage(): ReactNode {
       {/* 軸 1 */}
       <section className={`mt-2.5 border border-line-2 ${enabled ? "" : "opacity-40"}`}>
         <div className="flex items-center gap-2 border-b border-line-2 bg-label px-2.5 py-2 text-[11.5px] font-semibold">
-          <span className="font-mono text-[10px] text-ink-4">軸 1</span>通知層級
-          <span className="ml-auto text-[10.5px] font-normal text-ink-4">
+          <span className="font-mono text-[10px] text-ink-3">軸 1</span>通知層級
+          <span className="ml-auto text-[10.5px] font-normal text-ink-3">
             每張表單一個層級,未設定則繼承上層
           </span>
         </div>
         <div className="p-2.5">
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[10.5px] text-ink-4">表單</span>
+            <span className="text-[10.5px] text-ink-3">表單</span>
             <Select
               value={formId}
               onChange={(e) => setFormId(e.target.value)}
@@ -164,7 +164,7 @@ export default function NotificationSettingsPage(): ReactNode {
                   <span className="block text-[11.5px] font-medium">
                     {lv.name}
                     {"isDefault" in lv ? (
-                      <span className="ml-1 font-normal text-ink-4">(預設)</span>
+                      <span className="ml-1 font-normal text-ink-3">(預設)</span>
                     ) : null}
                   </span>
                   <span className="mt-0.5 block text-[10.5px] text-ink-3">{lv.desc}</span>
@@ -178,7 +178,7 @@ export default function NotificationSettingsPage(): ReactNode {
       {/* 軸 2 */}
       <section className={`mt-2.5 border border-line-2 ${enabled ? "" : "opacity-40"}`}>
         <div className="flex items-center gap-2 border-b border-line-2 bg-label px-2.5 py-2 text-[11.5px] font-semibold">
-          <span className="font-mono text-[10px] text-ink-4">軸 2</span>各事件的接收方式
+          <span className="font-mono text-[10px] text-ink-3">軸 2</span>各事件的接收方式
         </div>
         <div className="p-2.5">
           <table className="w-full border-collapse text-[11.5px]">

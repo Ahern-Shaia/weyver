@@ -168,12 +168,12 @@ export function CalendarView({
       </div>
 
       {isPending ? (
-        <div className="flex flex-1 items-center justify-center text-[12px] text-ink-4">載入…</div>
+        <div className="flex flex-1 items-center justify-center text-[12px] text-ink-3">載入…</div>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto p-3">
           <div className="grid grid-cols-7 gap-px bg-line">
             {["日", "一", "二", "三", "四", "五", "六"].map((w) => (
-              <div key={w} className="bg-head px-2 py-1 text-center text-[11px] text-ink-3">
+              <div key={w} className="bg-head px-2 py-1 text-center text-[11px] text-ink-2">
                 {w}
               </div>
             ))}
@@ -187,7 +187,7 @@ export function CalendarView({
                 >
                   {d === null ? null : (
                     <>
-                      <div className="mb-0.5 text-right font-mono text-[10.5px] text-ink-4">{d}</div>
+                      <div className="mb-0.5 text-right font-mono text-[10.5px] text-ink-3">{d}</div>
                       {rows.slice(0, MAX_PER_DAY).map((r) => (
                         <button
                           key={`${key}-${String(r.id)}`}
@@ -204,7 +204,7 @@ export function CalendarView({
                       ))}
                       {/* 每日顯示上限 + N more(對齊 Airtable / NocoDB) */}
                       {rows.length > MAX_PER_DAY ? (
-                        <div className="text-[10px] text-ink-4">
+                        <div className="text-[10px] text-ink-3">
                           +{rows.length - MAX_PER_DAY} 筆
                         </div>
                       ) : null}

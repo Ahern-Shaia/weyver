@@ -199,7 +199,7 @@ export function EditFormPanel({
           <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>
             {form.provisionState}
           </StatusChip>
-          <span className="ml-auto font-mono text-[11px] text-ink-4">
+          <span className="ml-auto font-mono text-[11px] text-ink-3">
             v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
           </span>
           {form.parentFormId === null ? (

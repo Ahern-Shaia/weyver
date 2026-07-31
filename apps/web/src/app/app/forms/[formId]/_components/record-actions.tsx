@@ -170,7 +170,7 @@ export function RecordActions({
       </div>
 
       {instance !== null && instance.log.length > 0 ? (
-        <div className="mt-1.5 flex flex-wrap gap-2 font-mono text-[10px] text-ink-4">
+        <div className="mt-1.5 flex flex-wrap gap-2 font-mono text-[10px] text-ink-3">
           {instance.log.map((l, i) => (
             <span key={`${l.at}-${i}`}>
               {l.decision === "submit"

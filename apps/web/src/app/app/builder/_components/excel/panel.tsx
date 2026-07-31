@@ -172,7 +172,7 @@ export function ExcelImportPanel({
       <div className="flex items-center gap-2 border-b border-line bg-card px-4 py-2">
         <span className="text-[12.5px] font-semibold">匯入 Excel 建立表單</span>
         {fileName !== "" ? (
-          <span className="font-mono text-[10.5px] text-ink-4">{fileName}</span>
+          <span className="font-mono text-[10.5px] text-ink-3">{fileName}</span>
         ) : null}
         <div className="ml-auto flex gap-1.5">
           <Button onClick={onCancel} disabled={importing}>
@@ -196,7 +196,7 @@ export function ExcelImportPanel({
         <div className="flex flex-1 items-center justify-center p-6">
           <div className="max-w-[380px] text-center">
             <p className="text-[13px] font-medium text-ink-2">選擇 .xlsx 檔</p>
-            <p className="mt-1 mb-4 text-[11.5px] text-ink-4">
+            <p className="mt-1 mb-4 text-[11.5px] text-ink-3">
               前端解析,原檔不上傳;取首工作表首列為欄名,系統推斷欄位型別後可校正。
             </p>
             <input
@@ -241,14 +241,14 @@ export function ExcelImportPanel({
             </div>
 
             {sheet.headerRowIndex > 1 ? (
-              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-4">
+              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-2">
                 偵測到標題在第 {sheet.headerRowIndex} 列,已略過前面
                 {sheet.headerRowIndex - 1} 列。
               </div>
             ) : null}
 
             {sheet.truncated ? (
-              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-4">
+              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-2">
                 資料超過 {MAX_IMPORT_ROWS} 列,本次只匯入前 {MAX_IMPORT_ROWS} 列。
               </div>
             ) : null}
@@ -306,7 +306,7 @@ export function ExcelImportPanel({
                         />
                         必填
                       </label>
-                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-ink-4">
+                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-ink-3">
                         {d.samples.join(" · ")}
                       </span>
                     </li>

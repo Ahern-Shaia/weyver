@@ -57,7 +57,7 @@ function DeliveryList({ endpointId }: { readonly endpointId: number }): ReactNod
   const redeliver = useRedeliver(endpointId)
   const rows = data?.deliveries ?? []
   if (rows.length === 0) {
-    return <div className="px-3 py-2 text-[11.5px] text-ink-4">尚無投遞紀錄。</div>
+    return <div className="px-3 py-2 text-[11.5px] text-ink-3">尚無投遞紀錄。</div>
   }
   return (
     <table className="w-full border-collapse text-[11.5px]">
@@ -175,7 +175,7 @@ export default function IntegrationsPage(): ReactNode {
             新增
           </Button>
         </form>
-        <p className="mt-1 text-[11px] text-ink-4">
+        <p className="mt-1 text-[11px] text-ink-3">
           只接受 https,且不跟隨轉址。建立後端點須回報驗證權杖才會開始收到事件。
         </p>
 
@@ -246,7 +246,7 @@ export default function IntegrationsPage(): ReactNode {
             </li>
           ))}
           {(hooks?.endpoints ?? []).length === 0 ? (
-            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-4">
+            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-3">
               尚未設定任何端點。
             </li>
           ) : null}
@@ -271,7 +271,7 @@ export default function IntegrationsPage(): ReactNode {
             簽發
           </Button>
         </form>
-        <p className="mt-1 text-[11px] text-ink-4">
+        <p className="mt-1 text-[11px] text-ink-3">
           金鑰以簽發者的權限執行,不會多給任何權限。明文只在簽發當下顯示一次。
         </p>
 
@@ -296,7 +296,7 @@ export default function IntegrationsPage(): ReactNode {
             </li>
           ))}
           {(keys?.keys ?? []).length === 0 ? (
-            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-4">
+            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-3">
               尚未簽發任何金鑰。
             </li>
           ) : null}

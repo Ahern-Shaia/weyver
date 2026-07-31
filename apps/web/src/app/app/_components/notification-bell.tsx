@@ -111,7 +111,7 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
           </div>
 
           {items.length === 0 ? (
-            <div className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-ink-4">
+            <div className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-ink-3">
               目前沒有通知。
               <br />
               <span className="text-[10.5px]">
@@ -138,7 +138,7 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[11.5px] leading-snug text-ink">{n.title}</span>
-                      <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-ink-4">
+                      <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-ink-3">
                         <StatusChip tone={label.tone}>{label.text}</StatusChip>
                         <span>{relTime(n.createdAt)}</span>
                       </span>

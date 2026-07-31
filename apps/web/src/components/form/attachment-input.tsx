@@ -95,7 +95,7 @@ export function AttachmentInput({
                 type="button"
                 onClick={() => remove(item.key)}
                 aria-label={`移除 ${item.name}`}
-                className="text-ink-4 hover:text-er"
+                className="text-ink-3 hover:text-er"
               >
                 <X size={12} />
               </button>

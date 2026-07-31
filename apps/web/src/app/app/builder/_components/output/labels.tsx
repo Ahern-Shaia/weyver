@@ -76,13 +76,13 @@ export function LabelsPanel({
               className="flex items-center gap-2 rounded-xs border border-line px-2 py-1"
             >
               <span className="truncate text-ink">{l.name}</span>
-              <span className="font-mono text-[9.5px] text-ink-4">
+              <span className="font-mono text-[9.5px] text-ink-3">
                 {l.config.size.widthMm}×{l.config.size.heightMm}mm
               </span>
               <Link
                 href={`/app/forms/${formId}/labels/${l.id}/print`}
                 target="_blank"
-                className="ml-auto text-ink-4 hover:text-primary"
+                className="ml-auto text-ink-3 hover:text-primary"
                 aria-label={`列印 ${l.name}`}
                 title="開啟標籤列印頁"
               >
@@ -91,7 +91,7 @@ export function LabelsPanel({
               <button
                 type="button"
                 onClick={() => deleteLabel.mutate(l.id)}
-                className="text-ink-4 hover:text-er"
+                className="text-ink-3 hover:text-er"
                 aria-label={`刪除 ${l.name}`}
               >
                 <Trash2 size={12} />
@@ -116,14 +116,14 @@ export function LabelsPanel({
             value={String(widthMm)}
             onChange={(e) => setWidthMm(Number(e.target.value) || 50)}
           />
-          <span className="text-ink-4">×</span>
+          <span className="text-ink-3">×</span>
           <Input
             className="h-7 w-16"
             type="number"
             value={String(heightMm)}
             onChange={(e) => setHeightMm(Number(e.target.value) || 30)}
           />
-          <span className="text-ink-4">mm</span>
+          <span className="text-ink-3">mm</span>
         </div>
         <label className="flex items-center gap-1.5">
           <input
@@ -189,7 +189,7 @@ export function LabelsPanel({
             <button
               type="button"
               onClick={() => setItems(items.filter((_, j) => j !== i))}
-              className="text-ink-4 hover:text-er"
+              className="text-ink-3 hover:text-er"
               aria-label={`移除第${i + 1}項`}
             >
               <X size={13} />

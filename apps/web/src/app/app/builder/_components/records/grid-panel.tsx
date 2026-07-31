@@ -143,7 +143,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
       </div>
 
       {hasRequired ? (
-        <div className="border-b border-line bg-head px-4 py-1 text-[11px] text-ink-4">
+        <div className="border-b border-line bg-head px-4 py-1 text-[11px] text-ink-2">
           此表有必填欄 —— 新增空白列會被拒;請用「填單」新增,網格用於編輯既有資料。
         </div>
       ) : null}
@@ -155,7 +155,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
 
       <div className="min-h-0 flex-1 p-3">
         {records.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-[12px] text-ink-4">
+          <div className="flex h-full items-center justify-center text-[12px] text-ink-3">
             尚無資料 —— 切「填單」新增,或 P0-2 Excel 匯入。
           </div>
         ) : (

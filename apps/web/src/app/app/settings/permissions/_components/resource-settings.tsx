@@ -46,7 +46,7 @@ export function ResourceSettings(): ReactNode {
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         分類與預設設定
-        <span className="text-[11px] font-normal text-ink-4">
+        <span className="text-[11px] font-normal text-ink-3">
           {categories.length} 分類 · 授權設在分類、表單繼承
         </span>
       </button>
@@ -78,14 +78,14 @@ export function ResourceSettings(): ReactNode {
                     type="button"
                     onClick={() => deleteCategory.mutate(c.id)}
                     title="刪除分類(表單回退未分類)"
-                    className="ml-auto text-ink-4 hover:text-er"
+                    className="ml-auto text-ink-3 hover:text-er"
                   >
                     <Trash2 size={13} />
                   </button>
                 </li>
               ))}
               {categories.length === 0 ? (
-                <li className="px-1 text-[11px] text-ink-4">尚無分類</li>
+                <li className="px-1 text-[11px] text-ink-3">尚無分類</li>
               ) : null}
             </ul>
             <DefaultProfile />
@@ -132,7 +132,7 @@ export function ResourceSettings(): ReactNode {
                 </li>
               ))}
               {forms.length === 0 ? (
-                <li className="px-1 text-[11px] text-ink-4">尚無表單</li>
+                <li className="px-1 text-[11px] text-ink-3">尚無表單</li>
               ) : null}
             </ul>
           </div>

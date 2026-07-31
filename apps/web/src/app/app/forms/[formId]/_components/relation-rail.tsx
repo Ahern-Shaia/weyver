@@ -44,7 +44,7 @@ export function RelationRail({
 
       {outgoing.length > 0 ? (
         <div className="mb-3">
-          <div className="mb-1 text-[10px] text-ink-4">本筆引用</div>
+          <div className="mb-1 text-[10px] text-ink-3">本筆引用</div>
           <ul className="flex flex-col gap-1">
             {outgoing.map((o) => (
               <li key={o.field.id}>
@@ -52,7 +52,7 @@ export function RelationRail({
                   href={`/app/forms/${String(o.targetFormId)}?mode=record&rid=${o.targetId}`}
                   className="flex items-center gap-1.5 text-[12px] text-primary hover:underline"
                 >
-                  <span className="text-ink-4">{o.field.name}</span>
+                  <span className="text-ink-3">{o.field.name}</span>
                   <ArrowUpRight size={11} strokeWidth={1.9} />
                   <span className="font-mono">#{o.targetId}</span>
                 </Link>
@@ -63,11 +63,11 @@ export function RelationRail({
       ) : null}
 
       {isLoading ? (
-        <div className="text-[11.5px] text-ink-4">載入關聯…</div>
+        <div className="text-[11.5px] text-ink-3">載入關聯…</div>
       ) : (
         groups.map((g) => (
           <div key={`${g.formId}-${g.viaFieldName}`} className="mb-3">
-            <div className="mb-1 text-[10px] text-ink-4">
+            <div className="mb-1 text-[10px] text-ink-3">
               被 <span className="text-ink-3">{g.formName}</span> 引用(經 {g.viaFieldName})
             </div>
             <ul className="flex flex-col gap-1">
@@ -84,7 +84,7 @@ export function RelationRail({
               ))}
             </ul>
             {g.truncated ? (
-              <div className="mt-1 text-[10.5px] text-ink-4">僅顯示前 20 筆</div>
+              <div className="mt-1 text-[10.5px] text-ink-3">僅顯示前 20 筆</div>
             ) : null}
           </div>
         ))

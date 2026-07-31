@@ -263,7 +263,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
               title={collapsed ? "展開導覽" : "收合導覽"}
               aria-label={collapsed ? "展開導覽" : "收合導覽"}
               aria-expanded={!collapsed}
-              className={`mt-0.5 flex items-center rounded-sm text-ink-3 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
+              className={`mt-0.5 flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
                 collapsed ? "size-9 justify-center" : "h-[28px] gap-2.5 px-2 text-[12px]"
               }`}
             >

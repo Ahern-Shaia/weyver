@@ -66,7 +66,7 @@ function Card({
           `#${String(record.id)}`}
       </button>
       {fields.slice(1, 3).map((f) => (
-        <div key={f.id} className="truncate text-[10.5px] text-ink-4">
+        <div key={f.id} className="truncate text-[10.5px] text-ink-3">
           {formatFieldValue(f, record.values[f.name], memberNames)}
         </div>
       ))}

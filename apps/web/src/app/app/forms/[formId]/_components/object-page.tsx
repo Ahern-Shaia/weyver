@@ -172,7 +172,7 @@ export function ObjectPage({
     <div className="flex min-w-0 flex-1 flex-col bg-surface">
       {/* 黏頂摘要頭 */}
       <div className="shrink-0 border-b border-line bg-card px-6 pt-3">
-        <div className="text-[11px] text-ink-4">
+        <div className="text-[11px] text-ink-3">
           <Link href="/app" className="hover:text-primary">
             工作區
           </Link>{" "}
@@ -180,7 +180,7 @@ export function ObjectPage({
         </div>
         <div className="mt-1.5 flex items-center gap-3">
           <h3 className="text-[16px] font-semibold text-ink">{titleOf(record, fields)}</h3>
-          <span className="font-mono text-[11px] text-ink-4">
+          <span className="font-mono text-[11px] text-ink-3">
             #{record.id} · v{record.version}
           </span>
           {statusField ? (
@@ -190,7 +190,7 @@ export function ObjectPage({
           ) : null}
           {moneyField ? (
             <span className="ml-auto flex items-baseline gap-1.5">
-              <span className="text-[10px] text-ink-4">{moneyField.name}</span>
+              <span className="text-[10px] text-ink-3">{moneyField.name}</span>
               <span className="font-mono text-[17px] font-semibold tabular-nums text-ink">
                 {fmtVal(record.values[moneyField.name])}
               </span>
@@ -279,7 +279,7 @@ export function ObjectPage({
           <section className="mb-4 flex flex-wrap gap-x-8 gap-y-2 border border-line bg-card px-4 py-3">
             {summaryFields.map((f) => (
               <div key={f.id} className="flex flex-col gap-0.5">
-                <span className="text-[10px] text-ink-4">{f.name}</span>
+                <span className="text-[10px] text-ink-3">{f.name}</span>
                 <span className="font-mono text-[14px] font-semibold tabular-nums text-ink">
                   {fmtVal(record.values[f.name])}
                 </span>
@@ -299,7 +299,7 @@ export function ObjectPage({
               >
                 <span
                   className={`flex w-24 shrink-0 items-center gap-1 text-[11px] ${
-                    chipToneTextClass(formatTones.get(f.name)) || "text-ink-4"
+                    chipToneTextClass(formatTones.get(f.name)) || "text-ink-3"
                   }`}
                 >
                   {f.name}
@@ -324,7 +324,7 @@ export function ObjectPage({
                         </StatusChip>
                       ))}
                       {chipValues(record.values[f.name]).length === 0 ? (
-                        <span className="text-ink-4">—</span>
+                        <span className="text-ink-3">—</span>
                       ) : null}
                     </span>
                   ) : !editing && (f.type === "image" || f.type === "signature") ? (
@@ -357,7 +357,7 @@ export function ObjectPage({
           <section id="sec-明細" className="scroll-mt-2 border-t border-line pt-4 pb-5">
             <h4 className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold text-ink-3">
               明細
-              <span className="font-normal text-[10px] text-ink-4">
+              <span className="font-normal text-[10px] text-ink-3">
                 {childForm.name} · 合計 rollup
               </span>
             </h4>
@@ -396,7 +396,7 @@ function ImageGallery({ value }: { readonly value: unknown }): ReactNode {
           typeof (v as { name?: unknown }).name === "string",
       )
     : []
-  if (items.length === 0) return <span className="text-ink-4">—</span>
+  if (items.length === 0) return <span className="text-ink-3">—</span>
   return (
     <span className="flex flex-wrap gap-2">
       {items.map((item) => (
@@ -417,7 +417,7 @@ function AttachmentLinks({ value }: { readonly value: unknown }): ReactNode {
           typeof (v as { name?: unknown }).name === "string",
       )
     : []
-  if (items.length === 0) return <span className="text-ink-4">—</span>
+  if (items.length === 0) return <span className="text-ink-3">—</span>
   return (
     <span className="flex flex-col gap-0.5">
       {items.map((item) => (
@@ -479,12 +479,12 @@ function Event({
   return (
     <div className="relative pb-3">
       <span
-        className={`absolute top-1 -left-[15px] size-[7px] rounded-full border-[1.5px] bg-card ${now ? "border-primary bg-primary" : "border-ink-4"}`}
+        className={`absolute top-1 -left-[15px] size-[7px] rounded-full border-[1.5px] bg-card ${now ? "border-primary bg-primary" : "border-ink-3"}`}
       />
       <div className="text-[12px] text-ink">
         <b className="font-medium">{who}</b> {label}
       </div>
-      <div className="mt-0.5 font-mono text-[10.5px] text-ink-4">{at}</div>
+      <div className="mt-0.5 font-mono text-[10.5px] text-ink-3">{at}</div>
     </div>
   )
 }

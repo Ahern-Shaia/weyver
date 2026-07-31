@@ -62,7 +62,7 @@ export function FieldMatrix({
             {(form?.fields ?? []).map((fld) => (
               <tr key={fld.id} className="border-t border-line-2 hover:bg-surface">
                 <td className="px-3 py-2 font-medium text-ink">{fld.name}</td>
-                <td className="px-3 py-2 font-mono text-[11px] text-ink-4">{fld.type}</td>
+                <td className="px-3 py-2 font-mono text-[11px] text-ink-3">{fld.type}</td>
                 <td className="px-3 py-2 text-right">
                   <div className="inline-flex">
                     <Segmented
@@ -82,7 +82,7 @@ export function FieldMatrix({
             ))}
             {form && form.fields.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-3 py-4 text-[12px] text-ink-4">
+                <td colSpan={3} className="px-3 py-4 text-[12px] text-ink-3">
                   此表單尚無欄位。
                 </td>
               </tr>

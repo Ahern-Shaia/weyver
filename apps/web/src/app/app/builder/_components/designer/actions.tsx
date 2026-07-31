@@ -65,7 +65,7 @@ export function ActionsDesigner({
         >
           標籤
         </button>
-        <button type="button" onClick={onClose} className="ml-auto text-ink-4 hover:text-ink">
+        <button type="button" onClick={onClose} className="ml-auto text-ink-3 hover:text-ink">
           <X size={14} />
         </button>
       </div>
@@ -160,11 +160,11 @@ function ButtonsPanel({
               className="flex items-center gap-2 rounded-xs border border-line px-2 py-1"
             >
               <span className="truncate text-ink">{b.label}</span>
-              <span className="font-mono text-[9.5px] text-ink-4">{b.actionType}</span>
+              <span className="font-mono text-[9.5px] text-ink-3">{b.actionType}</span>
               <button
                 type="button"
                 onClick={() => deleteButton.mutate(b.id)}
-                className="ml-auto text-ink-4 hover:text-er"
+                className="ml-auto text-ink-3 hover:text-er"
                 aria-label={`刪除 ${b.label}`}
               >
                 <Trash2 size={12} />
@@ -328,7 +328,7 @@ function ApprovalPanel({
             <div key={d.id} className="rounded-xs border border-line px-2 py-1">
               <div className="flex items-center gap-2">
                 <span className="truncate text-ink">{d.name}</span>
-                <span className="ml-auto font-mono text-[9.5px] text-ink-4">
+                <span className="ml-auto font-mono text-[9.5px] text-ink-3">
                   {d.steps.length} 關{d.active ? "" : " · 停用"}
                 </span>
               </div>
@@ -347,7 +347,7 @@ function ApprovalPanel({
         />
         {steps.map((s, i) => (
           <div key={s.stepNo} className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-[10px] text-ink-4">第{s.stepNo}關</span>
+            <span className="font-mono text-[10px] text-ink-3">第{s.stepNo}關</span>
             <Select
               className="h-7 w-24"
               value={String(s.approverRoleId)}
@@ -406,7 +406,7 @@ function ApprovalPanel({
               onClick={() =>
                 setSteps(steps.filter((_, j) => j !== i).map((x, j) => ({ ...x, stepNo: j + 1 })))
               }
-              className="text-ink-4 hover:text-er"
+              className="text-ink-3 hover:text-er"
               aria-label={`刪除第${s.stepNo}關`}
             >
               <X size={13} />

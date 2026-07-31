@@ -91,7 +91,7 @@ export function LabelPrintClient(): ReactNode {
         className="flex items-center gap-3 border-b border-line bg-card px-4 py-2 text-[12px]"
       >
         <span className="font-semibold text-ink-2">{label.name}</span>
-        <span className="font-mono text-[11px] text-ink-4">
+        <span className="font-mono text-[11px] text-ink-3">
           {units.length} 張{config.tile ? " · 平舖" : " · 一頁一張"}
         </span>
         {truncated ? (
@@ -111,7 +111,7 @@ export function LabelPrintClient(): ReactNode {
       </div>
 
       {units.length === 0 ? (
-        <div className="p-6 text-[12px] text-ink-4">無可列印的記錄。</div>
+        <div className="p-6 text-[12px] text-ink-3">無可列印的記錄。</div>
       ) : (
         <div
           data-testid="label-sheet"
@@ -166,7 +166,7 @@ function LabelLine({
   if (asQr) {
     return (
       <span className="flex items-center gap-1">
-        {showName ? <span className="text-[8px] text-ink-4">{field.name}</span> : null}
+        {showName ? <span className="text-[8px] text-ink-3">{field.name}</span> : null}
         <BarcodeView value={value} symbology={fieldSymbology(field) ?? "qr"} size={48} />
       </span>
     )
@@ -181,7 +181,7 @@ function LabelLine({
         fontWeight: style.bold === true ? 600 : 400,
       }}
     >
-      {showName ? <span className="mr-1 text-ink-4">{field.name}</span> : null}
+      {showName ? <span className="mr-1 text-ink-3">{field.name}</span> : null}
       {display === "—" ? "" : display}
     </span>
   )

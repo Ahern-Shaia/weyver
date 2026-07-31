@@ -2,6 +2,17 @@
 
 > 🚧 **狀態:APPROVED v1.0(2026-07-31)— OQ-FUX-1..14 全採建議,M1 已完成**
 > **裁定摘要**|1=A rail 設定六項收進 S22 設定中心 · 2=A 預設展開可收合 · 3=A docs/14 全採六項校正 · 4=B 邊做邊拆(先 folder 化) · 5=B 鍵盤只做子表+列表 · 6=A Carbon productive token · 7=A 首頁補最近使用+待我處理 · 8=B 維持 compact-only 但修誤套 · 9=A keepPreviousData+延遲細進度條 · 10=A reduced-motion 維持現況 · 11=A 對比三條全修 · 12=A 字階收斂整數六階 · 13=A 視覺規範進 CI · 14=A VisAWI-S 前後測+首次接觸鏈優先。
+> **M9 已完成(2026-07-31)**|對比度修正 + **CI 檢查上線**(`src/components/contrast.test.ts`,直接讀 `tokens.css` 實際值,不複製常數)。
+>
+> 🔴 **CI 檢查上線即抓到第四條、且比原先三條更廣**|`ink-3` 原 `#697585` **只有純白底過 4.5:1**(4.68),於 `surface` 4.37 / `head` 4.21 / `label` 4.32 **全部不足** —— **「只量白底」是先前稽核的盲點**。加深為 `#606c7b`(四底皆 ≥4.8)。反向驗證確認三條會轉紅。
+>
+> **`ink-4` 的處置**|實測 **AA 之下白底放不下第四階可讀灰**(最淺約 `#767676` = 4.54:1,而 `ink-3` 已 4.8+)→ **223 處資訊性用途併入 `ink-3`**(時間戳 / 識別碼 / 空狀態訊息皆為使用者需讀的內容,非裝飾);**層級改靠字重 / 字級 / 位置,不再靠明度**。僅 **5 處**真停用態保留 `--color-ink-disabled`。
+>
+> **另兩條**|表頭文字 `ink-3`→`ink-2`(4.21→8.49);新增 `--color-line-input: #8d8d8d`(3.32:1)**僅供輸入框** —— 1.4.11 判準是「邊界是否為識別所必需」,空白無 placeholder 的輸入框符合;**表格/卡片框線維持 1.25:1 不動**,且以測試釘住「不得順手加深」。
+>
+> **CI 涵蓋**|8 組文字配對 · 12 組狀態/類別章 · 3 條非文字(含刻意低對比的表格框線)· `ink-disabled` 使用邊界。字級白名單檢查留 M10(屆時字階才收斂完)。
+> **驗證**|web **124 單元**(+26)· lint 0 · build 過 · **產出 CSS 實測**三個新 token 皆正確(記取 M8 教訓)· 全 e2e **70 綠 / 4 失敗**(等同既有基線)。
+>
 > **M8 已完成(2026-07-31)**|動效改引 **Carbon productive token**(`--transition-duration-fast-01` 70ms hover/focus · `fast-02` 110ms overlay 離場 · `moderate-01` 150ms 進場/展開 · easing `productive-entrance/exit`)。硬編 duration **零殘留**;原 `duration-75` 是 **Tailwind 預設值非 Carbon 值**,一併對齊為 70ms。
 >
 > 🔴 **build 抓到 M5 遺留的 Hooks 規則違反**|`useGridKeyboard` 被放在 early return **之後**,載入狀態切換時 hook 呼叫順序會變而崩潰。**type-check 抓不到,只有 lint 會** —— 而 M5 當時**我沒跑 `pnpm lint`**,這是我自己的流程漏。已移至所有 early return 之前(列數/欄數於資料未到時為 0,不影響正確性)。

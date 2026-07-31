@@ -202,16 +202,16 @@ export function RecordFormPanel({ formId }: { formId: number }) {
             <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
               <span className="size-1.5 rounded-full bg-primary" />
               {childForm?.name}
-              <span className="font-normal text-ink-4">明細</span>
+              <span className="font-normal text-ink-3">明細</span>
               <Button variant="subtle" size="sm" onClick={addLine} className="ml-auto">
                 <Plus />
                 加一行
               </Button>
             </header>
             {childFields.length === 0 ? (
-              <div className="p-4 text-center text-[11.5px] text-ink-4">子表載入中…</div>
+              <div className="p-4 text-center text-[11.5px] text-ink-3">子表載入中…</div>
             ) : lines.length === 0 ? (
-              <div className="p-4 text-center text-[11.5px] text-ink-4">
+              <div className="p-4 text-center text-[11.5px] text-ink-3">
                 點「＋ 加一行」新增明細
               </div>
             ) : (
@@ -226,7 +226,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                 >
                   <thead>
                     <tr className="bg-head">
-                      <th className="w-8 border-b border-cell px-2 py-1.5 text-left font-semibold text-ink-4">
+                      <th className="w-8 border-b border-cell px-2 py-1.5 text-left font-semibold text-ink-3">
                         #
                       </th>
                       {childFields.map((field) => (
@@ -247,7 +247,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                         key={line.key}
                         className="group transition-colors duration-fast-01 ease-productive-exit hover:bg-head/60"
                       >
-                        <td className="border-b border-line-2 px-2 py-1 font-mono text-ink-4">
+                        <td className="border-b border-line-2 px-2 py-1 font-mono text-ink-3">
                           {index + 1}
                         </td>
                         {childFields.map((field, colIndex) => (

@@ -341,7 +341,7 @@ export function DesignCanvas({
               disabled={!dirty}
               title="復原 (Ctrl+Z)"
               aria-label="復原"
-              className="rounded-xs border border-line p-1 text-ink-4 hover:text-primary disabled:opacity-30"
+              className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
             >
               <Undo2 size={13} />
             </button>
@@ -351,7 +351,7 @@ export function DesignCanvas({
               disabled={!canRedo}
               title="取消復原 (Ctrl+Shift+Z)"
               aria-label="取消復原"
-              className="rounded-xs border border-line p-1 text-ink-4 hover:text-primary disabled:opacity-30"
+              className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
             >
               <Redo2 size={13} />
             </button>
@@ -393,7 +393,7 @@ export function DesignCanvas({
                             sections: effective.sections.filter((x) => x.id !== s.id),
                           })
                         }
-                        className="text-ink-4 hover:text-er"
+                        className="text-ink-3 hover:text-er"
                         aria-label={`刪除分段 ${s.name}`}
                       >
                         <Trash2 size={10} />
@@ -553,7 +553,7 @@ function FieldCard({
         type="button"
         {...attributes}
         {...listeners}
-        className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 bg-head text-ink-4 hover:text-primary active:cursor-grabbing"
+        className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 bg-head text-ink-2 hover:text-primary active:cursor-grabbing"
         aria-label={`拖曳 ${field.name}`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -563,9 +563,9 @@ function FieldCard({
         <span className="flex items-center gap-1 truncate text-[11.5px] font-medium text-ink">
           {field.required ? <span className="text-er">*</span> : null}
           <span className="truncate">{field.name}</span>
-          {layout.hidden ? <span className="text-[9px] text-ink-4">（隱藏）</span> : null}
+          {layout.hidden ? <span className="text-[9px] text-ink-3">（隱藏）</span> : null}
         </span>
-        <span className="truncate font-mono text-[9.5px] text-ink-4">
+        <span className="truncate font-mono text-[9.5px] text-ink-3">
           {meta.label}
           {layout.placeholder ? ` · ${layout.placeholder}` : ""}
           {layout.defaultValue ? " · 預設" : ""}
@@ -577,7 +577,7 @@ function FieldCard({
           e.stopPropagation()
           onDrop()
         }}
-        className="flex w-6 shrink-0 items-center justify-center text-ink-4 opacity-0 hover:text-er group-hover:opacity-100"
+        className="flex w-6 shrink-0 items-center justify-center text-ink-3 opacity-0 hover:text-er group-hover:opacity-100"
         aria-label={`下架 ${field.name}`}
         title="下架欄位（即時,不可復原）"
       >
@@ -624,7 +624,7 @@ function StaticCard({
         type="button"
         {...attributes}
         {...listeners}
-        className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 text-ink-4 hover:text-primary"
+        className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 text-ink-3 hover:text-primary"
         aria-label={`拖曳元素 ${element.id}`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -633,17 +633,17 @@ function StaticCard({
       <span className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-[11px] text-ink-2">
         {element.kind === "text" ? (
           <>
-            <Type size={12} className="shrink-0 text-ink-4" />
+            <Type size={12} className="shrink-0 text-ink-3" />
             <span className="truncate">{element.text || "文字"}</span>
           </>
         ) : (
           <>
-            <ImageIcon size={12} className="shrink-0 text-ink-4" />
-            <span className="truncate text-ink-4">{element.imageUrl || "圖片(未設)"}</span>
+            <ImageIcon size={12} className="shrink-0 text-ink-3" />
+            <span className="truncate text-ink-3">{element.imageUrl || "圖片(未設)"}</span>
           </>
         )}
         {element.designOnly ? (
-          <span className="ml-auto text-[9px] text-ink-4">設計限定</span>
+          <span className="ml-auto text-[9px] text-ink-3">設計限定</span>
         ) : null}
       </span>
     </div>

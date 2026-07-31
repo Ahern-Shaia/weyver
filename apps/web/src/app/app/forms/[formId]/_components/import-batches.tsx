@@ -88,16 +88,16 @@ export function ImportBatches({
       <ul className="divide-y divide-line border border-line">
         {batches.map((b) => (
           <li key={b.id} className="flex items-center gap-2 px-2 py-1.5 text-[11px]">
-            <span className="w-12 shrink-0 font-mono text-ink-4">#{b.id}</span>
+            <span className="w-12 shrink-0 font-mono text-ink-3">#{b.id}</span>
             <span className="w-12 shrink-0 text-ink-3">
               {b.kind === "revert" ? "撤銷" : "匯入"}
             </span>
-            <span className="w-36 shrink-0 text-ink-4">
+            <span className="w-36 shrink-0 text-ink-3">
               {b.committedAt === null ? b.status : b.committedAt.replace("T", " ").slice(0, 16)}
             </span>
             <span className="flex-1 truncate text-ink">{statLine(b.stats)}</span>
             {b.kind === "revert" ? null : b.revertedByBatchId !== null ? (
-              <span className="shrink-0 text-[10.5px] text-ink-4">
+              <span className="shrink-0 text-[10.5px] text-ink-3">
                 已由 #{b.revertedByBatchId} 撤銷
               </span>
             ) : (

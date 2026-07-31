@@ -32,12 +32,12 @@ function FormCard({ form }: { readonly form: FormSummary }): ReactNode {
         className="cursor-not-allowed rounded-md border border-dashed border-line bg-surface px-3 py-2.5 opacity-70"
       >
         <div className="flex items-center gap-2">
-          <Lock size={14} strokeWidth={1.9} className="shrink-0 text-ink-4" />
+          <Lock size={14} strokeWidth={1.9} className="shrink-0 text-ink-3" />
           <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-3">
             {form.name}
           </span>
         </div>
-        <div className="mt-0.5 pl-6 font-mono text-[10.5px] text-ink-4">無存取權</div>
+        <div className="mt-0.5 pl-6 font-mono text-[10.5px] text-ink-3">無存取權</div>
       </div>
     )
   }
@@ -50,13 +50,13 @@ function FormCard({ form }: { readonly form: FormSummary }): ReactNode {
         <Table2
           size={14}
           strokeWidth={1.9}
-          className="shrink-0 text-ink-4 group-hover:text-primary"
+          className="shrink-0 text-ink-3 group-hover:text-primary"
         />
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">
           {form.name}
         </span>
       </div>
-      <div className="mt-0.5 pl-6 font-mono text-[10.5px] text-ink-4">
+      <div className="mt-0.5 pl-6 font-mono text-[10.5px] text-ink-3">
         {fmtUpdated(form.updatedAt)}
       </div>
     </Link>
@@ -75,7 +75,7 @@ function Section({
     <section className="mt-6">
       <div className="mb-2 flex items-baseline gap-2">
         <h3 className="text-[12.5px] font-semibold text-ink-2">{title}</h3>
-        <span className="font-mono text-[11px] text-ink-4">{forms.length}</span>
+        <span className="font-mono text-[11px] text-ink-3">{forms.length}</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {forms.map((f) => (
@@ -135,7 +135,7 @@ export default function WorkspaceHome(): ReactNode {
             無法載入表單。請確認引擎服務已啟動。
           </div>
         ) : roots.length === 0 ? (
-          <p className="mt-6 text-[12px] text-ink-4">
+          <p className="mt-6 text-[12px] text-ink-3">
             還沒有表單。點「新增表單」用設計器建立,或從 Excel 匯入。
           </p>
         ) : (

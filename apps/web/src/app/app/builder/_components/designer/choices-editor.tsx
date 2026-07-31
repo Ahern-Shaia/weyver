@@ -77,7 +77,7 @@ export function ChoicesEditor({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10.5px] text-ink-4">選項與顏色</span>
+      <span className="text-[10.5px] text-ink-3">選項與顏色</span>
       {rows.map((row, index) => (
         <div key={`${groupId}-${index}`} className="flex items-center gap-1.5">
           <Input
@@ -105,7 +105,7 @@ export function ChoicesEditor({
             type="button"
             onClick={() => onChange(rows.filter((_, i) => i !== index))}
             aria-label={`移除選項 ${index + 1}`}
-            className="text-ink-4 hover:text-er"
+            className="text-ink-3 hover:text-er"
           >
             <X size={13} />
           </button>

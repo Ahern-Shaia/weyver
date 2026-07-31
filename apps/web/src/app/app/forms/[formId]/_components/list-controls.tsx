@@ -253,7 +253,7 @@ export function ListControls({
                     onClick={() =>
                       onConfigChange({ ...config, groupBy: groups.filter((_, j) => j !== i) })
                     }
-                    className="text-ink-4 hover:text-er"
+                    className="text-ink-3 hover:text-er"
                     aria-label="移除分組"
                   >
                     <X size={14} />
@@ -272,10 +272,10 @@ export function ListControls({
                 加入分組欄位
               </button>
             ) : (
-              <span className="text-[11px] text-ink-4">最多 3 層</span>
+              <span className="text-[11px] text-ink-3">最多 3 層</span>
             )}
             {groups.length > 0 ? (
-              <p className="mt-1 text-[11px] text-ink-4">
+              <p className="mt-1 text-[11px] text-ink-3">
                 每組的筆數與小計由伺服器計算,只會統計你有權檢視的記錄。
               </p>
             ) : null}
@@ -324,7 +324,7 @@ export function ListControls({
                   onClick={() =>
                     onConfigChange({ ...config, sorts: sorts.filter((_, j) => j !== i) })
                   }
-                  className="text-ink-4 hover:text-er"
+                  className="text-ink-3 hover:text-er"
                 >
                   <X size={14} />
                 </button>
@@ -416,7 +416,7 @@ function ConditionRow({
       ) : (
         <span className="w-40" />
       )}
-      <button type="button" onClick={onRemove} className="text-ink-4 hover:text-er">
+      <button type="button" onClick={onRemove} className="text-ink-3 hover:text-er">
         <X size={14} />
       </button>
     </div>

@@ -44,19 +44,19 @@ export function PrintSettingsPanel({
     <div className="flex w-64 shrink-0 flex-col border-l border-line bg-card">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <span className="text-[12px] font-semibold text-ink">列印設定</span>
-        <button type="button" onClick={onClose} className="ml-auto text-ink-4 hover:text-ink">
+        <button type="button" onClick={onClose} className="ml-auto text-ink-3 hover:text-ink">
           <X size={14} />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 text-[11.5px]">
-        <p className="mb-2 text-[10.5px] text-ink-4">
+        <p className="mb-2 text-[10.5px] text-ink-3">
           紙張大小 / 邊界 / 直橫向由瀏覽器列印對話框設定。
         </p>
         {rows.length === 0 ? (
-          <span className="text-ink-4">尚無欄位列。</span>
+          <span className="text-ink-3">尚無欄位列。</span>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-1 text-[10px] text-ink-4">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-1 text-[10px] text-ink-3">
               <span>列</span>
               <span>頁首</span>
               <span>頁尾</span>

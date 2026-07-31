@@ -119,7 +119,7 @@ export function ConvertTypePanel({
 
   return (
     <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
-      <span className="text-[10.5px] text-ink-4">變更欄位型別</span>
+      <span className="text-[10.5px] text-ink-3">變更欄位型別</span>
 
       {error !== null ? (
         <div className="border border-er/40 bg-er/5 px-2 py-1 text-[14px] text-er">{error}</div>
@@ -195,12 +195,12 @@ export function ConvertTypePanel({
               <span>
                 值會被改變 <b className={preview.willBeAltered > 0 ? "text-warn" : ""}>{preview.willBeAltered}</b>
               </span>
-              <span className="text-ink-4">共 {preview.totalNonNull} 筆有值</span>
+              <span className="text-ink-3">共 {preview.totalNonNull} 筆有值</span>
             </div>
           )}
 
           {preview.samples.length > 0 ? (
-            <div className="text-ink-4">
+            <div className="text-ink-3">
               會不見的值:{preview.samples.slice(0, 5).join("、")}
               {preview.samples.length > 5 ? "…" : ""}
             </div>

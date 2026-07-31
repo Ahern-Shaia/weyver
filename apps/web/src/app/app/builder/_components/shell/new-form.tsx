@@ -54,7 +54,7 @@ export function NewFormPanel({
   return (
     <div className="flex h-full items-center justify-center bg-surface p-8">
       <div className="w-full max-w-[380px]">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-line bg-card text-ink-4">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-line bg-card text-ink-3">
           <Table2 size={22} strokeWidth={1.5} />
         </div>
         <h2 className="text-center text-[15px] font-semibold text-ink">

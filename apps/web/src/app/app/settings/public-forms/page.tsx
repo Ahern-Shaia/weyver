@@ -38,7 +38,7 @@ function FieldPicker({
   if (formId === null) return null
   const fields = form?.fields ?? []
   if (fields.length === 0) {
-    return <p className="text-[11.5px] text-ink-4">這張表單還沒有欄位。</p>
+    return <p className="text-[11.5px] text-ink-3">這張表單還沒有欄位。</p>
   }
   return (
     <div className="flex flex-col gap-1 rounded-sm border border-line bg-surface p-2">
@@ -56,7 +56,7 @@ function FieldPicker({
             onChange={() => onToggle(f.id)}
           />
           {f.name}
-          <span className="text-[10.5px] text-ink-4">{f.type}</span>
+          <span className="text-[10.5px] text-ink-3">{f.type}</span>
         </label>
       ))}
     </div>
@@ -205,7 +205,7 @@ export default function PublicFormsPage(): ReactNode {
             </li>
           ))}
           {(shares?.shares ?? []).length === 0 ? (
-            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-4">
+            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-3">
               尚未開放任何表單。
             </li>
           ) : null}
@@ -222,7 +222,7 @@ export default function PublicFormsPage(): ReactNode {
             </span>
           )}
         </h3>
-        <p className="mt-1 text-[11px] text-ink-4">
+        <p className="mt-1 text-[11px] text-ink-3">
           外部提交在這裡等你確認。核准後才會建立正式記錄、取得編號並進入後續流程。
         </p>
         <ul className="mt-2 flex flex-col gap-1.5">
@@ -238,7 +238,7 @@ export default function PublicFormsPage(): ReactNode {
                       </span>
                     ))}
                   </div>
-                  <span className="text-[10.5px] text-ink-4">
+                  <span className="text-[10.5px] text-ink-3">
                     {new Date(s.createdAt).toLocaleString("zh-TW")}
                   </span>
                 </div>
@@ -262,7 +262,7 @@ export default function PublicFormsPage(): ReactNode {
             </li>
           ))}
           {(inbox?.submissions ?? []).length === 0 ? (
-            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-4">
+            <li className="rounded-md border border-line bg-card px-4 py-6 text-center text-[12px] text-ink-3">
               沒有待審的提交。
             </li>
           ) : null}

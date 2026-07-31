@@ -14,7 +14,7 @@ export function Select({ className, children, ...props }: SelectProps): ReactEle
   return (
     <div
       className={cn(
-        "relative inline-flex min-h-[27px] items-center rounded-xs border border-line bg-card",
+        "relative inline-flex min-h-[27px] items-center rounded-xs border border-line-input bg-card",
         "focus-within:border-primary has-[select:disabled]:opacity-60",
         className,
       )}
@@ -27,7 +27,7 @@ export function Select({ className, children, ...props }: SelectProps): ReactEle
       </select>
       <ChevronDown
         aria-hidden
-        className="pointer-events-none absolute right-1.5 size-3 text-ink-4"
+        className="pointer-events-none absolute right-1.5 size-3 text-ink-3"
         strokeWidth={2}
       />
     </div>

@@ -87,7 +87,7 @@ export default function SecurityPage(): React.ReactNode {
             className={
               enabled
                 ? "rounded-xs border border-ok-line bg-ok-t px-1.5 py-0.5 text-ok"
-                : "rounded-xs border border-line bg-head px-1.5 py-0.5 text-ink-3"
+                : "rounded-xs border border-line bg-head px-1.5 py-0.5 text-ink-2"
             }
           >
             {enabled ? "已啟用" : "未啟用"}

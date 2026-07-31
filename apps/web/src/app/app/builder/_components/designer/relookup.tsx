@@ -81,16 +81,16 @@ export function RelookupPanel({
             <ul className="divide-y divide-line border border-line">
               {preview.samples.map((s) => (
                 <li key={s.recordId} className="flex items-center gap-2 px-2 py-1 text-[10.5px]">
-                  <span className="w-10 shrink-0 font-mono text-ink-4">#{s.recordId}</span>
+                  <span className="w-10 shrink-0 font-mono text-ink-3">#{s.recordId}</span>
                   <span className="truncate text-ink-3 line-through">{s.before ?? "—"}</span>
-                  <span className="shrink-0 text-ink-4">→</span>
+                  <span className="shrink-0 text-ink-3">→</span>
                   <span className="truncate text-ink">{s.after ?? "—"}</span>
                 </li>
               ))}
             </ul>
           )}
           {preview.changed > preview.samples.length ? (
-            <div className="text-[10px] text-ink-4">僅列出前 {preview.samples.length} 筆</div>
+            <div className="text-[10px] text-ink-3">僅列出前 {preview.samples.length} 筆</div>
           ) : null}
         </div>
       )}

@@ -94,7 +94,7 @@ export function ConditionalFormatPanel({
               className={
                 face === f
                   ? "bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-white"
-                  : "px-2.5 py-0.5 text-[11px] text-ink-3 hover:bg-head"
+                  : "px-2.5 py-0.5 text-[11px] text-ink-2 hover:bg-head"
               }
             >
               {f === "record" ? "記錄頁" : "列表頁"}
@@ -105,7 +105,7 @@ export function ConditionalFormatPanel({
           type="button"
           onClick={onClose}
           aria-label="關閉"
-          className="ml-auto text-ink-4 hover:text-ink"
+          className="ml-auto text-ink-3 hover:text-ink"
         >
           <X size={14} />
         </button>
@@ -127,7 +127,7 @@ export function ConditionalFormatPanel({
               <StatusChip tone={r.tone} className="ml-auto shrink-0">
                 {TONE_LABEL[r.tone] ?? r.tone}
               </StatusChip>
-              <span className="shrink-0 text-[10px] text-ink-4">
+              <span className="shrink-0 text-[10px] text-ink-3">
                 → {r.targets.length > 0 ? r.targets.join("、") : "條件欄"}
               </span>
             </button>
@@ -170,7 +170,7 @@ export function ConditionalFormatPanel({
         {rule !== undefined ? (
           <div className="mt-3 border-t border-line pt-3">
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="text-[10.5px] text-ink-4">條件</span>
+              <span className="text-[10.5px] text-ink-3">條件</span>
               <div className="inline-flex overflow-hidden rounded-xs border border-line">
                 {(["and", "or"] as const).map((c) => (
                   <button
@@ -180,7 +180,7 @@ export function ConditionalFormatPanel({
                     className={
                       rule.combinator === c
                         ? "bg-primary px-2 py-0.5 text-[10.5px] font-semibold text-white"
-                        : "px-2 py-0.5 text-[10.5px] text-ink-3 hover:bg-head"
+                        : "px-2 py-0.5 text-[10.5px] text-ink-2 hover:bg-head"
                     }
                   >
                     {c === "and" ? "全部符合" : "任一符合"}
@@ -190,7 +190,7 @@ export function ConditionalFormatPanel({
               <button
                 type="button"
                 onClick={() => setRules(rules.filter((_, i) => i !== selected))}
-                className="ml-auto text-[11px] text-ink-4 hover:text-er"
+                className="ml-auto text-[11px] text-ink-3 hover:text-er"
               >
                 刪除規則
               </button>
@@ -250,7 +250,7 @@ export function ConditionalFormatPanel({
                       }
                       disabled={rule.conditions.length <= 1}
                       aria-label={`移除條件 ${ci + 1}`}
-                      className="text-ink-4 hover:text-er disabled:opacity-30"
+                      className="text-ink-disabled hover:text-er disabled:opacity-30"
                     >
                       <X size={12} />
                     </button>
@@ -275,7 +275,7 @@ export function ConditionalFormatPanel({
             </button>
 
             <div className="mt-3">
-              <div className="mb-1 text-[10.5px] text-ink-4">
+              <div className="mb-1 text-[10.5px] text-ink-3">
                 套用到哪些欄位(不選 = 條件所涉之欄位)
               </div>
               <div className="flex flex-wrap gap-1">
@@ -302,7 +302,7 @@ export function ConditionalFormatPanel({
             </div>
 
             <div className="mt-3">
-              <div className="mb-1 text-[10.5px] text-ink-4">顏色(12 色受控色盤)</div>
+              <div className="mb-1 text-[10.5px] text-ink-3">顏色(12 色受控色盤)</div>
               <div className="flex flex-wrap gap-1">
                 {CHIP_TONES.map((tone) => (
                   <button
@@ -324,16 +324,16 @@ export function ConditionalFormatPanel({
 
         {/* 即時預覽 */}
         <div className="mt-3 border-t border-line pt-3">
-          <div className="mb-1.5 text-[10.5px] text-ink-4">即時預覽(本表第一筆)</div>
+          <div className="mb-1.5 text-[10.5px] text-ink-3">即時預覽(本表第一筆)</div>
           {sample === undefined ? (
-            <div className="text-[11px] text-ink-4">尚無記錄可預覽。</div>
+            <div className="text-[11px] text-ink-3">尚無記錄可預覽。</div>
           ) : (
             <div className="grid grid-cols-[84px_1fr] gap-x-2">
               {fields.map((f) => {
                 const tone = preview.get(f.name)
                 return (
                   <div key={f.id} className="contents">
-                    <div className="border-b border-line-2 py-1 text-[10.5px] text-ink-4">
+                    <div className="border-b border-line-2 py-1 text-[10.5px] text-ink-3">
                       {f.name}
                     </div>
                     <div className="border-b border-line-2 py-1 text-[11.5px]">

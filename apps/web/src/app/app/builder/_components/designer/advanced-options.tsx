@@ -116,7 +116,7 @@ export function AdvancedFieldOptions({
             className="w-32"
           />
           {linkFields.length === 0 ? (
-            <span className="text-[10.5px] text-ink-4">需先加關聯欄</span>
+            <span className="text-[10.5px] text-ink-3">需先加關聯欄</span>
           ) : null}
           {/* 🔴 #113:刻意不出現 live / snapshot 這種術語 —— 業界無一家用它當文案。
               問題直接問使用者真正在乎的事:之後主檔改了,這張單據上的內容要不要跟著變。 */}
@@ -132,7 +132,7 @@ export function AdvancedFieldOptions({
                 onChange={() => set({ lookupKeepsValue: true })}
                 className="accent-pri"
               />
-              保留填單當時的內容<span className="text-ink-4">(建議)</span>
+              保留填單當時的內容<span className="text-ink-3">(建議)</span>
             </label>
             <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
               <input
@@ -159,7 +159,7 @@ export function AdvancedFieldOptions({
           />
           <span>
             指派即授權
-            <span className="ml-1 text-ink-4">
+            <span className="ml-1 text-ink-3">
               —— 被指派到此欄的人可存取該筆記錄(用於「業務只看自己的客戶」)
             </span>
           </span>
@@ -198,7 +198,7 @@ export function AdvancedFieldOptions({
             <option value="MAX">最大</option>
           </Select>
           {subtables.length === 0 ? (
-            <span className="text-[10.5px] text-ink-4">需先加子表</span>
+            <span className="text-[10.5px] text-ink-3">需先加子表</span>
           ) : null}
         </div>
       ) : null}

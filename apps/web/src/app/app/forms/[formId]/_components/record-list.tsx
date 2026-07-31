@@ -69,9 +69,9 @@ export function RecordList({
         }}
       >
         {loading ? (
-          <div className="px-3 py-2 text-[11.5px] text-ink-4">載入記錄…</div>
+          <div className="px-3 py-2 text-[11.5px] text-ink-3">載入記錄…</div>
         ) : records.length === 0 ? (
-          <div className="px-3 py-3 text-[11.5px] text-ink-4">尚無記錄。</div>
+          <div className="px-3 py-3 text-[11.5px] text-ink-3">尚無記錄。</div>
         ) : (
           /* 🔴 roving tabindex 必須**恰有一個**停點:
              選取項若不在清單中(換表單 / 記錄被刪),退回第一項 ——
@@ -97,7 +97,7 @@ export function RecordList({
                   {titleOf(r, fields)}
                 </div>
                 <div className="mt-1 flex items-center gap-1.5">
-                  <span className="font-mono text-[10.5px] text-ink-4">#{r.id}</span>
+                  <span className="font-mono text-[10.5px] text-ink-3">#{r.id}</span>
                   {statusField ? (
                     <StatusChip
                       tone={optionTone(statusField, r.values[statusField.name])}

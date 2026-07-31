@@ -76,7 +76,7 @@ export function AccessPreview(): ReactNode {
       </div>
 
       {(actors ?? []).length === 0 ? (
-        <div className="mt-2 text-[11px] text-ink-4">
+        <div className="mt-2 text-[11px] text-ink-3">
           租戶內尚無任何具角色的使用者 —— 先到「成員」指派角色後才能試算。
         </div>
       ) : null}
@@ -85,7 +85,7 @@ export function AccessPreview(): ReactNode {
         isError ? (
           <div className="mt-3 text-[13px] text-er">試算失敗</div>
         ) : isPending ? (
-          <div className="mt-3 text-[11.5px] text-ink-4">試算中…</div>
+          <div className="mt-3 text-[11.5px] text-ink-3">試算中…</div>
         ) : data === undefined ? null : (
           <div className="mt-3 space-y-2">
             <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink">
@@ -113,7 +113,7 @@ export function AccessPreview(): ReactNode {
                   >
                     <span className="truncate text-ink">{s.title}</span>
                     {/* 「為什麼看得到」—— 沒有這個,管理員只能看到一個數字 */}
-                    <span className="shrink-0 text-[10.5px] text-ink-4">
+                    <span className="shrink-0 text-[10.5px] text-ink-3">
                       {REASON_LABEL[s.reason] ?? s.reason}
                     </span>
                   </li>
@@ -121,7 +121,7 @@ export function AccessPreview(): ReactNode {
               </ul>
             )}
             {data.visibleCount > data.samples.length ? (
-              <div className="text-[10.5px] text-ink-4">
+              <div className="text-[10.5px] text-ink-3">
                 僅列出前 {data.samples.length} 筆
               </div>
             ) : null}

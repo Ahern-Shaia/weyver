@@ -66,7 +66,7 @@ function FieldCells({
         {item.required ? <span className="font-semibold text-er">*</span> : null}
         {item.label}
         {item.help ? (
-          <span className="inline-flex size-3 items-center justify-center rounded-full border border-line-2 text-[10px] text-ink-4">
+          <span className="inline-flex size-3 items-center justify-center rounded-full border border-line-2 text-[10px] text-ink-3">
             ?
           </span>
         ) : null}
@@ -80,7 +80,7 @@ function FieldCells({
         )}
       >
         {item.value}
-        {item.note ? <span className="text-[10.5px] text-ink-4">{item.note}</span> : null}
+        {item.note ? <span className="text-[10.5px] text-ink-3">{item.note}</span> : null}
       </div>
     </>
   )

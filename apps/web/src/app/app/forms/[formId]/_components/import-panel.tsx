@@ -188,7 +188,7 @@ export function ImportPanel({
           type="button"
           onClick={onClose}
           aria-label="關閉"
-          className="ml-auto text-ink-4 hover:text-ink"
+          className="ml-auto text-ink-3 hover:text-ink"
         >
           <X size={15} />
         </button>
@@ -205,7 +205,7 @@ export function ImportPanel({
 
           {sheet === null ? (
             <div className="flex flex-col items-center gap-3 border border-dashed border-line py-12">
-              <Upload size={20} className="text-ink-4" />
+              <Upload size={20} className="text-ink-3" />
               <p className="text-[12px] text-ink-3">選擇 Excel(.xlsx / .xls)檔案</p>
               <input
                 ref={fileRef}
@@ -284,7 +284,7 @@ export function ImportPanel({
                 )}
               </div>
 
-              <div className="space-y-1 text-[11px] text-ink-4">
+              <div className="space-y-1 text-[11px] text-ink-3">
                 <div>
                   共 {sheet.totalRows} 列;標題在第 {sheet.headerRowIndex} 列。
                 </div>
@@ -325,7 +325,7 @@ export function ImportPanel({
                         </option>
                       ))}
                     </Select>
-                    <span className="truncate text-[11px] text-ink-4">
+                    <span className="truncate text-[11px] text-ink-3">
                       {sheet.preview
                         .slice(0, 3)
                         .map((r) => r[column] ?? "")
@@ -351,7 +351,7 @@ export function ImportPanel({
                   />
                   檔案中留空的格子,清空既有記錄的該欄位
                 </label>
-                <p className="text-[11px] text-ink-4">
+                <p className="text-[11px] text-ink-3">
                   預設不清空 —— 留空多半代表「這次沒有要改這一欄」,而不是「要把它清掉」。
                 </p>
                 {blankPolicy === "clear" ? (
@@ -421,7 +421,7 @@ export function ImportPanel({
                     </label>
                   ) : null}
                   {planned.rowErrors.slice(0, 5).map((r) => (
-                    <div key={r.sourceRowNo} className="text-[11px] text-ink-4">
+                    <div key={r.sourceRowNo} className="text-[11px] text-ink-3">
                       第 {r.sourceRowNo} 列:{r.errorMessage ?? r.errorCode}
                     </div>
                   ))}

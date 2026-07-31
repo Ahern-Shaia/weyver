@@ -47,7 +47,7 @@ export function RoleTree({
           type="button"
           onClick={() => setAdding((v) => !v)}
           title="新增角色"
-          className="ml-auto flex size-6 items-center justify-center rounded-sm border border-line text-ink-3 hover:bg-head hover:text-ink"
+          className="ml-auto flex size-6 items-center justify-center rounded-sm border border-line text-ink-2 hover:bg-head hover:text-ink"
         >
           <Plus size={13} strokeWidth={2} />
         </button>
@@ -66,18 +66,18 @@ export function RoleTree({
         </div>
       ) : null}
       <div className="flex-1 overflow-y-auto p-1.5">
-        {loading ? <div className="px-2 py-1.5 text-[11.5px] text-ink-4">載入…</div> : null}
-        <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold tracking-wide text-ink-4">
+        {loading ? <div className="px-2 py-1.5 text-[11.5px] text-ink-3">載入…</div> : null}
+        <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold tracking-wide text-ink-3">
           系統角色
         </div>
         {system.map((r) => (
           <RoleItem key={r.id} role={r} active={r.id === selectedId} onSelect={onSelect} />
         ))}
-        <div className="px-2 pt-2.5 pb-1 text-[10px] font-semibold tracking-wide text-ink-4">
+        <div className="px-2 pt-2.5 pb-1 text-[10px] font-semibold tracking-wide text-ink-3">
           部門 / 自訂角色
         </div>
         {custom.length === 0 ? (
-          <div className="px-2 py-1 text-[11px] text-ink-4">尚無自訂角色</div>
+          <div className="px-2 py-1 text-[11px] text-ink-3">尚無自訂角色</div>
         ) : (
           custom.map((r) => (
             <RoleItem key={r.id} role={r} active={r.id === selectedId} onSelect={onSelect} />
@@ -109,10 +109,10 @@ function RoleItem({
           : "flex w-full items-center gap-2 rounded-md border-l-2 border-transparent py-1.5 pr-2 text-left text-[12px] text-ink-2 hover:bg-surface"
       }
     >
-      <Icon size={13} strokeWidth={1.9} className={active ? "text-primary" : "text-ink-4"} />
+      <Icon size={13} strokeWidth={1.9} className={active ? "text-primary" : "text-ink-3"} />
       <span className="truncate">{role.name}</span>
       {role.key === "admin" ? (
-        <span className="ml-auto rounded-xs border border-line px-1 font-mono text-[9px] text-ink-4">
+        <span className="ml-auto rounded-xs border border-line px-1 font-mono text-[9px] text-ink-3">
           全權
         </span>
       ) : null}

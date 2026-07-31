@@ -249,11 +249,11 @@ export function CollectionView({
       ) : null}
       <div className="min-h-0 flex-1 p-3">
         {recordsQuery.isPending ? (
-          <div className="flex h-full items-center justify-center text-[12px] text-ink-4">
+          <div className="flex h-full items-center justify-center text-[12px] text-ink-3">
             載入記錄…
           </div>
         ) : records.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-[12px] text-ink-4">
+          <div className="flex h-full items-center justify-center text-[12px] text-ink-3">
             無相符記錄{query.q || query.filters.length > 0 ? "(篩選/搜尋無結果)" : ""}。
           </div>
         ) : grouped ? (
@@ -320,7 +320,7 @@ export function CollectionView({
             >
               {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
             </button>
-            <span className="text-ink-4">(匯出僅含已載入 {records.length} 筆)</span>
+            <span className="text-ink-3">(匯出僅含已載入 {records.length} 筆)</span>
           </>
         ) : null}
       </div>

@@ -180,7 +180,7 @@ export function FormWorkspace(): ReactNode {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="搜尋此表單…"
-              className="h-7 w-56 rounded-xs border border-line bg-surface px-2.5 text-[12px] text-ink outline-none placeholder:text-ink-4 focus:border-primary"
+              className="h-7 w-56 rounded-xs border border-line bg-surface px-2.5 text-[12px] text-ink outline-none placeholder:text-ink-3 focus:border-primary"
             />
           ) : null}
           {mode === "list" ? (
@@ -318,7 +318,7 @@ function RecordDetail({
       ) : (
         <div className="flex flex-1 items-center justify-center bg-surface p-8 text-center">
           <div className="max-w-[320px]">
-            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-md border border-line bg-card text-ink-4">
+            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-md border border-line bg-card text-ink-3">
               <FileText size={22} strokeWidth={1.5} />
             </div>
             <p className="text-[12.5px] text-ink-3">此表單尚無記錄。切「列表」或到設計器新增。</p>

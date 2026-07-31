@@ -230,7 +230,7 @@ function Shell({ children }: { readonly children: ReactNode }): ReactNode {
         {children}
       </div>
       {/* 不放租戶名稱 / 版本 / 內部連結 —— 訪客不需要,洩漏也無益 */}
-      <p className="mx-auto mt-3 max-w-[560px] text-center text-[10.5px] text-ink-4">
+      <p className="mx-auto mt-3 max-w-[560px] text-center text-[10.5px] text-ink-3">
         由 Weyver 提供表單服務
       </p>
     </main>

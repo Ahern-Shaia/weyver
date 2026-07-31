@@ -55,7 +55,7 @@ export function SubTable<T>({
         <tbody>
           {data.map((row, index) => (
             <tr key={getRowKey(row, index)}>
-              <td className="border border-cell bg-head px-2 py-[5px] text-center font-mono text-[10.5px] text-ink-4">
+              <td className="border border-cell bg-head px-2 py-[5px] text-center font-mono text-[10.5px] text-ink-3">
                 {index + 1}
               </td>
               {columns.map((column) => (

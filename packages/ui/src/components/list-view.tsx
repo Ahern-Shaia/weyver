@@ -72,7 +72,7 @@ export function ListView<T>({
                         className="inline-flex items-center gap-1 hover:text-ink"
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        <span className="font-mono text-[9px] text-ink-4">
+                        <span className="font-mono text-[9px] text-ink-3">
                           {sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : "△"}
                         </span>
                       </button>

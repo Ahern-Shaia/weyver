@@ -75,7 +75,7 @@ export default function TrashPage(): ReactNode {
       </p>
 
       {data.items.length === 0 ? (
-        <div className="mt-6 rounded-md border border-line bg-card px-4 py-8 text-center text-[12px] text-ink-4">
+        <div className="mt-6 rounded-md border border-line bg-card px-4 py-8 text-center text-[12px] text-ink-3">
           回收桶是空的。
         </div>
       ) : (

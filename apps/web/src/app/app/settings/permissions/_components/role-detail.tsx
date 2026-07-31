@@ -31,7 +31,7 @@ export function RoleDetail({ role }: { readonly role: Role | null }): ReactNode 
             </span>
           ) : null}
         </div>
-        <p className="mt-1 text-[11.5px] text-ink-4">
+        <p className="mt-1 text-[11.5px] text-ink-3">
           {isAdmin
             ? "管理員 = 全租戶所有動作(系統角色,不需逐表設定)"
             : `${perms.data?.memberActorIds.length ?? 0} 名成員 · 有效權限 = 本角色 ∪ 上層`}
@@ -92,7 +92,7 @@ function Members({ perms }: { readonly perms: RolePermissions }): ReactNode {
         指派此角色的使用者。owner 於建立公司時自動為管理員。
       </p>
       {perms.memberActorIds.length === 0 ? (
-        <div className="rounded-md border border-dashed border-line px-3 py-4 text-[12px] text-ink-4">
+        <div className="rounded-md border border-dashed border-line px-3 py-4 text-[12px] text-ink-3">
           尚無成員。使用者指派介面(含使用者清單)為後續交付。
         </div>
       ) : (

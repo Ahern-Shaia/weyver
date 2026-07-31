@@ -179,9 +179,9 @@ export function ChartView({
 
       <div className="min-h-0 flex-1 overflow-auto p-4">
         {isPending ? (
-          <div className="py-10 text-center text-[12px] text-ink-4">計算中…</div>
+          <div className="py-10 text-center text-[12px] text-ink-3">計算中…</div>
         ) : points.length === 0 ? (
-          <div className="py-10 text-center text-[12px] text-ink-4">無資料可繪製。</div>
+          <div className="py-10 text-center text-[12px] text-ink-3">無資料可繪製。</div>
         ) : (
           <>
             <Chart
@@ -193,13 +193,13 @@ export function ChartView({
             {/* 🔴 圖表旁提供資料表 —— ECharts 的鍵盤導覽有已知缺陷(#18585),
                 純圖形對螢幕閱讀器使用者不可用,資料表是可靠的等價途徑。 */}
             <table className="mt-4 w-full max-w-md border-collapse text-[11.5px]">
-              <caption className="pb-1 text-left text-[11px] text-ink-4">圖表資料</caption>
+              <caption className="pb-1 text-left text-[11px] text-ink-3">圖表資料</caption>
               <thead>
                 <tr>
-                  <th className="border border-cell bg-head px-2 py-1 text-left text-ink-3">
+                  <th className="border border-cell bg-head px-2 py-1 text-left text-ink-2">
                     {dimension}
                   </th>
-                  <th className="border border-cell bg-head px-2 py-1 text-right text-ink-3">
+                  <th className="border border-cell bg-head px-2 py-1 text-right text-ink-2">
                     {measure === null ? "筆數" : measure.field}
                   </th>
                 </tr>

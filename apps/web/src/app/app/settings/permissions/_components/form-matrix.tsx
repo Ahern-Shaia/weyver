@@ -120,7 +120,7 @@ export function FormMatrix({
             ))}
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={FORM_ACTIONS.length + 1} className="px-3 py-4 text-[12px] text-ink-4">
+                <td colSpan={FORM_ACTIONS.length + 1} className="px-3 py-4 text-[12px] text-ink-3">
                   尚無表單。
                 </td>
               </tr>
@@ -128,7 +128,7 @@ export function FormMatrix({
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[11px] text-ink-4">
+      <p className="mt-3 text-[11px] text-ink-3">
         點分類列格子=設分類授權(藍);點表單列格子=建立該表覆寫(琥珀);覆寫列可「還原繼承」。
         <br />
         表單列的檢視/新增/編輯/刪除可再點一次切成 <UserCheck size={11} className="inline" />{" "}
@@ -194,7 +194,7 @@ function CategoryGroup({
                 onClick={() => onToggleCategory(group.categoryId as number, a)}
               />
             ) : (
-              <span className="text-[11px] text-ink-4">—</span>
+              <span className="text-[11px] text-ink-3">—</span>
             )}
           </td>
         ))}
@@ -207,7 +207,7 @@ function CategoryGroup({
         return (
           <tr key={form.id} className="border-t border-line-2 hover:bg-surface">
             <td className="py-2 pr-3 pl-7 text-ink">
-              <span className="text-ink-4">└ </span>
+              <span className="text-ink-3">└ </span>
               {form.name}
               {form.isSensitive ? <Tag tone="sensitive">敏感</Tag> : null}
               {source === "inherit" ? <Tag tone="inherit">繼承</Tag> : null}
@@ -218,7 +218,7 @@ function CategoryGroup({
                     type="button"
                     disabled={busy}
                     onClick={() => onRevert(form.id)}
-                    className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[10.5px] text-ink-4 hover:text-primary disabled:opacity-50"
+                    className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[10.5px] text-ink-disabled hover:text-primary disabled:opacity-50"
                   >
                     <RotateCcw size={11} strokeWidth={1.9} />
                     還原繼承

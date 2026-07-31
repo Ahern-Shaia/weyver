@@ -38,7 +38,7 @@ export function ImageThumb({
     <figure className="relative m-0 inline-flex flex-col gap-0.5">
       {url === null ? (
         <span
-          className="flex w-24 items-center justify-center border border-line bg-head text-[10px] text-ink-4"
+          className="flex w-24 items-center justify-center border border-line bg-head text-[10px] text-ink-2"
           style={{ height: maxHeight }}
         >
           載入中…
@@ -53,13 +53,13 @@ export function ImageThumb({
           style={{ maxHeight, maxWidth: maxHeight * 2 }}
         />
       )}
-      <figcaption className="max-w-24 truncate text-[9.5px] text-ink-4">{item.name}</figcaption>
+      <figcaption className="max-w-24 truncate text-[9.5px] text-ink-3">{item.name}</figcaption>
       {onRemove ? (
         <button
           type="button"
           onClick={onRemove}
           aria-label={`移除 ${item.name}`}
-          className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center border border-line bg-card text-ink-4 hover:text-er"
+          className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center border border-line bg-card text-ink-3 hover:text-er"
         >
           <X size={10} />
         </button>

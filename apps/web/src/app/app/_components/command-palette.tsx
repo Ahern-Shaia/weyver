@@ -95,7 +95,7 @@ export function CommandPalette(): ReactNode {
       />
       <div className="relative w-full max-w-xl overflow-hidden rounded-lg border border-line bg-card shadow-lg">
         <div className="flex items-center gap-2.5 border-b border-line px-3.5 py-2.5">
-          <Search size={16} className="text-ink-4" strokeWidth={1.9} />
+          <Search size={16} className="text-ink-3" strokeWidth={1.9} />
           <input
             ref={inputRef}
             value={q}
@@ -116,15 +116,15 @@ export function CommandPalette(): ReactNode {
               }
             }}
             placeholder="搜尋表單、動作…"
-            className="flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-4"
+            className="flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
           />
-          <kbd className="rounded-xs border border-line px-1.5 font-mono text-[10px] text-ink-4">
+          <kbd className="rounded-xs border border-line px-1.5 font-mono text-[10px] text-ink-3">
             ⌘K
           </kbd>
         </div>
         <div className="max-h-[52vh] overflow-y-auto py-1.5">
           {filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[12px] text-ink-4">無相符結果</div>
+            <div className="px-4 py-6 text-center text-[12px] text-ink-3">無相符結果</div>
           ) : (
             filtered.map((i, n) => (
               <button
@@ -138,10 +138,10 @@ export function CommandPalette(): ReactNode {
                     : "flex w-full items-center gap-3 px-3.5 py-2 text-left hover:bg-head"
                 }
               >
-                <span className="text-ink-4">{i.icon}</span>
+                <span className="text-ink-3">{i.icon}</span>
                 <span className="flex-1 truncate text-[12.5px] text-ink">{i.label}</span>
                 {i.hint ? (
-                  <span className="rounded-xs border border-line bg-label px-1.5 font-mono text-[10px] text-ink-4">
+                  <span className="rounded-xs border border-line bg-label px-1.5 font-mono text-[10px] text-ink-3">
                     {i.hint}
                   </span>
                 ) : null}

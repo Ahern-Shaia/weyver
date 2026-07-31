@@ -147,8 +147,8 @@ export function OptionsEditorPanel({
   return (
     <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
       <div className="flex items-center gap-1.5">
-        <span className="text-[10.5px] text-ink-4">選項</span>
-        <span className="text-[10px] text-ink-4">({fieldName})</span>
+        <span className="text-[10.5px] text-ink-3">選項</span>
+        <span className="text-[10px] text-ink-3">({fieldName})</span>
       </div>
 
       {error !== null ? (
@@ -161,7 +161,7 @@ export function OptionsEditorPanel({
         return (
           <div key={row.id} className="flex items-center gap-1.5">
             <Input
-              className={`h-7 flex-1 ${retired ? "text-ink-4" : ""}`}
+              className={`h-7 flex-1 ${retired ? "text-ink-3" : ""}`}
               value={row.name}
               onChange={(e) => patch(row.id, { name: e.target.value })}
               aria-label={`選項 ${row.name} 名稱`}
@@ -182,7 +182,7 @@ export function OptionsEditorPanel({
             <StatusChip tone={(row.color ?? "c1") as ChipTone}>
               {row.name.trim() === "" ? "預覽" : row.name}
             </StatusChip>
-            <span className="w-14 shrink-0 text-right text-[10px] text-ink-4">
+            <span className="w-14 shrink-0 text-right text-[10px] text-ink-3">
               {used > 0 ? `${used} 筆` : ""}
             </span>
             {retired ? (
@@ -192,7 +192,7 @@ export function OptionsEditorPanel({
                 type="button"
                 onClick={() => patch(row.id, { retired: false })}
                 aria-label={`重新啟用 ${row.name}`}
-                className="text-ink-4 hover:text-primary"
+                className="text-ink-3 hover:text-primary"
                 title="重新啟用"
               >
                 <RotateCcw size={13} />
@@ -202,7 +202,7 @@ export function OptionsEditorPanel({
                 type="button"
                 onClick={() => requestRemove(row)}
                 aria-label={`移除選項 ${row.name}`}
-                className="text-ink-4 hover:text-er"
+                className="text-ink-3 hover:text-er"
               >
                 <X size={13} />
               </button>

@@ -122,8 +122,8 @@ export function FieldSettingsPanel({
     <div className="flex w-64 shrink-0 flex-col border-l border-line bg-card">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <span className="truncate text-[12px] font-semibold text-ink">{field.name}</span>
-        <span className="font-mono text-[10px] text-ink-4">設定</span>
-        <button type="button" onClick={onClose} className="ml-auto text-ink-4 hover:text-ink">
+        <span className="font-mono text-[10px] text-ink-3">設定</span>
+        <button type="button" onClick={onClose} className="ml-auto text-ink-3 hover:text-ink">
           <X size={14} />
         </button>
       </div>
@@ -268,12 +268,12 @@ export function StaticSettingsPanel({
         <button
           type="button"
           onClick={onDelete}
-          className="ml-auto text-ink-4 hover:text-er"
+          className="ml-auto text-ink-3 hover:text-er"
           aria-label="刪除元素"
         >
           <Trash2 size={13} />
         </button>
-        <button type="button" onClick={onClose} className="text-ink-4 hover:text-ink">
+        <button type="button" onClick={onClose} className="text-ink-3 hover:text-ink">
           <X size={14} />
         </button>
       </div>

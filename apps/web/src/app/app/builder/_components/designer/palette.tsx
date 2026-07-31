@@ -40,7 +40,7 @@ export function FieldPalette({
 
   return (
     <div className="w-[178px] shrink-0 overflow-y-auto border-r border-line bg-card p-2.5">
-      <div className="px-1.5 pb-2 text-[10px] font-semibold tracking-wide text-ink-4">
+      <div className="px-1.5 pb-2 text-[10px] font-semibold tracking-wide text-ink-3">
         欄位型別 · 點擊加入
       </div>
       <Input
@@ -53,20 +53,20 @@ export function FieldPalette({
 
       {term !== "" ? (
         matches.length === 0 ? (
-          <div className="px-1.5 py-2 text-[11px] text-ink-4">找不到「{q.trim()}」</div>
+          <div className="px-1.5 py-2 text-[11px] text-ink-3">找不到「{q.trim()}」</div>
         ) : (
           <PaletteGroup types={matches} onPick={onPick} disabled={disabled} />
         )
       ) : (
         <>
           <PaletteGroup types={COMMON} onPick={onPick} disabled={disabled} />
-          <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-4">
+          <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-3">
             其他
           </div>
           <PaletteGroup types={rest} onPick={onPick} disabled={disabled} />
           {advanced ? (
             <>
-              <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-4">
+              <div className="mt-3 px-1.5 pb-1.5 text-[10px] font-semibold tracking-wide text-ink-3">
                 進階 · 計算/關聯/指派
               </div>
               <PaletteGroup

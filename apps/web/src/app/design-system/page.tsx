@@ -278,7 +278,7 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
-      <p className="text-[11px] text-ink-4">
+      <p className="text-[11px] text-ink-3">
         完整規則見 docs/14 v2.1;flagship 展示見{" "}
         <a href="/app" className="text-link underline underline-offset-2">
           /app 表單記錄
