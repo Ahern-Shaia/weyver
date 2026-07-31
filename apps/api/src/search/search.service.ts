@@ -79,16 +79,23 @@ export class SearchService {
        「匹配任意內容」的全表掃描(AGENTS.md:值一律參數綁定) */
     const pattern = `%${escapeLike(q)}%`
 
-    let builder = this.knex("search_doc")
-      .select("form_id", "record_id", "field_name", "value_text")
-      .where("tenant_id", tenantId)
-      .whereIn("form_id", readableFormIds)
-      .where("value_text", "like", pattern)
+    /* 🔴 必須在設好 `app.tenant_id` 的交易內查 —— `search_doc` 有 RLS FORCE。
+       漏掉的話:app 車道回空(壞掉但安全),而 dev 若回落到特權連線就會回**全部租戶**
+       的資料(靜默洩漏)。兩種結局都不拋錯,所以非測不可(見 search.integration 端到端段)。 */
+    const rows = await this.knex.transaction(async (trx) => {
+      await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
 
-    if (hiddenFieldIds.length > 0) builder = builder.whereNotIn("field_id", hiddenFieldIds)
+      let builder = trx("search_doc")
+        .select("form_id", "record_id", "field_name", "value_text")
+        .where("tenant_id", tenantId)
+        .whereIn("form_id", readableFormIds)
+        .where("value_text", "like", pattern)
 
-    /* +1 用來判斷是否被截斷 —— 不多查一筆就分不出「剛好滿」與「還有更多」 */
-    const rows = await builder.limit(cap + 1)
+      if (hiddenFieldIds.length > 0) builder = builder.whereNotIn("field_id", hiddenFieldIds)
+
+      /* +1 用來判斷是否被截斷 —— 不多查一筆就分不出「剛好滿」與「還有更多」 */
+      return builder.limit(cap + 1)
+    })
     const truncated = rows.length > cap
 
     const hits = rows

@@ -11,6 +11,7 @@ import { MetadataService } from "../src/form-engine/metadata/metadata.service.js
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { TrashPurgeService } from "../src/form-engine/trash/trash-purge.service.js"
+import { SearchIndexService } from "../src/search/search-index.service.js"
 import { TrashService } from "../src/form-engine/trash/trash.service.js"
 
 /* 🔴 H-2 回收桶。三個東西在這裡被釘死:
@@ -66,8 +67,18 @@ beforeAll(async () => {
   const appDb = createDrizzle(appPool)
   trash = new TrashService(new TenantDb(appDb), db)
   ddl = new DdlService(ddlKnex, db, metadata, undefined, undefined, trash)
-  records = new RecordService(appKnex, metadata)
-  purge = new TrashPurgeService(ddlKnex, configStub)
+  /* H-3|記錄寫入與硬刪都要維護 search_doc,否則「表刪了但索引還在」不會被測到 */
+  const searchIndex = new SearchIndexService()
+  records = new RecordService(
+    appKnex,
+    metadata,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    searchIndex,
+  )
+  purge = new TrashPurgeService(ddlKnex, configStub, searchIndex)
 }, 180_000)
 
 afterAll(async () => {
@@ -177,7 +188,13 @@ describe("H-2 回收桶", () => {
 
   it("🔴 表單還原只帶回「當初連帶刪的」欄位,先前個別刪掉的不復活", async () => {
     const formId = await makeForm(tenantA, "連帶還原")
-    const extra = await ddl.addField(tenantA, formId, { name: "備註", type: "text", required: false, unique: false, options: {} })
+    const extra = await ddl.addField(tenantA, formId, {
+      name: "備註",
+      type: "text",
+      required: false,
+      unique: false,
+      options: {},
+    })
     // 先個別刪「備註」,之後才刪整張表
     await ddl.dropField(tenantA, formId, extra.id, ALICE)
     await ddl.dropForm(tenantA, formId, ALICE)
@@ -189,7 +206,9 @@ describe("H-2 回收桶", () => {
     const restored = await trash.restore(tenantA, entry?.id ?? 0)
     expect(restored.ok).toBe(true)
 
-    const fields = await ddlKnex("field_def").where({ form_id: formId }).select("name", "deleted_at")
+    const fields = await ddlKnex("field_def")
+      .where({ form_id: formId })
+      .select("name", "deleted_at")
     const alive = fields.filter((f) => f.deleted_at === null).map((f) => f.name)
     expect(alive).toContain("品名")
     expect(alive).not.toContain("備註") // 刪表之前就刪了,不該一起回來
@@ -211,7 +230,13 @@ describe("H-2 回收桶", () => {
 
   it("🔴 父表單已刪 → 拒絕單獨還原欄位,並要求先還原表單", async () => {
     const formId = await makeForm(tenantA, "父子順序")
-    const extra = await ddl.addField(tenantA, formId, { name: "數量", type: "number", required: false, unique: false, options: {} })
+    const extra = await ddl.addField(tenantA, formId, {
+      name: "數量",
+      type: "number",
+      required: false,
+      unique: false,
+      options: {},
+    })
     await ddl.dropField(tenantA, formId, extra.id, ALICE)
     await ddl.dropForm(tenantA, formId, ALICE)
 
@@ -272,7 +297,13 @@ describe("H-2 保留期硬刪", () => {
 
   it("🔴 逾期欄位真的 DROP COLUMN(物理欄至此才回收)", async () => {
     const formId = await makeForm(tenantA, "逾期欄位")
-    const extra = await ddl.addField(tenantA, formId, { name: "待清欄", type: "text", required: false, unique: false, options: {} })
+    const extra = await ddl.addField(tenantA, formId, {
+      name: "待清欄",
+      type: "text",
+      required: false,
+      unique: false,
+      options: {},
+    })
     await ddl.dropField(tenantA, formId, extra.id, ALICE)
     await ddlKnex("field_def")
       .where({ id: extra.id })
@@ -287,8 +318,17 @@ describe("H-2 保留期硬刪", () => {
     expect(await ddlKnex("field_def").where({ id: extra.id }).first()).toBeUndefined()
   })
 
-  it("🔴 逾期表單真的 DROP TABLE", async () => {
+  it("🔴 逾期表單真的 DROP TABLE,搜尋索引也一併清掉", async () => {
     const formId = await makeForm(tenantA, "逾期表單")
+    await records.createRecord(tenantA, formId, { 品名: "逾期表單的品名" }, ALICE)
+    /* H-3|保留期**內**索引刻意留著 —— 還原時不必重建 */
+    const indexed = async (): Promise<number> =>
+      Number(
+        (await ddlKnex("search_doc").where({ form_id: formId }).count<{ count: string }[]>())[0]
+          ?.count ?? -1,
+      )
+    expect(await indexed()).toBe(1)
+
     await ddl.dropForm(tenantA, formId, ALICE)
     await ddlKnex("form_def")
       .where({ id: formId })
@@ -300,6 +340,8 @@ describe("H-2 保留期硬刪", () => {
       [`data.t${String(formId)}`],
     )
     expect(exists.rows[0]?.ok).toBe(false)
+    /* 表沒了索引還在 = 沒人會察覺的無限長大(removeFormInTx 原本定義了卻沒人呼叫) */
+    expect(await indexed()).toBe(0)
   })
 
   it("沒有 trash_entry 的舊軟刪資料一樣會被清(合規不能有死角)", async () => {

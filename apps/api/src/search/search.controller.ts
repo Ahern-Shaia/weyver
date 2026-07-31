@@ -19,7 +19,9 @@ const searchQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
 })
 
-@Controller("api/engine/search")
+/* 路徑不含 `engine` —— web 的 rewrite 已把 `/api/engine/:path*` 映到本服務的
+   `/api/:path*`(next.config.ts),寫成 `api/engine/search` 會變成 `/api/engine/engine/search`。 */
+@Controller("api/search")
 @UseGuards(TenantGuard, PermissionGuard)
 export class SearchController {
   constructor(@Inject(SearchService) private readonly search: SearchService) {}

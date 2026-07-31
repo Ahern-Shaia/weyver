@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
+import { FIELD_TYPE_REGISTRY } from "../form-engine/field-types/field-type-registry.js"
 
 /* 🔴 R1·H-3 M2|搜尋索引寫入。
 
@@ -21,19 +22,23 @@ import type { Knex } from "knex"
    搜尋結果要說得出「命中哪一欄」。若查詢時才去 join field_def,
    欄位改名後歷史結果的欄名會跟著變,且多一次 join。 */
 
-/* 值得全文搜尋的型別 —— 與 record.service 的 textual 白名單同源概念 */
-const SEARCHABLE = new Set([
-  "text",
-  "textarea",
-  "richText",
-  "email",
-  "url",
-  "phone",
-  "singleSelect",
-  "multiSelect",
-  "autoNumber",
-  "barcode",
-])
+/* 🔴 由 FIELD_TYPE_REGISTRY **推導**,不手寫字串清單。
+
+   首版是手寫的,裡面有 `textarea` 與 `richText` —— **兩個型別都不存在**(真正的長文字
+   型別叫 `longText`)。結果是備註 / 說明這類最該被搜尋的欄位靜默地從未進索引;
+   而型別參數是 `string` 不是 union,型別檢查完全抓不到。推導使這種漂移不可能發生。
+
+   規則:物理存文字的(`text` / `text_array`)且**非 virtual**。
+   virtual(lookup / rollup / createdBy…)是讀時計算,沒有任何寫入路徑會通知我們更新
+   索引 —— 索引下去保證過期。要搜這些欄位得先有依賴失效機制,屬後續範圍。 */
+const SEARCHABLE: ReadonlySet<string> = new Set(
+  Object.entries(FIELD_TYPE_REGISTRY)
+    .filter(
+      ([, def]) =>
+        (def.dbFieldType === "text" || def.dbFieldType === "text_array") && def.virtual !== true,
+    )
+    .map(([type]) => type),
+)
 
 export interface IndexableField {
   readonly id: number

@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config"
 import { Cron, CronExpression } from "@nestjs/schedule"
 import type { Knex } from "knex"
 import { DDL_KNEX } from "../../db/db.module.js"
+import { SearchIndexService } from "../../search/search-index.service.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName } from "../identifiers.js"
 import { TRASH_RETENTION_DAYS } from "./trash.service.js"
 
@@ -52,6 +53,9 @@ export class TrashPurgeService {
   constructor(
     @Inject(DDL_KNEX) private readonly knex: Knex,
     @Inject(ConfigService) private readonly config: ConfigService,
+    /* H-3|表整張硬刪時一併清搜尋索引。非 optional —— 漏掉就是 `search_doc` 無限長大,
+       而且是那種沒人會注意到的長大。 */
+    @Inject(SearchIndexService) private readonly searchIndex: SearchIndexService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { name: "trash.purge" })
@@ -125,6 +129,9 @@ export class TrashPurgeService {
         if (victims.length === 0 || this.dryRun) return victims.length
 
         await trx.withSchema(DATA_SCHEMA).table(table).whereIn("id", victims).delete()
+        /* H-3|搜尋索引一起清。保留期**內**不清 —— 還原時索引原封不動,不必重建。
+           form_id 為全域序號故無跨租戶歧義。 */
+        await trx("search_doc").where({ form_id: formId }).whereIn("record_id", victims).delete()
         await trx("trash_entry")
           .where({ resource_type: "record", state: "trashed", form_id: formId })
           .whereIn("resource_id", victims)
@@ -219,6 +226,7 @@ export class TrashPurgeService {
           await trx.raw(`SET LOCAL statement_timeout = '${PURGE_STATEMENT_TIMEOUT}'`)
           await trx.raw("SELECT pg_advisory_xact_lock(?)", [formId])
           await trx.raw("DROP TABLE IF EXISTS ??.??", [DATA_SCHEMA, physicalTableName(formId)])
+          await this.searchIndex.removeFormInTx(trx, Number(row.tenant_id), formId)
           await trx("field_def").where({ form_id: formId }).delete()
           await trx("view_def").where({ form_id: formId }).delete()
           await trx("form_def").where({ id: formId }).delete()
