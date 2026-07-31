@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
@@ -40,7 +41,7 @@ function limitedPerms(): EffectivePermissions {
 }
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
   pool = new pg.Pool({ connectionString: uri, max: 5 })
   await runMigrations(pool)

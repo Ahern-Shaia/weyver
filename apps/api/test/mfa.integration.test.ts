@@ -1,4 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import { getMigrations } from "better-auth/db/migration"
 import { authenticator } from "otplib"
 import pg from "pg"
@@ -52,7 +53,7 @@ async function enroll(
 }
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   auth = createAuth(pool, "test-secret-0123456789abcdef")
   const { runMigrations } = await getMigrations(auth.options)

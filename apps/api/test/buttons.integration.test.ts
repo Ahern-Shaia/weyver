@@ -1,4 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import pg from "pg"
@@ -30,7 +31,7 @@ interface ButtonDto {
 }
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
   await runMigrations(pool)
   const db = createDrizzle(pool)

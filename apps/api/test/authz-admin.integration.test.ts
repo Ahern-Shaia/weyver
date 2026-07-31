@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzAdminService } from "../src/authz/authz-admin.service.js"
@@ -25,7 +26,7 @@ function need<T>(v: T | undefined | null, m: string): T {
 }
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
   await runMigrations(pool)
   db = createDrizzle(pool)

@@ -1,6 +1,7 @@
 import { ForbiddenException, type ExecutionContext } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { RequiresFormAction } from "../src/authz/authz-http.js"
@@ -49,7 +50,7 @@ function ctxFor(
 const tc = (tenantId: number, actorId: number): TenantContext => ({ tenantId, actorId })
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
   await runMigrations(pool)
   db = createDrizzle(pool)

@@ -1,4 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle, TenantDb } from "../src/db/db.module.js"
@@ -15,7 +16,7 @@ let tenantA = 0
 let tenantB = 0
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
   await runMigrations(pool)
   const db = createDrizzle(pool)

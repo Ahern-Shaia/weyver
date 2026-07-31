@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config"
 import { Test } from "@nestjs/testing"
 import { getMigrations } from "better-auth/db/migration"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthModule } from "../src/auth/auth.module.js"
@@ -17,7 +18,7 @@ let pool: pg.Pool
 let auth: Auth
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   auth = createAuth(pool, "test-secret-0123456789")
   // Better Auth 自建其 schema(user/account/session/organization/member/invitation…)

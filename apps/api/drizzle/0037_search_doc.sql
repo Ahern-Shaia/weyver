@@ -21,6 +21,8 @@
 -- 而 pgroonga / zhparser / pg_jieba / pg_cjk_parser **皆不在支援清單**。
 
 CREATE EXTENSION IF NOT EXISTS pg_bigm;--> statement-breakpoint
+-- 英數料號索引需要 —— 兩者刻意共存(pg_bigm 官方明載 1.1+ 支援)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS "search_doc" (
   "tenant_id" bigint NOT NULL,

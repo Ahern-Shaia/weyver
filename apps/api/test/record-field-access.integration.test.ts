@@ -1,4 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { FieldAccessPolicy } from "../src/authz/authz-effective.js"
@@ -29,7 +30,7 @@ function policyOf(vis: Map<number, FieldVisibility>): FieldAccessPolicy {
 }
 
 beforeAll(async () => {
-  container = await new PostgreSqlContainer("postgres:16-alpine").start()
+  container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   await runMigrations(pool)
   const db: DrizzleDb = createDrizzle(pool)

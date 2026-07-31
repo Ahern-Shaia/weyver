@@ -43,12 +43,20 @@ import type { CalendarQuery, GroupAggregateFn, PivotQuery } from "./record-specs
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 import { TRASH_RETENTION_DAYS } from "../trash/trash.service.js"
 import { EVENT_TYPES, EventService } from "../../integrations/event.service.js"
+import { SearchIndexService } from "../../search/search-index.service.js"
 
 interface ResolvedField {
   readonly row: FieldDefRow
   readonly column: string
   readonly type: CellValueType
   readonly virtual: boolean
+}
+
+/* H-3 M2|ResolvedField(內部形狀)→ 搜尋索引所需的最小欄位資訊 */
+function toIndexable(
+  fields: readonly ResolvedField[],
+): readonly { id: number; name: string; type: string }[] {
+  return fields.map((f) => ({ id: f.row.id, name: f.row.name, type: f.type }))
 }
 
 const SYSTEM_FIELD_TYPES: ReadonlySet<CellValueType> = new Set([
@@ -225,6 +233,9 @@ export class RecordService {
     @Optional() @Inject(QuotaService) private readonly quota?: QuotaService,
     /* G-1 M1 事件匯流排;optional 使既有單元測 new RecordService(knex, metadata) 不受影響 */
     @Optional() @Inject(EventService) private readonly events?: EventService,
+    /* 🔴 H-3 M2 搜尋索引;與資料**同一 tx** —— Baserow 用非同步的結果是 out of sync。
+       optional 使既有單元測 new RecordService(knex, metadata) 不受影響 */
+    @Optional() @Inject(SearchIndexService) private readonly searchIndex?: SearchIndexService,
   ) {}
 
   /* 讀時公式注入:formula 欄之值不儲存,讀取時以其他欄計算後併入(docs OQ-FML-8 之讀時算模式)。
@@ -924,6 +935,13 @@ export class RecordService {
         recordId: created.id,
         actorId,
       })
+      await this.searchIndex?.upsertInTx(trx, {
+        tenantId,
+        formId,
+        recordId: created.id,
+        fields: toIndexable(resolved.fields),
+        values: withDefaults,
+      })
       return created
     })
     await this.bindFiles(tenantId, formId, resolved, record.id, withDefaults)
@@ -1188,6 +1206,13 @@ export class RecordService {
           recordId,
           actorId,
         })
+        await this.searchIndex?.upsertInTx(trx, {
+          tenantId,
+          formId,
+          recordId,
+          fields: toIndexable(resolved.fields),
+          values,
+        })
       },
       /* 範圍受限時只能改自己的:RESTRICTIVE policy 的 USING 同樣管 UPDATE 的選列 */
       { actorId, own: policy?.isScopedToOwn?.(formId, "edit") === true },
@@ -1257,6 +1282,8 @@ export class RecordService {
           recordId,
           actorId,
         })
+        /* soft delete 的記錄在使用者眼中已不存在 —— 搜得到就是缺陷 */
+        await this.searchIndex?.removeInTx(trx, tenantId, formId, recordId)
       },
       { actorId, own: policy?.isScopedToOwn?.(formId, "delete") === true },
     )
@@ -1296,6 +1323,24 @@ export class RecordService {
           state: "trashed",
         })
         .update({ state: "restored", resolved_at: trx.fn.now() })
+      /* 還原 → 重建索引。刪除時移出、還原時放回,兩邊對稱;
+         少了這一半,還原的記錄就永遠搜不到(且不會有任何錯誤訊息)。 */
+      const [restored] = await trx
+        .withSchema(DATA_SCHEMA)
+        .table(resolved.table)
+        .where({ tenant_id: tenantId, id: recordId })
+        .select("*")
+      if (restored !== undefined) {
+        await this.searchIndex?.upsertInTx(trx, {
+          tenantId,
+          formId,
+          recordId,
+          fields: toIndexable(resolved.fields),
+          values: Object.fromEntries(
+            resolved.fields.map((f) => [f.row.name, restored[f.column]]),
+          ),
+        })
+      }
       return { ok: true as const }
     })
   }

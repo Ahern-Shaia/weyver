@@ -9,6 +9,7 @@ import { AuthModule } from "./auth/auth.module.js"
 import { BillingModule } from "./billing/billing.module.js"
 import { NotificationsModule } from "./notifications/notifications.module.js"
 import { IntegrationsModule } from "./integrations/integrations.module.js"
+import { SearchModule } from "./search/search.module.js"
 import { PublicFormModule } from "./public-form/public-form.module.js"
 import { UsageModule } from "./billing/usage.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
@@ -39,6 +40,7 @@ import { ViewsModule } from "./views/views.module.js"
     BillingModule,
     NotificationsModule,
     IntegrationsModule,
+    SearchModule,
     PublicFormModule,
     UsageModule,
     StorageModule,
