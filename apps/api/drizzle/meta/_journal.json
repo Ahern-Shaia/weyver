@@ -274,6 +274,13 @@
       "when": 1785500001000,
       "tag": "0038_settings_center",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785500002000,
+      "tag": "0039_tenant_settings_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -7,16 +7,23 @@ import { tenants, users } from "../src/db/schema.js"
 import { SettingsService } from "../src/settings/settings.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
-/* 🔴 R1·A-1 M1|設定中心。本檔專攻兩件事:
+/* 🔴 R1·A-1 M1|設定中心。本檔專攻三件事:
 
    1. **動態繼承的語意**(OQ-SC-3=A)—— 個人欄位 NULL = 繼承租戶值,
-      改租戶預設會即時反映到未自訂者。這是本模組最容易寫反的一條:
-      若實作成「建帳號時複製」,下面「改租戶值後未自訂者跟著變」就會紅。
+      改租戶預設會即時反映到未自訂者。這是本模組最容易寫反的一條。
    2. **`null` 與「沒送」必須分得開** —— 前者是「取消自訂回到繼承」,
-      後者是「不要動」。混為一談會讓使用者永遠退不回繼承。 */
+      後者是「不要動」。混為一談會讓使用者永遠退不回繼承。
+   3. **一律走 app 車道**(`app_login`,NOSUPERUSER NOBYPASSRLS)。
+
+   ⚠️ 第 3 點是補救:本檔首版用 testcontainer 的預設(superuser)連線,
+   13 條全綠 —— 然後 dev server 一打 `PATCH /api/settings/tenant` 就 500
+   (`permission denied for table tenants`,42501)。`tenants` 對 `weyver_app`
+   原本只有 SELECT,而特權連線把整件事遮住了。
+   **本專案第六次踩到同一個坑**(`pitfall_privileged_lane_masks_security`)。 */
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
+let appPool: pg.Pool
 let db: DrizzleDb
 let settings: SettingsService
 let tenantA = 0
@@ -47,12 +54,33 @@ beforeAll(async () => {
   alice = u[0]?.id ?? 0
   bob = u[1]?.id ?? 0
 
-  settings = new SettingsService(new TenantDb(db))
+  /* 🔴 服務一律拿 **app 車道**。用 testcontainer 預設的 superuser 連線的話,
+     grant 與 RLS 都不執法,測試會綠給你看但線上 42501。 */
+  await pool.query(
+    `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS; GRANT weyver_app TO app_login`,
+  )
+  const appUri = new URL(container.getConnectionUri())
+  appUri.username = "app_login"
+  appUri.password = "app_login"
+  appPool = new pg.Pool({ connectionString: appUri.toString() })
+  settings = new SettingsService(new TenantDb(createDrizzle(appPool)))
 }, 180_000)
 
 afterAll(async () => {
+  await appPool?.end()
   await pool?.end()
   await container?.stop()
+})
+
+/* 釘住測試方法本身的前提:服務用的連線**必須**是非特權的,否則下面全部白測 */
+describe("測試前提", () => {
+  it("🔴 服務走的是無 BYPASSRLS 的非 superuser", async () => {
+    const r = await appPool.query<{ rolsuper: boolean; rolbypassrls: boolean }>(
+      "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user",
+    )
+    expect(r.rows[0]?.rolsuper).toBe(false)
+    expect(r.rows[0]?.rolbypassrls).toBe(false)
+  })
 })
 
 describe("租戶設定", () => {
@@ -144,6 +172,40 @@ describe("🔴 兩軸時區:業務日界線不可被個人覆寫", () => {
     const s = await settings.getUser(tenantA, alice)
     expect(s.tenantDefaults.timezone).toBe("Asia/Taipei")
     expect(s.tenantDefaults.locale).toBe("en")
+  })
+})
+
+/* 🔴 這一段是 dev server 打出 42501 之後補的。
+   它們在特權連線下**恆綠**,只有走 app 車道才有意義。 */
+describe("🔴 app 車道的權限邊界(DB 層執法,非程式碼自律)", () => {
+  it("🔴 計費 / 配額 / 租戶身分欄位:app 車道寫不到(欄位級 GRANT)", async () => {
+    /* 只授了 name / tax_id / logo / default_locale / default_currency / timezone 的 UPDATE。
+       其餘欄位若哪天被順手加進 GRANT,這條會紅 —— 那正是它存在的理由:
+       一個 app 層的 bug 不該能讓租戶自己解除停權或調高配額。 */
+    for (const col of ["status", "plan_code", "max_forms", "auth_org_id", "parent_tenant_id"]) {
+      await expect(
+        appPool.query(`UPDATE tenants SET ${col} = NULL WHERE id = $1`, [tenantA]),
+      ).rejects.toThrow(/permission denied/)
+    }
+  })
+
+  it("🔴 跨租戶寫入被 RLS 擋掉(不是靠服務層記得加 WHERE)", async () => {
+    const client = await appPool.connect()
+    try {
+      await client.query("BEGIN")
+      await client.query("SELECT set_config('app.tenant_id', $1, true)", [String(tenantA)])
+      // 有 UPDATE 權限、SQL 也合法,但 policy 讓它一列都改不到
+      const r = await client.query("UPDATE tenants SET name = 'HACKED' WHERE id = $1", [tenantB])
+      expect(r.rowCount).toBe(0)
+      await client.query("ROLLBACK")
+    } finally {
+      client.release()
+    }
+  })
+
+  it("讀取行為不變 —— auth 於租戶語境建立前仍需查得到此表", async () => {
+    const r = await appPool.query("SELECT count(*)::int AS n FROM tenants")
+    expect(r.rows[0].n).toBeGreaterThanOrEqual(2)
   })
 })
 
