@@ -15,7 +15,7 @@ export interface GlTableProps {
 }
 
 const th =
-  "border border-t-0 border-cell bg-head px-2 py-[5px] text-[10.5px] font-semibold text-ink-2"
+  "border border-t-0 border-cell bg-head px-2 py-[5px] text-[12px] font-semibold text-ink-2"
 const td = "border border-cell px-2 py-[5px] text-[12px]"
 const fmt = (n: number): string => n.toLocaleString("zh-TW")
 
@@ -37,7 +37,7 @@ export function GlTable({ entries, className }: GlTableProps): ReactElement {
       <tbody>
         {entries.map((entry) => (
           <tr key={`${entry.code}-${entry.account}`}>
-            <td className={cn(td, "font-mono text-[11px] text-ink-2")}>{entry.code}</td>
+            <td className={cn(td, "font-mono text-[12px] text-ink-2")}>{entry.code}</td>
             <td className={td}>{entry.account}</td>
             <td className={cn(td, "text-right font-mono tabular-nums")}>
               {entry.debit !== undefined ? fmt(entry.debit) : ""}
@@ -51,9 +51,9 @@ export function GlTable({ entries, className }: GlTableProps): ReactElement {
           <td className={cn(td, "border-t-2 border-t-line bg-head")} />
           <td className={cn(td, "border-t-2 border-t-line bg-head font-semibold")}>
             {balanced ? (
-              <span className="inline-flex items-center gap-1 text-[11px] text-ok">✓ 借貸平衡</span>
+              <span className="inline-flex items-center gap-1 text-[12px] text-ok">✓ 借貸平衡</span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] text-er">
+              <span className="inline-flex items-center gap-1 text-[12px] text-er">
                 ✕ 借貸不平衡
               </span>
             )}

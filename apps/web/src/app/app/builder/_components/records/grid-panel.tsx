@@ -126,7 +126,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
         <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>
           {form.provisionState}
         </StatusChip>
-        <span className="font-mono text-[11px] text-ink-3">{records.length} 筆</span>
+        <span className="font-mono text-[12px] text-ink-3">{records.length} 筆</span>
         <div className="ml-auto flex gap-1.5">
           {recordsQuery.hasNextPage ? (
             <Button
@@ -143,7 +143,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
       </div>
 
       {hasRequired ? (
-        <div className="border-b border-line bg-head px-4 py-1 text-[11px] text-ink-2">
+        <div className="border-b border-line bg-head px-4 py-1 text-[12px] text-ink-2">
           此表有必填欄 —— 新增空白列會被拒;請用「填單」新增,網格用於編輯既有資料。
         </div>
       ) : null}

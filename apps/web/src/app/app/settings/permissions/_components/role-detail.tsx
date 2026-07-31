@@ -22,16 +22,16 @@ export function RoleDetail({ role }: { readonly role: Role | null }): ReactNode 
       <div className="shrink-0 border-b border-line bg-card px-5 pt-3">
         <div className="flex items-center gap-2.5">
           <h3 className="text-[16px] font-semibold text-ink">{role.name}</h3>
-          <span className="rounded-xs border border-line bg-label px-1.5 py-px text-[10px] font-medium text-ink-3">
+          <span className="rounded-xs border border-line bg-label px-1.5 py-px text-[12px] font-medium text-ink-3">
             {role.isSystem ? "系統角色" : "自訂角色"}
           </span>
           {role.depth > 0 ? (
-            <span className="rounded-xs border border-fx/30 bg-fx-bg px-1.5 py-px text-[10px] font-medium text-fx">
+            <span className="rounded-xs border border-fx/30 bg-fx-bg px-1.5 py-px text-[12px] font-medium text-fx">
               繼承上層
             </span>
           ) : null}
         </div>
-        <p className="mt-1 text-[11.5px] text-ink-3">
+        <p className="mt-1 text-[12px] text-ink-3">
           {isAdmin
             ? "管理員 = 全租戶所有動作(系統角色,不需逐表設定)"
             : `${perms.data?.memberActorIds.length ?? 0} 名成員 · 有效權限 = 本角色 ∪ 上層`}
@@ -50,8 +50,8 @@ export function RoleDetail({ role }: { readonly role: Role | null }): ReactNode 
               onClick={() => setTab(key)}
               className={
                 tab === key
-                  ? "border-b-2 border-primary px-3 pt-1.5 pb-2 text-[12.5px] font-semibold text-primary"
-                  : "border-b-2 border-transparent px-3 pt-1.5 pb-2 text-[12.5px] font-medium text-ink-3 hover:text-ink"
+                  ? "border-b-2 border-primary px-3 pt-1.5 pb-2 text-[13px] font-semibold text-primary"
+                  : "border-b-2 border-transparent px-3 pt-1.5 pb-2 text-[13px] font-medium text-ink-3 hover:text-ink"
               }
             >
               {label}
@@ -88,7 +88,7 @@ export function RoleDetail({ role }: { readonly role: Role | null }): ReactNode 
 function Members({ perms }: { readonly perms: RolePermissions }): ReactNode {
   return (
     <div className="max-w-md">
-      <p className="mb-3 text-[11.5px] text-ink-3">
+      <p className="mb-3 text-[12px] text-ink-3">
         指派此角色的使用者。owner 於建立公司時自動為管理員。
       </p>
       {perms.memberActorIds.length === 0 ? (
@@ -102,7 +102,7 @@ function Members({ perms }: { readonly perms: RolePermissions }): ReactNode {
               key={id}
               className="flex items-center gap-3 rounded-md border border-line bg-card px-3 py-2.5"
             >
-              <span className="flex size-7 items-center justify-center rounded-full border border-line bg-label text-[11px] font-semibold text-ink-2">
+              <span className="flex size-7 items-center justify-center rounded-full border border-line bg-label text-[12px] font-semibold text-ink-2">
                 <User size={14} strokeWidth={1.9} />
               </span>
               <span className="font-mono text-[12px] text-ink-2">actor #{id}</span>

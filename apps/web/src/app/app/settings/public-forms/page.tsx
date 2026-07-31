@@ -38,11 +38,11 @@ function FieldPicker({
   if (formId === null) return null
   const fields = form?.fields ?? []
   if (fields.length === 0) {
-    return <p className="text-[11.5px] text-ink-3">這張表單還沒有欄位。</p>
+    return <p className="text-[12px] text-ink-3">這張表單還沒有欄位。</p>
   }
   return (
     <div className="flex flex-col gap-1 rounded-sm border border-line bg-surface p-2">
-      <p className="text-[11px] text-ink-3">
+      <p className="text-[12px] text-ink-3">
         勾選要開放給外部填寫的欄位。
         <span className="text-ink-2">未勾選的欄位外部看不到、也送不進來</span>;
         帶入欄、自動編號、附件等型別不得公開。
@@ -56,7 +56,7 @@ function FieldPicker({
             onChange={() => onToggle(f.id)}
           />
           {f.name}
-          <span className="text-[10.5px] text-ink-3">{f.type}</span>
+          <span className="text-[12px] text-ink-3">{f.type}</span>
         </label>
       ))}
     </div>
@@ -99,8 +99,8 @@ export default function PublicFormsPage(): ReactNode {
   return (
     <div className="relative mx-auto max-w-[820px] p-6">
       <BusyBar busy={isLoading} />
-      <h2 className="text-[15px] font-semibold">公開表單</h2>
-      <p className="mt-1 text-[11.5px] text-ink-3">
+      <h2 className="text-[16px] font-semibold">公開表單</h2>
+      <p className="mt-1 text-[12px] text-ink-3">
         把一張表單開放給未登入的外部人填寫。提交內容會先進待審收件匣,
         由你確認後才成為正式資料 —— 不會直接吃單號或觸發簽核。
       </p>
@@ -112,12 +112,12 @@ export default function PublicFormsPage(): ReactNode {
       )}
       {issued === null ? null : (
         <div className="mt-3 rounded-sm border border-warn/40 bg-warn/5 px-2.5 py-2">
-          <div className="flex items-center gap-1.5 text-[11.5px] text-ink">
+          <div className="flex items-center gap-1.5 text-[12px] text-ink">
             <AlertTriangle size={13} className="shrink-0 text-warn" />
             填寫連結 —— <span className="text-ink-2">只顯示這一次,關閉後無法再取得</span>
           </div>
           <div className="mt-1.5 flex items-center gap-1.5">
-            <code className="min-w-0 flex-1 truncate rounded-sm bg-head px-2 py-1 font-mono text-[11.5px] text-ink">
+            <code className="min-w-0 flex-1 truncate rounded-sm bg-head px-2 py-1 font-mono text-[12px] text-ink">
               {issued}
             </code>
             <Button size="sm" onClick={() => void navigator.clipboard.writeText(issued)}>
@@ -187,11 +187,11 @@ export default function PublicFormsPage(): ReactNode {
               key={s.id}
               className="flex items-center gap-2 rounded-md border border-line bg-card px-3 py-2"
             >
-              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{s.title}</span>
-              <span className="shrink-0 text-[11px] text-ink-3">{s.fieldIds.length} 個欄位</span>
-              <span className="shrink-0 text-[11px] text-ink-3">已收 {s.submissionCount} 筆</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{s.title}</span>
+              <span className="shrink-0 text-[12px] text-ink-3">{s.fieldIds.length} 個欄位</span>
+              <span className="shrink-0 text-[12px] text-ink-3">已收 {s.submissionCount} 筆</span>
               {s.active ? null : (
-                <span className="shrink-0 rounded-sm border border-line px-1.5 py-px text-[10.5px] text-ink-3">
+                <span className="shrink-0 rounded-sm border border-line px-1.5 py-px text-[12px] text-ink-3">
                   已關閉
                 </span>
               )}
@@ -217,12 +217,12 @@ export default function PublicFormsPage(): ReactNode {
           <Inbox size={14} className="text-ink-2" />
           待審收件匣
           {(inbox?.submissions ?? []).length === 0 ? null : (
-            <span className="rounded-sm bg-primary-t px-1.5 py-px text-[10.5px] text-primary">
+            <span className="rounded-sm bg-primary-t px-1.5 py-px text-[12px] text-primary">
               {(inbox?.submissions ?? []).length}
             </span>
           )}
         </h3>
-        <p className="mt-1 text-[11px] text-ink-3">
+        <p className="mt-1 text-[12px] text-ink-3">
           外部提交在這裡等你確認。核准後才會建立正式記錄、取得編號並進入後續流程。
         </p>
         <ul className="mt-2 flex flex-col gap-1.5">
@@ -238,7 +238,7 @@ export default function PublicFormsPage(): ReactNode {
                       </span>
                     ))}
                   </div>
-                  <span className="text-[10.5px] text-ink-3">
+                  <span className="text-[12px] text-ink-3">
                     {new Date(s.createdAt).toLocaleString("zh-TW")}
                   </span>
                 </div>

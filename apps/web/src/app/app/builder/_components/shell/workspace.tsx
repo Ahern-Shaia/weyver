@@ -32,7 +32,7 @@ export function FormWorkspace({
       <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-card px-4">
         <b className="truncate text-[13px] font-semibold text-ink">{form?.name ?? "表單"}</b>
         {recs ? (
-          <span className="shrink-0 rounded-xs border border-line px-1.5 font-mono text-[10px] text-ink-3">
+          <span className="shrink-0 rounded-xs border border-line px-1.5 font-mono text-[12px] text-ink-3">
             {recs.records.length} 筆
           </span>
         ) : null}

@@ -93,8 +93,8 @@ export function ConditionalFormatPanel({
               }}
               className={
                 face === f
-                  ? "bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-white"
-                  : "px-2.5 py-0.5 text-[11px] text-ink-2 hover:bg-head"
+                  ? "bg-primary px-2.5 py-0.5 text-[12px] font-semibold text-white"
+                  : "px-2.5 py-0.5 text-[12px] text-ink-2 hover:bg-head"
               }
             >
               {f === "record" ? "記錄頁" : "列表頁"}
@@ -123,11 +123,11 @@ export function ConditionalFormatPanel({
                 i > 0 ? "border-t-0" : ""
               } ${i === selected ? "border-primary bg-primary-t" : "bg-card hover:bg-head"}`}
             >
-              <span className="truncate text-[11.5px] text-ink-2">{describe(r)}</span>
+              <span className="truncate text-[12px] text-ink-2">{describe(r)}</span>
               <StatusChip tone={r.tone} className="ml-auto shrink-0">
                 {TONE_LABEL[r.tone] ?? r.tone}
               </StatusChip>
-              <span className="shrink-0 text-[10px] text-ink-3">
+              <span className="shrink-0 text-[12px] text-ink-3">
                 → {r.targets.length > 0 ? r.targets.join("、") : "條件欄"}
               </span>
             </button>
@@ -135,7 +135,7 @@ export function ConditionalFormatPanel({
         </div>
 
         {rules.length > 1 ? (
-          <div className="mt-1.5 border border-wn-line bg-wn-t px-2 py-1 text-[11px] text-wn">
+          <div className="mt-1.5 border border-wn-line bg-wn-t px-2 py-1 text-[12px] text-wn">
             <b>排越後面越優先</b> —— 同一欄位命中多條規則時,以最下面那條為準。
           </div>
         ) : null}
@@ -147,7 +147,7 @@ export function ConditionalFormatPanel({
               onChange({ ...current, [face === "record" ? "list" : "record"]: [...rules] })
             }
             disabled={rules.length === 0}
-            className="flex items-center gap-1 text-[11px] text-ink-3 hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40"
           >
             <Copy size={11} />
             複製到{face === "record" ? "列表頁" : "記錄頁"}
@@ -160,7 +160,7 @@ export function ConditionalFormatPanel({
             setSelected(rules.length)
           }}
           disabled={rules.length >= 20 || fieldNames.length === 0}
-          className="mt-2 flex items-center gap-1 text-[11.5px] text-primary hover:underline disabled:opacity-40"
+          className="mt-2 flex items-center gap-1 text-[12px] text-primary hover:underline disabled:opacity-40"
         >
           <Plus size={12} />
           新增規則
@@ -170,7 +170,7 @@ export function ConditionalFormatPanel({
         {rule !== undefined ? (
           <div className="mt-3 border-t border-line pt-3">
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="text-[10.5px] text-ink-3">條件</span>
+              <span className="text-[12px] text-ink-3">條件</span>
               <div className="inline-flex overflow-hidden rounded-xs border border-line">
                 {(["and", "or"] as const).map((c) => (
                   <button
@@ -179,8 +179,8 @@ export function ConditionalFormatPanel({
                     onClick={() => patch(selected, { combinator: c })}
                     className={
                       rule.combinator === c
-                        ? "bg-primary px-2 py-0.5 text-[10.5px] font-semibold text-white"
-                        : "px-2 py-0.5 text-[10.5px] text-ink-2 hover:bg-head"
+                        ? "bg-primary px-2 py-0.5 text-[12px] font-semibold text-white"
+                        : "px-2 py-0.5 text-[12px] text-ink-2 hover:bg-head"
                     }
                   >
                     {c === "and" ? "全部符合" : "任一符合"}
@@ -190,7 +190,7 @@ export function ConditionalFormatPanel({
               <button
                 type="button"
                 onClick={() => setRules(rules.filter((_, i) => i !== selected))}
-                className="ml-auto text-[11px] text-ink-3 hover:text-er"
+                className="ml-auto text-[12px] text-ink-3 hover:text-er"
               >
                 刪除規則
               </button>
@@ -269,13 +269,13 @@ export function ConditionalFormatPanel({
                 })
               }
               disabled={rule.conditions.length >= 20}
-              className="text-[11px] text-primary hover:underline disabled:opacity-40"
+              className="text-[12px] text-primary hover:underline disabled:opacity-40"
             >
               ＋ 加條件
             </button>
 
             <div className="mt-3">
-              <div className="mb-1 text-[10.5px] text-ink-3">
+              <div className="mb-1 text-[12px] text-ink-3">
                 套用到哪些欄位(不選 = 條件所涉之欄位)
               </div>
               <div className="flex flex-wrap gap-1">
@@ -290,7 +290,7 @@ export function ConditionalFormatPanel({
                           targets: on ? rule.targets.filter((t) => t !== n) : [...rule.targets, n],
                         })
                       }
-                      className={`rounded-xs border px-1.5 py-0.5 text-[10.5px] ${
+                      className={`rounded-xs border px-1.5 py-0.5 text-[12px] ${
                         on ? "border-primary bg-primary-t text-primary" : "border-line text-ink-3"
                       }`}
                     >
@@ -302,7 +302,7 @@ export function ConditionalFormatPanel({
             </div>
 
             <div className="mt-3">
-              <div className="mb-1 text-[10.5px] text-ink-3">顏色(12 色受控色盤)</div>
+              <div className="mb-1 text-[12px] text-ink-3">顏色(12 色受控色盤)</div>
               <div className="flex flex-wrap gap-1">
                 {CHIP_TONES.map((tone) => (
                   <button
@@ -324,19 +324,19 @@ export function ConditionalFormatPanel({
 
         {/* 即時預覽 */}
         <div className="mt-3 border-t border-line pt-3">
-          <div className="mb-1.5 text-[10.5px] text-ink-3">即時預覽(本表第一筆)</div>
+          <div className="mb-1.5 text-[12px] text-ink-3">即時預覽(本表第一筆)</div>
           {sample === undefined ? (
-            <div className="text-[11px] text-ink-3">尚無記錄可預覽。</div>
+            <div className="text-[12px] text-ink-3">尚無記錄可預覽。</div>
           ) : (
             <div className="grid grid-cols-[84px_1fr] gap-x-2">
               {fields.map((f) => {
                 const tone = preview.get(f.name)
                 return (
                   <div key={f.id} className="contents">
-                    <div className="border-b border-line-2 py-1 text-[10.5px] text-ink-3">
+                    <div className="border-b border-line-2 py-1 text-[12px] text-ink-3">
                       {f.name}
                     </div>
-                    <div className="border-b border-line-2 py-1 text-[11.5px]">
+                    <div className="border-b border-line-2 py-1 text-[12px]">
                       {tone === undefined ? (
                         <span className="text-ink">{String(sample.values[f.name] ?? "—")}</span>
                       ) : (

@@ -117,7 +117,7 @@ export function ChartView({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-line bg-card px-4 py-1.5">
-        <span className="text-[11.5px] text-ink-2">圖表</span>
+        <span className="text-[12px] text-ink-2">圖表</span>
         <Select
           className="h-7 w-24"
           aria-label="圖表類型"
@@ -130,7 +130,7 @@ export function ChartView({
             </option>
           ))}
         </Select>
-        <span className="text-[11.5px] text-ink-2">分類</span>
+        <span className="text-[12px] text-ink-2">分類</span>
         <Select
           className="h-7 w-28"
           aria-label="圖表分類欄位"
@@ -143,7 +143,7 @@ export function ChartView({
             </option>
           ))}
         </Select>
-        <span className="text-[11.5px] text-ink-2">值</span>
+        <span className="text-[12px] text-ink-2">值</span>
         <Select
           className="h-7 w-28"
           aria-label="圖表值欄位"
@@ -192,8 +192,8 @@ export function ChartView({
             />
             {/* 🔴 圖表旁提供資料表 —— ECharts 的鍵盤導覽有已知缺陷(#18585),
                 純圖形對螢幕閱讀器使用者不可用,資料表是可靠的等價途徑。 */}
-            <table className="mt-4 w-full max-w-md border-collapse text-[11.5px]">
-              <caption className="pb-1 text-left text-[11px] text-ink-3">圖表資料</caption>
+            <table className="mt-4 w-full max-w-md border-collapse text-[12px]">
+              <caption className="pb-1 text-left text-[12px] text-ink-3">圖表資料</caption>
               <thead>
                 <tr>
                   <th className="border border-cell bg-head px-2 py-1 text-left text-ink-2">

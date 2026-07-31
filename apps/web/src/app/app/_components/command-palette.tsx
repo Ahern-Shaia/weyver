@@ -118,7 +118,7 @@ export function CommandPalette(): ReactNode {
             placeholder="搜尋表單、動作…"
             className="flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
           />
-          <kbd className="rounded-xs border border-line px-1.5 font-mono text-[10px] text-ink-3">
+          <kbd className="rounded-xs border border-line px-1.5 font-mono text-[12px] text-ink-3">
             ⌘K
           </kbd>
         </div>
@@ -139,9 +139,9 @@ export function CommandPalette(): ReactNode {
                 }
               >
                 <span className="text-ink-3">{i.icon}</span>
-                <span className="flex-1 truncate text-[12.5px] text-ink">{i.label}</span>
+                <span className="flex-1 truncate text-[13px] text-ink">{i.label}</span>
                 {i.hint ? (
-                  <span className="rounded-xs border border-line bg-label px-1.5 font-mono text-[10px] text-ink-3">
+                  <span className="rounded-xs border border-line bg-label px-1.5 font-mono text-[12px] text-ink-3">
                     {i.hint}
                   </span>
                 ) : null}

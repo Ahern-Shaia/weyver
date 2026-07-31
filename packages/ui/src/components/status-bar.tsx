@@ -12,7 +12,7 @@ export function StatusBar({ left, right, className }: StatusBarProps): ReactElem
   return (
     <div
       className={cn(
-        "flex h-[26px] shrink-0 items-center gap-[18px] border-t border-line bg-head px-3.5 text-[10.5px] text-ink-3",
+        "flex h-[26px] shrink-0 items-center gap-[18px] border-t border-line bg-head px-3.5 text-[12px] text-ink-3",
         className,
       )}
     >

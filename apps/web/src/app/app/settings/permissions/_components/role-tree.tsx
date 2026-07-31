@@ -42,7 +42,7 @@ export function RoleTree({
   return (
     <div className="flex w-56 shrink-0 flex-col border-r border-line bg-card">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line-2 px-3">
-        <b className="text-[12.5px] font-semibold">角色 / 部門</b>
+        <b className="text-[13px] font-semibold">角色 / 部門</b>
         <button
           type="button"
           onClick={() => setAdding((v) => !v)}
@@ -66,18 +66,18 @@ export function RoleTree({
         </div>
       ) : null}
       <div className="flex-1 overflow-y-auto p-1.5">
-        {loading ? <div className="px-2 py-1.5 text-[11.5px] text-ink-3">載入…</div> : null}
-        <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold tracking-wide text-ink-3">
+        {loading ? <div className="px-2 py-1.5 text-[12px] text-ink-3">載入…</div> : null}
+        <div className="px-2 pt-1.5 pb-1 text-[12px] font-semibold tracking-wide text-ink-3">
           系統角色
         </div>
         {system.map((r) => (
           <RoleItem key={r.id} role={r} active={r.id === selectedId} onSelect={onSelect} />
         ))}
-        <div className="px-2 pt-2.5 pb-1 text-[10px] font-semibold tracking-wide text-ink-3">
+        <div className="px-2 pt-2.5 pb-1 text-[12px] font-semibold tracking-wide text-ink-3">
           部門 / 自訂角色
         </div>
         {custom.length === 0 ? (
-          <div className="px-2 py-1 text-[11px] text-ink-3">尚無自訂角色</div>
+          <div className="px-2 py-1 text-[12px] text-ink-3">尚無自訂角色</div>
         ) : (
           custom.map((r) => (
             <RoleItem key={r.id} role={r} active={r.id === selectedId} onSelect={onSelect} />
@@ -112,7 +112,7 @@ function RoleItem({
       <Icon size={13} strokeWidth={1.9} className={active ? "text-primary" : "text-ink-3"} />
       <span className="truncate">{role.name}</span>
       {role.key === "admin" ? (
-        <span className="ml-auto rounded-xs border border-line px-1 font-mono text-[9px] text-ink-3">
+        <span className="ml-auto rounded-xs border border-line px-1 font-mono text-[12px] text-ink-3">
           全權
         </span>
       ) : null}

@@ -34,7 +34,7 @@ export function DataTable<T>({
               <th
                 key={column.key}
                 className={cn(
-                  "border-b border-line bg-head px-3 py-[6px] text-[10.5px] font-semibold text-ink-2",
+                  "border-b border-line bg-head px-3 py-[6px] text-[12px] font-semibold text-ink-2",
                   column.align === "right" ? "text-right" : "text-left",
                 )}
               >

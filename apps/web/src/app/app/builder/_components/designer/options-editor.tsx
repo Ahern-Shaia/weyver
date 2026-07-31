@@ -147,8 +147,8 @@ export function OptionsEditorPanel({
   return (
     <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
       <div className="flex items-center gap-1.5">
-        <span className="text-[10.5px] text-ink-3">選項</span>
-        <span className="text-[10px] text-ink-3">({fieldName})</span>
+        <span className="text-[12px] text-ink-3">選項</span>
+        <span className="text-[12px] text-ink-3">({fieldName})</span>
       </div>
 
       {error !== null ? (
@@ -182,7 +182,7 @@ export function OptionsEditorPanel({
             <StatusChip tone={(row.color ?? "c1") as ChipTone}>
               {row.name.trim() === "" ? "預覽" : row.name}
             </StatusChip>
-            <span className="w-14 shrink-0 text-right text-[10px] text-ink-3">
+            <span className="w-14 shrink-0 text-right text-[12px] text-ink-3">
               {used > 0 ? `${used} 筆` : ""}
             </span>
             {retired ? (
@@ -223,7 +223,7 @@ export function OptionsEditorPanel({
             },
           ])
         }
-        className="flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+        className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
       >
         <Plus size={12} />
         加選項
@@ -236,13 +236,13 @@ export function OptionsEditorPanel({
       {/* 刪除仍被使用的選項 —— 強制三選一,不默默決定 */}
       {removing !== null ? (
         <div className="space-y-2 border border-warn/40 bg-warn/5 px-2.5 py-2">
-          <div className="flex items-start gap-1.5 text-[11px] text-ink">
+          <div className="flex items-start gap-1.5 text-[12px] text-ink">
             <AlertTriangle size={12} className="mt-0.5 shrink-0 text-warn" />
             <span>
               「{removing.name}」有 <b>{usage[removing.id] ?? 0}</b> 筆記錄正在使用。
             </span>
           </div>
-          <div className="flex flex-col gap-1 text-[11px] text-ink-2">
+          <div className="flex flex-col gap-1 text-[12px] text-ink-2">
             <label className="flex items-center gap-1.5">
               <input
                 type="radio"

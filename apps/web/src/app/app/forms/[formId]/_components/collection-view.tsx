@@ -289,7 +289,7 @@ export function CollectionView({
           />
         )}
       </div>
-      <div className="flex h-8 shrink-0 items-center gap-3 border-t border-line bg-card px-4 text-[11px] text-ink-3">
+      <div className="flex h-8 shrink-0 items-center gap-3 border-t border-line bg-card px-4 text-[12px] text-ink-3">
         <span className="font-mono">
           {records.length} 筆{selectedIds.length > 0 ? ` · 已選 ${selectedIds.length}` : ""}
         </span>

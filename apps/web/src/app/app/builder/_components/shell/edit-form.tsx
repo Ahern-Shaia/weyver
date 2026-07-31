@@ -195,11 +195,11 @@ export function EditFormPanel({
 
       <div className="flex min-w-0 flex-1 flex-col bg-surface">
         <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-card px-4 py-2.5">
-          <h1 className="text-[15px] font-semibold tracking-tight text-ink">{form.name}</h1>
+          <h1 className="text-[16px] font-semibold tracking-tight text-ink">{form.name}</h1>
           <StatusChip tone={STATE_TONE[form.provisionState] ?? "neutral"}>
             {form.provisionState}
           </StatusChip>
-          <span className="ml-auto font-mono text-[11px] text-ink-3">
+          <span className="ml-auto font-mono text-[12px] text-ink-3">
             v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
           </span>
           {form.parentFormId === null ? (
@@ -279,7 +279,7 @@ function PendingEditor({
         onChange={(e) => set({ name: e.target.value })}
         placeholder="欄位名稱"
       />
-      <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+      <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
         <input
           type="checkbox"
           checked={pending.required}

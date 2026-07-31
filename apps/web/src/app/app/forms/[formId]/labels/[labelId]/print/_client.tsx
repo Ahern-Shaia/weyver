@@ -91,11 +91,11 @@ export function LabelPrintClient(): ReactNode {
         className="flex items-center gap-3 border-b border-line bg-card px-4 py-2 text-[12px]"
       >
         <span className="font-semibold text-ink-2">{label.name}</span>
-        <span className="font-mono text-[11px] text-ink-3">
+        <span className="font-mono text-[12px] text-ink-3">
           {units.length} 張{config.tile ? " · 平舖" : " · 一頁一張"}
         </span>
         {truncated ? (
-          <span className="rounded-xs border border-warn-line bg-warn-t px-2 py-0.5 text-[11px] text-warn">
+          <span className="rounded-xs border border-warn-line bg-warn-t px-2 py-0.5 text-[12px] text-warn">
             共 {total} 張,超過單次上限 {MAX_LABELS_PER_RUN} 張 —— 僅顯示前 {MAX_LABELS_PER_RUN}{" "}
             張,請縮小篩選或分批列印
           </span>
@@ -103,7 +103,7 @@ export function LabelPrintClient(): ReactNode {
         <button
           type="button"
           onClick={() => window.print()}
-          className="ml-auto flex items-center gap-1 rounded-xs bg-primary px-3 py-1 text-[11.5px] font-medium text-white hover:bg-primary-d"
+          className="ml-auto flex items-center gap-1 rounded-xs bg-primary px-3 py-1 text-[12px] font-medium text-white hover:bg-primary-d"
         >
           <Printer size={13} />
           列印
@@ -166,7 +166,7 @@ function LabelLine({
   if (asQr) {
     return (
       <span className="flex items-center gap-1">
-        {showName ? <span className="text-[8px] text-ink-3">{field.name}</span> : null}
+        {showName ? <span className="text-[12px] text-ink-3">{field.name}</span> : null}
         <BarcodeView value={value} symbology={fieldSymbology(field) ?? "qr"} size={48} />
       </span>
     )

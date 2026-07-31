@@ -151,7 +151,7 @@ function ButtonsPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3 text-[11.5px]">
+    <div className="flex flex-col gap-3 text-[12px]">
       {buttons.length > 0 ? (
         <div className="flex flex-col gap-1">
           {buttons.map((b) => (
@@ -160,7 +160,7 @@ function ButtonsPanel({
               className="flex items-center gap-2 rounded-xs border border-line px-2 py-1"
             >
               <span className="truncate text-ink">{b.label}</span>
-              <span className="font-mono text-[9.5px] text-ink-3">{b.actionType}</span>
+              <span className="font-mono text-[12px] text-ink-3">{b.actionType}</span>
               <button
                 type="button"
                 onClick={() => deleteButton.mutate(b.id)}
@@ -265,7 +265,7 @@ function ButtonsPanel({
           type="button"
           onClick={submit}
           disabled={label.trim() === "" || createButton.isPending}
-          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[11.5px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
+          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
         >
           <Plus size={13} />
           新增按鈕
@@ -321,14 +321,14 @@ function ApprovalPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3 text-[11.5px]">
+    <div className="flex flex-col gap-3 text-[12px]">
       {defs.length > 0 ? (
         <div className="flex flex-col gap-1">
           {defs.map((d) => (
             <div key={d.id} className="rounded-xs border border-line px-2 py-1">
               <div className="flex items-center gap-2">
                 <span className="truncate text-ink">{d.name}</span>
-                <span className="ml-auto font-mono text-[9.5px] text-ink-3">
+                <span className="ml-auto font-mono text-[12px] text-ink-3">
                   {d.steps.length} 關{d.active ? "" : " · 停用"}
                 </span>
               </div>
@@ -347,7 +347,7 @@ function ApprovalPanel({
         />
         {steps.map((s, i) => (
           <div key={s.stepNo} className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-[10px] text-ink-3">第{s.stepNo}關</span>
+            <span className="font-mono text-[12px] text-ink-3">第{s.stepNo}關</span>
             <Select
               className="h-7 w-24"
               value={String(s.approverRoleId)}
@@ -416,7 +416,7 @@ function ApprovalPanel({
         <button
           type="button"
           onClick={addStep}
-          className="flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+          className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
         >
           <Plus size={12} />
           加一關
@@ -441,7 +441,7 @@ function ApprovalPanel({
           type="button"
           onClick={submit}
           disabled={createDef.isPending}
-          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[11.5px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
+          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
         >
           <Plus size={13} />
           建立流程

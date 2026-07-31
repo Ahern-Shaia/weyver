@@ -58,17 +58,17 @@ export function RelookupPanel({
 
   return (
     <div className="mt-2 border border-line bg-card p-2.5">
-      <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-ink">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-ink">
         <RefreshCw size={12} className="text-ink-3" />
         從來源重新帶入
       </div>
-      <p className="mb-2 text-[10.5px] leading-relaxed text-ink-3">
+      <p className="mb-2 text-[12px] leading-relaxed text-ink-3">
         這個欄位保留的是填單當時的內容。若要改成來源主檔的現況,先試算再套用。
       </p>
 
       {preview === null ? null : (
         <div className="mb-2 space-y-1.5">
-          <div className="text-[11.5px] text-ink">
+          <div className="text-[12px] text-ink">
             {preview.changed === 0 ? (
               <span className="text-ink-3">全部 {preview.total} 筆都與來源一致,沒有要改的。</span>
             ) : (
@@ -80,7 +80,7 @@ export function RelookupPanel({
           {preview.samples.length === 0 ? null : (
             <ul className="divide-y divide-line border border-line">
               {preview.samples.map((s) => (
-                <li key={s.recordId} className="flex items-center gap-2 px-2 py-1 text-[10.5px]">
+                <li key={s.recordId} className="flex items-center gap-2 px-2 py-1 text-[12px]">
                   <span className="w-10 shrink-0 font-mono text-ink-3">#{s.recordId}</span>
                   <span className="truncate text-ink-3 line-through">{s.before ?? "—"}</span>
                   <span className="shrink-0 text-ink-3">→</span>
@@ -90,7 +90,7 @@ export function RelookupPanel({
             </ul>
           )}
           {preview.changed > preview.samples.length ? (
-            <div className="text-[10px] text-ink-3">僅列出前 {preview.samples.length} 筆</div>
+            <div className="text-[12px] text-ink-3">僅列出前 {preview.samples.length} 筆</div>
           ) : null}
         </div>
       )}

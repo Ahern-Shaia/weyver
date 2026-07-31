@@ -35,13 +35,13 @@ export function AccessPreview(): ReactNode {
         <Eye size={13} className="text-ink-3" />
         存取預覽
       </div>
-      <p className="mb-3 text-[11px] leading-relaxed text-ink-3">
+      <p className="mb-3 text-[12px] leading-relaxed text-ink-3">
         選一位使用者與一張表單,試算他實際看得到哪些記錄。
         <b className="text-ink-2">唯讀試算</b>,不會以他的身分登入。
       </p>
 
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+        <label className="flex flex-col gap-1 text-[12px] text-ink-2">
           表單
           <Select
             value={formId === null ? "" : String(formId)}
@@ -57,7 +57,7 @@ export function AccessPreview(): ReactNode {
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+        <label className="flex flex-col gap-1 text-[12px] text-ink-2">
           使用者
           <Select
             value={actorId === null ? "" : String(actorId)}
@@ -76,7 +76,7 @@ export function AccessPreview(): ReactNode {
       </div>
 
       {(actors ?? []).length === 0 ? (
-        <div className="mt-2 text-[11px] text-ink-3">
+        <div className="mt-2 text-[12px] text-ink-3">
           租戶內尚無任何具角色的使用者 —— 先到「成員」指派角色後才能試算。
         </div>
       ) : null}
@@ -85,7 +85,7 @@ export function AccessPreview(): ReactNode {
         isError ? (
           <div className="mt-3 text-[13px] text-er">試算失敗</div>
         ) : isPending ? (
-          <div className="mt-3 text-[11.5px] text-ink-3">試算中…</div>
+          <div className="mt-3 text-[12px] text-ink-3">試算中…</div>
         ) : data === undefined ? null : (
           <div className="mt-3 space-y-2">
             <div className="flex flex-wrap items-center gap-3 text-[12px] text-ink">
@@ -93,7 +93,7 @@ export function AccessPreview(): ReactNode {
                 看得到 <b>{data.visibleCount}</b> / 全部 {data.totalCount} 筆
               </span>
               {data.scoped ? (
-                <span className="flex items-center gap-1 text-[11px] text-ink-3">
+                <span className="flex items-center gap-1 text-[12px] text-ink-3">
                   <UserCheck size={11} />
                   此表的檢視已設為「只限自己的」
                 </span>
@@ -101,7 +101,7 @@ export function AccessPreview(): ReactNode {
             </div>
 
             {data.visibleCount === 0 ? (
-              <div className="text-[11.5px] text-warn">
+              <div className="text-[12px] text-warn">
                 這位使用者一筆都看不到 —— 若非預期,請確認角色是否有此表的檢視權。
               </div>
             ) : (
@@ -109,11 +109,11 @@ export function AccessPreview(): ReactNode {
                 {data.samples.map((s) => (
                   <li
                     key={s.recordId}
-                    className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-[11.5px]"
+                    className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-[12px]"
                   >
                     <span className="truncate text-ink">{s.title}</span>
                     {/* 「為什麼看得到」—— 沒有這個,管理員只能看到一個數字 */}
-                    <span className="shrink-0 text-[10.5px] text-ink-3">
+                    <span className="shrink-0 text-[12px] text-ink-3">
                       {REASON_LABEL[s.reason] ?? s.reason}
                     </span>
                   </li>
@@ -121,7 +121,7 @@ export function AccessPreview(): ReactNode {
               </ul>
             )}
             {data.visibleCount > data.samples.length ? (
-              <div className="text-[10.5px] text-ink-3">
+              <div className="text-[12px] text-ink-3">
                 僅列出前 {data.samples.length} 筆
               </div>
             ) : null}

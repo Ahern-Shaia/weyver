@@ -148,7 +148,7 @@ export function ListControls({
 
       {panel === "filter" ? (
         <div className="border-t border-line bg-surface px-4 py-2.5">
-          <div className="mb-2 flex items-center gap-2 text-[11.5px] text-ink-3">
+          <div className="mb-2 flex items-center gap-2 text-[12px] text-ink-3">
             <span>符合</span>
             <Select
               className="h-6"
@@ -173,7 +173,7 @@ export function ListControls({
             <button
               type="button"
               onClick={addCondition}
-              className="mt-0.5 flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+              className="mt-0.5 flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
             >
               <Plus size={12} strokeWidth={2} />
               加條件
@@ -266,16 +266,16 @@ export function ListControls({
               <button
                 type="button"
                 onClick={addGroup}
-                className="mt-0.5 flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+                className="mt-0.5 flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
               >
                 <Plus size={12} strokeWidth={2} />
                 加入分組欄位
               </button>
             ) : (
-              <span className="text-[11px] text-ink-3">最多 3 層</span>
+              <span className="text-[12px] text-ink-3">最多 3 層</span>
             )}
             {groups.length > 0 ? (
-              <p className="mt-1 text-[11px] text-ink-3">
+              <p className="mt-1 text-[12px] text-ink-3">
                 每組的筆數與小計由伺服器計算,只會統計你有權檢視的記錄。
               </p>
             ) : null}
@@ -334,7 +334,7 @@ export function ListControls({
               <button
                 type="button"
                 onClick={addSort}
-                className="mt-0.5 flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+                className="mt-0.5 flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
               >
                 <Plus size={12} strokeWidth={2} />
                 加排序鍵
@@ -438,8 +438,8 @@ function ToggleChip({
       onClick={onClick}
       className={
         active
-          ? "flex items-center gap-1 rounded-xs border border-primary bg-primary-t px-2 py-1 text-[11.5px] text-primary"
-          : "flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
+          ? "flex items-center gap-1 rounded-xs border border-primary bg-primary-t px-2 py-1 text-[12px] text-primary"
+          : "flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
       }
     >
       {children}
@@ -462,8 +462,8 @@ function ActBtn({
       onClick={onClick}
       className={
         tone === "danger"
-          ? "flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-er hover:border-er hover:bg-er-t"
-          : "flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
+          ? "flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t"
+          : "flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
       }
     >
       {children}

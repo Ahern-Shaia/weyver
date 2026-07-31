@@ -29,7 +29,7 @@ export function StatusBar({ org }: { readonly org: string | null }): ReactNode {
     : "連線中…"
 
   return (
-    <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-line bg-card px-4 text-[10.5px] text-ink-3">
+    <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-line bg-card px-4 text-[12px] text-ink-3">
       <span className="flex items-center gap-1.5">
         <span
           className={`inline-block size-1.5 rounded-full ${connected ? "bg-ok" : "bg-ink-3"}`}

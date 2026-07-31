@@ -18,11 +18,11 @@ export function PendingApprovals(): ReactNode {
   return (
     <section className="mt-6">
       <div className="mb-2 flex items-baseline gap-2">
-        <h3 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-2">
+        <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-2">
           <Inbox size={14} strokeWidth={1.9} className="text-warn" />
           待我簽核
         </h3>
-        <span className="font-mono text-[11px] text-ink-3">{pending.length}</span>
+        <span className="font-mono text-[12px] text-ink-3">{pending.length}</span>
       </div>
       <div className="flex flex-col gap-1.5">
         {pending.map((p) => (
@@ -32,8 +32,8 @@ export function PendingApprovals(): ReactNode {
             className="flex items-center gap-2 rounded-sm border border-line bg-card px-3 py-2 transition-colors duration-fast-01 ease-productive-exit hover:border-primary hover:bg-primary-t"
           >
             <span className="text-[12px] font-medium text-ink">{nameOf(p.formId)}</span>
-            <span className="font-mono text-[10.5px] text-ink-3">#{p.recordId}</span>
-            <span className="ml-auto rounded-xs border border-warn-line bg-warn-t px-1.5 text-[10px] text-warn">
+            <span className="font-mono text-[12px] text-ink-3">#{p.recordId}</span>
+            <span className="ml-auto rounded-xs border border-warn-line bg-warn-t px-1.5 text-[12px] text-warn">
               第 {p.currentStep} 關
             </span>
           </Link>

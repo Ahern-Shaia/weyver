@@ -60,7 +60,7 @@ export function KanbanBoard({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-card px-4">
-        <span className="text-[11.5px] text-ink-2">分欄依據</span>
+        <span className="text-[12px] text-ink-2">分欄依據</span>
         <div>
           <Select
             className="h-7 w-40"
@@ -79,7 +79,7 @@ export function KanbanBoard({
           <button
             type="button"
             onClick={() => void recordsQuery.fetchNextPage()}
-            className="text-[11.5px] text-primary hover:underline"
+            className="text-[12px] text-primary hover:underline"
           >
             載入更多卡片
           </button>

@@ -200,7 +200,7 @@ export function ImportPanel({
             <div className="border border-er/40 bg-er/5 px-3 py-2 text-[14px] text-er">{error}</div>
           ) : null}
           {result !== null ? (
-            <div className="border border-ok/40 bg-ok/5 px-3 py-2 text-[11.5px] text-ink">{result}</div>
+            <div className="border border-ok/40 bg-ok/5 px-3 py-2 text-[12px] text-ink">{result}</div>
           ) : null}
 
           {sheet === null ? (
@@ -226,7 +226,7 @@ export function ImportPanel({
               {/* 工作表 + 標題列偵測結果 */}
               <div className="flex flex-wrap items-end gap-3">
                 {sheet.sheetNames.length > 1 ? (
-                  <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+                  <label className="flex flex-col gap-1 text-[12px] text-ink-2">
                     工作表
                     <Select
                       value={sheet.sheetName}
@@ -243,7 +243,7 @@ export function ImportPanel({
                     </Select>
                   </label>
                 ) : null}
-                <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+                <label className="flex flex-col gap-1 text-[12px] text-ink-2">
                   匯入方式
                   <Select
                     value={policy}
@@ -262,7 +262,7 @@ export function ImportPanel({
                   </Select>
                 </label>
                 {policy === "insert_only" ? null : (
-                  <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+                  <label className="flex flex-col gap-1 text-[12px] text-ink-2">
                     比對欄位
                     <Select
                       value={matchField}
@@ -284,7 +284,7 @@ export function ImportPanel({
                 )}
               </div>
 
-              <div className="space-y-1 text-[11px] text-ink-3">
+              <div className="space-y-1 text-[12px] text-ink-3">
                 <div>
                   共 {sheet.totalRows} 列;標題在第 {sheet.headerRowIndex} 列。
                 </div>
@@ -298,7 +298,7 @@ export function ImportPanel({
 
               {/* 欄位對映 */}
               <div className="border border-line">
-                <div className="grid grid-cols-[1fr_1fr_2fr] gap-2 border-b border-line bg-label px-3 py-1.5 text-[10.5px] text-ink-3">
+                <div className="grid grid-cols-[1fr_1fr_2fr] gap-2 border-b border-line bg-label px-3 py-1.5 text-[12px] text-ink-3">
                   <span>檔案欄位</span>
                   <span>對應到</span>
                   <span>資料範例</span>
@@ -308,7 +308,7 @@ export function ImportPanel({
                     key={column}
                     className="grid grid-cols-[1fr_1fr_2fr] items-center gap-2 border-b border-line px-3 py-1.5 last:border-b-0"
                   >
-                    <span className="truncate text-[11.5px] text-ink">{column}</span>
+                    <span className="truncate text-[12px] text-ink">{column}</span>
                     <Select
                       value={mapping[column] ?? SKIP}
                       onChange={(e) => {
@@ -325,7 +325,7 @@ export function ImportPanel({
                         </option>
                       ))}
                     </Select>
-                    <span className="truncate text-[11px] text-ink-3">
+                    <span className="truncate text-[12px] text-ink-3">
                       {sheet.preview
                         .slice(0, 3)
                         .map((r) => r[column] ?? "")
@@ -338,7 +338,7 @@ export function ImportPanel({
 
               {/* 空白格政策 */}
               <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-[11.5px] text-ink-2">
+                <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
                   <input
                     type="checkbox"
                     checked={blankPolicy === "clear"}
@@ -351,12 +351,12 @@ export function ImportPanel({
                   />
                   檔案中留空的格子,清空既有記錄的該欄位
                 </label>
-                <p className="text-[11px] text-ink-3">
+                <p className="text-[12px] text-ink-3">
                   預設不清空 —— 留空多半代表「這次沒有要改這一欄」,而不是「要把它清掉」。
                 </p>
                 {blankPolicy === "clear" ? (
                   <div className="space-y-1 border border-warn/40 bg-warn/5 px-3 py-2">
-                    <div className="flex items-center gap-1.5 text-[11.5px] text-ink">
+                    <div className="flex items-center gap-1.5 text-[12px] text-ink">
                       <AlertTriangle size={12} className="text-warn" />
                       這會刪除既有資料且無法從檔案還原。請輸入表單名稱「{formName}」以確認。
                     </div>
@@ -384,7 +384,7 @@ export function ImportPanel({
                     ) : null}
                   </div>
                   {planned.impact.fieldsToClear > 0 ? (
-                    <div className="text-[11.5px] text-warn">
+                    <div className="text-[12px] text-warn">
                       將清空 {planned.impact.fieldsToClear} 個欄位值。
                     </div>
                   ) : null}
@@ -394,18 +394,18 @@ export function ImportPanel({
                     </div>
                   ))}
                   {sheet.mergedCells > 0 ? (
-                    <div className="text-[11.5px] text-warn">
+                    <div className="text-[12px] text-warn">
                       偵測到 {sheet.mergedCells} 個合併儲存格,已用左上角的值填滿 ——
                       請確認下方預覽是否符合預期。
                     </div>
                   ) : null}
                   {planned.warnings.map((w) => (
-                    <div key={w.code} className="text-[11.5px] text-warn">
+                    <div key={w.code} className="text-[12px] text-warn">
                       {w.message}
                     </div>
                   ))}
                   {planned.impact.needsConfirm ? (
-                    <label className="flex items-start gap-1.5 border border-warn/40 bg-warn/5 px-3 py-2 text-[11.5px] text-ink">
+                    <label className="flex items-start gap-1.5 border border-warn/40 bg-warn/5 px-3 py-2 text-[12px] text-ink">
                       <input
                         type="checkbox"
                         checked={impactAck}
@@ -421,7 +421,7 @@ export function ImportPanel({
                     </label>
                   ) : null}
                   {planned.rowErrors.slice(0, 5).map((r) => (
-                    <div key={r.sourceRowNo} className="text-[11px] text-ink-3">
+                    <div key={r.sourceRowNo} className="text-[12px] text-ink-3">
                       第 {r.sourceRowNo} 列:{r.errorMessage ?? r.errorCode}
                     </div>
                   ))}

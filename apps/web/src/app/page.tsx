@@ -24,7 +24,7 @@ export default function HomePage() {
           <div className="text-[14px] font-semibold">
             Weyver <span className="font-normal text-ink-3">織雲</span>
           </div>
-          <div className="text-[11px] text-ink-3">前端工作區 · 嚴謹企業級 v2.1</div>
+          <div className="text-[12px] text-ink-3">前端工作區 · 嚴謹企業級 v2.1</div>
         </div>
       </div>
       <div className="grid gap-2">
@@ -35,7 +35,7 @@ export default function HomePage() {
             className="border border-line bg-card px-4 py-3 hover:bg-head"
           >
             <div className="text-[13px] font-semibold">{link.title}</div>
-            <div className="mt-0.5 text-[11.5px] text-ink-3">{link.desc}</div>
+            <div className="mt-0.5 text-[12px] text-ink-3">{link.desc}</div>
           </Link>
         ))}
       </div>

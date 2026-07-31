@@ -356,18 +356,18 @@ export function DesignCanvas({
               <Redo2 size={13} />
             </button>
           </div>
-          {dirty ? <span className="text-[11px] text-warn">● 未儲存</span> : null}
+          {dirty ? <span className="text-[12px] text-warn">● 未儲存</span> : null}
           <button
             type="button"
             onClick={save}
             disabled={!dirty || putLayout.isPending}
-            className="ml-auto rounded-xs bg-primary px-3 py-1 text-[11.5px] font-medium text-white transition-colors hover:bg-primary-d disabled:opacity-40"
+            className="ml-auto rounded-xs bg-primary px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-primary-d disabled:opacity-40"
           >
             {putLayout.isPending ? "儲存中…" : "儲存版面"}
           </button>
         </div>
         {msg !== null ? (
-          <div className="shrink-0 border-b border-line bg-label px-4 py-1.5 text-[11.5px] text-ink-2">
+          <div className="shrink-0 border-b border-line bg-label px-4 py-1.5 text-[12px] text-ink-2">
             {msg}
           </div>
         ) : null}
@@ -382,7 +382,7 @@ export function DesignCanvas({
                   {effective.sections.map((s) => (
                     <span
                       key={s.id}
-                      className="inline-flex items-center gap-1 rounded-xs border border-line bg-head px-2 py-0.5 text-[10.5px] text-ink-2"
+                      className="inline-flex items-center gap-1 rounded-xs border border-line bg-head px-2 py-0.5 text-[12px] text-ink-2"
                     >
                       {s.name}
                       <button
@@ -498,7 +498,7 @@ function TB({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11px] text-ink-3 hover:border-primary hover:text-primary"
+      className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
     >
       {icon}
       {children}
@@ -560,12 +560,12 @@ function FieldCard({
         <GripVertical size={13} />
       </button>
       <span className="flex min-w-0 flex-1 flex-col justify-center px-2.5 py-1">
-        <span className="flex items-center gap-1 truncate text-[11.5px] font-medium text-ink">
+        <span className="flex items-center gap-1 truncate text-[12px] font-medium text-ink">
           {field.required ? <span className="text-er">*</span> : null}
           <span className="truncate">{field.name}</span>
-          {layout.hidden ? <span className="text-[9px] text-ink-3">（隱藏）</span> : null}
+          {layout.hidden ? <span className="text-[12px] text-ink-3">（隱藏）</span> : null}
         </span>
-        <span className="truncate font-mono text-[9.5px] text-ink-3">
+        <span className="truncate font-mono text-[12px] text-ink-3">
           {meta.label}
           {layout.placeholder ? ` · ${layout.placeholder}` : ""}
           {layout.defaultValue ? " · 預設" : ""}
@@ -630,7 +630,7 @@ function StaticCard({
       >
         <GripVertical size={13} />
       </button>
-      <span className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-[11px] text-ink-2">
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-[12px] text-ink-2">
         {element.kind === "text" ? (
           <>
             <Type size={12} className="shrink-0 text-ink-3" />
@@ -643,7 +643,7 @@ function StaticCard({
           </>
         )}
         {element.designOnly ? (
-          <span className="ml-auto text-[9px] text-ink-3">設計限定</span>
+          <span className="ml-auto text-[12px] text-ink-3">設計限定</span>
         ) : null}
       </span>
     </div>

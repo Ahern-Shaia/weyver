@@ -14,10 +14,10 @@ export function FormSection({ title, hint, children, className }: FormSectionPro
     <section
       className={cn("overflow-hidden rounded-md border border-line bg-card", className)}
     >
-      <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+      <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[12px] font-semibold text-ink-2">
         <span className="size-1.5 shrink-0 rounded-full bg-primary" />
         {title}
-        {hint ? <span className="ml-auto text-[10.5px] font-normal text-ink-3">{hint}</span> : null}
+        {hint ? <span className="ml-auto text-[12px] font-normal text-ink-3">{hint}</span> : null}
       </header>
       {children}
     </section>

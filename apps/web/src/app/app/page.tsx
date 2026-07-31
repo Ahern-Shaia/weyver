@@ -33,11 +33,11 @@ function FormCard({ form }: { readonly form: FormSummary }): ReactNode {
       >
         <div className="flex items-center gap-2">
           <Lock size={14} strokeWidth={1.9} className="shrink-0 text-ink-3" />
-          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-3">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink-3">
             {form.name}
           </span>
         </div>
-        <div className="mt-0.5 pl-6 font-mono text-[10.5px] text-ink-3">無存取權</div>
+        <div className="mt-0.5 pl-6 font-mono text-[12px] text-ink-3">無存取權</div>
       </div>
     )
   }
@@ -52,11 +52,11 @@ function FormCard({ form }: { readonly form: FormSummary }): ReactNode {
           strokeWidth={1.9}
           className="shrink-0 text-ink-3 group-hover:text-primary"
         />
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">
           {form.name}
         </span>
       </div>
-      <div className="mt-0.5 pl-6 font-mono text-[10.5px] text-ink-3">
+      <div className="mt-0.5 pl-6 font-mono text-[12px] text-ink-3">
         {fmtUpdated(form.updatedAt)}
       </div>
     </Link>
@@ -74,8 +74,8 @@ function Section({
   return (
     <section className="mt-6">
       <div className="mb-2 flex items-baseline gap-2">
-        <h3 className="text-[12.5px] font-semibold text-ink-2">{title}</h3>
-        <span className="font-mono text-[11px] text-ink-3">{forms.length}</span>
+        <h3 className="text-[13px] font-semibold text-ink-2">{title}</h3>
+        <span className="font-mono text-[12px] text-ink-3">{forms.length}</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {forms.map((f) => (
@@ -104,24 +104,24 @@ export default function WorkspaceHome(): ReactNode {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-5xl px-8 py-7">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-[21px] font-semibold tracking-[-0.015em] text-ink">
+          <h2 className="text-[24px] font-semibold tracking-[-0.015em] text-ink">
             {greeting()}
             {name ? `,${name}` : ""}
           </h2>
-          <span className="text-[12.5px] text-ink-3">
+          <span className="text-[13px] text-ink-3">
             {org?.name ?? "你的工作區"}
             {forms ? ` · ${roots.length} 張表單` : ""}
           </span>
           <Link
             href="/app/builder"
-            className="ml-auto flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12.5px] font-medium text-white transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-d"
+            className="ml-auto flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[13px] font-medium text-white transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-d"
           >
             <Plus size={14} strokeWidth={2} />
             新增表單
           </Link>
         </div>
 
-        <p className="mt-4 border-l-2 border-primary py-0.5 pl-3 text-[12.5px] text-ink-3">
+        <p className="mt-4 border-l-2 border-primary py-0.5 pl-3 text-[13px] text-ink-3">
           <span className="font-semibold text-ink-2">
             採購、財會、生產、品保 —— 散落的線頭,織成同一朵雲。
           </span>{" "}

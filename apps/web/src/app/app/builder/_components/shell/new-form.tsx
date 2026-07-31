@@ -57,7 +57,7 @@ export function NewFormPanel({
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-md border border-line bg-card text-ink-3">
           <Table2 size={22} strokeWidth={1.5} />
         </div>
-        <h2 className="text-center text-[15px] font-semibold text-ink">
+        <h2 className="text-center text-[16px] font-semibold text-ink">
           {parentName === undefined ? "新增表單" : `為「${parentName}」新增子表`}
         </h2>
         <p className="mt-1.5 text-center text-[12px] leading-relaxed text-ink-3">
@@ -70,7 +70,7 @@ export function NewFormPanel({
           </div>
         ) : null}
 
-        <label className="mt-4 flex flex-col gap-1 text-[11px] text-ink-2">
+        <label className="mt-4 flex flex-col gap-1 text-[12px] text-ink-2">
           表單名稱
           <Input
             value={name}

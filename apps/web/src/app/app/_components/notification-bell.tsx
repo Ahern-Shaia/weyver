@@ -103,7 +103,7 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
               <button
                 type="button"
                 onClick={() => markAll.mutate()}
-                className="ml-auto text-[11px] font-normal text-link underline underline-offset-2"
+                className="ml-auto text-[12px] font-normal text-link underline underline-offset-2"
               >
                 全部標為已讀
               </button>
@@ -111,10 +111,10 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
           </div>
 
           {items.length === 0 ? (
-            <div className="px-3 py-6 text-center text-[11.5px] leading-relaxed text-ink-3">
+            <div className="px-3 py-6 text-center text-[12px] leading-relaxed text-ink-3">
               目前沒有通知。
               <br />
-              <span className="text-[10.5px]">
+              <span className="text-[12px]">
                 可在通知設定調整要接收哪些事件。
               </span>
             </div>
@@ -137,8 +137,8 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
                       }`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[11.5px] leading-snug text-ink">{n.title}</span>
-                      <span className="mt-1 flex items-center gap-1.5 text-[10.5px] text-ink-3">
+                      <span className="block text-[12px] leading-snug text-ink">{n.title}</span>
+                      <span className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-3">
                         <StatusChip tone={label.tone}>{label.text}</StatusChip>
                         <span>{relTime(n.createdAt)}</span>
                       </span>

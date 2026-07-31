@@ -67,7 +67,7 @@ export function LabelsPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3 text-[11.5px]">
+    <div className="flex flex-col gap-3 text-[12px]">
       {labels.length > 0 ? (
         <div className="flex flex-col gap-1">
           {labels.map((l) => (
@@ -76,7 +76,7 @@ export function LabelsPanel({
               className="flex items-center gap-2 rounded-xs border border-line px-2 py-1"
             >
               <span className="truncate text-ink">{l.name}</span>
-              <span className="font-mono text-[9.5px] text-ink-3">
+              <span className="font-mono text-[12px] text-ink-3">
                 {l.config.size.widthMm}×{l.config.size.heightMm}mm
               </span>
               <Link
@@ -171,7 +171,7 @@ export function LabelsPanel({
                 </option>
               ))}
             </Select>
-            <label className="flex items-center gap-1 text-[10.5px] text-ink-3">
+            <label className="flex items-center gap-1 text-[12px] text-ink-3">
               <input
                 type="checkbox"
                 checked={it.asQr === true}
@@ -199,7 +199,7 @@ export function LabelsPanel({
         <button
           type="button"
           onClick={addItem}
-          className="flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+          className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
         >
           <Plus size={12} />
           加欄位
@@ -209,7 +209,7 @@ export function LabelsPanel({
           type="button"
           onClick={submit}
           disabled={createLabel.isPending}
-          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[11.5px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
+          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
         >
           <Plus size={13} />
           建立標籤

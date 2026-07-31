@@ -27,7 +27,7 @@ function Section({
 }) {
   return (
     <section className="mb-9">
-      <h2 className="text-[15px] font-semibold">{title}</h2>
+      <h2 className="text-[16px] font-semibold">{title}</h2>
       {desc ? (
         <p className="mt-0.5 mb-3 max-w-[620px] text-[12px] text-ink-3">{desc}</p>
       ) : (
@@ -63,7 +63,7 @@ const poColumns: readonly Column<PoRow>[] = [
   {
     key: "no",
     header: "單號",
-    render: (r) => <span className="font-mono text-[11px] text-ink-2">{r.no}</span>,
+    render: (r) => <span className="font-mono text-[12px] text-ink-2">{r.no}</span>,
   },
   { key: "supplier", header: "供應商", render: (r) => r.supplier },
   { key: "amount", header: "金額 NT$", align: "right", render: (r) => r.amount },
@@ -95,8 +95,8 @@ export default function DesignSystemPage() {
             W
           </div>
           <div>
-            <h1 className="text-[17px] font-semibold">Weyver 設計系統 v2.1</h1>
-            <p className="text-[11.5px] text-ink-3">
+            <h1 className="text-[16px] font-semibold">Weyver 設計系統 v2.1</h1>
+            <p className="text-[12px] text-ink-3">
               嚴謹企業級(docs/14 v2.1)· 全框線 · 方角 · 禁陰影 · IBM Plex · 12.5px 密度
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function DesignSystemPage() {
               />
               <div>
                 <div className="text-[12px] font-semibold">{t.label}</div>
-                <div className="font-mono text-[10.5px] text-ink-3">{t.hex}</div>
+                <div className="font-mono text-[12px] text-ink-3">{t.hex}</div>
               </div>
             </div>
           ))}
@@ -133,8 +133,8 @@ export default function DesignSystemPage() {
             <div key={name} className="border border-line bg-card">
               <div className="h-9 border-b border-line-2" style={{ backgroundColor: hex }} />
               <div className="px-1.5 py-1">
-                <div className="text-[10.5px] font-semibold">{name}</div>
-                <div className="font-mono text-[9.5px] text-ink-3">{hex}</div>
+                <div className="text-[12px] font-semibold">{name}</div>
+                <div className="font-mono text-[12px] text-ink-3">{hex}</div>
               </div>
             </div>
           ))}
@@ -278,7 +278,7 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
-      <p className="text-[11px] text-ink-3">
+      <p className="text-[12px] text-ink-3">
         完整規則見 docs/14 v2.1;flagship 展示見{" "}
         <a href="/app" className="text-link underline underline-offset-2">
           /app 表單記錄

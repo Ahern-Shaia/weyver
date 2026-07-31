@@ -131,7 +131,7 @@ export default function PublicFormPage(): ReactNode {
           <p className="text-[12px] text-ink-2">
             查詢代碼 <code className="font-mono text-ink">{reference}</code>
           </p>
-          <p className="text-[11.5px] text-ink-3">內容將由承辦人員確認後處理。</p>
+          <p className="text-[12px] text-ink-3">內容將由承辦人員確認後處理。</p>
         </div>
       </Shell>
     )
@@ -146,9 +146,9 @@ export default function PublicFormPage(): ReactNode {
 
   return (
     <Shell>
-      <h1 className="text-[17px] font-semibold text-ink">{form.title}</h1>
+      <h1 className="text-[16px] font-semibold text-ink">{form.title}</h1>
       {form.description === null ? null : (
-        <p className="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-2">{form.description}</p>
+        <p className="mt-1 whitespace-pre-wrap text-[13px] text-ink-2">{form.description}</p>
       )}
 
       <form onSubmit={(e) => void onSubmit(e)} className="mt-5 flex flex-col gap-3">
@@ -176,7 +176,7 @@ export default function PublicFormPage(): ReactNode {
               <textarea
                 required={f.required}
                 rows={4}
-                className="rounded-sm border border-line bg-card px-2 py-1.5 text-[12.5px] text-ink outline-none focus:border-primary"
+                className="rounded-sm border border-line bg-card px-2 py-1.5 text-[13px] text-ink outline-none focus:border-primary"
                 value={(values[f.name] as string) ?? ""}
                 onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
               />
@@ -230,7 +230,7 @@ function Shell({ children }: { readonly children: ReactNode }): ReactNode {
         {children}
       </div>
       {/* 不放租戶名稱 / 版本 / 內部連結 —— 訪客不需要,洩漏也無益 */}
-      <p className="mx-auto mt-3 max-w-[560px] text-center text-[10.5px] text-ink-3">
+      <p className="mx-auto mt-3 max-w-[560px] text-center text-[12px] text-ink-3">
         由 Weyver 提供表單服務
       </p>
     </main>

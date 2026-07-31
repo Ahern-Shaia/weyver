@@ -32,7 +32,7 @@ export function FieldInput({
   onChange: (value: unknown) => void
 }) {
   if (isStubType(field.type)) {
-    return <span className="text-[11.5px] text-ink-3">(此型別即將推出,暫不可填)</span>
+    return <span className="text-[12px] text-ink-3">(此型別即將推出,暫不可填)</span>
   }
 
   switch (field.type) {
@@ -50,7 +50,7 @@ export function FieldInput({
       return <SignatureInput field={field} formId={formId} value={value} onChange={onChange} />
 
     case "autoNumber":
-      return <span className="font-mono text-[11.5px] text-ink-3">儲存後自動產生</span>
+      return <span className="font-mono text-[12px] text-ink-3">儲存後自動產生</span>
 
     case "formula": {
       // 公式欄唯讀:value 由填單面板以 computeFormulaPreview 即時算出(儲存後後端為權威)
@@ -58,7 +58,7 @@ export function FieldInput({
       return (
         <span className="inline-flex items-center gap-1 font-mono text-[12px] text-ink">
           {shown}
-          <span className="rounded-xs bg-label px-1 text-[9px] text-ink-3">fx</span>
+          <span className="rounded-xs bg-label px-1 text-[12px] text-ink-3">fx</span>
         </span>
       )
     }
@@ -74,7 +74,7 @@ export function FieldInput({
       return (
         <span className="inline-flex items-center gap-1 text-[12px] text-ink">
           {shown}
-          <span className="rounded-xs bg-label px-1 text-[9px] text-ink-disabled">唯讀</span>
+          <span className="rounded-xs bg-label px-1 text-[12px] text-ink-3">唯讀</span>
         </span>
       )
     }
@@ -182,7 +182,7 @@ export function FieldInput({
               <label
                 key={choice}
                 className={cn(
-                  "flex cursor-pointer items-center gap-1 rounded-xs border px-1.5 py-0.5 text-[11px]",
+                  "flex cursor-pointer items-center gap-1 rounded-xs border px-1.5 py-0.5 text-[12px]",
                   on ? "border-primary bg-primary-t text-primary" : "border-line text-ink-2",
                 )}
               >
@@ -249,7 +249,7 @@ function MemberInput({
           </option>
         ))}
       </Select>
-      {grants ? <span className="text-[10.5px] text-ink-3">選定的人將可存取此筆記錄</span> : null}
+      {grants ? <span className="text-[12px] text-ink-3">選定的人將可存取此筆記錄</span> : null}
     </div>
   )
 }

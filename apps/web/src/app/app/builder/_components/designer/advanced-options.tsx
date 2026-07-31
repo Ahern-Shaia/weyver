@@ -116,15 +116,15 @@ export function AdvancedFieldOptions({
             className="w-32"
           />
           {linkFields.length === 0 ? (
-            <span className="text-[10.5px] text-ink-3">需先加關聯欄</span>
+            <span className="text-[12px] text-ink-3">需先加關聯欄</span>
           ) : null}
           {/* 🔴 #113:刻意不出現 live / snapshot 這種術語 —— 業界無一家用它當文案。
               問題直接問使用者真正在乎的事:之後主檔改了,這張單據上的內容要不要跟著變。 */}
           <fieldset className="mt-1 w-full border-0 p-0">
-            <legend className="mb-1 text-[10.5px] text-ink-3">
+            <legend className="mb-1 text-[12px] text-ink-3">
               這個欄位的內容,之後要不要跟著來源主檔一起變?
             </legend>
-            <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+            <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
               <input
                 type="radio"
                 name="lookup-sync"
@@ -134,7 +134,7 @@ export function AdvancedFieldOptions({
               />
               保留填單當時的內容<span className="text-ink-3">(建議)</span>
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+            <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
               <input
                 type="radio"
                 name="lookup-sync"
@@ -150,7 +150,7 @@ export function AdvancedFieldOptions({
       ) : null}
 
       {t === "member" ? (
-        <label className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-2">
+        <label className="flex items-start gap-1.5 text-[12px] leading-relaxed text-ink-2">
           <input
             type="checkbox"
             checked={pending.grantsAccess}
@@ -198,7 +198,7 @@ export function AdvancedFieldOptions({
             <option value="MAX">最大</option>
           </Select>
           {subtables.length === 0 ? (
-            <span className="text-[10.5px] text-ink-3">需先加子表</span>
+            <span className="text-[12px] text-ink-3">需先加子表</span>
           ) : null}
         </div>
       ) : null}

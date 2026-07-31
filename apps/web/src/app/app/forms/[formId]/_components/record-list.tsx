@@ -37,8 +37,8 @@ export function RecordList({
   return (
     <div data-noprint className="flex w-60 shrink-0 flex-col border-r border-line bg-card">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
-        <b className="truncate text-[12.5px] font-semibold">{formName}</b>
-        <span className="ml-auto rounded-xs border border-line px-1.5 font-mono text-[10px] text-ink-3">
+        <b className="truncate text-[13px] font-semibold">{formName}</b>
+        <span className="ml-auto rounded-xs border border-line px-1.5 font-mono text-[12px] text-ink-3">
           {records.length}
         </span>
       </div>
@@ -69,9 +69,9 @@ export function RecordList({
         }}
       >
         {loading ? (
-          <div className="px-3 py-2 text-[11.5px] text-ink-3">載入記錄…</div>
+          <div className="px-3 py-2 text-[12px] text-ink-3">載入記錄…</div>
         ) : records.length === 0 ? (
-          <div className="px-3 py-3 text-[11.5px] text-ink-3">尚無記錄。</div>
+          <div className="px-3 py-3 text-[12px] text-ink-3">尚無記錄。</div>
         ) : (
           /* 🔴 roving tabindex 必須**恰有一個**停點:
              選取項若不在清單中(換表單 / 記錄被刪),退回第一項 ——
@@ -89,15 +89,15 @@ export function RecordList({
                 onClick={() => onSelect(r.id)}
                 className={
                   active
-                    ? "block w-full border-b border-line-2 border-l-2 border-l-primary bg-primary-t px-3 py-2 text-left"
-                    : "block w-full border-b border-line-2 border-l-2 border-l-transparent px-3 py-2 text-left hover:bg-surface"
+                    ? "block w-full border-b border-line-2 border-l-2 border-l-primary bg-primary-t px-3 py-1.5 text-left"
+                    : "block w-full border-b border-line-2 border-l-2 border-l-transparent px-3 py-1.5 text-left hover:bg-surface"
                 }
               >
                 <div className="truncate text-[12px] font-medium text-ink">
                   {titleOf(r, fields)}
                 </div>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span className="font-mono text-[10.5px] text-ink-3">#{r.id}</span>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span className="font-mono text-[12px] text-ink-3">#{r.id}</span>
                   {statusField ? (
                     <StatusChip
                       tone={optionTone(statusField, r.values[statusField.name])}
@@ -107,7 +107,7 @@ export function RecordList({
                     </StatusChip>
                   ) : null}
                   {moneyField ? (
-                    <span className="ml-auto font-mono text-[10.5px] tabular-nums text-ink-2">
+                    <span className="ml-auto font-mono text-[12px] tabular-nums text-ink-2">
                       {String(r.values[moneyField.name] ?? "—")}
                     </span>
                   ) : null}

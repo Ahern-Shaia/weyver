@@ -55,29 +55,29 @@ export function RecordRail({
               <div className="flex items-center justify-between">
                 <span
                   className={cn(
-                    "font-mono text-[11px]",
+                    "font-mono text-[12px]",
                     active ? "font-semibold text-primary" : "text-ink-2",
                   )}
                 >
                   {item.code}
                 </span>
                 {item.amount ? (
-                  <span className="font-mono text-[11.5px] font-semibold tabular-nums">
+                  <span className="font-mono text-[12px] font-semibold tabular-nums">
                     {item.amount}
                   </span>
                 ) : null}
               </div>
-              <div className="mt-[3px] flex items-center justify-between text-[11.5px]">
+              <div className="mt-[3px] flex items-center justify-between text-[12px]">
                 <span>{item.title}</span>
                 <StatusChip tone={item.status.tone}>{item.status.label}</StatusChip>
               </div>
-              {item.meta ? <div className="mt-px text-[10.5px] text-ink-3">{item.meta}</div> : null}
+              {item.meta ? <div className="mt-px text-[12px] text-ink-3">{item.meta}</div> : null}
             </button>
           )
         })}
       </div>
       {footer ? (
-        <div className="flex justify-between border-t border-line px-2.5 py-1.5 text-[11px] text-ink-3">
+        <div className="flex justify-between border-t border-line px-2.5 py-1.5 text-[12px] text-ink-3">
           {footer}
         </div>
       ) : null}

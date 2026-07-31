@@ -17,7 +17,7 @@ export interface ApprovalTableProps {
 }
 
 const th =
-  "border border-t-0 border-cell bg-head px-2 py-[5px] text-left text-[10.5px] font-semibold text-ink-2"
+  "border border-t-0 border-cell bg-head px-2 py-[5px] text-left text-[12px] font-semibold text-ink-2"
 const td = "border border-cell px-2 py-[5px] text-[12px]"
 
 export function ApprovalTable({ rows, className }: ApprovalTableProps): ReactElement {
@@ -36,13 +36,13 @@ export function ApprovalTable({ rows, className }: ApprovalTableProps): ReactEle
       <tbody>
         {rows.map((row) => (
           <tr key={row.seq}>
-            <td className={`${td} font-mono text-[11px]`}>{row.seq}</td>
+            <td className={`${td} font-mono text-[12px]`}>{row.seq}</td>
             <td className={td}>{row.approver}</td>
             <td className={td}>{row.role}</td>
             <td className={td}>
               <StatusChip tone={row.result.tone}>{row.result.label}</StatusChip>
             </td>
-            <td className={`${td} font-mono text-[11px] tabular-nums`}>{row.time ?? "—"}</td>
+            <td className={`${td} font-mono text-[12px] tabular-nums`}>{row.time ?? "—"}</td>
             <td className={td}>{row.comment ?? "—"}</td>
           </tr>
         ))}

@@ -31,7 +31,7 @@ function BlockerNotice({ blockers }: { readonly blockers: readonly RestoreBlocke
   return (
     <div className="mt-1.5 flex gap-1.5 rounded-sm border border-warn/40 bg-warn/5 px-2 py-1.5">
       <AlertTriangle size={13} className="mt-px shrink-0 text-warn" />
-      <div className="flex flex-col gap-0.5 text-[11.5px] text-ink">
+      <div className="flex flex-col gap-0.5 text-[12px] text-ink">
         {blockers.map((b) => (
           <span key={b.kind + b.message}>
             {b.message}
@@ -68,8 +68,8 @@ export default function TrashPage(): ReactNode {
   return (
     <div className="relative mx-auto max-w-[720px] p-6">
       <BusyBar busy={isLoading} />
-      <h2 className="text-[15px] font-semibold">資源回收桶</h2>
-      <p className="mt-1 text-[11.5px] text-ink-3">
+      <h2 className="text-[16px] font-semibold">資源回收桶</h2>
+      <p className="mt-1 text-[12px] text-ink-3">
         刪除的項目會保留 {data.retentionDays} 天,之後永久刪除且無法復原。
         回收桶內的項目仍計入儲存與欄位額度。
       </p>
@@ -85,19 +85,19 @@ export default function TrashPage(): ReactNode {
             return (
               <li key={item.id} className="rounded-md border border-line bg-card px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="shrink-0 rounded-sm border border-line px-1.5 py-px text-[10.5px] text-ink-3">
+                  <span className="shrink-0 rounded-sm border border-line px-1.5 py-px text-[12px] text-ink-3">
                     {TYPE_LABEL[item.resourceType] ?? item.resourceType}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
                     {item.title}
                     {/* 🔴 表單名取**刪除當下的快照**而非即時查表:表單本身被刪後,
                         即時查只會得到「表單 #729」,使用者無從得知那批記錄原屬何處。 */}
                     {item.resourceType === "form" || item.formName === null ? null : (
-                      <span className="ml-1.5 text-[11px] text-ink-3">· {item.formName}</span>
+                      <span className="ml-1.5 text-[12px] text-ink-3">· {item.formName}</span>
                     )}
                   </span>
                   <span
-                    className="shrink-0 font-mono text-[11px] text-ink-3"
+                    className="shrink-0 font-mono text-[12px] text-ink-3"
                     title={`永久刪除於 ${new Date(item.purgeAfter).toLocaleString("zh-TW")}`}
                   >
                     {left <= 0 ? "即將清除" : `${String(left)} 天後清除`}

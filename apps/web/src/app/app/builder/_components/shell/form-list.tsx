@@ -36,14 +36,14 @@ export function FormListRail({
         <button
           type="button"
           onClick={onImport}
-          className="ml-auto rounded-xs border border-line px-2 py-0.5 text-[11px] font-medium text-ink-2 hover:bg-head"
+          className="ml-auto rounded-xs border border-line px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:bg-head"
         >
           匯入 Excel
         </button>
         <button
           type="button"
           onClick={onNew}
-          className="rounded-xs border border-primary bg-primary px-2 py-0.5 text-[11px] font-medium text-white"
+          className="rounded-xs border border-primary bg-primary px-2 py-0.5 text-[12px] font-medium text-white"
         >
           + 新增
         </button>
@@ -51,13 +51,13 @@ export function FormListRail({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {forms.isLoading ? (
-          <div className="p-3 text-[11.5px] text-ink-3">載入中…</div>
+          <div className="p-3 text-[12px] text-ink-3">載入中…</div>
         ) : forms.isError ? (
           <div className="p-3 text-[13px] text-er">
             無法連線引擎:{describeEngineError(forms.error)}
           </div>
         ) : (forms.data?.length ?? 0) === 0 ? (
-          <div className="p-3 text-[11.5px] text-ink-3">尚無表單。點「+ 新增」建立第一張。</div>
+          <div className="p-3 text-[12px] text-ink-3">尚無表單。點「+ 新增」建立第一張。</div>
         ) : (
           <ul>
             {forms.data?.map((form) => {
@@ -73,14 +73,14 @@ export function FormListRail({
                     )}
                   >
                     <span
-                      className={cn("font-mono text-[9px]", STATE_COLOR[form.provisionState])}
+                      className={cn("font-mono text-[12px]", STATE_COLOR[form.provisionState])}
                       title={form.provisionState}
                     >
                       {STATE_MARK[form.provisionState] ?? "●"}
                     </span>
                     <span className="flex-1 truncate">{form.name}</span>
                     {form.parentFormId !== null ? (
-                      <span className="shrink-0 text-[9px] text-ink-3">子表</span>
+                      <span className="shrink-0 text-[12px] text-ink-3">子表</span>
                     ) : null}
                   </button>
                 </li>

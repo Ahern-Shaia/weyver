@@ -53,13 +53,13 @@ export function LineItems({
       <table className="w-full border-collapse text-[12px]">
         <thead>
           <tr className="bg-head">
-            <th className="w-8 px-2 py-2 text-left font-mono text-[10.5px] font-semibold text-ink-3">
+            <th className="w-8 px-2 py-2 text-left font-mono text-[12px] font-semibold text-ink-3">
               #
             </th>
             {cols.map((f) => (
               <th
                 key={f.id}
-                className={`px-3 py-2 font-semibold text-[10.5px] text-ink-3 ${isNum(f) ? "text-right" : "text-left"}`}
+                className={`px-3 py-2 font-semibold text-[12px] text-ink-3 ${isNum(f) ? "text-right" : "text-left"}`}
               >
                 {f.name}
               </th>
@@ -69,7 +69,7 @@ export function LineItems({
         <tbody>
           {lines.map((r, i) => (
             <tr key={r.id} className="border-t border-line-2">
-              <td className="px-2 py-1.5 font-mono text-[10.5px] text-ink-3">{i + 1}</td>
+              <td className="px-2 py-1.5 font-mono text-[12px] text-ink-3">{i + 1}</td>
               {cols.map((f) => (
                 <td
                   key={f.id}
@@ -86,7 +86,7 @@ export function LineItems({
           ))}
           {lines.length === 0 ? (
             <tr>
-              <td colSpan={cols.length + 1} className="px-3 py-3 text-[11.5px] text-ink-3">
+              <td colSpan={cols.length + 1} className="px-3 py-3 text-[12px] text-ink-3">
                 此單據尚無明細。
               </td>
             </tr>
@@ -95,7 +95,7 @@ export function LineItems({
         {hasTotals ? (
           <tfoot>
             <tr className="border-t border-cell bg-label font-semibold">
-              <td className="px-2 py-2 text-[11px] text-ink-2">合計</td>
+              <td className="px-2 py-2 text-[12px] text-ink-2">合計</td>
               {cols.map((f) => (
                 <td
                   key={f.id}

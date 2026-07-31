@@ -35,7 +35,7 @@ export function SubTable<T>({
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="w-[34px] border border-t-0 border-cell bg-head px-2 py-[5px] text-center text-[10.5px] font-semibold text-ink-2">
+            <th className="w-[34px] border border-t-0 border-cell bg-head px-2 py-[5px] text-center text-[12px] font-semibold text-ink-2">
               #
             </th>
             {columns.map((column) => (
@@ -43,7 +43,7 @@ export function SubTable<T>({
                 key={column.key}
                 style={column.width ? { width: column.width } : undefined}
                 className={cn(
-                  "border border-t-0 border-cell bg-head px-2 py-[5px] text-[10.5px] font-semibold text-ink-2",
+                  "border border-t-0 border-cell bg-head px-2 py-[5px] text-[12px] font-semibold text-ink-2",
                   column.align === "right" ? "text-right" : "text-left",
                 )}
               >
@@ -55,7 +55,7 @@ export function SubTable<T>({
         <tbody>
           {data.map((row, index) => (
             <tr key={getRowKey(row, index)}>
-              <td className="border border-cell bg-head px-2 py-[5px] text-center font-mono text-[10.5px] text-ink-3">
+              <td className="border border-cell bg-head px-2 py-[5px] text-center font-mono text-[12px] text-ink-3">
                 {index + 1}
               </td>
               {columns.map((column) => (
@@ -93,7 +93,7 @@ export function SubTable<T>({
         <button
           type="button"
           onClick={onAddRow}
-          className="px-2 py-1 text-[11.5px] text-link underline underline-offset-2"
+          className="px-2 py-1 text-[12px] text-link underline underline-offset-2"
         >
           + 新增一列
         </button>

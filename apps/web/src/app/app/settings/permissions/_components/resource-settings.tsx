@@ -46,14 +46,14 @@ export function ResourceSettings(): ReactNode {
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         分類與預設設定
-        <span className="text-[11px] font-normal text-ink-3">
+        <span className="text-[12px] font-normal text-ink-3">
           {categories.length} 分類 · 授權設在分類、表單繼承
         </span>
       </button>
       {open ? (
         <div className="grid grid-cols-2 gap-5 px-4 pt-1 pb-4">
           <div>
-            <div className="mb-2 text-[11px] font-semibold text-ink-3">分類</div>
+            <div className="mb-2 text-[12px] font-semibold text-ink-3">分類</div>
             <div className="mb-2 flex gap-1.5">
               <Input
                 value={name}
@@ -85,14 +85,14 @@ export function ResourceSettings(): ReactNode {
                 </li>
               ))}
               {categories.length === 0 ? (
-                <li className="px-1 text-[11px] text-ink-3">尚無分類</li>
+                <li className="px-1 text-[12px] text-ink-3">尚無分類</li>
               ) : null}
             </ul>
             <DefaultProfile />
           </div>
 
           <div>
-            <div className="mb-2 text-[11px] font-semibold text-ink-3">表單歸類 / 敏感</div>
+            <div className="mb-2 text-[12px] font-semibold text-ink-3">表單歸類 / 敏感</div>
             <ul className="flex max-h-[220px] flex-col gap-1 overflow-y-auto">
               {forms.map((f) => (
                 <li
@@ -118,7 +118,7 @@ export function ResourceSettings(): ReactNode {
                       </option>
                     ))}
                   </Select>
-                  <label className="flex shrink-0 items-center gap-1 text-[11px] text-ink-3">
+                  <label className="flex shrink-0 items-center gap-1 text-[12px] text-ink-3">
                     <input
                       type="checkbox"
                       checked={f.isSensitive}
@@ -132,7 +132,7 @@ export function ResourceSettings(): ReactNode {
                 </li>
               ))}
               {forms.length === 0 ? (
-                <li className="px-1 text-[11px] text-ink-3">尚無表單</li>
+                <li className="px-1 text-[12px] text-ink-3">尚無表單</li>
               ) : null}
             </ul>
           </div>
@@ -160,7 +160,7 @@ function DefaultProfile(): ReactNode {
 
   return (
     <div className="mt-4">
-      <div className="mb-1.5 text-[11px] font-semibold text-ink-3">
+      <div className="mb-1.5 text-[12px] font-semibold text-ink-3">
         未分類表預設(空=deny;遷移期可開 檢視)
       </div>
       <div className="flex flex-wrap gap-1">
@@ -172,8 +172,8 @@ function DefaultProfile(): ReactNode {
             disabled={setDefault.isPending}
             className={
               current.has(a)
-                ? "rounded-sm border border-primary bg-primary px-2 py-1 text-[11px] font-medium text-white"
-                : "rounded-sm border border-line bg-card px-2 py-1 text-[11px] text-ink-3 hover:border-primary disabled:opacity-50"
+                ? "rounded-sm border border-primary bg-primary px-2 py-1 text-[12px] font-medium text-white"
+                : "rounded-sm border border-line bg-card px-2 py-1 text-[12px] text-ink-3 hover:border-primary disabled:opacity-50"
             }
           >
             {ACTION_LABEL[a]}

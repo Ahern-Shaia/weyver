@@ -59,28 +59,28 @@ function FieldCells({
     <>
       <div
         className={cn(
-          "flex min-h-[32px] items-center justify-end gap-[3px] border-r border-cell bg-label px-2.5 py-[5px] text-right text-[11.5px] text-ink-2",
+          "flex min-h-[32px] items-center justify-end gap-[3px] border-r border-cell bg-label px-2.5 py-[5px] text-right text-[12px] text-ink-2",
           borderB,
         )}
       >
         {item.required ? <span className="font-semibold text-er">*</span> : null}
         {item.label}
         {item.help ? (
-          <span className="inline-flex size-3 items-center justify-center rounded-full border border-line-2 text-[10px] text-ink-3">
+          <span className="inline-flex size-3 items-center justify-center rounded-full border border-line-2 text-[12px] text-ink-3">
             ?
           </span>
         ) : null}
       </div>
       <div
         className={cn(
-          "flex min-h-[32px] items-center gap-1.5 border-cell bg-card px-2.5 py-[5px] text-[12.5px]",
+          "flex min-h-[32px] items-center gap-1.5 border-cell bg-card px-2.5 py-[5px] text-[13px]",
           borderB,
           isRowEnd ? "" : "border-r",
           item.mono && "font-mono tabular-nums",
         )}
       >
         {item.value}
-        {item.note ? <span className="text-[10.5px] text-ink-3">{item.note}</span> : null}
+        {item.note ? <span className="text-[12px] text-ink-3">{item.note}</span> : null}
       </div>
     </>
   )

@@ -79,7 +79,7 @@ export function RecordActions({
       <div className="flex flex-wrap items-center gap-2">
         {instance !== null ? (
           <span
-            className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-[11px] ${STATUS_CLASS[instance.status]}`}
+            className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-[12px] ${STATUS_CLASS[instance.status]}`}
           >
             {STATUS_LABEL[instance.status]}
             {instance.status === "pending" ? ` · 第 ${instance.currentStep} 關` : ""}
@@ -92,7 +92,7 @@ export function RecordActions({
             type="button"
             onClick={() => onRun(b)}
             disabled={runButton.isPending || (locked && b.actionType !== "openUrl")}
-            className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
             title={locked && b.actionType !== "openUrl" ? "簽核中,不可執行寫入動作" : undefined}
           >
             {b.actionType === "openUrl" ? <ExternalLink size={13} /> : <Play size={13} />}
@@ -110,7 +110,7 @@ export function RecordActions({
               })
             }
             disabled={submitApproval.isPending}
-            className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
           >
             <Send size={13} />
             送簽
@@ -131,7 +131,7 @@ export function RecordActions({
                   },
                 )
               }
-              className="flex items-center gap-1 rounded-xs border border-ok-line px-2 py-1 text-[11.5px] text-ok hover:bg-ok-t"
+              className="flex items-center gap-1 rounded-xs border border-ok-line px-2 py-1 text-[12px] text-ok hover:bg-ok-t"
             >
               <CheckCircle2 size={13} />
               核准
@@ -147,7 +147,7 @@ export function RecordActions({
                   },
                 )
               }
-              className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-er hover:border-er hover:bg-er-t"
+              className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t"
             >
               <CircleSlash size={13} />
               退回
@@ -160,7 +160,7 @@ export function RecordActions({
                   onError: (e) => setMsg(describeEngineError(e)),
                 })
               }
-              className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
+              className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
             >
               <Undo2 size={13} />
               撤回
@@ -170,7 +170,7 @@ export function RecordActions({
       </div>
 
       {instance !== null && instance.log.length > 0 ? (
-        <div className="mt-1.5 flex flex-wrap gap-2 font-mono text-[10px] text-ink-3">
+        <div className="mt-1.5 flex flex-wrap gap-2 font-mono text-[12px] text-ink-3">
           {instance.log.map((l, i) => (
             <span key={`${l.at}-${i}`}>
               {l.decision === "submit"
@@ -186,7 +186,7 @@ export function RecordActions({
         </div>
       ) : null}
 
-      {msg !== null ? <div className="mt-1.5 text-[11.5px] text-ink-2">{msg}</div> : null}
+      {msg !== null ? <div className="mt-1.5 text-[12px] text-ink-2">{msg}</div> : null}
     </div>
   )
 }

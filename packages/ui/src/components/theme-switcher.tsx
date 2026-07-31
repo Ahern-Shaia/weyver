@@ -27,7 +27,7 @@ export function ThemeSwitcher({ className }: { readonly className?: string }): R
 
   return (
     <div className={cn("flex items-center gap-1", className)} role="radiogroup" aria-label="配色">
-      <span className="mr-0.5 text-[10px] text-ink-3">配色</span>
+      <span className="mr-0.5 text-[12px] text-ink-3">配色</span>
       {THEMES.map((item) => (
         <button
           key={item.id}

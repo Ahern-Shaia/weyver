@@ -77,7 +77,7 @@ export function StatusChip({
   return (
     <span
       className={cn(
-        "inline-flex h-[17px] items-center gap-1 rounded-xs border px-[5px] text-[10.5px] font-medium",
+        "inline-flex h-[17px] items-center gap-1 rounded-xs border px-[5px] text-[12px] font-medium",
         chipToneClass(tone),
         className,
       )}

@@ -81,22 +81,22 @@ export function FormMatrix({
 
   return (
     <>
-      <p className="mb-3 border-l-2 border-primary py-0.5 pl-3 text-[11.5px] text-ink-3">
+      <p className="mb-3 border-l-2 border-primary py-0.5 pl-3 text-[12px] text-ink-3">
         授權設在<b className="text-ink-2">分類</b>,表單預設<b className="text-ink-2">繼承</b>
         (虛線,點格即覆寫);<b className="text-ink-2">敏感表</b>
         不吃繼承,只認明確覆寫。deny-by-default。
       </p>
       <div className="overflow-hidden rounded-md border border-line bg-card">
-        <table className="w-full border-collapse text-[12.5px]">
+        <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-head">
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-ink-3">
+              <th className="px-3 py-2 text-left text-[12px] font-semibold text-ink-3">
                 分類 / 表單
               </th>
               {FORM_ACTIONS.map((a) => (
                 <th
                   key={a}
-                  className="w-[48px] px-1 py-2 text-center text-[11px] font-semibold text-ink-3"
+                  className="w-[48px] px-1 py-2 text-center text-[12px] font-semibold text-ink-3"
                 >
                   {ACTION_LABEL[a]}
                 </th>
@@ -128,7 +128,7 @@ export function FormMatrix({
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[11px] text-ink-3">
+      <p className="mt-3 text-[12px] text-ink-3">
         點分類列格子=設分類授權(藍);點表單列格子=建立該表覆寫(琥珀);覆寫列可「還原繼承」。
         <br />
         表單列的檢視/新增/編輯/刪除可再點一次切成 <UserCheck size={11} className="inline" />{" "}
@@ -194,7 +194,7 @@ function CategoryGroup({
                 onClick={() => onToggleCategory(group.categoryId as number, a)}
               />
             ) : (
-              <span className="text-[11px] text-ink-3">—</span>
+              <span className="text-[12px] text-ink-3">—</span>
             )}
           </td>
         ))}
@@ -218,7 +218,7 @@ function CategoryGroup({
                     type="button"
                     disabled={busy}
                     onClick={() => onRevert(form.id)}
-                    className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[10.5px] text-ink-disabled hover:text-primary disabled:opacity-50"
+                    className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[12px] text-ink-3 hover:text-primary disabled:opacity-50"
                   >
                     <RotateCcw size={11} strokeWidth={1.9} />
                     還原繼承
@@ -259,7 +259,7 @@ function Tag({
   }[tone]
   return (
     <span
-      className={`ml-1.5 rounded-xs border px-1 align-middle font-mono text-[9px] font-semibold ${cls}`}
+      className={`ml-1.5 rounded-xs border px-1 align-middle font-mono text-[12px] font-semibold ${cls}`}
     >
       {children}
     </span>

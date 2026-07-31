@@ -83,11 +83,11 @@ export function ImportBatches({
 
   return (
     <section className="mt-3 border border-line bg-card p-2.5">
-      <div className="mb-2 text-[11.5px] font-semibold text-ink">匯入紀錄</div>
+      <div className="mb-2 text-[12px] font-semibold text-ink">匯入紀錄</div>
       {error === null ? null : <div className="mb-2 text-[13px] text-er">{error}</div>}
       <ul className="divide-y divide-line border border-line">
         {batches.map((b) => (
-          <li key={b.id} className="flex items-center gap-2 px-2 py-1.5 text-[11px]">
+          <li key={b.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px]">
             <span className="w-12 shrink-0 font-mono text-ink-3">#{b.id}</span>
             <span className="w-12 shrink-0 text-ink-3">
               {b.kind === "revert" ? "撤銷" : "匯入"}
@@ -97,7 +97,7 @@ export function ImportBatches({
             </span>
             <span className="flex-1 truncate text-ink">{statLine(b.stats)}</span>
             {b.kind === "revert" ? null : b.revertedByBatchId !== null ? (
-              <span className="shrink-0 text-[10.5px] text-ink-3">
+              <span className="shrink-0 text-[12px] text-ink-3">
                 已由 #{b.revertedByBatchId} 撤銷
               </span>
             ) : (

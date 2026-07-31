@@ -40,7 +40,7 @@ export function Segmented({
             aria-selected={active}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "border-r border-line px-2.5 py-[3px] text-[11px] last:border-r-0",
+              "border-r border-line px-2.5 py-[3px] text-[12px] last:border-r-0",
               active ? "bg-primary font-semibold text-white" : "text-ink-3 hover:bg-head",
             )}
           >

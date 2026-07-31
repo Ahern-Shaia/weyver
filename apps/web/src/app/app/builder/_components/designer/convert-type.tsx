@@ -119,7 +119,7 @@ export function ConvertTypePanel({
 
   return (
     <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
-      <span className="text-[10.5px] text-ink-3">變更欄位型別</span>
+      <span className="text-[12px] text-ink-3">變更欄位型別</span>
 
       {error !== null ? (
         <div className="border border-er/40 bg-er/5 px-2 py-1 text-[14px] text-er">{error}</div>
@@ -148,7 +148,7 @@ export function ConvertTypePanel({
       </div>
 
       {needsDateFormat ? (
-        <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+        <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
           日期格式
           <Select
             value={dateFormat}
@@ -170,7 +170,7 @@ export function ConvertTypePanel({
 
       {preview !== null ? (
         <div
-          className={`space-y-1.5 border px-2.5 py-2 text-[11px] ${
+          className={`space-y-1.5 border px-2.5 py-2 text-[12px] ${
             preview.kind === "lossy" || blocked
               ? "border-warn/40 bg-warn/5"
               : "border-line bg-surface"
@@ -219,7 +219,7 @@ export function ConvertTypePanel({
           type="button"
           onClick={() => void doRevert()}
           disabled={busy}
-          className="flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+          className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
         >
           <RotateCcw size={12} />
           還原上次轉換(原值保留 30 天)

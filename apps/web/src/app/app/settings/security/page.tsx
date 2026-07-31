@@ -74,7 +74,7 @@ export default function SecurityPage(): React.ReactNode {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 px-6 py-8">
       <div>
-        <h1 className="text-[15px] font-semibold text-ink">二步驟驗證</h1>
+        <h1 className="text-[16px] font-semibold text-ink">二步驟驗證</h1>
         <p className="mt-1 text-[12px] text-ink-3">
           登入時除密碼外,再輸入 authenticator app(Google Authenticator / 1Password / Authy)產生的一次性碼,大幅降低帳號被盜風險。
         </p>
@@ -97,7 +97,7 @@ export default function SecurityPage(): React.ReactNode {
         {/* 未啟用 + 尚未開始:輸入密碼開始 */}
         {!enabled && !enroll ? (
           <form onSubmit={startEnable} className="flex flex-col gap-2">
-            <span className="text-[11px] font-medium text-ink-2">輸入目前密碼以啟用</span>
+            <span className="text-[12px] font-medium text-ink-2">輸入目前密碼以啟用</span>
             <Input
               type="password"
               value={password}
@@ -121,7 +121,7 @@ export default function SecurityPage(): React.ReactNode {
               <div className="inline-block rounded-sm border border-line bg-white p-2">
                 <QRCodeSVG value={enroll.totpURI} size={140} />
               </div>
-              <p className="mt-1 text-[11px] text-ink-3">
+              <p className="mt-1 text-[12px] text-ink-3">
                 無法掃描?手動輸入代碼:
                 <span data-testid="totp-secret" className="font-mono text-ink-2">
                   {manualSecret(enroll.totpURI)}
@@ -160,7 +160,7 @@ export default function SecurityPage(): React.ReactNode {
         {/* 已啟用:輸入密碼停用 */}
         {enabled ? (
           <form onSubmit={disable} className="flex flex-col gap-2">
-            <span className="text-[11px] font-medium text-ink-2">輸入目前密碼以停用</span>
+            <span className="text-[12px] font-medium text-ink-2">輸入目前密碼以停用</span>
             <Input
               type="password"
               value={password}

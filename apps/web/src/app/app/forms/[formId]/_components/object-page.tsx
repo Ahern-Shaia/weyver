@@ -172,7 +172,7 @@ export function ObjectPage({
     <div className="flex min-w-0 flex-1 flex-col bg-surface">
       {/* 黏頂摘要頭 */}
       <div className="shrink-0 border-b border-line bg-card px-6 pt-3">
-        <div className="text-[11px] text-ink-3">
+        <div className="text-[12px] text-ink-3">
           <Link href="/app" className="hover:text-primary">
             工作區
           </Link>{" "}
@@ -180,7 +180,7 @@ export function ObjectPage({
         </div>
         <div className="mt-1.5 flex items-center gap-3">
           <h3 className="text-[16px] font-semibold text-ink">{titleOf(record, fields)}</h3>
-          <span className="font-mono text-[11px] text-ink-3">
+          <span className="font-mono text-[12px] text-ink-3">
             #{record.id} · v{record.version}
           </span>
           {statusField ? (
@@ -190,8 +190,8 @@ export function ObjectPage({
           ) : null}
           {moneyField ? (
             <span className="ml-auto flex items-baseline gap-1.5">
-              <span className="text-[10px] text-ink-3">{moneyField.name}</span>
-              <span className="font-mono text-[17px] font-semibold tabular-nums text-ink">
+              <span className="text-[12px] text-ink-3">{moneyField.name}</span>
+              <span className="font-mono text-[16px] font-semibold tabular-nums text-ink">
                 {fmtVal(record.values[moneyField.name])}
               </span>
             </span>
@@ -248,7 +248,7 @@ export function ObjectPage({
           </div>
         </div>
         {msg ? (
-          <div className="mt-2 rounded-sm border border-line bg-label px-2.5 py-1 text-[11.5px] text-ink-2">
+          <div className="mt-2 rounded-sm border border-line bg-label px-2.5 py-1 text-[12px] text-ink-2">
             {msg}
           </div>
         ) : null}
@@ -279,7 +279,7 @@ export function ObjectPage({
           <section className="mb-4 flex flex-wrap gap-x-8 gap-y-2 border border-line bg-card px-4 py-3">
             {summaryFields.map((f) => (
               <div key={f.id} className="flex flex-col gap-0.5">
-                <span className="text-[10px] text-ink-3">{f.name}</span>
+                <span className="text-[12px] text-ink-3">{f.name}</span>
                 <span className="font-mono text-[14px] font-semibold tabular-nums text-ink">
                   {fmtVal(record.values[f.name])}
                 </span>
@@ -289,7 +289,7 @@ export function ObjectPage({
         ) : null}
 
         <section id="sec-基本資料" className="scroll-mt-2 pb-5">
-          <h4 className="mb-2.5 text-[11.5px] font-semibold text-ink-3">基本資料</h4>
+          <h4 className="mb-2.5 text-[12px] font-semibold text-ink-3">基本資料</h4>
           <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             {fields.map((f) => (
               <div
@@ -298,13 +298,13 @@ export function ObjectPage({
                 style={printStyleFor(f.id)}
               >
                 <span
-                  className={`flex w-24 shrink-0 items-center gap-1 text-[11px] ${
+                  className={`flex w-24 shrink-0 items-center gap-1 text-[12px] ${
                     chipToneTextClass(formatTones.get(f.name)) || "text-ink-3"
                   }`}
                 >
                   {f.name}
                   {f.type === "formula" ? (
-                    <span className="rounded-xs border border-fx/40 px-1 font-mono text-[8.5px] text-fx">
+                    <span className="rounded-xs border border-fx/40 px-1 font-mono text-[12px] text-fx">
                       fx
                     </span>
                   ) : null}
@@ -312,8 +312,8 @@ export function ObjectPage({
                 <span
                   className={
                     NUMERIC.has(f.type) || f.type === "autoNumber"
-                      ? "flex-1 font-mono text-[12.5px] tabular-nums text-ink"
-                      : "flex-1 text-[12.5px] text-ink"
+                      ? "flex-1 font-mono text-[13px] tabular-nums text-ink"
+                      : "flex-1 text-[13px] text-ink"
                   }
                 >
                   {!editing && isChipField(f) ? (
@@ -355,9 +355,9 @@ export function ObjectPage({
 
         {childForm ? (
           <section id="sec-明細" className="scroll-mt-2 border-t border-line pt-4 pb-5">
-            <h4 className="mb-2.5 flex items-center gap-2 text-[11.5px] font-semibold text-ink-3">
+            <h4 className="mb-2.5 flex items-center gap-2 text-[12px] font-semibold text-ink-3">
               明細
-              <span className="font-normal text-[10px] text-ink-3">
+              <span className="font-normal text-[12px] text-ink-3">
                 {childForm.name} · 合計 rollup
               </span>
             </h4>
@@ -368,7 +368,7 @@ export function ObjectPage({
         <RelationRail formId={formId} record={record} fields={fields} />
 
         <section id="sec-稽核" className="scroll-mt-2 border-t border-line pt-4">
-          <h4 className="mb-2.5 text-[11.5px] font-semibold text-ink-3">稽核紀錄</h4>
+          <h4 className="mb-2.5 text-[12px] font-semibold text-ink-3">稽核紀錄</h4>
           <div className="relative pl-4">
             <div className="absolute top-1 bottom-1 left-1 w-px bg-line" />
             <Event label="建立" who={nameOf(record.createdBy)} at={fmtDate(record.createdAt)} />
@@ -484,7 +484,7 @@ function Event({
       <div className="text-[12px] text-ink">
         <b className="font-medium">{who}</b> {label}
       </div>
-      <div className="mt-0.5 font-mono text-[10.5px] text-ink-3">{at}</div>
+      <div className="mt-0.5 font-mono text-[12px] text-ink-3">{at}</div>
     </div>
   )
 }

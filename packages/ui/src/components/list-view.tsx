@@ -58,7 +58,7 @@ export function ListView<T>({
                       sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none"
                     }
                     className={cn(
-                      "sticky top-0 border-b border-line bg-head px-3 py-[6px] text-[10.5px] font-semibold text-ink-2",
+                      "sticky top-0 border-b border-line bg-head px-3 py-[6px] text-[12px] font-semibold text-ink-2",
                       (header.column.columnDef.meta as { align?: string } | undefined)?.align ===
                         "right"
                         ? "text-right"
@@ -72,7 +72,7 @@ export function ListView<T>({
                         className="inline-flex items-center gap-1 hover:text-ink"
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        <span className="font-mono text-[9px] text-ink-3">
+                        <span className="font-mono text-[12px] text-ink-3">
                           {sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : "△"}
                         </span>
                       </button>

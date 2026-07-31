@@ -170,9 +170,9 @@ export function ExcelImportPanel({
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
       <div className="flex items-center gap-2 border-b border-line bg-card px-4 py-2">
-        <span className="text-[12.5px] font-semibold">匯入 Excel 建立表單</span>
+        <span className="text-[13px] font-semibold">匯入 Excel 建立表單</span>
         {fileName !== "" ? (
-          <span className="font-mono text-[10.5px] text-ink-3">{fileName}</span>
+          <span className="font-mono text-[12px] text-ink-3">{fileName}</span>
         ) : null}
         <div className="ml-auto flex gap-1.5">
           <Button onClick={onCancel} disabled={importing}>
@@ -196,7 +196,7 @@ export function ExcelImportPanel({
         <div className="flex flex-1 items-center justify-center p-6">
           <div className="max-w-[380px] text-center">
             <p className="text-[13px] font-medium text-ink-2">選擇 .xlsx 檔</p>
-            <p className="mt-1 mb-4 text-[11.5px] text-ink-3">
+            <p className="mt-1 mb-4 text-[12px] text-ink-3">
               前端解析,原檔不上傳;取首工作表首列為欄名,系統推斷欄位型別後可校正。
             </p>
             <input
@@ -218,12 +218,12 @@ export function ExcelImportPanel({
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mx-auto max-w-[900px]">
             <div className="mb-3 flex flex-wrap items-end gap-3">
-              <label className="flex max-w-[360px] flex-1 flex-col gap-1 text-[11px] text-ink-2">
+              <label className="flex max-w-[360px] flex-1 flex-col gap-1 text-[12px] text-ink-2">
                 表單名稱
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
               </label>
               {book !== null && book.names.length > 1 ? (
-                <label className="flex flex-col gap-1 text-[11px] text-ink-2">
+                <label className="flex flex-col gap-1 text-[12px] text-ink-2">
                   工作表
                   <Select
                     value={sheet.sheetName}
@@ -241,14 +241,14 @@ export function ExcelImportPanel({
             </div>
 
             {sheet.headerRowIndex > 1 ? (
-              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-2">
+              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[12px] text-ink-2">
                 偵測到標題在第 {sheet.headerRowIndex} 列,已略過前面
                 {sheet.headerRowIndex - 1} 列。
               </div>
             ) : null}
 
             {sheet.truncated ? (
-              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[11px] text-ink-2">
+              <div className="mb-3 border border-line bg-head px-3 py-1.5 text-[12px] text-ink-2">
                 資料超過 {MAX_IMPORT_ROWS} 列,本次只匯入前 {MAX_IMPORT_ROWS} 列。
               </div>
             ) : null}
@@ -269,7 +269,7 @@ export function ExcelImportPanel({
                         d.skip && "opacity-45",
                       )}
                     >
-                      <label className="flex shrink-0 items-center gap-1 text-[10.5px] text-ink-3">
+                      <label className="flex shrink-0 items-center gap-1 text-[12px] text-ink-3">
                         <input
                           type="checkbox"
                           checked={!d.skip}
@@ -296,7 +296,7 @@ export function ExcelImportPanel({
                           </option>
                         ))}
                       </Select>
-                      <label className="flex shrink-0 items-center gap-1 text-[11px] text-ink-2">
+                      <label className="flex shrink-0 items-center gap-1 text-[12px] text-ink-2">
                         <input
                           type="checkbox"
                           checked={d.required}
@@ -306,7 +306,7 @@ export function ExcelImportPanel({
                         />
                         必填
                       </label>
-                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-ink-3">
+                      <span className="min-w-0 flex-1 truncate text-[12px] text-ink-3">
                         {d.samples.join(" · ")}
                       </span>
                     </li>
@@ -316,11 +316,11 @@ export function ExcelImportPanel({
             </section>
 
             <section className="border border-line bg-card">
-              <header className="border-b border-line bg-head px-3 py-1.5 text-[11px] font-semibold text-ink-2">
+              <header className="border-b border-line bg-head px-3 py-1.5 text-[12px] font-semibold text-ink-2">
                 資料預覽(前 {Math.min(PREVIEW_ROWS, sheet.rows.length)} 列 / 共 {sheet.rows.length})
               </header>
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[11px]">
+                <table className="w-full border-collapse text-[12px]">
                   <thead>
                     <tr>
                       {drafts.map((d) => (

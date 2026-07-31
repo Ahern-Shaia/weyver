@@ -187,7 +187,7 @@ export function FormWorkspace(): ReactNode {
             <button
               type="button"
               onClick={() => setImporting(true)}
-              className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
+              className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
             >
               匯入資料
             </button>
@@ -196,7 +196,7 @@ export function FormWorkspace(): ReactNode {
               使用者到了那裡還要自己在清單裡找回剛才那張表。 */}
           <Link
             href={`/app/builder?form=${formId}&mode=design`}
-            className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[11.5px] text-ink-3 hover:border-primary hover:text-primary"
+            className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
           >
             設計
           </Link>
@@ -222,7 +222,7 @@ export function FormWorkspace(): ReactNode {
               onDelete={onDelete}
             />
             {msg !== null ? (
-              <div className="shrink-0 border-b border-line bg-label px-4 py-1.5 text-[11.5px] text-ink-2">
+              <div className="shrink-0 border-b border-line bg-label px-4 py-1.5 text-[12px] text-ink-2">
                 {msg}
               </div>
             ) : null}
@@ -321,10 +321,10 @@ function RecordDetail({
             <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-md border border-line bg-card text-ink-3">
               <FileText size={22} strokeWidth={1.5} />
             </div>
-            <p className="text-[12.5px] text-ink-3">此表單尚無記錄。切「列表」或到設計器新增。</p>
+            <p className="text-[13px] text-ink-3">此表單尚無記錄。切「列表」或到設計器新增。</p>
             <Link
               href={`/app/builder?form=${formId}`}
-              className="mt-3 inline-flex h-8 items-center rounded-md bg-primary px-3 text-[12.5px] font-medium text-white"
+              className="mt-3 inline-flex h-8 items-center rounded-md bg-primary px-3 text-[13px] font-medium text-white"
             >
               在設計器開啟
             </Link>

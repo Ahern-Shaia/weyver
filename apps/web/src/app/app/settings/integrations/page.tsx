@@ -30,13 +30,13 @@ import { BusyBar } from "@/components/busy-indicator"
 function SecretOnce({ label, value }: { readonly label: string; readonly value: string }): ReactNode {
   return (
     <div className="mt-2 rounded-sm border border-warn/40 bg-warn/5 px-2.5 py-2">
-      <div className="flex items-center gap-1.5 text-[11.5px] text-ink">
+      <div className="flex items-center gap-1.5 text-[12px] text-ink">
         <AlertTriangle size={13} className="shrink-0 text-warn" />
         {label}
         <span className="text-ink-2">—— 只顯示這一次,關閉後無法再取得</span>
       </div>
       <div className="mt-1.5 flex items-center gap-1.5">
-        <code className="min-w-0 flex-1 truncate rounded-sm bg-head px-2 py-1 font-mono text-[11.5px] text-ink">
+        <code className="min-w-0 flex-1 truncate rounded-sm bg-head px-2 py-1 font-mono text-[12px] text-ink">
           {value}
         </code>
         <Button
@@ -57,10 +57,10 @@ function DeliveryList({ endpointId }: { readonly endpointId: number }): ReactNod
   const redeliver = useRedeliver(endpointId)
   const rows = data?.deliveries ?? []
   if (rows.length === 0) {
-    return <div className="px-3 py-2 text-[11.5px] text-ink-3">尚無投遞紀錄。</div>
+    return <div className="px-3 py-2 text-[12px] text-ink-3">尚無投遞紀錄。</div>
   }
   return (
-    <table className="w-full border-collapse text-[11.5px]">
+    <table className="w-full border-collapse text-[12px]">
       <thead>
         <tr>
           {["事件", "狀態", "嘗試", "回應", "時間", ""].map((h) => (
@@ -145,8 +145,8 @@ export default function IntegrationsPage(): ReactNode {
   return (
     <div className="relative mx-auto max-w-[820px] p-6">
       <BusyBar busy={isLoading} />
-      <h2 className="text-[15px] font-semibold">整合</h2>
-      <p className="mt-1 text-[11.5px] text-ink-3">
+      <h2 className="text-[16px] font-semibold">整合</h2>
+      <p className="mt-1 text-[12px] text-ink-3">
         把資料變更推送到外部系統,或讓外部系統以 API 存取。兩者都只有管理員能設定。
       </p>
 
@@ -175,7 +175,7 @@ export default function IntegrationsPage(): ReactNode {
             新增
           </Button>
         </form>
-        <p className="mt-1 text-[11px] text-ink-3">
+        <p className="mt-1 text-[12px] text-ink-3">
           只接受 https,且不跟隨轉址。建立後端點須回報驗證權杖才會開始收到事件。
         </p>
 
@@ -183,10 +183,10 @@ export default function IntegrationsPage(): ReactNode {
           {(hooks?.endpoints ?? []).map((e) => (
             <li key={e.id} className="rounded-md border border-line bg-card">
               <div className="flex items-center gap-2 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink">{e.url}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">{e.url}</span>
                 {/* 未驗證的端點收不到任何投遞 —— 這件事必須看得見,否則使用者會以為壞掉 */}
                 {e.verified ? null : (
-                  <span className="shrink-0 rounded-sm border border-warn/50 px-1.5 py-px text-[10.5px] text-warn">
+                  <span className="shrink-0 rounded-sm border border-warn/50 px-1.5 py-px text-[12px] text-warn">
                     待驗證
                   </span>
                 )}
@@ -271,16 +271,16 @@ export default function IntegrationsPage(): ReactNode {
             簽發
           </Button>
         </form>
-        <p className="mt-1 text-[11px] text-ink-3">
+        <p className="mt-1 text-[12px] text-ink-3">
           金鑰以簽發者的權限執行,不會多給任何權限。明文只在簽發當下顯示一次。
         </p>
 
         <ul className="mt-3 flex flex-col gap-1.5">
           {(keys?.keys ?? []).map((k) => (
             <li key={k.id} className="flex items-center gap-2 rounded-md border border-line bg-card px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{k.name}</span>
-              <code className="shrink-0 font-mono text-[11px] text-ink-3">{k.keyPrefix}…</code>
-              <span className="shrink-0 text-[11px] text-ink-3">
+              <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{k.name}</span>
+              <code className="shrink-0 font-mono text-[12px] text-ink-3">{k.keyPrefix}…</code>
+              <span className="shrink-0 text-[12px] text-ink-3">
                 {k.lastUsedAt === null
                   ? "未使用過"
                   : `最後使用 ${new Date(k.lastUsedAt).toLocaleDateString("zh-TW")}`}

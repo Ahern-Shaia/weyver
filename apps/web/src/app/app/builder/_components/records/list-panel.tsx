@@ -27,7 +27,7 @@ export function RecordsListPanel({ formId }: { formId: number }) {
         <div className="flex h-full items-center justify-center">
           <div className="max-w-[300px] text-center">
             <p className="text-[13px] font-medium text-ink-2">尚無資料</p>
-            <p className="mt-1 text-[11.5px] text-ink-3">切到「填單」新增第一筆記錄。</p>
+            <p className="mt-1 text-[12px] text-ink-3">切到「填單」新增第一筆記錄。</p>
           </div>
         </div>
       ) : (

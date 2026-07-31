@@ -27,10 +27,10 @@ export function BarcodeView({
   readonly size?: number
 }): ReactNode {
   const text = value === null || value === undefined ? "" : String(value)
-  if (text === "") return <span className="text-[11px] text-ink-3">—</span>
+  if (text === "") return <span className="text-[12px] text-ink-3">—</span>
   if (symbology === "code128") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-xs border border-line bg-label px-1.5 py-0.5 text-[10px] text-ink-3">
+      <span className="inline-flex items-center gap-1 rounded-xs border border-line bg-label px-1.5 py-0.5 text-[12px] text-ink-3">
         Code128 待後續版本;現值 <span className="font-mono text-ink-3">{text}</span>
       </span>
     )
@@ -38,7 +38,7 @@ export function BarcodeView({
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
       <QRCodeSVG value={text} size={size} level="M" marginSize={0} />
-      <span className="font-mono text-[9.5px] text-ink-3">{text}</span>
+      <span className="font-mono text-[12px] text-ink-3">{text}</span>
     </span>
   )
 }

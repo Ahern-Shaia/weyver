@@ -74,7 +74,7 @@ export function BuilderClient() {
                 <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-md border border-line bg-card text-ink-3">
                   <Table2 size={26} strokeWidth={1.5} />
                 </div>
-                <h2 className="text-[15px] font-semibold text-ink">選擇或建立表單</h2>
+                <h2 className="text-[16px] font-semibold text-ink">選擇或建立表單</h2>
                 <p className="mx-auto mt-1.5 max-w-[300px] text-[12px] leading-relaxed text-ink-3">
                   從左側點選既有表單開始編輯與填單,或新建一張 —— 發布後引擎即生成真實資料表。
                 </p>

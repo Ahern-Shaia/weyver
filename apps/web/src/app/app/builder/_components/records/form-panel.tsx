@@ -158,7 +158,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
     <div className="flex-1 overflow-y-auto bg-surface py-4">
       <div className="mx-auto max-w-[880px] px-5">
         <div className="mb-3 flex items-center gap-2">
-          <span className="text-[15px] font-semibold text-ink">新增{form.name}</span>
+          <span className="text-[16px] font-semibold text-ink">新增{form.name}</span>
           <div className="ml-auto flex gap-1.5">
             <Button onClick={reset}>清除</Button>
             <Button variant="primary" onClick={submit} disabled={pending}>
@@ -179,7 +179,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
         ) : null}
 
         <section className="overflow-hidden rounded-md border border-line bg-card">
-          <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+          <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[12px] font-semibold text-ink-2">
             <span className="size-1.5 rounded-full bg-primary" />
             填寫
           </header>
@@ -199,7 +199,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
 
         {hasChild ? (
           <section className="mt-3 overflow-hidden rounded-md border border-line bg-card">
-            <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[11.5px] font-semibold text-ink-2">
+            <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[12px] font-semibold text-ink-2">
               <span className="size-1.5 rounded-full bg-primary" />
               {childForm?.name}
               <span className="font-normal text-ink-3">明細</span>
@@ -209,9 +209,9 @@ export function RecordFormPanel({ formId }: { formId: number }) {
               </Button>
             </header>
             {childFields.length === 0 ? (
-              <div className="p-4 text-center text-[11.5px] text-ink-3">子表載入中…</div>
+              <div className="p-4 text-center text-[12px] text-ink-3">子表載入中…</div>
             ) : lines.length === 0 ? (
-              <div className="p-4 text-center text-[11.5px] text-ink-3">
+              <div className="p-4 text-center text-[12px] text-ink-3">
                 點「＋ 加一行」新增明細
               </div>
             ) : (
@@ -302,7 +302,7 @@ function FieldRow({
     <>
       <div
         className={cn(
-          "flex min-h-[34px] items-center justify-end gap-1 border-r border-cell bg-label px-2.5 text-right text-[11.5px] text-ink-2",
+          "flex min-h-[34px] items-center justify-end gap-1 border-r border-cell bg-label px-2.5 text-right text-[12px] text-ink-2",
           !isLast && "border-b",
         )}
       >

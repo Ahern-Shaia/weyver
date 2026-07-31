@@ -122,13 +122,13 @@ export function FieldSettingsPanel({
     <div className="flex w-64 shrink-0 flex-col border-l border-line bg-card">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <span className="truncate text-[12px] font-semibold text-ink">{field.name}</span>
-        <span className="font-mono text-[10px] text-ink-3">設定</span>
+        <span className="font-mono text-[12px] text-ink-3">設定</span>
         <button type="button" onClick={onClose} className="ml-auto text-ink-3 hover:text-ink">
           <X size={14} />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
-        <div className="flex flex-col gap-3 text-[11.5px]">
+        <div className="flex flex-col gap-3 text-[12px]">
           <label className="flex flex-col gap-1">
             <span className="text-ink-3">提示文字(placeholder)</span>
             <Input
@@ -277,7 +277,7 @@ export function StaticSettingsPanel({
           <X size={14} />
         </button>
       </div>
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3 text-[11.5px]">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3 text-[12px]">
         {element.kind === "text" ? (
           <>
             <label className="flex flex-col gap-1">

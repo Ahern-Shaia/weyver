@@ -20,11 +20,11 @@ export function AuthShell({
           <div className="text-[14px] font-semibold">
             Weyver <span className="font-normal text-ink-3">織雲</span>
           </div>
-          <div className="text-[11px] text-ink-3">{subtitle}</div>
+          <div className="text-[12px] text-ink-3">{subtitle}</div>
         </div>
       </div>
       <div className="rounded-sm border border-line bg-card p-5">
-        <h1 className="mb-4 text-[15px] font-semibold text-ink">{title}</h1>
+        <h1 className="mb-4 text-[16px] font-semibold text-ink">{title}</h1>
         {children}
       </div>
     </main>
@@ -34,7 +34,7 @@ export function AuthShell({
 export function Field({ label, children }: { readonly label: string; readonly children: ReactNode }): ReactNode {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium text-ink-2">{label}</span>
+      <span className="text-[12px] font-medium text-ink-2">{label}</span>
       {children}
     </label>
   )

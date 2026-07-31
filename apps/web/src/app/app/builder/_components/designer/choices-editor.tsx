@@ -77,7 +77,7 @@ export function ChoicesEditor({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10.5px] text-ink-3">選項與顏色</span>
+      <span className="text-[12px] text-ink-3">選項與顏色</span>
       {rows.map((row, index) => (
         <div key={`${groupId}-${index}`} className="flex items-center gap-1.5">
           <Input
@@ -91,7 +91,7 @@ export function ChoicesEditor({
             value={row.tone}
             onChange={(e) => patch(index, { tone: e.target.value as ChipTone })}
             aria-label={`選項 ${index + 1} 顏色`}
-            className="h-7 rounded-xs border border-line bg-card px-1 text-[11px] text-ink"
+            className="h-7 rounded-xs border border-line bg-card px-1 text-[12px] text-ink"
           >
             {CHIP_TONES.map((tone) => (
               <option key={tone} value={tone}>
@@ -114,7 +114,7 @@ export function ChoicesEditor({
       <button
         type="button"
         onClick={() => onChange([...rows, { name: "", tone: nextAutoTone(rows) }])}
-        className="flex w-fit items-center gap-1 text-[11.5px] text-primary hover:underline"
+        className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
       >
         <Plus size={12} />
         加選項

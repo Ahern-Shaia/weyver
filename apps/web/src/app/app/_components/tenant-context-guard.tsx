@@ -59,7 +59,7 @@ export function TenantContextGuard({ children }: { readonly children: ReactNode 
   return (
     <>
       {/* sticky 橫幅:告知但不打斷。使用者可能只是要把這頁看完。 */}
-      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-warn/40 bg-warn/10 px-4 py-1.5 text-[11.5px] text-ink">
+      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-warn/40 bg-warn/10 px-4 py-1.5 text-[12px] text-ink">
         <AlertTriangle size={13} className="shrink-0 text-warn" />
         <span className="min-w-0 flex-1">
           此分頁是<b>{tabOrg.name}</b>,但你在其他分頁已切換到<b>{switchedTo}</b>。

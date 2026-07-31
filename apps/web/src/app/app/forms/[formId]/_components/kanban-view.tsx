@@ -53,7 +53,7 @@ function Card({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`border border-line bg-card px-2.5 py-1.5 text-[11.5px] ${
+      className={`border border-line bg-card px-2.5 py-1.5 text-[12px] ${
         isDragging ? "opacity-40" : ""
       } ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
@@ -66,7 +66,7 @@ function Card({
           `#${String(record.id)}`}
       </button>
       {fields.slice(1, 3).map((f) => (
-        <div key={f.id} className="truncate text-[10.5px] text-ink-3">
+        <div key={f.id} className="truncate text-[12px] text-ink-3">
           {formatFieldValue(f, record.values[f.name], memberNames)}
         </div>
       ))}
@@ -95,9 +95,9 @@ function Column({
         isOver ? "border-primary bg-primary/5" : "border-line bg-surface"
       }`}
     >
-      <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-ink">
+      <div className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
         {title}
-        <span className="ml-auto font-mono text-[11px] font-normal text-ink-3">{count}</span>
+        <span className="ml-auto font-mono text-[12px] font-normal text-ink-3">{count}</span>
       </div>
       {children}
     </div>
@@ -182,7 +182,7 @@ export function KanbanView({
         </div>
       ) : null}
       {locked ? (
-        <div className="border-b border-line bg-warn/5 px-4 py-1.5 text-[11.5px] text-ink">
+        <div className="border-b border-line bg-warn/5 px-4 py-1.5 text-[12px] text-ink">
           「{stackField.name}」是由系統計算的欄位,卡片不可拖曳。
         </div>
       ) : null}

@@ -19,7 +19,7 @@ export function Toolbar({ crumb, children, right, className }: ToolbarProps): Re
         className,
       )}
     >
-      {crumb ? <span className="mr-2 text-[11.5px] text-ink-3">{crumb}</span> : null}
+      {crumb ? <span className="mr-2 text-[12px] text-ink-3">{crumb}</span> : null}
       {children}
       <div className="flex-1" />
       {right}
@@ -58,7 +58,7 @@ export function RecordNav({
       >
         ‹
       </button>
-      <span className="border-r border-line px-2.5 font-mono text-[11px] text-ink-2 tabular-nums">
+      <span className="border-r border-line px-2.5 font-mono text-[12px] text-ink-2 tabular-nums">
         第 {index} / {total} 筆
       </span>
       <button
