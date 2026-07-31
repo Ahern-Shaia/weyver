@@ -95,7 +95,7 @@ export function RelookupPanel({
         </div>
       )}
 
-      {error === null ? null : <div className="mb-2 text-[11px] text-er">{error}</div>}
+      {error === null ? null : <div className="mb-2 text-[13px] text-er">{error}</div>}
 
       <div className="flex gap-1.5">
         <Button variant="subtle" size="sm" disabled={busy} onClick={() => void run(true)}>

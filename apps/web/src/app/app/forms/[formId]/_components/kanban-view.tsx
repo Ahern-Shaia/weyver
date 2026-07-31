@@ -177,7 +177,7 @@ export function KanbanView({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {error !== null ? (
-        <div className="border-b border-er-line bg-er-t px-4 py-1.5 text-[12px] text-er">
+        <div className="border-b border-er-line bg-er-t px-4 py-1.5 text-[14px] text-er">
           {error}
         </div>
       ) : null}

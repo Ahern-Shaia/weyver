@@ -101,7 +101,7 @@ export function RecordList({
                   {statusField ? (
                     <StatusChip
                       tone={optionTone(statusField, r.values[statusField.name])}
-                      className="h-[15px] text-[9.5px]"
+                      className="min-h-[16px] text-[12px]"
                     >
                       {String(r.values[statusField.name] ?? "—")}
                     </StatusChip>

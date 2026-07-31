@@ -84,7 +84,7 @@ export default function RegisterPage(): React.ReactNode {
             placeholder="••••••••"
           />
         </Field>
-        {error ? <p className="text-[12px] text-er">{error}</p> : null}
+        {error ? <p className="text-[13px] text-er">{error}</p> : null}
         <Button type="submit" variant="primary" disabled={busy} className="mt-1 w-full">
           {busy ? "建立中…" : "建立並進入"}
         </Button>

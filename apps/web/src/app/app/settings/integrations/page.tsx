@@ -150,7 +150,7 @@ export default function IntegrationsPage(): ReactNode {
       </p>
 
       {error === null ? null : (
-        <div className="mt-3 rounded-sm border border-er-line bg-er-t px-2.5 py-1.5 text-[11.5px] text-er">
+        <div className="mt-3 rounded-sm border border-er-line bg-er-t px-2.5 py-1.5 text-[14px] text-er">
           {error}
         </div>
       )}
@@ -191,7 +191,7 @@ export default function IntegrationsPage(): ReactNode {
                 )}
                 {e.disabledAt === null ? null : (
                   <span
-                    className="shrink-0 rounded-sm border border-er-line px-1.5 py-px text-[10.5px] text-er"
+                    className="shrink-0 rounded-sm border border-er-line px-1.5 py-px text-[14px] text-er"
                     title={e.disabledReason ?? ""}
                   >
                     已停用

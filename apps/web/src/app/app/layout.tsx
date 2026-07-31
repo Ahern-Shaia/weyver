@@ -182,12 +182,19 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
   const isActive = (href: string): boolean =>
     href === "/app" ? pathname === "/app" : pathname.startsWith(href)
 
+  /* 根層 overflow-auto(非 hidden):正常情況內容剛好填滿視窗、不出現捲軸;
+     只有內容真的溢出時才捲 —— 即 WCAG 1.4.12「使用者加大行高/字距」的情境,
+     此時內容可捲到而非被永久裁掉。
+     ⚠️ 不可改為在 `main` 上加 overflow:設計器等頁面的內部版面假設 main 不自成
+     捲動容器,加了會使右側面板蓋住工具列(實測 designer / image-* e2e 失敗)。 */
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface">
+    <div className="flex h-screen flex-col overflow-auto bg-surface">
       <div className="flex min-h-0 flex-1">
         <nav
           aria-label="主導覽"
-          className={`flex shrink-0 flex-col gap-0.5 border-r border-line bg-card py-2.5 ${
+          /* overflow-y-auto:WCAG 1.4.12 —— 使用者加大行高/字距時導覽項會變高,
+             沒有自己的捲動就會被 app-shell 的 overflow-hidden 裁掉而搆不到 */
+          className={`flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-card py-2.5 ${
             collapsed ? "w-14 items-center px-0" : "w-[172px] px-2"
           }`}
         >

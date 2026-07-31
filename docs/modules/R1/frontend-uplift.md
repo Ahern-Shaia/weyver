@@ -2,6 +2,16 @@
 
 > 🚧 **狀態:APPROVED v1.0(2026-07-31)— OQ-FUX-1..14 全採建議,M1 已完成**
 > **裁定摘要**|1=A rail 設定六項收進 S22 設定中心 · 2=A 預設展開可收合 · 3=A docs/14 全採六項校正 · 4=B 邊做邊拆(先 folder 化) · 5=B 鍵盤只做子表+列表 · 6=A Carbon productive token · 7=A 首頁補最近使用+待我處理 · 8=B 維持 compact-only 但修誤套 · 9=A keepPreviousData+延遲細進度條 · 10=A reduced-motion 維持現況 · 11=A 對比三條全修 · 12=A 字階收斂整數六階 · 13=A 視覺規範進 CI · 14=A VisAWI-S 前後測+首次接觸鏈優先。
+> **M6 已完成(2026-07-31)**|**密度誤套修正**:錯誤 / 驗證訊息 **34 處**由 10.5–12px 提到 **13px(inline)/ 14px(區塊警示框)** —— Cloudscape 明載 compact **不得套用**於 alert / 說明 / 表單驗證訊息;固定高度改 `min-h`(`input` / `select` / 狀態章),`input` 字級 12→13px。
+>
+> **WCAG 1.4.12 做成可執行檢查**|`e2e/text-spacing.spec.ts` 注入官方要求的 `line-height 1.5 / 段距 2 / 字距 0.12 / 詞距 0.16`,再逐元素比對 `scrollHeight > clientHeight 且 overflow:hidden`(排除刻意的 `truncate` / `line-clamp`),涵蓋 5 個 surface。**反向驗證確認會轉紅。**
+>
+> 🔴 **檢查上線即抓到真缺陷**|app-shell 根層 `h-screen + overflow-hidden`,使用者加大行高後內容溢出即被**永久裁掉搆不到**。
+> **修法試錯的紀錄(重要)**|首次修在 `main` 加 `overflow-y-auto` → **打壞 designer / image-processing / image-signature 三支 e2e**:設計器等頁面的內部版面假設 main 不自成捲動容器,加了會使右側面板蓋住工具列。**改在根層 `overflow-hidden → overflow-auto`** 才對 —— 正常時內容剛好填滿不出現捲軸,只有真的溢出(即 1.4.12 情境)才捲。此取捨已寫入 `layout.tsx` 註解,避免日後有人「順手」改回 main。
+> 另:左側導覽補 `overflow-y-auto`(導覽項變高時不致搆不到)。
+>
+> **驗證**|web 98 單元 · 1.4.12 檢查 5 surface 綠 · 全 e2e **69 綠 / 5 失敗**(4 個為既有基線失敗;`image-signature:104` 單獨跑 3 測全綠,屬完整套件下的不穩定,非 M6 造成)。
+>
 > **M5 已完成(2026-07-31)**|🔴 **決策稿階段再次推翻目標**:`line-items.tsx` 是**唯讀顯示表**(儲存格純文字、無 input),grid pattern 的核心(`F2`/`Enter` 進編輯 / 英數直接輸入)**無處可用**;真正可編輯的子表在 `builder/_components/records/form-panel.tsx`。已產決策稿 `docs/mockups/keyboard-grid-decision.html`(兩邊可實際按)供裁定,裁定採 **A 完整 APG grid**。
 >
 > **落地**|`components/form/use-grid-keyboard.ts`(照抄 APG:方向鍵不環繞 · `Home`/`End` · `Ctrl+Home`/`End` · `F2`/`Enter` 進編輯 · 英數直接進編輯取代原值 · `Esc` 回導覽 · roving tabindex)掛上可編輯子表;`record-list.tsx` 套 **listbox**(不同規範:僅 ↑↓ 為必要,`Home`/`End` 原文標 Optional)。**`collection-view`(Glide canvas)明確不動**,並以 e2e 斷言其未被加上 grid 標記。

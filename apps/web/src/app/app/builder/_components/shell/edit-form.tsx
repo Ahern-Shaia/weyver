@@ -109,7 +109,7 @@ export function EditFormPanel({
   }
   if (formQuery.isError || formQuery.data === undefined) {
     return (
-      <div className="p-6 text-[12px] text-er">載入失敗:{describeEngineError(formQuery.error)}</div>
+      <div className="p-6 text-[13px] text-er">載入失敗:{describeEngineError(formQuery.error)}</div>
     )
   }
   const form = formQuery.data
@@ -208,7 +208,7 @@ export function EditFormPanel({
         </div>
 
         {error !== null ? (
-          <div className="shrink-0 border-b border-er-line bg-er-t px-4 py-2 text-[12px] text-er">
+          <div className="shrink-0 border-b border-er-line bg-er-t px-4 py-2 text-[14px] text-er">
             {error}
           </div>
         ) : null}
@@ -228,7 +228,7 @@ export function EditFormPanel({
         ) : null}
 
         {form.provisionState === "failed" ? (
-          <p className="shrink-0 px-4 py-2 text-[11px] text-er">
+          <p className="shrink-0 px-4 py-2 text-[13px] text-er">
             此表單建置失敗,無法編輯(見 API ddl_audit)。
           </p>
         ) : (

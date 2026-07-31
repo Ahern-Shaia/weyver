@@ -192,7 +192,7 @@ export function SignatureInput({
           清除
         </button>
       </div>
-      {error !== null ? <span className="text-[11px] text-er">{error}</span> : null}
+      {error !== null ? <span className="text-[13px] text-er">{error}</span> : null}
     </div>
   )
 }

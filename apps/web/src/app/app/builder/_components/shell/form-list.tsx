@@ -53,7 +53,7 @@ export function FormListRail({
         {forms.isLoading ? (
           <div className="p-3 text-[11.5px] text-ink-4">載入中…</div>
         ) : forms.isError ? (
-          <div className="p-3 text-[11.5px] text-er">
+          <div className="p-3 text-[13px] text-er">
             無法連線引擎:{describeEngineError(forms.error)}
           </div>
         ) : (forms.data?.length ?? 0) === 0 ? (

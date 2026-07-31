@@ -20,7 +20,7 @@ export function RecordsListPanel({ formId }: { formId: number }) {
       {recordsQuery.isLoading ? (
         <div className="text-[12px] text-ink-3">載入資料中…</div>
       ) : recordsQuery.isError ? (
-        <div className="text-[12px] text-er">
+        <div className="text-[13px] text-er">
           載入失敗:{describeEngineError(recordsQuery.error)}
         </div>
       ) : (recordsQuery.data?.records.length ?? 0) === 0 ? (

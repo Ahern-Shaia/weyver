@@ -131,7 +131,7 @@ export default function WorkspaceHome(): ReactNode {
         {isPending ? (
           <div className="mt-6 text-[12px] text-ink-3">載入表單…</div>
         ) : isError ? (
-          <div className="mt-6 rounded-md border border-er-line bg-er-t px-3 py-2.5 text-[12px] text-er">
+          <div className="mt-6 rounded-md border border-er-line bg-er-t px-3 py-2.5 text-[14px] text-er">
             無法載入表單。請確認引擎服務已啟動。
           </div>
         ) : roots.length === 0 ? (

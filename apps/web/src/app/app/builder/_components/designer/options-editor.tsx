@@ -152,7 +152,7 @@ export function OptionsEditorPanel({
       </div>
 
       {error !== null ? (
-        <div className="border border-er/40 bg-er/5 px-2 py-1 text-[10.5px] text-er">{error}</div>
+        <div className="border border-er/40 bg-er/5 px-2 py-1 text-[14px] text-er">{error}</div>
       ) : null}
 
       {rows.map((row) => {

@@ -83,7 +83,7 @@ export function AccessPreview(): ReactNode {
 
       {formId !== null && actorId !== null ? (
         isError ? (
-          <div className="mt-3 text-[11.5px] text-er">試算失敗</div>
+          <div className="mt-3 text-[13px] text-er">試算失敗</div>
         ) : isPending ? (
           <div className="mt-3 text-[11.5px] text-ink-4">試算中…</div>
         ) : data === undefined ? null : (

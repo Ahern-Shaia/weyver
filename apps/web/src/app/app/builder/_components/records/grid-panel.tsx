@@ -148,7 +148,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
         </div>
       ) : null}
       {error !== null ? (
-        <div className="border-b border-er-line bg-er-t px-4 py-1.5 text-[12px] text-er">
+        <div className="border-b border-er-line bg-er-t px-4 py-1.5 text-[14px] text-er">
           {error}
         </div>
       ) : null}

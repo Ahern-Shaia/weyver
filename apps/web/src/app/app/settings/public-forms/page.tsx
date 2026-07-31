@@ -105,7 +105,7 @@ export default function PublicFormsPage(): ReactNode {
       </p>
 
       {error === null ? null : (
-        <div className="mt-3 rounded-sm border border-er-line bg-er-t px-2.5 py-1.5 text-[11.5px] text-er">
+        <div className="mt-3 rounded-sm border border-er-line bg-er-t px-2.5 py-1.5 text-[14px] text-er">
           {error}
         </div>
       )}

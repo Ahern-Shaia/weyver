@@ -122,7 +122,7 @@ export function ConvertTypePanel({
       <span className="text-[10.5px] text-ink-4">變更欄位型別</span>
 
       {error !== null ? (
-        <div className="border border-er/40 bg-er/5 px-2 py-1 text-[10.5px] text-er">{error}</div>
+        <div className="border border-er/40 bg-er/5 px-2 py-1 text-[14px] text-er">{error}</div>
       ) : null}
 
       <div className="flex items-center gap-1.5">

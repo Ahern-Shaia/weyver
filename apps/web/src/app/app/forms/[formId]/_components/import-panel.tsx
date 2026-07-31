@@ -197,7 +197,7 @@ export function ImportPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <div className="mx-auto max-w-[860px] space-y-4">
           {error !== null ? (
-            <div className="border border-er/40 bg-er/5 px-3 py-2 text-[11.5px] text-er">{error}</div>
+            <div className="border border-er/40 bg-er/5 px-3 py-2 text-[14px] text-er">{error}</div>
           ) : null}
           {result !== null ? (
             <div className="border border-ok/40 bg-ok/5 px-3 py-2 text-[11.5px] text-ink">{result}</div>
@@ -389,7 +389,7 @@ export function ImportPanel({
                     </div>
                   ) : null}
                   {planned.blockers.map((b) => (
-                    <div key={b.code} className="text-[11.5px] text-er">
+                    <div key={b.code} className="text-[13px] text-er">
                       {b.message}
                     </div>
                   ))}

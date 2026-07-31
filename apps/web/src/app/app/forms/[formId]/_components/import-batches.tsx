@@ -84,7 +84,7 @@ export function ImportBatches({
   return (
     <section className="mt-3 border border-line bg-card p-2.5">
       <div className="mb-2 text-[11.5px] font-semibold text-ink">匯入紀錄</div>
-      {error === null ? null : <div className="mb-2 text-[11px] text-er">{error}</div>}
+      {error === null ? null : <div className="mb-2 text-[13px] text-er">{error}</div>}
       <ul className="divide-y divide-line border border-line">
         {batches.map((b) => (
           <li key={b.id} className="flex items-center gap-2 px-2 py-1.5 text-[11px]">

@@ -211,7 +211,7 @@ export default function PublicFormPage(): ReactNode {
         />
 
         {error === null ? null : (
-          <div className="rounded-sm border border-er-line bg-er-t px-2.5 py-1.5 text-[11.5px] text-er">
+          <div className="rounded-sm border border-er-line bg-er-t px-2.5 py-1.5 text-[14px] text-er">
             {error}
           </div>
         )}

@@ -120,7 +120,7 @@ export function AttachmentInput({
         onChange={(e) => void pick(e.target.files)}
         className="hidden"
       />
-      {error !== null ? <span className="text-[11px] text-er">{error}</span> : null}
+      {error !== null ? <span className="text-[13px] text-er">{error}</span> : null}
     </div>
   )
 }

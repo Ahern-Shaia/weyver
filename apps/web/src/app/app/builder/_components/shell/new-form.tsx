@@ -65,7 +65,7 @@ export function NewFormPanel({
         </p>
 
         {error !== null ? (
-          <div className="mt-3 border border-er/40 bg-er/5 px-3 py-2 text-[11.5px] text-er">
+          <div className="mt-3 border border-er/40 bg-er/5 px-3 py-2 text-[14px] text-er">
             {error}
           </div>
         ) : null}

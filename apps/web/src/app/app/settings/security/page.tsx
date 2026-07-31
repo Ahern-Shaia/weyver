@@ -106,7 +106,7 @@ export default function SecurityPage(): React.ReactNode {
               autoComplete="current-password"
               placeholder="••••••••"
             />
-            {error ? <p className="text-[12px] text-er">{error}</p> : null}
+            {error ? <p className="text-[13px] text-er">{error}</p> : null}
             <Button type="submit" variant="primary" disabled={busy} className="mt-1 w-fit">
               {busy ? "處理中…" : "啟用二步驟驗證"}
             </Button>
@@ -149,7 +149,7 @@ export default function SecurityPage(): React.ReactNode {
                 placeholder="123456"
                 className="w-40"
               />
-              {error ? <p className="text-[12px] text-er">{error}</p> : null}
+              {error ? <p className="text-[13px] text-er">{error}</p> : null}
               <Button type="submit" variant="primary" disabled={busy} className="w-fit">
                 {busy ? "驗證中…" : "完成啟用"}
               </Button>
@@ -169,7 +169,7 @@ export default function SecurityPage(): React.ReactNode {
               autoComplete="current-password"
               placeholder="••••••••"
             />
-            {error ? <p className="text-[12px] text-er">{error}</p> : null}
+            {error ? <p className="text-[13px] text-er">{error}</p> : null}
             <Button type="submit" variant="danger" disabled={busy} className="mt-1 w-fit">
               {busy ? "處理中…" : "停用二步驟驗證"}
             </Button>
