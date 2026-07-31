@@ -1,6 +1,10 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # R1·H-3|自建 image 以帶入 pg_bigm(繁中全文搜尋)。
+    # prod Cloud SQL 官方支援該擴充;dev 若沒有則查詢計畫兩邊不同 → dev/prod 分歧。
+    build:
+      context: ./docker/postgres
+    image: weyver-postgres:16-bigm
     container_name: weyver-pg
     ports:
       - "5433:5432"
