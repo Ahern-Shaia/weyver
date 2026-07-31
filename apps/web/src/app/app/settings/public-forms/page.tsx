@@ -95,14 +95,13 @@ export default function PublicFormsPage(): ReactNode {
     }
   }
 
-
   return (
     <div className="relative mx-auto max-w-[820px] p-6">
       <BusyBar busy={isLoading} />
       <h2 className="text-[16px] font-semibold">公開表單</h2>
       <p className="mt-1 text-[12px] text-ink-3">
-        把一張表單開放給未登入的外部人填寫。提交內容會先進待審收件匣,
-        由你確認後才成為正式資料 —— 不會直接吃單號或觸發簽核。
+        把一張表單開放給未登入的外部人填寫。提交內容會先進待審收件匣, 由你確認後才成為正式資料 ——
+        不會直接吃單號或觸發簽核。
       </p>
 
       {error === null ? null : (

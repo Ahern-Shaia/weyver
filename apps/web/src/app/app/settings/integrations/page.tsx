@@ -27,7 +27,10 @@ import { BusyBar } from "@/components/busy-indicator"
    **驗證挑戰的狀態要看得見**|未驗證的端點不會收到任何投遞。若 UI 不顯示,
    使用者會以為設定好了卻一直收不到,然後來問為什麼。 */
 
-function SecretOnce({ label, value }: { readonly label: string; readonly value: string }): ReactNode {
+function SecretOnce({
+  label,
+  value,
+}: { readonly label: string; readonly value: string }): ReactNode {
   return (
     <div className="mt-2 rounded-sm border border-warn/40 bg-warn/5 px-2.5 py-2">
       <div className="flex items-center gap-1.5 text-[12px] text-ink">
@@ -75,7 +78,11 @@ function DeliveryList({ endpointId }: { readonly endpointId: number }): ReactNod
           <tr key={d.id}>
             <td className="border-b border-line px-2 py-1 font-mono text-ink">{d.eventType}</td>
             <td className="border-b border-line px-2 py-1">
-              <span className={d.status === "sent" ? "text-ok" : d.status === "failed" ? "text-er" : "text-ink-2"}>
+              <span
+                className={
+                  d.status === "sent" ? "text-ok" : d.status === "failed" ? "text-er" : "text-ink-2"
+                }
+              >
                 {d.status === "sent" ? "已送達" : d.status === "failed" ? "放棄" : "待送"}
               </span>
             </td>
@@ -141,7 +148,6 @@ export default function IntegrationsPage(): ReactNode {
     }
   }
 
-
   return (
     <div className="relative mx-auto max-w-[820px] p-6">
       <BusyBar busy={isLoading} />
@@ -183,7 +189,9 @@ export default function IntegrationsPage(): ReactNode {
           {(hooks?.endpoints ?? []).map((e) => (
             <li key={e.id} className="rounded-md border border-line bg-card">
               <div className="flex items-center gap-2 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">{e.url}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink">
+                  {e.url}
+                </span>
                 {/* 未驗證的端點收不到任何投遞 —— 這件事必須看得見,否則使用者會以為壞掉 */}
                 {e.verified ? null : (
                   <span className="shrink-0 rounded-sm border border-warn/50 px-1.5 py-px text-[12px] text-warn">
@@ -198,7 +206,11 @@ export default function IntegrationsPage(): ReactNode {
                     已停用
                   </span>
                 )}
-                <Button size="sm" variant="subtle" onClick={() => setExpanded(expanded === e.id ? null : e.id)}>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => setExpanded(expanded === e.id ? null : e.id)}
+                >
                   紀錄
                 </Button>
                 <Button
@@ -224,7 +236,10 @@ export default function IntegrationsPage(): ReactNode {
                   size="sm"
                   variant="subtle"
                   onClick={() =>
-                    hookAction.mutate({ id: e.id, action: e.disabledAt === null ? "disable" : "enable" })
+                    hookAction.mutate({
+                      id: e.id,
+                      action: e.disabledAt === null ? "disable" : "enable",
+                    })
                   }
                 >
                   {e.disabledAt === null ? "停用" : "啟用"}
@@ -277,7 +292,10 @@ export default function IntegrationsPage(): ReactNode {
 
         <ul className="mt-3 flex flex-col gap-1.5">
           {(keys?.keys ?? []).map((k) => (
-            <li key={k.id} className="flex items-center gap-2 rounded-md border border-line bg-card px-3 py-2">
+            <li
+              key={k.id}
+              className="flex items-center gap-2 rounded-md border border-line bg-card px-3 py-2"
+            >
               <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{k.name}</span>
               <code className="shrink-0 font-mono text-[12px] text-ink-3">{k.keyPrefix}…</code>
               <span className="shrink-0 text-[12px] text-ink-3">

@@ -69,8 +69,6 @@ export default function NotificationSettingsPage(): ReactNode {
 
   /* 只有「完全沒有資料可顯示」才佔位;後續重取由 BusyBar 表示,內容保留不塌陷 */
 
-
-
   return (
     <div className="relative mx-auto max-w-[720px] p-6">
       <BusyBar busy={isLoading} />
@@ -201,7 +199,12 @@ export default function NotificationSettingsPage(): ReactNode {
                   <td className="border border-cell px-2 py-1.5">{e.label}</td>
                   <td className="border border-cell px-2 py-1.5 text-center">
                     {/* 站內恆開:通知中心是「我的收件匣」,關掉它等於通知無處可存 */}
-                    <input type="checkbox" checked readOnly className="size-[13px] accent-primary" />
+                    <input
+                      type="checkbox"
+                      checked
+                      readOnly
+                      className="size-[13px] accent-primary"
+                    />
                   </td>
                   <td className="border border-cell px-2 py-1.5 text-center">
                     <input

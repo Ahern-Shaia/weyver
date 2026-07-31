@@ -121,9 +121,7 @@ export function AccessPreview(): ReactNode {
               </ul>
             )}
             {data.visibleCount > data.samples.length ? (
-              <div className="text-[12px] text-ink-3">
-                僅列出前 {data.samples.length} 筆
-              </div>
+              <div className="text-[12px] text-ink-3">僅列出前 {data.samples.length} 筆</div>
             ) : null}
           </div>
         )
