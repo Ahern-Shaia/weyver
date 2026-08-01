@@ -435,6 +435,31 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .who td.n2{color:var(--ink3);font-weight:500;white-space:nowrap}
 .tlogo{width:30px;height:30px;border-radius:5px;background:var(--primary);color:#fff;display:flex;
   align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:0 0 30px}
+
+/* ── §21 設計器重構 ─────────────────────────── */
+.cmp2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cmp2 > div > .lbl{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  margin-bottom:8px;color:var(--ink3)}
+.cmp2 .bad .lbl{color:var(--er)} .cmp2 .good .lbl{color:var(--ok)}
+.mini{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg);
+  height:290px;display:flex;font-size:9.5px;line-height:1.5}
+.mini .r{width:18px;background:var(--head);flex:0 0 18px}
+.mini .c{border-right:1px solid var(--line);background:var(--card);padding:5px 4px;overflow:hidden;flex:0 0 auto}
+.mini .cv{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+.mini .bd{background:var(--card);border-bottom:1px solid var(--line);padding:4px 6px;
+  display:flex;align-items:center;gap:4px;flex:0 0 auto}
+.mini .bd.warn{background:var(--wn-t);color:var(--wn);display:block}
+.mini .sheet{flex:1;padding:8px;overflow:hidden}
+.mini .card2{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:4px 5px;margin-bottom:4px}
+.mini table{width:100%;border-collapse:collapse;font-size:9px;background:var(--card)}
+.mini td,.mini th{border:1px solid var(--cell);padding:3px 4px;text-align:left}
+.mini th{background:var(--head);width:34%;font-weight:500;color:var(--ink2)}
+.mini .ghost{border:1px dashed var(--s8);border-radius:3px;padding:4px;text-align:center;
+  color:var(--ink3);margin-top:4px;background:var(--card)}
+.mini .drw2{width:74px;flex:0 0 74px;background:var(--card);border-left:1px solid var(--line);padding:5px 4px}
+.mm{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.mm th,.mm td{border:1px solid var(--cell);padding:7px 9px;text-align:left;vertical-align:top}
+.mm th{background:var(--head);font-size:11.5px;font-weight:500;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -1495,8 +1520,122 @@ Toast 用 <span class="mono">aria-live="polite"</span> —— 錯誤不放 Toast
 <span class="mono">polite</span> 不會插播,而錯誤需要插播。</div>
 </div></div>
 
+<!-- 設計器重構 -->
+<div class="sec"><div class="sec-h"><span class="n">20</span>表單設計器 —— 心智模型與版面重構<span class="r">🔴 提案 · 待裁定</span></div><div class="sec-b">
+
+<div class="grp-t">現況量測(1440px · 開一張表 · 點一個型別)</div>
+<table class="ds-tbl">
+  <tr><th style="width:150px">指標</th><th style="width:200px">實測</th><th>對照規則</th></tr>
+  <tr><td>水平 header 帶</td><td class="k">3 條(44 + 49 + 40 = 133px)</td><td>docs/29 S5 上限 1 條</td></tr>
+  <tr><td>直向欄</td><td class="k">軌 + 123 + 228 + 227 + 178</td><td>docs/29 S3 輔助面板上限 1 欄</td></tr>
+  <tr><td>畫布(主體)</td><td class="k">約 300px / 1440</td><td>docs/29 S4 下限 60%,實得約 <b>21%</b></td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">🔴 心智模型診斷 —— 版面只是症狀</div>
+<div class="why" style="border-left-color:var(--er)"><b>docs/24 的前提</b>:使用者是 <b>Ragic 範式思考者</b>,
+主畫面是「自己建、自己填」的表單資料庫。在那個範式裡,<b>設計表單時你看著的就是表單</b> ——
+點一個位置、打上名字、選型別,欄位就在那裡了。下表是現況打斷這個模型的四處。</div>
+<table class="mm">
+  <tr><th style="width:160px">現況</th><th style="width:220px">使用者實際經歷</th><th>心智模型斷在哪</th></tr>
+  <tr><td><b>畫布放的是「欄位卡片」</b><br><span class="mono">品名 / 單行文字</span></td>
+      <td>看到的是欄位的<b>清單</b>,不是表單</td>
+      <td>🔴 <b>看不到「填起來長什麼樣」</b> —— 得切到「填單」頁籤才知道。
+          設計與結果分離,無法在設計當下判斷版面對不對</td></tr>
+  <tr><td><b>加欄位是一個「模式」</b><br>選型別 → 上方展開表單帶 → 填名稱/必填/選項 → 按加入</td>
+      <td>在<b>填一張關於欄位的表</b></td>
+      <td>🔴 <b>新欄位在按下「加入」之前不存在於空間中</b> ——
+          「我在哪裡加」「加了會長怎樣」都沒有答案。這是 <b>meta-form</b>:用一張表編輯另一張表</td></tr>
+  <tr><td><b>型別面板常駐一欄</b><br>15+ 型別永遠在</td>
+      <td>永遠看著一份自己很少用的清單</td>
+      <td>選型別是<b>每個欄位只做一次</b>的動作,卻佔常駐版位 —— 頻率與版位不成比例</td></tr>
+  <tr><td><b>同一欄位的屬性散在三處</b><br>新增時在上方帶 · 選中時在右側 · 條件式格式又一欄</td>
+      <td>要改一件事,先得想「這設定在哪一欄」</td>
+      <td>🔴 屬性<b>沒有歸屬到欄位本身</b>。使用者的模型是「這一格的設定」,
+          介面給的是「三個功能面板」</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">提案:<b>設計檢視就是表單本身</b></div>
+<div class="cmp2">
+  <div class="bad"><div class="lbl">現況 · 5 欄 3 帶 · 主體 21%</div>
+    <div class="mini">
+      <div class="r"></div>
+      <div class="c" style="width:54px">我的表單<br><br>採購單<br>供應商評鑑<br>採購明細<br>進貨清單</div>
+      <div class="c" style="width:50px">欄位型別<br><br>單行文字<br>多行文字<br>數值<br>金額<br>日期<br>單選<br>多選<br>勾選<br>Email</div>
+      <div class="cv">
+        <div class="bd"><b>影像處理驗證</b><span style="margin-left:auto">設計 填單 網格</span></div>
+        <div class="bd warn">加入單選欄位
+          <div style="border:1px solid var(--wn-line);background:var(--card);height:8px;margin-top:3px;border-radius:2px"></div>
+          <div style="border:1px solid var(--wn-line);background:var(--card);height:8px;margin-top:3px;border-radius:2px"></div>
+          <div style="border:1px solid var(--wn-line);background:var(--card);height:8px;margin-top:3px;border-radius:2px"></div></div>
+        <div class="bd">版面設計 文字 圖片 分段 動作 列印</div>
+        <div class="sheet">
+          <div class="card2">品名<br><span style="color:var(--ink3)">單行文字</span></div>
+          <div class="card2">現場照<br><span style="color:var(--ink3)">圖片</span></div></div>
+      </div>
+      <div class="c" style="width:54px;border-right:0">條件式格式<br><br><span style="color:var(--ink3)">尚無規則</span></div>
+    </div></div>
+  <div class="good"><div class="lbl">提案 · 3 區 1 帶 · 主體 ~70%</div>
+    <div class="mini">
+      <div class="r"></div>
+      <div class="c" style="width:54px">我的表單<br><br>採購單<br>供應商評鑑<br>採購明細<br>進貨清單</div>
+      <div class="cv">
+        <div class="bd"><b>影像處理驗證</b><span style="margin-left:auto">設計 填單 網格 · ＋欄位 · 儲存</span></div>
+        <div class="sheet">
+          <div style="background:var(--card);border-radius:3px;padding:7px">
+            <div style="font-weight:600;font-size:10px;margin-bottom:4px">影像處理驗證單</div>
+            <div style="background:var(--primary);color:#fff;padding:2px 4px;font-size:8.5px">基本資料</div>
+            <table>
+              <tr><th>品名</th><td>不鏽鋼管件</td></tr>
+              <tr><th>批號</th><td>BN-0731-A</td></tr>
+              <tr><th>現場照</th><td>IMG_0912.jpg</td></tr></table>
+            <div class="ghost">＋ 新增欄位</div>
+          </div></div>
+      </div>
+      <div class="drw2">欄位設定<br><br><span style="color:var(--ink3)">基本 ▾</span>
+        <div style="border:1px solid var(--cell);height:8px;border-radius:2px;margin:3px 0"></div>
+        <div style="border:1px solid var(--cell);height:8px;border-radius:2px;margin:3px 0"></div>
+        <br><span style="color:var(--ink3)">驗證 ▸</span><br><span style="color:var(--ink3)">條件式格式 ▸</span><br><span style="color:var(--ink3)">列印 ▸</span></div>
+    </div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">四條改動,各自解掉上表的一列</div>
+<table class="mm">
+  <tr><th style="width:175px">改動</th><th>做法</th><th style="width:225px">解掉的心智斷點</th></tr>
+  <tr><td><b>① 畫布顯示真正的欄位表</b></td>
+      <td>設計檢視渲染<b>與填單相同</b>的全框線欄位表(單據語言),差別只在:設計模式下每格可拖、可點開設定,
+          且顯示<b>示例值</b>而非真資料</td>
+      <td>「看不到填起來長什麼樣」—— 設計即所見</td></tr>
+  <tr><td><b>② 就地新增欄位</b></td>
+      <td>表尾一列 <span class="mono">＋ 新增欄位</span> ghost row。點下去<b>立刻插入一格</b>,
+          游標落在欄名上可直接打字;型別由該格上的 popover 選(預設單行文字,多數情況不必改)</td>
+      <td>meta-form 消失。欄位<b>在它會出現的位置</b>被建立</td></tr>
+  <tr><td><b>③ 型別面板改 popover</b></td>
+      <td>常駐欄移除;型別只在「新增 / 改型別」時以 popover 出現,並依<b>使用頻率</b>排序</td>
+      <td>頻率與版位重新對齊,省下一整欄</td></tr>
+  <tr><td><b>④ 屬性歸屬到欄位</b></td>
+      <td>點任一格 → <b>右側單一抽屜</b>,內含 accordion:基本 / 驗證 / 條件式格式 / 列印</td>
+      <td>「這設定在哪一欄」消失;屬性屬於<b>那一格</b>,不屬於某個功能面板</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">會被質疑的兩點,先答</div>
+<div class="desc">
+<b>Q|設計時看到「示例值」會不會誤導?</b><br>
+不會,前提是示例值<b>看得出是示例</b>:用 <span class="mono">ink-3</span> + 淡底,切到填單立即換真值。
+反向的風險更大 —— 現況讓使用者<b>看不到欄位表的實際寬度與換行</b>,版面問題要到填單才發現。<br><br>
+<b>Q|拖曳排版怎麼辦?2D 版面(欄寬 / 跨欄)還能做嗎?</b><br>
+可以,而且更直觀:直接拖<b>那一格的邊界</b>調欄寬、拖整格換位置 —— 這正是 Ragic 的作法。
+現況把「版面」與「欄位」拆成兩個心智物件(卡片 vs 版面設計工具列),提案把它們合回同一個東西。
+⚠️ <b>鍵盤替代方案(#109 已做)必須保留</b>並對應到新操作,不得因為改成就地拖曳而遺失。</div>
+
+<div class="q"><b>待裁定 D1</b>|這是<b>結構性改動</b>,動到 <span class="mono">canvas.tsx / palette.tsx /
+field-settings.tsx</span> 以及與記錄頁共用的渲染。<br>
+建議先做 <b>①+④</b>(畫布改真欄位表 + 屬性收進單一抽屜)—— 解掉最大的兩個心智斷點,且不動新增流程;
+②③ 作為第二批。<br>
+若要一次做完,我會<b>先出 M0 design doc + OQ 再動</b>(新 non-trivial 模組的既有紀律)。</div>
+</div></div>
+
 <!-- 決策狀態 -->
-<div class="sec"><div class="sec-h"><span class="n">20</span>決策狀態<span class="r">品牌板判定 5 項 · 已裁定 2 項 · 修正 2 項 · 無待決</span></div><div class="sec-b">
+<div class="sec"><div class="sec-h"><span class="n">21</span>決策狀態<span class="r">品牌板判定 5 項 · 已裁定 2 項 · 修正 2 項 · 無待決</span></div><div class="sec-b">
 <table style="width:100%;border-collapse:collapse;font-size:13px">
   <tr style="background:var(--head)"><th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px">項目</th>
     <th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px;width:110px">狀態</th>
