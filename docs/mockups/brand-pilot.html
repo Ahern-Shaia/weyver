@@ -412,6 +412,16 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .layers{display:grid;grid-template-columns:88px 1fr;font-size:12.5px}
 .layers dt{padding:6px 0;font-family:'IBM Plex Mono',monospace;color:var(--ink3);box-shadow:inset 0 1px 0 var(--s6)}
 .layers dd{padding:6px 0;box-shadow:inset 0 1px 0 var(--s6)}
+
+/* ── §18 多租戶身分 ─────────────────────────── */
+.who{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.who th,.who td{border:1px solid var(--cell);padding:6px 9px;text-align:left;vertical-align:top}
+.who th{background:var(--head);font-weight:500;font-size:11.5px;color:var(--ink2)}
+.who td.t{color:var(--primary);font-weight:600;white-space:nowrap}
+.who td.w{color:var(--ink2);font-weight:600;white-space:nowrap}
+.who td.n2{color:var(--ink3);font-weight:500;white-space:nowrap}
+.tlogo{width:30px;height:30px;border-radius:5px;background:var(--primary);color:#fff;display:flex;
+  align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:0 0 30px}
 </style>
 </head>
 <body>
@@ -1204,50 +1214,116 @@ Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
     </div></div>
 
 <!-- 應用 -->
-<div class="sec"><div class="sec-h"><span class="n">18</span>品牌載體與應用<span class="r">符號只在此出現;日常工作畫面不放符號</span></div><div class="sec-b">
-<div class="why"><b>理由</b>品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」。
-因此符號的出場限於<b>登入 / 空狀態 / 列印抬頭 / 對外物料</b>四處 —— 這也正是 docs/29 §4 定的品牌載體。</div>
+<div class="sec"><div class="sec-h"><span class="n">18</span>身分與品牌載體<span class="r">🔴 多租戶 SaaS:租戶身分 vs 平台身分,兩層分開</span></div><div class="sec-b">
 
-<div class="grp-t">列印抬頭 —— 品牌被外部(客戶 / 稽核)看見的唯一時刻</div>
+<div class="why" style="border-left-color:var(--er)"><b>🔴 2026-08-01 方向修正 —— 先前這一節寫錯了。</b>
+我把<b>列印抬頭、空狀態</b>當成「Weyver 的品牌時刻」,還寫了「Weyver 的符號小而確定,不搶客戶的版面」。
+<b>那個前提就不對</b>:Weyver 是<b>多租戶 SaaS</b>,鮮勇食品印出來的採購單是要給<b>他們的供應商</b>看的 ——
+那份文件上該有的是鮮勇的抬頭與統編,Weyver 的標誌<b>根本不該出現</b>,
+就像 Salesforce 不會在你的發票上印自己的 logo。<br>
+先前的錯誤本質:<b>把「使用者看到的畫面」全部當成我方的品牌版位</b>,
+沒有分辨那個畫面的<b>收件人是誰</b>。</div>
+
+<div class="grp-t">兩層身分 —— 判準是「這個畫面的收件人是誰」</div>
+<table class="who">
+  <tr><th style="width:150px">Surface</th><th style="width:96px">誰的品牌</th><th style="width:170px">收件人</th><th>理由</th></tr>
+  <tr><td>列印單據 / PDF</td><td class="t">租戶</td><td>供應商 · 客戶 · 稽核員</td>
+      <td>收件人與 Weyver <b>沒有關係</b>。抬頭 = 租戶 <span class="mono">name + taxId + logoFileKey</span>(租戶設定已有此三欄)</td></tr>
+  <tr><td>公開表單 <span class="mono">/f/[token]</span></td><td class="t">租戶</td><td>租戶的供應商 / 客戶</td>
+      <td>填表人是被租戶邀請來的,不是 Weyver 的使用者</td></tr>
+  <tr><td>通知郵件 / LINE</td><td class="t">租戶</td><td>租戶員工與外部關係人</td>
+      <td>寄件顯示名 = 租戶名;<b>技術寄件網域可為平台</b>但顯示名不得是 Weyver</td></tr>
+  <tr><td>匯出檔(檔名 / 內容)</td><td class="t">租戶</td><td>租戶自己與其會計師</td><td>資料是租戶的,檔名不應含平台名</td></tr>
+  <tr><td>App 內 chrome</td><td class="n2">中性</td><td>租戶員工(日常)</td>
+      <td>品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」。<b>兩邊都不強調</b></td></tr>
+  <tr><td>登入頁</td><td class="w">平台</td><td>尚未進入租戶脈絡</td>
+      <td>此時還不知道是哪個租戶;<b>自訂網域時可改為租戶品牌</b>(白牌)</td></tr>
+  <tr><td>帳單 · 用量 · 支援</td><td class="w">平台</td><td>租戶的採購決策者</td><td>這是與 Weyver 的<b>商業關係</b>,必須清楚是誰在收費</td></tr>
+  <tr><td>系統維護公告</td><td class="w">平台</td><td>租戶員工</td>
+      <td>🔴 必須<b>標明是平台維護</b> —— 否則使用者會打電話給自家 IT</td></tr>
+  <tr><td>空狀態 / 引導</td><td class="n2">中性</td><td>租戶員工</td>
+      <td>先前放了 Weyver 符號,<b>已移除</b>:那是日常工作畫面,不是品牌版位</td></tr>
+</table>
+<div class="desc" style="margin-top:8px">🔴 <b>鐵則|租戶的業務文件上不出現 Weyver 的標誌。</b>
+若合約要求註明來源,只能是頁尾一行極小的純文字(且白牌方案可關),不得使用符號或主色。</div>
+
+<div class="grp-t" style="margin-top:20px">列印抬頭 —— 100% 租戶身分(已修正)</div>
 <div style="background:#fff;padding:22px 26px;border:1px solid var(--line);border-radius:6px">
   <div style="display:flex;align-items:flex-start;gap:13px;padding-bottom:12px;border-bottom:2px solid var(--brand-ink)">
-    <svg viewBox="0 0 120 120" width="30" height="30"><use href="#wm"/></svg>
+    <div class="tlogo">鮮</div>
     <div><b style="font-size:15px;font-weight:600;letter-spacing:-.012em;display:block">鮮勇食品股份有限公司</b>
-      <i style="font-style:normal;font-size:11.5px;color:var(--ink3)">統一編號 12345678 · 台南市安平區</i></div>
+      <i style="font-style:normal;font-size:11.5px;color:var(--ink3)">統一編號 12345678 · 台南市安平區工業一路 88 號 · (06) 123-4567</i></div>
     <div style="margin-left:auto;text-align:right">
-      <b style="font-size:18px;font-weight:700;letter-spacing:.06em;display:block">影像處理驗證單</b>
+      <b style="font-size:18px;font-weight:700;letter-spacing:.06em;display:block">採購單</b>
       <i class="mono" style="font-style:normal;font-size:11.5px;color:var(--ink3)">PO-2026-0184</i></div>
   </div>
   <div class="mono" style="display:flex;gap:24px;padding-top:10px;font-size:11.5px;color:var(--ink3)">
     <span>列印 2026-08-01 21:30</span><span>版本 v1</span><span>經手 王品管</span><span>第 1 / 1 頁</span></div>
+  <div style="margin-top:26px;padding-top:8px;border-top:1px solid var(--line2);font-size:10px;color:var(--ink4)">
+    本單據由鮮勇食品股份有限公司之表單系統產生</div>
 </div>
-<div class="desc" style="margin-top:8px">單據標題用 <b>Bold + 寬字距</b>(非襯線 —— 品牌板明訂四階,先前的襯線提議已撤回);
-客戶抬頭在左、單別在右,<b>Weyver 的符號小而確定,不搶客戶的版面</b>。</div>
+<div class="desc" style="margin-top:8px">
+<b>租戶 logo</b> 取自 <span class="mono">tenantSettings.logoFileKey</span>(已存在);未上傳時退回<b>租戶名首字方塊</b>(如上),
+底色吃該租戶的主色 —— <b>不用 Weyver 的符號當預設</b>,那會讓每一份文件都掛上平台標誌。<br>
+頁尾那行是<b>純文字、10px、ink-4</b>,而且寫的是<b>租戶</b>不是 Weyver。若日後要註明平台來源,
+以此為上限,且白牌方案必須可關。</div>
 
-<div class="grp-t" style="margin-top:20px">空狀態 · 登入</div>
-<div style="display:flex;gap:14px;flex-wrap:wrap">
-  <div style="flex:1;min-width:280px;border:1px solid var(--line);border-radius:6px;padding:38px 20px;text-align:center;background:var(--bg)">
-    <svg viewBox="0 0 120 120" width="32" height="32"><use href="#wm"/></svg>
-    <div style="font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:12px">還沒有表單</div>
-    <div style="font-size:13px;color:var(--ink3);margin-top:5px">從設計器建立第一張,或把既有的 Excel 直接匯進來。</div>
+<div class="grp-t" style="margin-top:20px">🔴 多租戶的真實風險:使用者不知道自己在哪家公司</div>
+<div class="why" style="border-left-color:var(--wn)">同一個人可能同時屬於多個租戶(顧問、集團財務、我方導入人員)。
+F-10 已解掉<b>技術面</b>(分頁級租戶脈絡,不用 localStorage),但<b>視覺面</b>仍有風險:
+在 A 公司的分頁,做了本來要在 B 公司做的事 —— 而且<b>過帳與刪除不可逆</b>。<br>
+<b>三條規則</b>:<br>
+· <b>租戶識別恆常可見</b> —— 導覽軌頂端(logo 方塊 + 名稱)與狀態列右側,兩處同時,不得只有一處。<br>
+· <b>切換租戶必須有非文字的視覺變化</b> —— 只有名字改掉太容易被忽略。
+  以<b>租戶 logo / 首字方塊</b>承載(每租戶不同),不靠主題色(主題是個人偏好,非租戶屬性)。<br>
+· <b>不可逆操作的確認框必須複述租戶名</b> —— 「永久刪除<b>鮮勇食品</b>回收桶內的 42 筆記錄?」
+  這是 §19 彈窗規則的<b>多租戶補充</b>:確認框不只要說做什麼,還要說<b>在哪一家做</b>。</div>
+<div class="ds-row" style="margin-top:12px;align-items:flex-start;gap:16px">
+  <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--head);border-radius:6px">
+    <div class="tlogo">鮮</div>
+    <div style="line-height:1.3"><b style="font-size:13.5px;font-weight:600">鮮勇食品</b>
+      <div style="font-size:11.5px;color:var(--ink3)">工作區</div></div>
   </div>
-  <div style="flex:1.2;min-width:340px;display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:190px">
-    <div style="flex:1;background:var(--brand-ink);color:var(--paper);padding:22px;display:flex;flex-direction:column">
-      <svg viewBox="0 0 120 120" width="30" height="30" style="--brand-ink:var(--paper)"><use href="#wm"/></svg>
-      <div style="margin-top:auto;font-size:19px;font-weight:600;letter-spacing:-.024em;line-height:1.35">把散落的線頭<br>織成同一朵雲</div>
-    </div>
-    <div style="flex:1.1;background:var(--card);padding:22px;display:flex;flex-direction:column;justify-content:center">
-      <div style="font-size:15px;font-weight:600;letter-spacing:-.014em;margin-bottom:10px">登入 Weyver</div>
-      <div style="font-size:11.5px;color:var(--ink3)">公司代號</div>
-      <div style="height:28px;border:1px solid var(--cell);border-radius:4px;margin-top:4px;padding:0 8px;
-        font-size:13px;display:flex;align-items:center">鮮勇食品</div>
-      <div style="margin-top:14px;height:32px;background:var(--primary);color:#fff;border-radius:4px;
-        display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500">登入</div>
-    </div>
+  <div class="dlg" style="width:400px">
+    <div class="h"><b>永久刪除<span style="color:var(--er)">鮮勇食品</span>回收桶內的 42 筆記錄?</b>
+      <p>這些記錄將<b>無法復原</b>。此操作會寫入該租戶的稽核日誌。</p></div>
+    <div class="ft"><button class="b2 sec">保留這些記錄</button><button class="b2" style="background:var(--er);color:#fff">永久刪除 42 筆</button></div>
   </div>
 </div>
-<div class="desc" style="margin-top:8px">登入是<b>首次接觸</b>(docs/14 §0.3:50ms 形成印象、2 週衰減、7 週歸零)——
-工藝投資的優先序在此,而非深層設定頁。</div>
+
+<div class="grp-t" style="margin-top:20px">白牌層級 —— 可覆寫 vs 不可覆寫</div>
+<table class="who">
+  <tr><th style="width:120px">層</th><th style="width:96px">可覆寫?</th><th>項目</th><th style="width:270px">理由</th></tr>
+  <tr><td>身分</td><td class="t">可</td><td>logo · 租戶名 · 統編 · 自訂網域 · 郵件顯示名</td><td>這本來就是租戶的資產</td></tr>
+  <tr><td>主色</td><td class="t">可</td><td>單一 <span class="mono">--base-brand</span></td>
+      <td>只給一個值,深階與淡底自動推導;<b>對比由 CI 把關</b>,不足即拒絕該色</td></tr>
+  <tr><td>產品名</td><td class="t">可(白牌方案)</td><td>登入頁 · 郵件 · 標題列</td><td>白牌方案的核心賣點</td></tr>
+  <tr><td><b>結構</b></td><td class="w">不可</td><td>版面 · 密度 · 元件語彙 · 間距</td>
+      <td>白牌是<b>換皮不是換骨</b>;結構一旦分叉,支援與訓練成本立刻乘以租戶數</td></tr>
+  <tr><td><b>字體</b></td><td class="w">不可</td><td>Inter + Noto Sans TC 四階</td><td>字體換掉會連帶動搖字階與行高,且 CJK 字重供應不一致</td></tr>
+  <tr><td><b>狀態語意色</b></td><td class="w">不可</td><td>ok / warn / error / neutral</td>
+      <td>🔴 若可改,「綠色代表什麼」變成逐租戶不同 —— 稽核、教育訓練、跨租戶支援全部失去共同語言</td></tr>
+  <tr><td><b>無障礙下限</b></td><td class="w">不可</td><td>對比 · 焦點 · 鍵盤可達</td><td>法遵底線,不是樣式偏好</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">平台身分出現的地方 —— 登入(唯一的完整品牌時刻)</div>
+<div style="display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:196px;max-width:640px">
+  <div style="flex:1;background:var(--brand-ink);color:var(--paper);padding:22px;display:flex;flex-direction:column">
+    <svg viewBox="0 0 120 120" width="30" height="30" style="--brand-ink:var(--paper)"><use href="#wm"/></svg>
+    <div style="margin-top:auto;font-size:19px;font-weight:600;letter-spacing:-.024em;line-height:1.35">把散落的線頭<br>織成同一朵雲</div>
+  </div>
+  <div style="flex:1.1;background:var(--card);padding:22px;display:flex;flex-direction:column;justify-content:center">
+    <div style="font-size:15px;font-weight:600;letter-spacing:-.014em;margin-bottom:10px">登入 Weyver</div>
+    <div style="font-size:11.5px;color:var(--ink3)">公司代號</div>
+    <div style="height:28px;border:1px solid var(--cell);border-radius:4px;margin-top:4px;padding:0 8px;font-size:13px;display:flex;align-items:center">鮮勇食品</div>
+    <div style="margin-top:14px;height:32px;background:var(--primary);color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500">登入</div>
+  </div>
+</div>
+<div class="desc" style="margin-top:8px">這是<b>唯一</b>Weyver 完整現身的產品畫面 —— 因為此時<b>還沒有租戶脈絡</b>。
+輸入公司代號(或走自訂網域)之後,租戶身分接手。<br>
+⚠️ <b>白牌方案下這一頁也會被替換</b> —— 所以品牌投資的真正回報在<b>對外物料與行銷站</b>,
+不在產品內。這與 docs/14 §0.3「首次接觸是投資窗口」不衝突:那條講的是<b>工藝</b>該優先投在哪一頁,
+不是說那一頁要掛滿標誌。</div>
 </div></div>
 
 <!-- 訊息與浮層 -->
