@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from "@playwright/test"
+import { type APIRequestContext, expect, test } from "@playwright/test"
 import { openPalette } from "./hydration"
 
 /* R1·H-3 M4|⌘K 跨表全文搜尋。

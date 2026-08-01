@@ -64,9 +64,13 @@ test("Object Page:狀態章 + 金額彙總 + 清單列狀態/金額", async ({ p
   await expect(page.getByText("待審").first()).toBeVisible()
 
   // 金額彙總 + 左欄清單列同時帶狀態與金額(triage 訊號)
-  await expect(page.getByText("128400.0000").first()).toBeVisible()
+  /* 🔴 金額顯示為**格式化後**的樣子。原本這條斷言的是 `128400.0000` ——
+     它釘住的是資料庫的內部表示,等於把「沒做完」寫成規格。
+     docs/14 把金額列為信任訊號:千分位 + 幣別小數位(ICU 對 TWD 給 2 位)。 */
+  await expect(page.getByText("128,400.00").first()).toBeVisible()
+  await expect(page.getByText("128400.0000")).toHaveCount(0)
   /* 記錄清單項於 R1·UX-1 M5 改為 APG listbox 的 option(原為隱含 button role) */
-  const listItem = page.getByRole("option", { name: /PO-.*待審.*128400/ })
+  const listItem = page.getByRole("option", { name: /PO-.*待審.*128,400\.00/ })
   await expect(listItem).toBeVisible()
 })
 

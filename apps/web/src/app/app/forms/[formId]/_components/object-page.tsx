@@ -7,6 +7,7 @@ import { ImageThumb } from "@/components/form/image-input"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
+import { displayValue, formatDateTime } from "@/lib/engine/display-value"
 import {
   useButtons,
   useCreateRecord,
@@ -17,16 +18,17 @@ import {
 import { useLayout } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
+import { useUserSettings } from "@/lib/engine/use-settings"
 import { StatusChip, chipToneTextClass } from "@weyver/ui/status-chip"
 import { Copy, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { LineItems } from "./line-items"
-import { useRecordEdit } from "./use-record-edit"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
 import { RelationRail } from "./relation-rail"
+import { useRecordEdit } from "./use-record-edit"
 
 /* 複製時排除的欄位型別(系統計算/自動產生;由引擎於新記錄重算) */
 const COPY_EXCLUDE = new Set(["autoNumber", "formula"])
@@ -35,15 +37,9 @@ const COPY_EXCLUDE = new Set(["autoNumber", "formula"])
    只接真資料(明細/formula/稽核皆 SHIPPED);R2 之 GL 過帳 / 簽核不放(不造假)。 */
 const NUMERIC = new Set(["money", "number", "percent"])
 
-function fmtDate(iso: string): string {
-  return iso.replace("T", " ").slice(0, 19)
-}
-function fmtVal(v: unknown): string {
-  if (v === null || v === undefined || v === "") return "—"
-  if (Array.isArray(v)) return v.length ? v.map(String).join("、") : "—"
-  if (typeof v === "boolean") return v ? "是" : "否"
-  return String(v)
-}
+/* 🔴 顯示格式化集中於 `display-value` —— 原本這裡是 `String(v)`,
+   於是金額印成 `128400.0000`、時間印成 `2026-07-19T05:45:02.592Z`。
+   docs/14 把兩者列為信任訊號,原樣印出內部表示的效果恰好相反。 */
 
 /* R1·workbench-uplift A2|狀態欄慣例(OQ-RWB-3=A):**第一個 singleSelect 即狀態**,零設定。
    tone 由 R1·UP-4c 之選項配色供給(`optionTone`,受控白名單);未設定一律 neutral —— 不以
@@ -94,6 +90,12 @@ export function ObjectPage({
     cancelEdit,
     saveEdit,
   } = useRecordEdit(formId, record, fields, onDirtyChange)
+
+  const { data: userSettings } = useUserSettings()
+  /* 顯示時區來自個人設定;未載入前用瀏覽器預設,不擋畫面 */
+  const fmtCtx = { timeZone: userSettings?.displayTimezone }
+  const fmtVal = (f: FieldDto, v: unknown): string => displayValue(f, v, fmtCtx)
+  const fmtDate = (iso: string): string => formatDateTime(iso, fmtCtx)
 
   const { data: layoutResp } = useLayout(formId)
   /* R1·UP-3b 條件式格式(記錄頁那一組;純前端求值,規則來自 layout)*/
@@ -192,14 +194,14 @@ export function ObjectPage({
           </span>
           {statusField ? (
             <StatusChip tone={optionTone(statusField, record.values[statusField.name])}>
-              {fmtVal(record.values[statusField.name])}
+              {fmtVal(statusField, record.values[statusField.name])}
             </StatusChip>
           ) : null}
           {moneyField ? (
             <span className="ml-auto flex items-baseline gap-1.5">
               <span className="text-[12px] text-ink-3">{moneyField.name}</span>
               <span className="font-mono text-[16px] font-semibold tabular-nums text-ink">
-                {fmtVal(record.values[moneyField.name])}
+                {fmtVal(moneyField, record.values[moneyField.name])}
               </span>
             </span>
           ) : null}
@@ -276,7 +278,7 @@ export function ObjectPage({
               <div key={f.id} className="flex flex-col gap-0.5">
                 <span className="text-[12px] text-ink-3">{f.name}</span>
                 <span className="font-mono text-[14px] font-semibold tabular-nums text-ink">
-                  {fmtVal(record.values[f.name])}
+                  {fmtVal(f, record.values[f.name])}
                 </span>
               </div>
             ))}
@@ -344,7 +346,7 @@ export function ObjectPage({
                   ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />
                   ) : fieldSymbology(f) === null ? (
-                    fmtVal(record.values[f.name])
+                    fmtVal(f, record.values[f.name])
                   ) : (
                     <BarcodeView
                       value={record.values[f.name]}

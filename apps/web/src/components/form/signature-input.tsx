@@ -1,10 +1,10 @@
 "use client"
 
+import { ImageThumb } from "@/components/form/image-input"
 import { deleteFile, describeEngineError, uploadFile } from "@/lib/engine/client"
 import type { AttachmentItem, FieldDto } from "@/lib/engine/schemas"
 import { Eraser, PenLine } from "lucide-react"
 import { type ReactNode, type PointerEvent as ReactPointerEvent, useRef, useState } from "react"
-import { ImageThumb } from "@/components/form/image-input"
 
 /* R1·UP-4b 簽名欄(OQ-IS-5=A canvas → PNG → 既有上傳管線;OQ-IS-6=A 自建零相依)。
 
@@ -16,7 +16,20 @@ import { ImageThumb } from "@/components/form/image-input"
    canvas 依 devicePixelRatio 放大再以 CSS 縮回,避免高 DPI 模糊(S6)。 */
 
 const DEFAULT_HEIGHT = 140
-const PEN_COLOR: Record<string, string> = { ink: "#1f2933", primary: "#0C5F73" }
+/* 🔴 canvas 要的是實際色值(不吃 CSS class),但**不代表要抄一份色碼**。
+   原本 primary 寫死 `#0C5F73` —— 那是**深海青主題**的主色,於是不管使用者選哪個
+   配色主題,簽名筆都是深海青。改讀同一組 CSS 變數,主題換了筆色跟著換。
+   (同 grid-tone.ts 的處置;docs/28 §1.4) */
+const PEN_VAR: Record<string, string> = { ink: "--color-ink", primary: "--color-primary" }
+
+function penColor(key: string | undefined): string {
+  const name = PEN_VAR[key ?? "ink"] ?? PEN_VAR.ink
+  if (typeof window === "undefined") return "currentColor"
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue(name ?? "")
+    .trim()
+  return v === "" ? "currentColor" : v
+}
 
 function toItem(value: unknown): AttachmentItem | null {
   if (!Array.isArray(value)) return null
@@ -49,7 +62,7 @@ export function SignatureInput({
 
   const options = field.options as { penColor?: string; heightPx?: number }
   const height = options.heightPx ?? DEFAULT_HEIGHT
-  const color = PEN_COLOR[options.penColor ?? "ink"] ?? PEN_COLOR.ink
+  const color = penColor(options.penColor)
 
   /* 首次互動時才依實際版面尺寸初始化(避免 SSR / 隱藏容器下寬度為 0) */
   const contextOf = (canvas: HTMLCanvasElement): CanvasRenderingContext2D | null => {
@@ -65,7 +78,7 @@ export function SignatureInput({
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
     ctx.lineWidth = 2
-    ctx.strokeStyle = color ?? "#1f2933"
+    ctx.strokeStyle = color
     return ctx
   }
 

@@ -86,7 +86,9 @@ test("記錄頁:命中規則之欄位標題與值皆著色,且後者覆蓋前者
 test("記錄頁:值以帶框章呈現且文字恆在(FMEA G7 色非唯一訊號)", async ({ page, request }) => {
   const formId = await seedForm(request)
   await page.goto(`/app/forms/${formId}?mode=record`)
-  await expect(page.getByText("2026-07-20", { exact: true })).toBeVisible({ timeout: 30_000 })
+  /* 🔴 日期以**當地格式**呈現(zh-TW → `2026/07/20`),不是資料庫的 ISO 原值。
+     原本這裡斷言 `2026-07-20`,等於把「原樣印出內部表示」寫成規格。 */
+  await expect(page.getByText("2026/07/20", { exact: true })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText("待審", { exact: true }).first()).toBeVisible()
 })
 

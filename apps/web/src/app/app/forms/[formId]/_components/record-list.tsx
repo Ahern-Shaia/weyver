@@ -1,5 +1,6 @@
 "use client"
 
+import { displayValue } from "@/lib/engine/display-value"
 import { optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, RecordRow } from "@/lib/engine/schemas"
 import { StatusChip } from "@weyver/ui/status-chip"
@@ -116,7 +117,7 @@ export function RecordList({
                   ) : null}
                   {moneyField ? (
                     <span className="ml-auto font-mono text-[12px] tabular-nums text-ink-2">
-                      {String(r.values[moneyField.name] ?? "—")}
+                      {displayValue(moneyField, r.values[moneyField.name])}
                     </span>
                   ) : null}
                 </div>

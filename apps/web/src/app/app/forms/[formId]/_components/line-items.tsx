@@ -1,8 +1,9 @@
 "use client"
 
-import type { ReactNode } from "react"
-import type { FieldDto } from "@/lib/engine/schemas"
+import { displayValue } from "@/lib/engine/display-value"
 import { useForm, useRecords } from "@/lib/engine/hooks"
+import type { FieldDto } from "@/lib/engine/schemas"
+import type { ReactNode } from "react"
 
 /* 明細子表 + rollup 合計(真資料:子表 saveWithLines + 記錄 + 讀時算,皆 P0-3 SHIPPED)。
    數值欄(money/number/percent)於 tfoot 加總 —— 引擎算不是人填。 */
@@ -12,13 +13,9 @@ function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number.parseFloat(String(v ?? ""))
   return Number.isFinite(n) ? n : 0
 }
-function fmtNum(n: number): string {
-  return n.toLocaleString("zh-TW", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-}
-function cell(v: unknown): string {
-  if (v === null || v === undefined || v === "") return "—"
-  return String(v)
-}
+/* 🔴 小計與合計改走共用的 `display-value` —— 原本這裡自己 toLocaleString、
+   最多兩位小數,與 object page 的 `String(v)` 各印各的。同一筆金額在主檔與明細
+   顯示成不同樣子,是最傷信任的一種不一致。 */
 
 export function LineItems({
   childFormId,
@@ -79,7 +76,7 @@ export function LineItems({
                       : "px-3 py-1.5 text-ink"
                   }
                 >
-                  {isNum(f) ? fmtNum(toNum(r.values[f.name])) : cell(r.values[f.name])}
+                  {displayValue(f, isNum(f) ? toNum(r.values[f.name]) : r.values[f.name])}
                 </td>
               ))}
             </tr>
@@ -103,7 +100,7 @@ export function LineItems({
                     isNum(f) ? "px-3 py-2 text-right font-mono tabular-nums text-ink" : "px-3 py-2"
                   }
                 >
-                  {isNum(f) ? fmtNum(totals.get(f.id) ?? 0) : ""}
+                  {isNum(f) ? displayValue(f, totals.get(f.id) ?? 0) : ""}
                 </td>
               ))}
             </tr>

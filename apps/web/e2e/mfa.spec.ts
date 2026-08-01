@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
-import { actUntil } from "./hydration"
 import { authenticator } from "otplib"
+import { actUntil } from "./hydration"
 
 /* F-4 MFA 固化(承 MCP 走通):註冊 → 帳號設定啟用 TOTP(otplib 由畫面 secret 產碼)
    → 已啟用 → 登出 → 登入密碼步後導二步 → 輸入 TOTP → 進工作區。

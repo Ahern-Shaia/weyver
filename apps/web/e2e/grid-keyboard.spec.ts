@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test"
+import { type Page, expect, test } from "@playwright/test"
 
 /* R1·UX-1 M5|可編輯子表的 W3C ARIA APG grid pattern,逐鍵斷言。 */
 

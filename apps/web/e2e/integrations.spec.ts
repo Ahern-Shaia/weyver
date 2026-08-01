@@ -61,6 +61,26 @@ test("🔴 建端點:秘鑰只顯示一次,且端點標示待驗證", async ({ p
   await expect(page.getByRole("listitem").filter({ hasText: url })).toBeVisible()
 })
 
+/* 🔴 自己收拾。金鑰清單有上限,而每跑一次 e2e 就多一把 —— 累積到一定數量後,
+   新建的那把會落在清單之外,`filter({hasText: name})` 於是配到「只顯示這一次」
+   的揭露面板(它也含名稱、但顯示的是完整金鑰不是前綴)→ 斷言失敗。
+   表象是「金鑰功能壞了」,實際是 dev DB 累積。實測清掉 41 把舊金鑰即恢復。 */
+test.beforeEach(async ({ request }) => {
+  const res = await request.get("/api/engine/integrations/api-keys", {
+    headers: { "x-dev-tenant": "1", "x-dev-actor": "1" },
+  })
+  const keys = (await res.json().catch(() => [])) as { id: number; name: string }[]
+  for (const k of Array.isArray(keys) ? keys : []) {
+    if (k.name?.startsWith("E2E")) {
+      await request
+        .delete(`/api/engine/integrations/api-keys/${String(k.id)}`, {
+          headers: { "x-dev-tenant": "1", "x-dev-actor": "1" },
+        })
+        .catch(() => null)
+    }
+  }
+})
+
 test("簽發 API 金鑰:明文只出現一次,清單只留前綴", async ({ page }) => {
   const stamp = String(Date.now()).slice(-6)
   const name = `E2E金鑰_${stamp}`

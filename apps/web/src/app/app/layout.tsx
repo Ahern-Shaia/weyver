@@ -1,6 +1,15 @@
 "use client"
 
-import { applyTheme, THEMES, type ThemeId } from "@weyver/ui/theme-switcher"
+import {
+  authClient,
+  organization,
+  signOut,
+  useActiveOrganization,
+  useSession,
+} from "@/lib/auth/client"
+import { setTabOrgIntent } from "@/lib/engine/client"
+import { useQueryClient } from "@tanstack/react-query"
+import { THEMES, type ThemeId, applyTheme } from "@weyver/ui/theme-switcher"
 import {
   Check,
   LayoutGrid,
@@ -14,19 +23,10 @@ import {
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { type ReactNode, useEffect, useRef, useState } from "react"
-import {
-  authClient,
-  organization,
-  signOut,
-  useActiveOrganization,
-  useSession,
-} from "@/lib/auth/client"
-import { useQueryClient } from "@tanstack/react-query"
-import { setTabOrgIntent } from "@/lib/engine/client"
 import { CommandPalette } from "./_components/command-palette"
-import { TenantContextGuard } from "./_components/tenant-context-guard"
 import { NotificationBell } from "./_components/notification-bell"
 import { StatusBar } from "./_components/status-bar"
+import { TenantContextGuard } from "./_components/tenant-context-guard"
 
 /* /app/* 受保護區 + app-shell(左側導覽 + 全域 status bar + ⌘K)。
    強制登入僅 production(對齊後端 TenantGuard dev/prod);登入後自動設 active org。
@@ -138,9 +138,10 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
                 }}
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head"
               >
+                {/* 色塊吃該主題的 var(--color-primary),不存 hex(見 theme-switcher 檔頭) */}
                 <span
-                  style={{ backgroundColor: item.hex }}
-                  className="size-3.5 rounded-full border border-line"
+                  {...(item.id === "navy" ? {} : { "data-theme": item.id })}
+                  className="size-3.5 rounded-full border border-line bg-primary"
                 />
                 {item.label}
                 {theme === item.id ? <Check size={13} className="ml-auto text-primary" /> : null}

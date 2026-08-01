@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test"
+import { type Page, expect, test } from "@playwright/test"
 
 /* R1·UX-1 M6|**WCAG 1.4.12 Text Spacing(AA)可執行驗收**。
 

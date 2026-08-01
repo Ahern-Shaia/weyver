@@ -114,13 +114,15 @@ export default function DesignSystemPage() {
               key={t.id}
               className="flex items-center gap-2 border border-line bg-card px-3 py-2"
             >
+              {/* 色塊掛 data-theme 吃 var(--color-primary) —— 顯示的一定是該主題的真實主色。
+                  原本這裡印死的 hex 與 tokens.css 已經不同步,設計系統頁反而在騙人。 */}
               <span
-                className="size-5 rounded-xs border border-line"
-                style={{ backgroundColor: t.hex }}
+                className="size-5 rounded-xs border border-line bg-primary"
+                {...(t.id === "navy" ? {} : { "data-theme": t.id })}
               />
               <div>
                 <div className="text-[12px] font-semibold">{t.label}</div>
-                <div className="font-mono text-[12px] text-ink-3">{t.hex}</div>
+                <div className="font-mono text-[12px] text-ink-3">{t.id}</div>
               </div>
             </div>
           ))}
