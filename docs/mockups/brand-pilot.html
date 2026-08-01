@@ -377,16 +377,29 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .mo i{position:absolute;left:0;top:0;bottom:0;width:34px;background:var(--primary);border-radius:4px}
 
 /* ── 訊息與浮層 ────────────────────────────────── */
-.al{display:flex;gap:10px;padding:10px 12px;border-radius:6px;font-size:13px;align-items:flex-start}
-.al .ic{flex:0 0 16px;margin-top:1px}
-.al .bd{min-width:0} .al .bd b{display:block;font-weight:600;margin-bottom:2px}
-.al .bd p{color:inherit;opacity:.86;line-height:1.55}
-.al .x{margin-left:auto;flex:0 0 16px;opacity:.5}
-.al.info{background:var(--primary-t);color:var(--primary-d)}
-.al.ok{background:var(--ok-t);color:var(--ok)}
-.al.wn{background:var(--wn-t);color:var(--wn)}
-.al.er{background:var(--er-t);color:var(--er)}
-.al.bar{border-radius:0;box-shadow:inset 0 -1px 0 rgba(15,23,32,.06)}
+/* Alert —— 每個值都有來源,見 §19 的「值的出處」表。
+   語意色一律**三值出現**(字 / 框 / 底),與狀態章同一套語言。
+   🔴 不用 opacity 造次級文字 —— 那會讓對比隨底色浮動(docs/28 A3 已否決此做法)。 */
+.al{display:flex;gap:8px;padding:12px;border-radius:6px;border:1px solid;align-items:flex-start}
+.al .ic{flex:0 0 16px;margin-top:2px}
+.al .bd{min-width:0;flex:1}
+.al .bd b{display:block;font-size:13px;font-weight:600;line-height:18px}
+.al .bd p{font-size:13px;font-weight:400;line-height:18px;color:var(--ink2);margin-top:4px}
+.al .act{display:flex;gap:4px;margin-top:8px}
+.al .lk{font-size:13px;font-weight:500;line-height:18px;background:none;border:0;padding:0;
+  cursor:default;text-decoration:underline;text-underline-offset:2px;color:inherit;font-family:inherit}
+.al .x{flex:0 0 24px;height:24px;margin:-3px -4px 0 0;border:0;background:none;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:default}
+/* hover 底由該 Alert 的語意色推導 —— 不用 raw rgba,也不用固定中性色
+     (固定中性在四種語意底上深淺不一致)。 */
+.al .x:hover{background:color-mix(in srgb, currentColor, transparent 90%)}
+.al.info{background:var(--primary-t);border-color:var(--primary-t);color:var(--primary-d)}
+.al.ok{background:var(--ok-t);border-color:var(--ok-line);color:var(--ok)}
+.al.wn{background:var(--wn-t);border-color:var(--wn-line);color:var(--wn)}
+.al.er{background:var(--er-t);border-color:var(--er-line);color:var(--er)}
+/* 全域橫幅:方角、貼齊視窗、只留下緣一條 token 線(不用 raw rgba) */
+.al.bar{border-radius:0;border-left:0;border-right:0;border-top:0;
+  border-bottom:1px solid var(--line);padding:10px 16px}
 .toast{display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:6px;
   background:var(--ink);color:var(--card);font-size:13px;
   box-shadow:0 12px 28px -10px rgba(15,23,32,.34),0 2px 6px rgba(15,23,32,.12)}
@@ -1346,18 +1359,64 @@ F-10 已解掉<b>技術面</b>(分頁級租戶脈絡,不用 localStorage),但<b>
       <td>🔴 <b>不得承載必要資訊</b> —— 觸控與鍵盤使用者看不到</td></tr>
 </table>
 
-<div class="grp-t" style="margin-top:20px">Alert —— 四個語意 × 兩種放置</div>
-<div class="ds-grid" style="max-width:660px">
-  <div class="al er"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg><div class="bd"><b>3 個必填欄位未填</b><p>品名、批號、單據日期。儲存前請補齊。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
-  <div class="al wn"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><div class="bd"><b>此表單有 2 個欄位被鎖定</b><p>鎖定欄位由管理員設定,填單時不可修改。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
-  <div class="al ok"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><div class="bd"><b>已匯入 212 筆</b><p>其中 3 筆與既有記錄重複,已略過。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
-  <div class="al info"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="bd"><b>系統將於 08-03 02:00 維護</b><p>預計 30 分鐘,期間無法過帳。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+<div class="grp-t" style="margin-top:20px">Alert —— 四個語意 × 兩種放置<span style="font-weight:400;color:var(--er);text-transform:none;letter-spacing:0"> · 🔴 已重新設計(初版八處違規)</span></div>
+
+<div class="why" style="border-left-color:var(--er)"><b>初版違反了 docs/14 的哪些條</b>(自我稽核)<br>
+① <b>間距 10 / 12 / 2 / 1px 隨手填</b>,不在尺度上。<br>
+② 🔴 <b>用 <span class="mono">opacity:.86</span> 造次級文字、<span class="mono">opacity:.5</span> 造次級圖示</b> ——
+  這正是我在 docs/28 A3 <b>親手否決過</b>的做法(「alpha 的對比度隨底色浮動」),否決完自己用。<br>
+③ <b>標題與內文同為語意色</b> —— 整段紅字既難讀,也把「顏色」從標記變成裝飾。<br>
+④ <b>沒有框線</b>,與 §03 ④ 定的「語意色三值(字/框/底)」和狀態章的用法不一致。<br>
+⑤ 全域橫幅用 <span class="mono">rgba(15,23,32,.06)</span> <b>raw 值</b>,違反禁硬編。<br>
+⑥ <b>關閉鈕只是一個 16px 圖示</b> —— 沒有點擊區、沒有 hover、沒有 aria-label。<br>
+⑦ <b>行高 1.55 不在字階表上</b>(13px 對應的是 18px)。<br>
+⑧ <b>沒有動作槽</b> —— 我自己寫「內文說怎麼辦」,卻沒給放按鈕的地方。</div>
+
+<div class="ds-grid" style="max-width:680px">
+  <div class="al er"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg><div class="bd"><b>3 個必填欄位未填</b>
+    <p>品名、批號、單據日期。儲存前請補齊。</p>
+    <div class="act"><button class="lk">跳到第一個</button></div></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="al wn"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><div class="bd"><b>此表單有 2 個欄位被鎖定</b>
+    <p>鎖定欄位由管理員設定,填單時不可修改。</p></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="al ok"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><div class="bd"><b>已匯入 212 筆</b>
+    <p>其中 3 筆與既有記錄重複,已略過。</p>
+    <div class="act"><button class="lk">檢視略過的 3 筆</button></div></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="al info"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="bd"><b>系統將於 08-03 02:00 維護</b>
+    <p>預計 30 分鐘,期間無法過帳。此為 Weyver 平台維護,非貴公司系統問題。</p></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
 </div>
+
+<div class="grp-t" style="margin-top:18px">放置二:全域橫幅(方角 · 貼齊視窗 · 只留下緣線)</div>
+<div style="margin:0 -28px">
+  <div class="al wn bar"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><div class="bd"><b>此租戶的儲存空間已使用 92%</b>
+    <p>超過 100% 後將無法上傳附件。請聯絡管理員調整方案或清理回收桶。</p></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+</div>
+<div class="desc" style="margin-top:10px">
+<b>兩種放置的判準</b>|<b>頁內</b>(圓角 6px + 三值框)貼在它所描述的<b>那個區塊</b>上方;
+<b>全域橫幅</b>(方角、貼齊視窗、只留下緣一條 <span class="mono">--color-line</span>)只給
+<b>影響整個租戶</b>的事:維護、額度、方案降級。判準不是「重不重要」,是<b>影響範圍</b>。</div>
+
+<table class="ds-tbl">
+  <tr><th style="width:128px">值</th><th style="width:112px">取值</th><th>來源(禁 vibe)</th></tr>
+  <tr><td class="k">padding</td><td class="k">12px</td><td>§10 間距尺度的「組間」階</td></tr>
+  <tr><td class="k">圖示 ↔ 文字</td><td class="k">gap 8px</td><td>元件內部階(4/8/12/16/24 皆為 4 的倍數;8 為控件內部標準)</td></tr>
+  <tr><td class="k">標題 ↔ 內文</td><td class="k">4px</td><td>§10「組內」階 —— 兩者是同一組</td></tr>
+  <tr><td class="k">內文 ↔ 動作</td><td class="k">8px</td><td>動作是另一組,但仍在同一個 Alert 內</td></tr>
+  <tr><td class="k">字級 / 行高</td><td class="k">13 / 18</td><td>§04 字階的 <span class="mono">sm</span> 階,行高照表不自訂。
+      Alert 已靠<b>色 + 圖示 + 框</b>取得注意力,不需要再靠字級喊</td></tr>
+  <tr><td class="k">標題色</td><td class="k">語意色</td><td rowspan="2">§03 ④ 語意三值。<b>標題承載語意、內文承載內容</b> ——
+      內文用 <span class="mono">ink-2</span> 而非語意色,長句才讀得下去</td></tr>
+  <tr><td class="k">內文色</td><td class="k">ink-2</td></tr>
+  <tr><td class="k">框 / 底</td><td class="k">-line / -t</td><td>與狀態章同一套三值,語意色一律三值出現</td></tr>
+  <tr><td class="k">關閉鈕</td><td class="k">24×24</td><td>可點擊區不得小於 24px(WCAG 2.5.8 Target Size Minimum);
+      hover 底由 <span class="mono">currentColor</span> 推導,四種語意各自協調</td></tr>
+  <tr><td class="k">圓角</td><td class="k">6 / 0</td><td>§10 容器階 6px;橫幅方角因為它<b>貼齊視窗沒有邊</b></td></tr>
+</table>
 <div class="desc" style="margin-top:8px">
-<b>放置</b>|<b>頁內 Alert</b>(上圖,圓角 6px)貼在它所描述的區塊上方;
-<b>全域橫幅</b>(方角、貼齊視窗寬)只給影響整個租戶的事(維護、額度、系統降級)。<br>
-<b>結構</b>|標題說<b>發生什麼</b>、內文說<b>怎麼辦</b>。只有標題沒有下一步的 Alert 等於沒有用。<br>
-<b>圖示</b>|Lucide,與語意色同色;<b>色 + 圖示 + 文字三重編碼</b>,不得只靠底色(§13)。</div>
+<b>結構</b>|標題說<b>發生什麼</b>、內文說<b>怎麼辦</b>、動作槽放<b>直接帶他去做</b>的入口。
+只有標題沒有下一步的 Alert 等於沒有用。<br>
+<b>三重編碼</b>|色 + 圖示 + 文字。不得只靠底色(§13);圖示用 Lucide 且與語意色同色。<br>
+<b>a11y</b>|需立即知悉者 <span class="mono">role="alert"</span>(會插播),
+其餘 <span class="mono">role="status"</span>。關閉鈕必須有 <span class="mono">aria-label</span>。</div>
 
 <div class="grp-t" style="margin-top:20px">Toast —— 只給成功,且必須附 Undo</div>
 <div class="ds-row">
