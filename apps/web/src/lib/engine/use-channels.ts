@@ -16,6 +16,8 @@ const statusSchema = z.object({
   /* 只說「有沒有設」,永不回值 */
   secretSet: z.boolean(),
   secretFingerprint: z.string().nullable(),
+  /* 管理者勾選要廣播哪些事件;空 = 連上了但不廣播 */
+  broadcastEvents: z.array(z.string()),
   verifiedAt: z.coerce.date().nullable(),
   enabled: z.boolean(),
   updatedAt: z.coerce.date().nullable(),
@@ -42,6 +44,7 @@ export function useSaveChannel() {
       secret?: string
       clearSecret?: boolean
       enabled?: boolean
+      broadcastEvents?: string[]
     }) => {
       const { channel, ...body } = input
       return engineFetch(`/notification-channels/${channel}`, statusSchema, {

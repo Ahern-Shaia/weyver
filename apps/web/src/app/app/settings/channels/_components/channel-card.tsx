@@ -60,6 +60,17 @@ const SPEC: Readonly<
   },
 }
 
+/* 可廣播的事件。**與後端 `notification-specs` 同源的六個事件碼**;
+   標籤沿用通知設定頁的說法,免得同一件事在兩頁有兩個名字。 */
+const EVENTS: readonly { readonly code: string; readonly label: string }[] = [
+  { code: "approval.pending", label: "待簽核" },
+  { code: "approval.approved", label: "簽核核准" },
+  { code: "approval.rejected", label: "簽核駁回" },
+  { code: "approval.overdue", label: "簽核逾期" },
+  { code: "record.created", label: "新資料建立" },
+  { code: "record.updated", label: "資料變更" },
+]
+
 export function ChannelCard({ status }: { readonly status: ChannelStatus }): React.ReactNode {
   const spec = SPEC[status.channel]
   const save = useSaveChannel()
@@ -70,6 +81,7 @@ export function ChannelCard({ status }: { readonly status: ChannelStatus }): Rea
     Object.fromEntries(spec.fields.map((f) => [f.key, String(status.config[f.key] ?? "")])),
   )
   const [result, setResult] = useState<{ ok: boolean; detail: string } | null>(null)
+  const [events, setEvents] = useState<string[]>([...status.broadcastEvents])
 
   const onSubmit = (event: FormEvent): void => {
     event.preventDefault()
@@ -78,6 +90,9 @@ export function ChannelCard({ status }: { readonly status: ChannelStatus }): Rea
       {
         channel: status.channel,
         config,
+        broadcastEvents: events,
+        /* 勾了事件就代表要用 —— 不讓「勾了卻沒開」這種看起來已生效實際沒有的狀態存在 */
+        enabled: events.length > 0,
         ...(secret === "" ? {} : { secret }),
       },
       {
@@ -178,6 +193,35 @@ export function ChannelCard({ status }: { readonly status: ChannelStatus }): Rea
               </span>
             ) : null}
           </label>
+          {/* 🔴 廣播是**公司頻道**不是個人收件匣:群組成員可能對該表單毫無存取權,
+              所以訊息只有「哪張表單的第幾筆發生了什麼」,不含任何欄位值。
+              這句要寫在勾選旁邊 —— 管理者是在決定把什麼推給一群人。 */}
+          <fieldset className="flex flex-col gap-1">
+            <legend className="text-[12px] text-ink-2">要廣播哪些事件</legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {EVENTS.map((e) => (
+                <label key={e.code} className="flex items-center gap-1.5 text-[12px] text-ink-2">
+                  <input
+                    type="checkbox"
+                    checked={events.includes(e.code)}
+                    onChange={() => {
+                      setEvents(
+                        events.includes(e.code)
+                          ? events.filter((c) => c !== e.code)
+                          : [...events, e.code],
+                      )
+                    }}
+                    className="accent-primary"
+                  />
+                  {e.label}
+                </label>
+              ))}
+            </div>
+            <span className="text-[12px] text-ink-3">
+              訊息只含表單名稱、記錄編號與事件類型,<b>不含任何欄位值</b> ——
+              頻道成員可能對該表單沒有存取權。
+            </span>
+          </fieldset>
           {save.isError ? <p className="text-[12px] text-er">{save.error.message}</p> : null}
           <div className="flex gap-2">
             <Button type="submit" variant="primary" disabled={save.isPending}>
