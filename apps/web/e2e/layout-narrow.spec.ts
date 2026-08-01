@@ -99,3 +99,55 @@ for (const path of LONG_PAGES) {
     if (after.barTop !== null) expect(after.barTop).toBeGreaterThan(0)
   })
 }
+
+/* 🔴 #140 的續章|工具列按鈕**不得被壓成直排**。
+
+   #140 當時在工具列外層加了 `overflow-x-auto`,但那條修正**是失效的**:
+   flex 會先壓縮子元素,而 `TB` 沒有 `shrink-0` / `whitespace-nowrap` ——
+   中文沒有詞邊界,於是逐字斷行,內容永遠塞得下、永遠不溢出、捲軸永遠不出現。
+
+   實測(1440px,同時開三個輔助面板):工具列 862 → 286px,
+   「條件式格式」鈕變成 **47×100px**(五個字直排),同一列按鈕高度出現
+   26 / 46 / 82 / 100 四種 —— 使用者回報的「排版錯位」就是這個。
+
+   兩道修正:(a) TB 加 `shrink-0` + `whitespace-nowrap`;
+   (b) 三個輔助面板改**互斥**,右側恆為 0 或 1 欄。
+   本測試釘住結果:**不論開了哪個面板,工具列按鈕高度都只能有一種**。 */
+test("設計器工具列:按鈕不得被壓成多行", async ({ page }) => {
+  await page.goto("/app/builder")
+  await page
+    .getByText(/^E2E|^採購/)
+    .first()
+    .click({ timeout: 15000 })
+    .catch(() => {})
+  await page.waitForTimeout(1500)
+
+  const barHeights = async (): Promise<number[]> =>
+    page.evaluate(() => {
+      const anchor = [...document.querySelectorAll("*")].find(
+        (e) => e.children.length === 0 && e.textContent?.trim() === "版面設計",
+      )
+      const bar = anchor?.closest("div")
+      if (!bar) return []
+      return [...bar.querySelectorAll("button")]
+        .filter((x) => (x.textContent ?? "").trim().length > 0)
+        .map((x) => Math.round(x.getBoundingClientRect().height))
+    })
+
+  const before = await barHeights()
+  test.skip(before.length === 0, "此環境沒有可開啟的表單")
+  expect(new Set(before).size, `工具列按鈕高度不一致:${before.join("/")}`).toBe(1)
+
+  /* 逐一點開三個輔助面板 —— 互斥之後每一次都只會有一欄,高度不該變。 */
+  for (const label of ["條件式格式", "列印", "動作/簽核"]) {
+    await page
+      .getByRole("button", { name: new RegExp(label) })
+      .first()
+      .click()
+      .catch(() => {})
+    await page.waitForTimeout(500)
+    const now = await barHeights()
+    expect(new Set(now).size, `開「${label}」後按鈕高度變成 ${now.join("/")}`).toBe(1)
+    expect(now[0]).toBe(before[0])
+  }
+})

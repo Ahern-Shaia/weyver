@@ -146,9 +146,20 @@ export function DesignCanvas({
   const [idx, setIdx] = useState(-1)
   const [selected, setSelected] = useState<Selected>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const [showActions, setShowActions] = useState(false)
-  const [showPrint, setShowPrint] = useState(false)
-  const [showFormats, setShowFormats] = useState(false)
+  /* 🔴 三個輔助面板**互斥**,不能同時開。
+
+     原本是三個獨立布林,加上欄位設定面板,右側最多可疊出四欄。實測(1440px 寬,
+     只開其中三個):工具列由 862px 被壓到 **286px**,「條件式格式」鈕變成 47×100px
+     ——**五個中文字直排**,同一列的按鈕高度變成 26 / 46 / 82 / 100 四種。
+     設計器的主體(畫布)反而成為最窄的一欄。
+
+     互斥之後右側恆為 0 或 1 欄。這不是縮減功能:動作 / 條件式格式 / 列印
+     本來就是各自獨立的設定,沒有並排比對的需求。 */
+  const [aux, setAux] = useState<"actions" | "print" | "formats" | null>(null)
+  const toggleAux = (which: "actions" | "print" | "formats"): void => {
+    setAux((prev) => (prev === which ? null : which))
+    setSelected(null) // 欄位設定同樣佔右欄,不與輔助面板並存
+  }
   /* 即時預覽只需一筆:取第一頁第一筆(無記錄時面板顯示提示) */
   const { data: sampleData } = useRecords(formId)
   const sampleRecord = sampleData?.records[0]
@@ -336,16 +347,16 @@ export function DesignCanvas({
             <TB onClick={addSection} icon={<Rows3 size={13} />}>
               分段
             </TB>
-            <TB onClick={() => setShowActions((v) => !v)} icon={<Zap size={13} />}>
+            <TB onClick={() => toggleAux("actions")} icon={<Zap size={13} />}>
               動作/簽核
             </TB>
-            <TB onClick={() => setShowPrint((v) => !v)} icon={<Printer size={13} />}>
+            <TB onClick={() => toggleAux("print")} icon={<Printer size={13} />}>
               列印
             </TB>
-            <TB onClick={() => setShowFormats((v) => !v)} icon={<Palette size={13} />}>
+            <TB onClick={() => toggleAux("formats")} icon={<Palette size={13} />}>
               條件式格式
             </TB>
-            <div className="ml-1 flex items-center gap-0.5">
+            <div className="ml-1 flex shrink-0 items-center gap-0.5">
               <button
                 type="button"
                 onClick={undo}
@@ -434,7 +445,10 @@ export function DesignCanvas({
                         field={f}
                         layout={fl}
                         selected={selected?.type === "field" && selected.id === String(f.id)}
-                        onSelect={() => setSelected({ type: "field", id: String(f.id) })}
+                        onSelect={() => {
+                          setAux(null)
+                          setSelected({ type: "field", id: String(f.id) })
+                        }}
                         onDrop={() => dropField.mutate(f.id)}
                       />
                     )
@@ -444,7 +458,10 @@ export function DesignCanvas({
                       key={s.id}
                       element={s}
                       selected={selected?.type === "static" && selected.id === s.id}
-                      onSelect={() => setSelected({ type: "static", id: s.id })}
+                      onSelect={() => {
+                        setAux(null)
+                        setSelected({ type: "static", id: s.id })
+                      }}
                     />
                   ))}
                 </div>
@@ -465,24 +482,24 @@ export function DesignCanvas({
           onOptionsSaved={() => invalidate([formKeys.detail(formId)])}
         />
       ) : null}
-      {showActions ? (
-        <ActionsDesigner formId={formId} form={form} onClose={() => setShowActions(false)} />
+      {aux === "actions" ? (
+        <ActionsDesigner formId={formId} form={form} onClose={() => setAux(null)} />
       ) : null}
-      {showFormats ? (
+      {aux === "formats" ? (
         <ConditionalFormatPanel
           fields={form.fields}
           formats={effective.conditionalFormats}
           sample={sampleRecord}
           onChange={(conditionalFormats) => edit({ ...effective, conditionalFormats })}
-          onClose={() => setShowFormats(false)}
+          onClose={() => setAux(null)}
         />
       ) : null}
-      {showPrint ? (
+      {aux === "print" ? (
         <PrintSettingsPanel
           fields={form.fields}
           layout={effective}
           onChange={(print: LayoutPrint) => edit({ ...effective, print })}
-          onClose={() => setShowPrint(false)}
+          onClose={() => setAux(null)}
         />
       ) : null}
       {selStatic !== undefined && selected?.type === "static" ? (
@@ -510,7 +527,11 @@ function TB({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
+      /* 🔴 `shrink-0` + `whitespace-nowrap` 缺一不可。
+         少了它們,外層的 `overflow-x-auto`(#140 加的)**永遠不會觸發** ——
+         flex 會先壓縮子元素,中文沒有詞邊界所以逐字斷行,於是內容永遠塞得下、
+         永遠不溢出、也就永遠不捲。結果是按鈕變成直排而不是出現捲軸。 */
+      className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
     >
       {icon}
       {children}
