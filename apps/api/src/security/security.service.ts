@@ -109,7 +109,7 @@ export class SecurityService {
   async revokeOtherSessions(
     authUserId: string,
     currentToken: string | null,
-  ): Promise<{ sessions: number; apiKeys: number }> {
+  ): Promise<{ sessions: number; apiKeys: number; trustedDevices: number }> {
     const sessions = await this.db.execute(
       currentToken === null
         ? sql`DELETE FROM "session" WHERE "userId" = ${authUserId}`
@@ -120,7 +120,30 @@ export class SecurityService {
            WHERE revoked_at IS NULL
              AND subject_actor_id = (SELECT id FROM users WHERE auth_user_id = ${authUserId})`,
     )
-    return { sessions: sessions.rowCount ?? 0, apiKeys: keys.rowCount ?? 0 }
+    /* 🔴 信任裝置也要一起撤。「登出其他裝置」的使用情境是**筆電掉了**——
+       只砍 session 的話,那台筆電下次登入仍會憑信任裝置 cookie 跳過二步驟,
+       等於把「我懷疑裝置外流」的補救做成半套。 */
+    const trusted = await this.revokeTrustedDevices(authUserId)
+    return {
+      sessions: sessions.rowCount ?? 0,
+      apiKeys: keys.rowCount ?? 0,
+      trustedDevices: trusted,
+    }
+  }
+
+  /* 🔴 Better Auth 的 `/two-factor/disable` **只刪掉當下這台**的信任記錄
+     (它是從請求的 cookie 讀 identifier 的,見 plugins/two-factor/index.mjs)。
+     於是「停用 2FA → 再啟用」會讓其他舊的信任裝置**繼續免驗**。
+     故停用時由我方把該使用者的信任記錄全數清掉。
+
+     資料形狀來自逐行讀過 plugin 原始碼:`verification` 表,
+     identifier = `trust-device-<random>`、value = user id、expiresAt = 30 天。 */
+  async revokeTrustedDevices(authUserId: string): Promise<number> {
+    const res = await this.db.execute(
+      sql`DELETE FROM "verification"
+           WHERE identifier LIKE 'trust-device-%' AND value = ${authUserId}`,
+    )
+    return res.rowCount ?? 0
   }
 
   /* 稽核寫入永不讓呼叫端失敗 —— 記不成稽核不該連帶讓登入失敗。

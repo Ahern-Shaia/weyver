@@ -28,6 +28,8 @@ export interface TenantSettings {
   readonly timezone: string
   readonly defaultLocale: string
   readonly defaultCurrency: string
+  /* 🔴 全公司強制二步驟驗證(#112)。開啟者本人須先啟用 —— 檢查在 controller */
+  readonly requireMfa: boolean
 }
 
 /* 個人設定的「有效值」+「是否自訂」。
@@ -57,6 +59,7 @@ export class SettingsService {
         logoFileKey: row.logoFileKey,
         timezone: row.timezone,
         defaultLocale: row.defaultLocale,
+        requireMfa: row.requireMfa,
         defaultCurrency: row.defaultCurrency,
       }
     })
@@ -70,6 +73,7 @@ export class SettingsService {
       timezone?: string | undefined
       defaultLocale?: string | undefined
       defaultCurrency?: string | undefined
+      requireMfa?: boolean | undefined
     },
   ): Promise<TenantSettings> {
     const set = defined(patch)

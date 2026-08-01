@@ -1,4 +1,17 @@
-import { Body, Controller, ForbiddenException, Get, Inject, Patch, UseGuards } from "@nestjs/common"
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Inject,
+  Patch,
+  Req,
+  UseGuards,
+} from "@nestjs/common"
+import type pg from "pg"
+import { hasMfaEnabled } from "../auth/mfa-gate.js"
+import { PG_POOL } from "../db/db.module.js"
+import type { RequestWithTenant } from "../http/tenant-context.js"
 import { z } from "zod"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
@@ -46,6 +59,7 @@ const tenantPatchSchema = z
     timezone: timezoneSchema,
     defaultLocale: z.enum(LOCALES),
     defaultCurrency: z.string().trim().length(3).toUpperCase(),
+    requireMfa: z.boolean(),
   })
   .partial()
 
@@ -60,7 +74,11 @@ const userPatchSchema = z
 @Controller("api/settings")
 @UseGuards(TenantGuard, PermissionGuard)
 export class SettingsController {
-  constructor(@Inject(SettingsService) private readonly settings: SettingsService) {}
+  constructor(
+    @Inject(SettingsService) private readonly settings: SettingsService,
+    /* `user."twoFactorEnabled"` 是 Better Auth 的表,無 RLS → 特權車道 */
+    @Inject(PG_POOL) private readonly pool: pg.Pool,
+  ) {}
 
   @Get("tenant")
   async tenant(@Tenant() tenant: TenantContext): Promise<TenantSettings> {
@@ -70,11 +88,25 @@ export class SettingsController {
   @Patch("tenant")
   async patchTenant(
     @Tenant() tenant: TenantContext,
+    @Req() request: RequestWithTenant,
     @Permissions() permissions: EffectivePermissions,
     @Body(new ZodValidationPipe(tenantPatchSchema)) body: z.infer<typeof tenantPatchSchema>,
   ): Promise<TenantSettings> {
     if (!permissions.isAdmin) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "僅管理員可修改公司設定" })
+    }
+    /* 🔴 開啟強制 2FA 之前,開啟的人本人必須先啟用(GitHub 逐字前置規定:
+       「Before you can require organization members... you must enable 2FA for
+       your account.」)。少了這一條,第一個被自己鎖在門外的就是管理員 ——
+       而他正是唯一能把開關關掉的人。 */
+    if (body.requireMfa === true) {
+      const authUserId = request.authUserId ?? null
+      if (authUserId === null || !(await hasMfaEnabled(this.pool, authUserId))) {
+        throw new ForbiddenException({
+          code: "MFA_SELF_REQUIRED",
+          message: "請先為自己啟用二步驟驗證,才能要求全公司啟用",
+        })
+      }
     }
     return this.settings.updateTenant(tenant.tenantId, body)
   }

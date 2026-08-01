@@ -29,8 +29,8 @@
 ### 1.3 不做的事(scope out)
 - **Email / SMS OTP**|需交易郵件 / 簡訊供應商(通知模組 H,未建)。
 - **Passkey / WebAuthn**|需 `@better-auth/passkey`(核心 dist 無),獨立模組後續。
-- **org 強制 2FA(admins 必須)**|預留 org policy 欄,MVP 不強制阻擋。
-- **trustDevice(記住此裝置)**|MVP 每次登入都驗,較安全;之後再評估。
+- ~~**org 強制 2FA(admins 必須)**|預留 org policy 欄,MVP 不強制阻擋。~~ → **2026-08-01 已交付**(§13 v1.1)
+- ~~**trustDevice(記住此裝置)**|MVP 每次登入都驗,較安全;之後再評估。~~ → **2026-08-01 已交付**(§13 v1.1)
 
 ---
 
@@ -117,8 +117,8 @@
 | # | 議題 | 選項 | 裁定 |
 |---|---|---|---|
 | **OQ-MFA-1** | 二步驟方法 | A. **TOTP + backup codes only** <br> B. 也做 email / SMS OTP | **A** — email/SMS 卡通知 infra(未建);TOTP 為業界標準且零相依 |
-| **OQ-MFA-2** | 啟用模式 | A. **opt-in per user + 預留 org policy 欄** <br> B. 直接做 org 強制(admins 必須) | **A** — 強制需阻擋未註冊者流程、複雜;MVP opt-in,org 強制列後續(對齊 §6-bis 分層) |
-| **OQ-MFA-3** | trustDevice「記住此裝置」 | A. **MVP 不做(每次登入都驗)** <br> B. 做 | **A** — 更安全、更簡單;之後視摩擦再加 |
+| **OQ-MFA-2** | 啟用模式 | A. **opt-in per user + 預留 org policy 欄** <br> B. 直接做 org 強制(admins 必須) | **A** — 強制需阻擋未註冊者流程、複雜;MVP opt-in,org 強制列後續(對齊 §6-bis 分層)。**⚠️ 2026-08-01 已推翻並實作 B**:當初的「複雜」估計偏高 —— GitHub 的做法是**擋在資源外 + 留下登記路徑**,不是設計一套新流程;`tenants.require_mfa` + TenantGuard 一道閘門 + 一個豁免清單即可。見 §13 v1.1 |
+| **OQ-MFA-3** | trustDevice「記住此裝置」 | A. **MVP 不做(每次登入都驗)** <br> B. 做 | **A** — 更安全、更簡單;之後視摩擦再加。**⚠️ 2026-08-01 已推翻並實作 B**:逐行讀過 plugin 原始碼後確認它不是「跳過驗證」的旗標,而是**伺服器端可撤銷 + 每次登入輪替 identifier**;預設不勾、且撤銷路徑已補齊(見 §13 v1.1)|
 | **OQ-MFA-4** | QR 產生 | A. **前端由 totpURI 生 QR(qrcode 套件)** <br> B. 後端回 QR image | **A** — secret 少繞一手、後端不需圖形依賴 |
 | **OQ-MFA-5** | secret / backup 保護 | A. **用 Better Auth 內建(app secret 加密 + backup 雜湊)** <br> B. 自管加密 | **A** — 內建即符 AGENTS;自管徒增出錯面 |
 | **OQ-MFA-6** | 模組歸屬 | A. **獨立 foundation 模組 F-4 mfa.md** <br> B. 併入 auth.md | **A** — auth.md 已 SHIPPED 定版;MFA 自成模組較清楚 |
@@ -279,6 +279,7 @@ CISA 對 help desk 身分核驗的具體規範(僅有事件通報);台灣中小�
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-01 | v1.1 | **OQ-MFA-2 / OQ-MFA-3 推翻原裁定並交付**(#112)。**(a) 租戶強制 2FA**|`tenants.require_mfa` + TenantGuard 一道閘門(放在**兩條車道的共同出口**,不重蹈「只在 prod 生效」)。依 GitHub 逐字規定:開啟者本人須先啟用(否則第一個被鎖在門外的是管理員,而他是唯一能關掉開關的人)、未啟用者**擋在資源外不刪帳號**、**帳號安全頁豁免**以留下登記路徑;Google 的「新成員寬限期」不採 —— 我方登記為 TOTP、畫面上 30 秒完成,加寬限期只是多一個靜默的洞。**(b) trustDevice**|驗證頁加「記住這台裝置 30 天」(預設不勾)。順帶補 Better Auth 的缺口:其 `/two-factor/disable` **只撤當下這一台**(從請求 cookie 讀 identifier),於是「停用再啟用」會讓其他舊裝置繼續免驗 → 停用 2FA 與「登出其他裝置」皆改為撤銷該使用者**全部**信任記錄。踩點:新增設定欄忘了跟上 0039 的**欄位級 GRANT** → 存檔一律 500(DB 層擋住,正是該設計的用意);`request.authUserId` 原本只有 prod 車道會設 → 前置規定在 dev 永遠拒絕,改由 TenantGuard 寫回。api 3 unit + 7 integration + web e2e 2 綠 | Claude Code |
 | 2026-07-20 | v1.0 | **M2–M4 完成 → SHIPPED**|M2 帳號設定啟用/停用 UI(QR via qrcode.react + 手動碼 + backup codes + 停用需驗證;header「安全」入口;twoFactorClient)· M3 登入二步(twoFactorRedirect → /login/2fa,TOTP/備用碼;登入&2FA 成功全頁導向修 active org 顯示 lag)· M4 verify 端點 rateLimit + `e2e/mfa.spec.ts` 固化(otplib 產碼,5 web e2e 綠)+ §12 FMEA(P0 全緩解)。Playwright MCP 實走全流程。**自助 TOTP 二步驟驗證上線** | Claude Code |
 | 2026-07-20 | v0.3 | **M1 後端完成**|createAuth 掛 twoFactor plugin(issuer Weyver;secret/backup 內建保護)+ verify 端點 rateLimit;spike 確認 Better Auth flow(enable→verifyTotp 啟用 / signIn→twoFactorRedirect / challenge cookie→verify 發 session);4 整合測(otplib 確定性產碼)綠;api 套件 114 | Claude Code |
 | 2026-07-20 | v0.2 | OQ-MFA-1..6 全採建議裁定(TOTP+backup only · opt-in+預留 org policy · 不做 trustDevice · 前端生 QR · Better Auth 內建保護 · 獨立 F-4);狀態 → APPROVED,進 M1 | Claude Code |

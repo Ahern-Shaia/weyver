@@ -41,6 +41,9 @@ export const tenants = pgTable("tenants", {
      **停權檢查採白名單式**(只有明確 suspended/cancelled 才擋)—— FMEA B1:
      判斷若寫成黑名單,一個未知值就會擋掉全部客戶。 */
   status: text("status").notNull().default("active"),
+  /* 🔴 租戶層強制二步驟驗證(#112)。開啟者本人須先啟用(GitHub 前置規定);
+     未啟用者被擋在資源外而非被刪除 —— 登記那條路保持暢通。 */
+  requireMfa: boolean("require_mfa").notNull().default(false),
   /* NULL = 不受方案管(現況)。方案內容刻意不入庫(OQ-SB-8=A):
      docs/05 明載其定價「是模型不是斷言」,不把未定案的商業決策固化成程式碼。 */
   planCode: text("plan_code"),

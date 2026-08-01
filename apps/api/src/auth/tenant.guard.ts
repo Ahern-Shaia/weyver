@@ -17,6 +17,7 @@ import { AuthGuard } from "./auth-guard.js"
 import { AUTH } from "./auth.tokens.js"
 import type { Auth } from "./auth.js"
 import { mustChangePassword } from "./initial-credential.js"
+import { hasMfaEnabled, isMfaExemptPath, tenantRequiresMfa } from "./mfa-gate.js"
 
 /* 依環境分派租戶解析:認證強制(AuthGuard,真實 session)vs dev header(DevTenantGuard,x-dev-tenant)。
    強制條件 = production 一律,或 dev/test 設 ENFORCE_AUTH=1(測 auth-gate 用)。
@@ -66,6 +67,10 @@ export class TenantGuard implements CanActivate {
        明顯變慢(不同 spec 每輪隨機逾時)。沒有 session cookie 就不可能有 session,
        先看 header 再決定要不要查 —— dev 的絕大多數請求根本沒帶 cookie。 */
     const authUserId = request.authUserId ?? (await this.sessionUserId(request))
+    /* 🔴 解析結果**寫回 request** —— 否則下游(如公司設定的「開啟強制 2FA
+       前本人須先啟用」)在 dev 車道拿不到身分,規則變成永遠拒絕。
+       prod 由 AuthGuard 放上,dev 只有這裡查得到,兩條路要收斂到同一個欄位。 */
+    if (authUserId !== undefined) request.authUserId = authUserId
     if (authUserId !== undefined && (await mustChangePassword(this.pool, authUserId))) {
       throw new ForbiddenException({
         code: "PASSWORD_CHANGE_REQUIRED",
@@ -75,6 +80,26 @@ export class TenantGuard implements CanActivate {
 
     const tenantId = request.tenantContext?.tenantId
     if (tenantId === undefined) return true
+
+    /* 🔴 租戶強制二步驟驗證(#112)。與上面的初始密碼閘門同一個理由放在這裡:
+       **兩條車道的共同出口**。只寫在 AuthGuard 裡的話 dev 完全不執行,
+       而「只在 prod 生效的安全機制等同於從來沒有人驗證過」已經在本專案栽過。
+
+       GitHub 逐字:未啟用者「will not be able to access your organization's
+       resources **until they enable 2FA**」—— 故擋讀也擋寫,但豁免帳號安全頁,
+       否則使用者連去啟用的路都沒有,全公司一起鎖死。 */
+    if (authUserId !== undefined && !isMfaExemptPath(request.url)) {
+      if (
+        (await tenantRequiresMfa(this.pool, tenantId)) &&
+        !(await hasMfaEnabled(this.pool, authUserId))
+      ) {
+        throw new ForbiddenException({
+          code: "MFA_REQUIRED",
+          message: "公司已要求二步驟驗證,請先於「帳號安全」啟用後才能繼續使用",
+        })
+      }
+    }
+
     if (!isWriteMethod(request.method)) return true
 
     const plan = await this.entitlement.planFor(tenantId)

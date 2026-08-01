@@ -8,6 +8,7 @@ import { claimInitialCredential, clearInitialCredential } from "./initial-creden
 import { isAccountLocked } from "./login-throttle.js"
 import { blockedPasswordMessage, checkPassword } from "./password-blocklist.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
+import { revokeTrustedDevicesFor } from "./trusted-device.js"
 import type { Pool } from "pg"
 
 /* org 建立時的 provisioning 回呼(M2 IdentityService 綁入,見 auth.module.ts):
@@ -269,6 +270,15 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
               })
             }
           }
+        }
+
+        /* 🔴 停用 2FA → **所有**信任裝置一併撤銷。
+           Better Auth 只撤當下這一台(從 cookie 讀 identifier),於是
+           「停用再啟用」會讓其他舊裝置繼續免驗 —— 使用者以為重來一次,實際不是。
+           見 trusted-device.ts 檔頭。 */
+        if (ctx.path === "/two-factor/disable") {
+          const userId = ctx.context.session?.user?.id
+          if (typeof userId === "string") await revokeTrustedDevicesFor(pool, userId)
         }
 
         /* 自己改完密碼 → 初始憑證退場,強制改密碼的閘門隨之解除 */

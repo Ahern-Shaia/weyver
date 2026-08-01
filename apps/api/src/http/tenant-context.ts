@@ -10,7 +10,8 @@ export interface TenantContext {
   readonly isSuperAdmin?: boolean
 }
 
-/* `authUserId` 由 AuthGuard 在解析 session 時順手放上 —— TenantGuard 的
+/* `authUserId` 由 AuthGuard(prod)或 TenantGuard 的 dev 回退查詢放上 ——
+   **兩條車道都會有值**,下游規則才不會只在其中一條生效。原註:TenantGuard 的
    「初始密碼閘門」需要「這個人是誰」,但不該為此再查一次 session。 */
 export type RequestWithTenant = FastifyRequest & {
   tenantContext?: TenantContext

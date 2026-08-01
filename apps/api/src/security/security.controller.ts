@@ -37,10 +37,10 @@ export class SecurityController {
   async revokeOthers(
     @Tenant() tenant: TenantContext,
     @Req() request: FastifyRequest,
-  ): Promise<{ sessions: number; apiKeys: number }> {
+  ): Promise<{ sessions: number; apiKeys: number; trustedDevices: number }> {
     const me = await this.whoami(tenant, request)
     const authUserId = me.authUserId
-    if (authUserId === null) return { sessions: 0, apiKeys: 0 }
+    if (authUserId === null) return { sessions: 0, apiKeys: 0, trustedDevices: 0 }
     const result = await this.security.revokeOtherSessions(authUserId, me.token)
     await this.security.record({
       event: "session.revoke_others",
@@ -49,7 +49,11 @@ export class SecurityController {
       ipAddress: request.ip,
       userAgent: request.headers["user-agent"] ?? null,
       /* 只記數量,不記被撤的 token / 金鑰值(OWASP Logging 禁記清單) */
-      detail: { sessions: result.sessions, apiKeys: result.apiKeys },
+      detail: {
+        sessions: result.sessions,
+        apiKeys: result.apiKeys,
+        trustedDevices: result.trustedDevices,
+      },
     })
     return result
   }
