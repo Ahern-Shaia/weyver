@@ -8,21 +8,41 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* 2026-08-01 同步 shipped `packages/ui/src/styles/tokens.css` v3.0。
+   本稿原本停在 v2.1 austere 的值(surface #E8EAED、line #C9CFD6、primary #1E4E79),
+   與產品實際已不同 —— 而這正是同日由 CI 抓出的同一類問題(文件說一套、程式跑另一套)。 */
 :root{
-  --bg:#E8EAED;--card:#FFFFFF;--head:#F2F4F6;--label:#EEF1F4;
-  --ink:#14181D;--ink2:#3E4854;--ink3:#6B7684;--ink4:#98A2AE;
-  --line:#C9CFD6;--line2:#DDE1E6;--cell:#D5DAE0;
-  --primary:#1E4E79;--primary-d:#173D5F;--primary-t:#E7EEF5;   /* 主題主色,可切換 */
-  --link:#0B5CAB;--fx:#0B6B5D;--fx-bg:#E9F3F0;--rel:#5B3FA8;
-  --ok:#1A7A43;--ok-line:#BFDCC9;--ok-t:#E8F2EB;
-  --wn:#9A5B00;--wn-line:#E4CFA6;--wn-t:#F7EFDF;
-  --er:#B3261E;--er-line:#E7C4C1;--er-t:#F7E9E8;
-  --nt:#4A5560;--nt-line:#CFD5DA;--nt-t:#ECEEF0;
+  /* 🔴 兩層制:BASE 是唯一可調來源,主色階由它推導(docs/14 §0.4)。
+     白牌客戶只換這一行,深色 hover 與淡底自動跟上,不必請人配三個值。 */
+  --base-brand:#22568a;
+  --primary:var(--base-brand);
+  --primary-d:color-mix(in srgb, var(--base-brand), black 20%);
+  --primary-t:color-mix(in srgb, var(--base-brand), white 91%);
+
+  --bg:#f6f7f9;--card:#ffffff;--head:#f1f3f5;--label:#f4f6f8;
+  --ink:#16191f;--ink2:#3d4753;--ink3:#606c7b;--ink4:#9aa4b1;
+  --line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;
+  --link:#1160b4;--fx:#0b6b5d;--fx-bg:#e8f4f1;--rel:#5b3fa8;
+  --ok:#1a7a43;--ok-line:#c4e0ce;--ok-t:#eaf4ee;
+  --wn:#96590a;--wn-line:#e7d3ad;--wn-t:#f8f1e2;
+  --er:#b3261e;--er-line:#e9c9c6;--er-t:#f9ecea;
+  --nt:#4a5560;--nt-line:#d6dbe0;--nt-t:#eef0f2;
 }
-[data-theme="teal"]{--primary:#0C5F73;--primary-d:#094A5A;--primary-t:#E6F0F3;}
-[data-theme="graphite"]{--primary:#313131;--primary-d:#1F1F1F;--primary-t:#ECECEA;}
+/* 三個主題只覆寫 BASE 一個值 —— 與 shipped tokens.css 完全同構。 */
+[data-theme="navy"]{--base-brand:#22568a;}
+[data-theme="teal"]{--base-brand:#0c5f73;}
+[data-theme="graphite"]{--base-brand:#333739;}
+/* 🔴 推導必須在掛 data-theme 的元素上「再宣告一次」。
+   `--primary:var(--base-brand)` 寫在 :root,於 :root 就代換完畢,子元素只繼承算好的顏色 ——
+   在子元素改 BASE 不會重算。少了這條,下面三張主題卡會全部顯示成當前主題的顏色
+   (產品端同一個 bug 已由 e2e `theme-tokens.spec.ts` 釘住)。 */
+[data-theme]{
+  --primary:var(--base-brand);
+  --primary-d:color-mix(in srgb, var(--base-brand), black 20%);
+  --primary-t:color-mix(in srgb, var(--base-brand), white 91%);
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;font-size:12.5px;line-height:1.5;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;padding-bottom:60px;}
+body{font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;padding-bottom:60px;}
 .mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
 a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
@@ -44,7 +64,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
 /* section */
 .sec{border:1px solid var(--line);background:var(--card);margin-bottom:16px;}
-.sec-h{background:var(--primary);color:#fff;font-size:12.5px;font-weight:600;letter-spacing:.02em;padding:7px 14px;display:flex;align-items:center;}
+.sec-h{background:var(--primary);color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;padding:7px 14px;display:flex;align-items:center;}
 .sec-h .n{font-family:'IBM Plex Mono';opacity:.75;margin-right:8px;font-size:11px;}
 .sec-h .r{margin-left:auto;font-weight:400;opacity:.8;font-size:10.5px;}
 .sec-b{padding:16px;}
@@ -278,18 +298,20 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
   <div class="top">
     <div class="mk">W</div>
     <span class="t">Weyver<small>織雲</small></span>
-    <span class="v">品牌識別視覺稿 v1</span>
+    <span class="v">品牌識別視覺稿 v2 · 2026-08-01</span>
+    <!-- 色塊以 data-theme + var(--primary) 上色,不寫死 hex ——
+         產品端的 theme-switcher 曾寫死舊值,結果「點下去的顏色和切出來的主題不同」。 -->
     <div class="themes"><span>主題</span>
-      <button class="on" data-t="" style="background:#1E4E79" title="深藍"></button>
-      <button data-t="teal" style="background:#0C5F73" title="深海青"></button>
-      <button data-t="graphite" style="background:#313131" title="石墨"></button>
+      <button class="on" data-t="" data-theme="navy" style="background:var(--primary)" title="深藍"></button>
+      <button data-t="teal" data-theme="teal" style="background:var(--primary)" title="深海青"></button>
+      <button data-t="graphite" data-theme="graphite" style="background:var(--primary)" title="石墨"></button>
     </div>
   </div>
 
   <div class="wrap">
     <div class="lead">
       <h1>Weyver 織雲 — 品牌識別 + 前端視覺技術棧(開發前 review)</h1>
-      <p>單頁涵蓋 <b style="color:var(--ink2)">docs/26 品牌</b>(§01–08、§16)+ <b style="color:var(--ink2)">docs/14 前端設計規則與技術棧</b>全部視覺與技術決策(§06 元件庫、§09 技術棧、§10–15 視覺規範),供**開發前一次 review**。本頁本身照 docs/14 v2.1(全框線 / 方角 / 禁陰影 / IBM Plex / 12.5px 密度);右上切換三配色主題,全站即時換色。</p>
+      <p>單頁涵蓋 <b style="color:var(--ink2)">docs/26 品牌</b>(§01–08、§16)+ <b style="color:var(--ink2)">docs/14 前端設計規則與技術棧</b>全部視覺與技術決策(§06 元件庫、§09 技術棧、§10–15 視覺規範),供**開發前一次 review**。本頁本身照 <b style="color:var(--ink2)">docs/14 v6.1</b>(全框線 / 方角 / 禁陰影 / IBM Plex / 內文 14px 地板 12px);色票與字階<b>已於 2026-08-01 對齊 shipped tokens.css v3.0</b> —— 先前停在 v2.1 的舊值,與產品實際不同。右上切換三配色主題,全站即時換色。</p>
       <p style="margin-top:8px"><b style="color:var(--ink2)">審閱原則</b>|依 <b style="color:var(--ink2)">docs/11 §7.1</b>「每個 UI 決策有 rationale,不用 vibe」—— 各決策段開頭附<b style="color:var(--ink2)">理由</b>行,評審請就理據挑戰,而非只看好不好看。</p>
     </div>
 
@@ -320,25 +342,26 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     <!-- 色彩 -->
     <div class="sec"><div class="sec-h"><span class="n">03</span>色彩<span class="r">一套系統 · 三配色主題(語意 token 換值);色票權威見 docs/14 §2</span></div><div class="sec-b">
       <div class="why"><b>理由</b>單一語意 token 系統只換主色值,同一套元件即可支援白牌與客戶偏好而不分叉程式碼;深藍為對外預設(製造 / 食品業信任色,且與 Ragic 品牌藍區隔),深海青、石墨為情境備選。</div>
-      <div class="grp-t">主色 · 三配色主題</div>
+      <div class="why" style="border-left-color:var(--primary)"><b>2026-08-01 改法</b>每個主題<b>只給一個 BASE</b>,深色階(hover / 按下)與淡底(選取列)由 <span class="mono">color-mix</span> 推導 —— 下面三張卡的兩個外側色塊<b>沒有人手工配過</b>,是瀏覽器算出來的。白牌客戶因此只需提供一個品牌色,不必配三個值,也不會出現「換完色之後 hover 態看不見」。三個主題的推導結果均通過 CI 對比檢查(白字 / 深色階 ≥4.5:1)。</div>
+      <div class="grp-t">主色 · 三配色主題(外側兩色為推導值)</div>
       <div class="themes-row">
-        <div class="theme-card"><div class="th" style="background:#1E4E79">深藍 navy<span class="df">預設 / 對外建議</span></div><div class="steps"><i style="background:#173D5F"></i><i style="background:#1E4E79"></i><i style="background:#E7EEF5"></i></div><div class="meta"><b class="mono">#173D5F · #1E4E79 · #E7EEF5</b> · 品類母語、企業可信</div></div>
-        <div class="theme-card"><div class="th" style="background:#0C5F73">深海青 teal<span class="df">織雲故事色</span></div><div class="steps"><i style="background:#094A5A"></i><i style="background:#0C5F73"></i><i style="background:#E6F0F3"></i></div><div class="meta"><b class="mono">#094A5A · #0C5F73 · #E6F0F3</b> · 雲/水意象、競品差異化</div></div>
-        <div class="theme-card"><div class="th" style="background:#313131">石墨 graphite<span class="df">中性</span></div><div class="steps"><i style="background:#1F1F1F"></i><i style="background:#313131"></i><i style="background:#ECECEA"></i></div><div class="meta"><b class="mono">#1F1F1F · #313131 · #ECECEA</b> · 工業中性、讓資料最跳</div></div>
+        <div class="theme-card" data-theme="navy"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設 / 對外建議</span></div><div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div><div class="meta"><b class="mono">#1b456e ← <span style="color:var(--ink)">#22568a</span> → #ebf0f4</b> · 品類母語、企業可信</div></div>
+        <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">織雲故事色</span></div><div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div><div class="meta"><b class="mono">#0a4c5c ← <span style="color:var(--ink)">#0c5f73</span> → #e9f1f2</b> · 雲/水意象、競品差異化</div></div>
+        <div class="theme-card" data-theme="graphite"><div class="th" style="background:var(--primary)">石墨 graphite<span class="df">中性</span></div><div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div><div class="meta"><b class="mono">#292c2e ← <span style="color:var(--ink)">#333739</span> → #ededed</b> · 工業中性、讓資料最跳</div></div>
       </div>
 
-      <div class="grp-t">中性 · 結構(深度靠框線,禁陰影)</div>
+      <div class="grp-t">中性 · 結構(深度靠框線,禁陰影)<span style="font-weight:400;color:var(--ink3)"> —— 已對齊 shipped tokens.css v3.0:整體較 v2.1 更淺,框線降為 hairline</span></div>
       <div class="sw-row">
-        <div class="sw"><div class="c" style="background:#14181D"></div><div class="m"><div class="nm">ink</div><div class="hx">#14181D</div></div></div>
-        <div class="sw"><div class="c" style="background:#3E4854"></div><div class="m"><div class="nm">ink-2</div><div class="hx">#3E4854</div></div></div>
-        <div class="sw"><div class="c" style="background:#6B7684"></div><div class="m"><div class="nm">ink-3</div><div class="hx">#6B7684</div></div></div>
-        <div class="sw"><div class="c" style="background:#C9CFD6"></div><div class="m"><div class="nm">line</div><div class="hx">#C9CFD6</div></div></div>
-        <div class="sw"><div class="c" style="background:#D5DAE0"></div><div class="m"><div class="nm">cell</div><div class="hx">#D5DAE0</div></div></div>
-        <div class="sw"><div class="c" style="background:#EEF1F4"></div><div class="m"><div class="nm">label</div><div class="hx">#EEF1F4</div></div></div>
-        <div class="sw"><div class="c" style="background:#F2F4F6"></div><div class="m"><div class="nm">head</div><div class="hx">#F2F4F6</div></div></div>
-        <div class="sw"><div class="c" style="background:#E8EAED"></div><div class="m"><div class="nm">surface</div><div class="hx">#E8EAED</div></div></div>
-        <div class="sw"><div class="c" style="background:#FFFFFF"></div><div class="m"><div class="nm">card</div><div class="hx">#FFFFFF</div></div></div>
-        <div class="sw"><div class="c" style="background:#98A2AE"></div><div class="m"><div class="nm">ink-4</div><div class="hx">#98A2AE</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--ink)"></div><div class="m"><div class="nm">ink</div><div class="hx">#16191f</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--ink2)"></div><div class="m"><div class="nm">ink-2</div><div class="hx">#3d4753</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--ink3)"></div><div class="m"><div class="nm">ink-3</div><div class="hx">#606c7b</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--line)"></div><div class="m"><div class="nm">line</div><div class="hx">#e3e6ea</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--cell)"></div><div class="m"><div class="nm">cell</div><div class="hx">#e7eaee</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--label)"></div><div class="m"><div class="nm">label</div><div class="hx">#f4f6f8</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--head)"></div><div class="m"><div class="nm">head</div><div class="hx">#f1f3f5</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--bg)"></div><div class="m"><div class="nm">surface</div><div class="hx">#f6f7f9</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--card)"></div><div class="m"><div class="nm">card</div><div class="hx">#ffffff</div></div></div>
+        <div class="sw"><div class="c" style="background:var(--ink4)"></div><div class="m"><div class="nm">ink-disabled</div><div class="hx">#9aa4b1</div></div></div>
       </div>
 
       <div class="grp-t">狀態 · 帶框方形章(顏色 + 文字雙編碼)</div>
@@ -346,7 +369,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
         <span class="chip ok">已核准</span><span class="chip wn">待審核</span><span class="chip er">退回 / 異常</span><span class="chip nt">已收貨 / 中性</span>
       </div>
       <div class="grp-t" style="margin-top:14px">功能色(跨主題共用)</div>
-      <div class="fn-row"><span>連結 <b style="color:#0B5CAB">#0B5CAB</b></span><span>公式 fx <b style="color:#0B6B5D">#0B6B5D</b></span><span>關聯 <b style="color:#5B3FA8">#5B3FA8</b></span></div>
+      <div class="fn-row"><span>連結 <b style="color:var(--link)">#1160b4</b></span><span>公式 fx <b style="color:var(--fx)">#0b6b5d</b></span><span>關聯 <b style="color:var(--rel)">#5b3fa8</b></span></div>
     </div></div>
 
     <!-- 字型 -->
@@ -358,11 +381,12 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
         <div class="spec"><div class="big mono">128,400</div><div class="nm">IBM Plex Mono</div><div class="rl">數字 · 金額 · 批號 · 代碼 · 時間戳</div></div>
       </div>
       <div class="scale">
-        <div class="r"><span class="sp">18 / 650</span><span style="font-size:18px;font-weight:650;letter-spacing:-.2px">頁 / 單據標題</span></div>
-        <div class="r"><span class="sp">12 / 600(白於主色)</span><span style="font-size:12px;font-weight:600">分段條標題</span></div>
-        <div class="r"><span class="sp">12.5 / 400</span><span style="font-size:12.5px">內文 · 欄位值(密度基準)</span></div>
-        <div class="r"><span class="sp">11.5 / 500</span><span style="font-size:11.5px;font-weight:500">欄位 label / 表頭</span></div>
-        <div class="r"><span class="sp">Mono + tnum</span><span class="mono" style="font-size:12.5px">PO-0716-001 · NT$ 128,400 · BN-0716-A · 14:03:21</span></div>
+        <div class="r"><span class="sp">20 / 600</span><span style="font-size:20px;font-weight:600;letter-spacing:-.2px">頁 / 單據標題</span></div>
+        <div class="r"><span class="sp">16 / 600</span><span style="font-size:16px;font-weight:600">區段標題</span></div>
+        <div class="r"><span class="sp">14 / 400 · base</span><span style="font-size:14px">內文 · 欄位值</span></div>
+        <div class="r"><span class="sp">13 / 400 · sm</span><span style="font-size:13px">表格儲存格 / 密集列表</span></div>
+        <div class="r"><span class="sp">12 / 500 · xs 地板</span><span style="font-size:12px;font-weight:500">欄位 label / 表頭 / 狀態章</span></div>
+        <div class="r"><span class="sp">Mono + tnum</span><span class="mono" style="font-size:13px">PO-0716-001 · NT$ 128,400 · BN-0716-A · 14:03:21</span></div>
       </div>
     </div></div>
 
@@ -396,7 +420,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
       <div class="comp"><div class="clabel">StatusChip<span class="ref">§3.7 · status-chip.tsx(帶框方形,禁 pill)</span></div>
         <div class="chips"><span class="chip ok">已核准</span><span class="chip wn">待審核</span><span class="chip er">退回</span><span class="chip nt">已收貨</span></div></div>
       <div class="comp"><div class="clabel">ThemeSwitcher<span class="ref">§2.2 · theme-switcher.tsx(見右上頂欄)</span></div>
-        <div class="comp-row"><span class="cbtn" style="gap:6px">配色 <b style="width:14px;height:14px;border-radius:2px;background:#1E4E79;border:1px solid var(--line);outline:2px solid var(--primary);outline-offset:1px"></b><b style="width:14px;height:14px;border-radius:2px;background:#0C5F73;border:1px solid var(--line)"></b><b style="width:14px;height:14px;border-radius:2px;background:#313131;border:1px solid var(--line)"></b></span></div></div>
+        <div class="comp-row"><span class="cbtn" style="gap:6px">配色 <b data-theme="navy" style="width:14px;height:14px;border-radius:2px;background:var(--primary);border:1px solid var(--line);outline:2px solid var(--primary);outline-offset:1px"></b><b data-theme="teal" style="width:14px;height:14px;border-radius:2px;background:var(--primary);border:1px solid var(--line)"></b><b data-theme="graphite" style="width:14px;height:14px;border-radius:2px;background:var(--primary);border:1px solid var(--line)"></b></span></div></div>
 
       <div class="grp-t" style="margin-top:16px">工作區框架</div>
       <div class="comp"><div class="clabel">TopBar · App 頁籤<span class="ref">§3.1 · top-bar.tsx(active=主色實底)</span></div>
@@ -567,7 +591,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
         <div class="row" style="height:27px">按鈕 / 輸入<b>26–28px</b></div>
         <div class="row" style="height:26px">狀態列 statusbar<b>26px</b></div>
       </div>
-      <div class="desc" style="margin:10px 0 0">內文 12.5px 基準;閱讀型長文 ≥14px;數字一律 Mono + tabular。</div>
+      <div class="desc" style="margin:10px 0 0">內文 <b>14px</b>(base);表格 13px;地板 <b>12px</b> —— 密度靠間距回收,不靠縮字(SAP Fiori compact 模式亦然)。數字一律 Mono + tabular。</div>
     </div></div>
 
     <!-- 動效 -->
@@ -589,12 +613,12 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     <!-- 無障礙 -->
     <div class="sec"><div class="sec-h"><span class="n">13</span>無障礙 a11y<span class="r">§3.14 · AA 4.5:1 · 鍵盤全可達 · 雙編碼</span></div><div class="sec-b">
       <div class="why"><b>理由</b>AA 4.5:1 是企業採購與法遵底線,非加分項;狀態一律色 + 文字雙編碼,確保色盲使用者與黑白列印仍可辨識,落實「不單靠顏色傳達資訊」。</div>
-      <div class="mini-h">主色白字對比(三主題皆 ≥7:1)</div>
+      <div class="mini-h">主色白字對比(三主題皆 ≥7:1)<span style="font-weight:400;color:var(--ink3)"> —— 數值隨主色更新重算,非沿用</span></div>
       <div class="a11y-pairs">
-        <div class="p" style="background:#1E4E79">深藍<small>7.4:1</small></div>
-        <div class="p" style="background:#0C5F73">深海青<small>7.0:1</small></div>
-        <div class="p" style="background:#313131">石墨<small>13:1</small></div>
-        <div class="p" style="background:#14181D">ink<small>16:1</small></div>
+        <div class="p" data-theme="navy" style="background:var(--primary)">深藍<small>7.6:1</small></div>
+        <div class="p" data-theme="teal" style="background:var(--primary)">深海青<small>7.2:1</small></div>
+        <div class="p" data-theme="graphite" style="background:var(--primary)">石墨<small>12.0:1</small></div>
+        <div class="p" style="background:var(--ink)">ink<small>16.6:1</small></div>
       </div>
       <div class="spec-grid" style="margin-top:14px">
         <div><div class="mini-h">Focus = 2px 主色 outline</div><span class="focus-demo">聚焦中的欄位</span></div>
@@ -805,7 +829,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     </div></div>
 
   </div>
-  <div class="cap-note">docs/26 品牌 + docs/14 全視覺技術棧 · 本頁照 v2.1 · 右上切三配色 · IBM Plex</div>
+  <div class="cap-note">docs/26 品牌 + docs/14 v6.1 全視覺技術棧 · 色票 / 字階對齊 shipped tokens.css v3.0 · 右上切三配色 · IBM Plex</div>
 
 <script>
 document.querySelectorAll('.themes button').forEach(btn=>btn.addEventListener('click',()=>{
