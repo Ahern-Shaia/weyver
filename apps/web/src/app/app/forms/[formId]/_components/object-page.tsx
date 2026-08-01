@@ -3,7 +3,6 @@
 import { Button } from "@weyver/ui/button"
 
 import { FieldInput } from "@/components/form/field-input"
-import { toSubmitValue } from "@/components/form/value"
 import { ImageThumb } from "@/components/form/image-input"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
@@ -13,7 +12,6 @@ import {
   useCreateRecord,
   useDeleteRecord,
   useRecordApproval,
-  useUpdateRecord,
   useUserNames,
 } from "@/lib/engine/hooks"
 import { useLayout } from "@/lib/engine/hooks"
@@ -25,6 +23,7 @@ import Link from "next/link"
 import type { CSSProperties } from "react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { LineItems } from "./line-items"
+import { useRecordEdit } from "./use-record-edit"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
 import { RelationRail } from "./relation-rail"
@@ -62,11 +61,15 @@ export function ObjectPage({
   record,
   childForm,
   formId,
+  onDirtyChange,
 }: {
   readonly form: { readonly name: string; readonly fields: readonly FieldDto[] }
   readonly record: RecordRow
   readonly childForm: FormSummary | null
   readonly formId: number
+  /* 未儲存變更往上報:切換記錄會讓本元件重掛(見父層 `key`),
+     擋不到自己的狀態 —— 只有父層攔得住 */
+  readonly onDirtyChange?: (dirty: boolean) => void
 }): ReactNode {
   const fields = form.fields
   const moneyField = fields.find((f) => f.type === "money")
@@ -77,40 +80,21 @@ export function ObjectPage({
     userNames?.find((u) => u.id === actorId)?.name ?? `actor #${actorId}`
   const createRecord = useCreateRecord(formId)
   const deleteRecord = useDeleteRecord(formId)
-  const updateRecord = useUpdateRecord(formId)
 
   /* R1·workbench-uplift A4(OQ-RWB-5=A)|就地編輯:同一版面切換檢視↔編輯,不跳設計器。
-     draft 只在進入編輯時由現值初始化;送出走既有 PATCH(帶 expectedVersion → 版本衝突由後端擋)。 */
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<Record<string, unknown>>({})
+     狀態與**未儲存變更防護**在 `use-record-edit`(Fiori:取消 / 離開皆須先警示)。 */
+  const {
+    editing,
+    draft,
+    busy: saving,
+    msg,
+    setMsg,
+    setField,
+    startEdit,
+    cancelEdit,
+    saveEdit,
+  } = useRecordEdit(formId, record, fields, onDirtyChange)
 
-  const startEdit = (): void => {
-    const initial: Record<string, unknown> = {}
-    for (const f of fields) {
-      const v = record.values[f.name]
-      initial[f.name] = v === null || v === undefined ? "" : v
-    }
-    setDraft(initial)
-    setMsg(null)
-    setEditing(true)
-  }
-  const saveEdit = (): void => {
-    const values: Record<string, unknown> = {}
-    for (const f of fields) {
-      const submitted = toSubmitValue(f, draft[f.name])
-      if (submitted !== undefined) values[f.name] = submitted
-    }
-    updateRecord.mutate(
-      { recordId: record.id, expectedVersion: record.version, values },
-      {
-        onSuccess: () => {
-          setEditing(false)
-          setMsg("已儲存")
-        },
-        onError: (e) => setMsg(describeEngineError(e)),
-      },
-    )
-  }
   const { data: layoutResp } = useLayout(formId)
   /* R1·UP-3b 條件式格式(記錄頁那一組;純前端求值,規則來自 layout)*/
   const formatTones = evaluateFormats(
@@ -118,8 +102,6 @@ export function ObjectPage({
     record.values,
     fields.map((f) => f.name),
   )
-  const [msg, setMsg] = useState<string | null>(null)
-
   /* R1·後續-2 M4 列印設定:依 layout.print 之列範圍,對該列欄位套列印樣式
      (頁首/頁尾列於每頁重複;換頁列後分頁)。紙張設定委派瀏覽器(OQ-PM-3)。 */
   const printStyleFor = (fieldId: number): CSSProperties | undefined => {
@@ -147,7 +129,7 @@ export function ObjectPage({
     if (!window.confirm(`確定刪除「${titleOf(record, fields)}」?此動作可於資源回收桶還原。`)) return
     deleteRecord.mutate(record.id, { onError: (e) => setMsg(describeEngineError(e)) })
   }
-  const busy = createRecord.isPending || deleteRecord.isPending || updateRecord.isPending
+  const busy = createRecord.isPending || deleteRecord.isPending || saving
   /* 🔴 Fiori 硬規則:**section 一律直接反映在導覽列**。
      原本只列了三段,而畫面上實際還有「摘要」與「動作/簽核」兩個區塊 ——
      使用者看得到卻跳不過去,捲到它們時導覽列也不會亮任何一項。
@@ -357,7 +339,7 @@ export function ObjectPage({
                       field={f}
                       formId={formId}
                       value={draft[f.name]}
-                      onChange={(v) => setDraft((prev) => ({ ...prev, [f.name]: v }))}
+                      onChange={(v) => setField(f.name, v)}
                     />
                   ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />
@@ -413,7 +395,7 @@ export function ObjectPage({
           data-noprint
           className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-card px-6 py-2.5"
         >
-          <Button onClick={() => setEditing(false)} disabled={busy}>
+          <Button onClick={cancelEdit} disabled={busy}>
             取消
           </Button>
           <Button variant="primary" onClick={saveEdit} disabled={busy}>

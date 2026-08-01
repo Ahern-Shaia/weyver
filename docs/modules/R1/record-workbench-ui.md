@@ -316,6 +316,7 @@
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-01 | v1.2 | **#110 收尾:未儲存變更防護 + 響應式固化**。Fiori 逐字「If the user has made changes in edit mode, show a data loss message whenever the user **navigates away from the edit page or clicks Cancel**」—— 原本兩條路徑都沒擋,編輯到一半點別筆記錄整筆改動**靜默消失**(父層以 `key` 重掛 ObjectPage,子層自己擋不到 → dirty 上報由父層攔)。三條路徑:取消 / 切換記錄 / 關分頁(`beforeunload`);**改了又改回來不算 dirty**,否則使用者會被無謂的警告訓練成無視它。**已知缺口(不假裝有擋)**:App Router 的 client-side 換頁沒有受支援的導覽守衛。編輯狀態抽成 `use-record-edit`(object-page 535 → 519 行)。另補 v1.1 響應式**完全沒有測試**的破口:窄螢幕 list-detail 降級 + app shell 不得橫向捲 + 動作鈕收圖示後 aria-label 仍在。web e2e record-workbench 5 綠 | Claude Code |
 | 2026-07-24 | v0.1 | 初版 DRAFT — 記錄工作台收斂(集合視圖 → Object Page);對照整合 mockup;現況 Object Page ~70% 已誠實建好,補 R1 缺口(集合視圖 / 狀態 / 金額 / 關聯 / user 名 / inline 編輯),R2/工作流不放;OQ-RWB-1..7 待裁定;2 唯讀後端端點 | Claude Code |
 | 2026-07-24 | v0.2 | **納入 A0 app-shell 密度**(回應「頁面單薄」視覺反思):原 doc 只補 Object Page 深度,不含**入口(首頁)+ 外殼(status bar/nav)**——正是「薄」的第一印象。A0 加 全域 status bar + 首頁卡牆改工作面(塞真資料/縮寬)+ 導覽 rail。**OQ-RWB-6 由二選改三選、建議翻為 C(單域 rail + status bar,拿重量不造空 tab)**。§1/§2/§3/§3-bis/§9 同步;合計 0.22→0.26 mo;A0 排 M1(最便宜最有感先做)| Claude Code |
 | 2026-07-24 | v0.3 | **OQ-RWB-1..7 全裁定(全採建議);DRAFT → APPROVED,進 M1**。1=B nested 路由 · 2=A 復用 Glide · 3=A 首 singleSelect 狀態 · 4=B 正+反向關聯 · 5=A inline 編輯 · **6=C 單域 rail+status bar** · 7=A users lookup。M1=A0 app-shell 密度先做(status bar + 首頁工作面)| Claude Code |

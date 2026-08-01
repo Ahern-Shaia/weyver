@@ -103,3 +103,72 @@ test("inline 編輯:就地改狀態 → 版本遞增 + 清單與狀態章同步"
   // 已回到檢視模式(不再有輸入框)
   await expect(page.getByRole("combobox")).toBeHidden()
 })
+
+/* 🔴 未儲存變更防護。Fiori 逐字:「If the user has made changes in edit mode,
+   show a data loss message whenever the user navigates away from the edit page
+   or clicks Cancel.」原本兩條路徑都沒擋 —— 編輯到一半點別筆記錄,整筆改動靜默消失。 */
+test("🔴 編輯中按取消 / 切換記錄,都必須先問過才丟", async ({ page, request }) => {
+  const { poFormId } = await seedLinkedForms(request)
+  /* 第二筆:用來驗「切換記錄」那條路徑 */
+  await request.post(`/api/engine/forms/${poFormId}/records`, {
+    headers: DEV,
+    data: { values: { 單號: "PO-第二筆", 狀態: "草稿", 金額: "1.0000" } },
+  })
+
+  await page.goto(`/app/forms/${poFormId}?mode=record`)
+  await expect(page.getByText("#1 · v1")).toBeVisible({ timeout: 30_000 })
+  await page.getByRole("button", { name: "編輯", exact: true }).click()
+  await page.getByRole("combobox").selectOption("已核准")
+
+  // 1) 取消 —— 拒絕捨棄則留在編輯中
+  page.once("dialog", (d) => {
+    expect(d.message()).toContain("未儲存")
+    void d.dismiss()
+  })
+  await page.getByRole("button", { name: "取消", exact: true }).click()
+  await expect(page.getByRole("combobox")).toBeVisible()
+
+  // 2) 切換記錄 —— 同樣要先問;拒絕則停在原記錄且編輯中
+  page.once("dialog", (d) => {
+    expect(d.message()).toContain("未儲存")
+    void d.dismiss()
+  })
+  await page.getByRole("option", { name: /PO-第二筆/ }).click()
+  await expect(page.getByRole("combobox")).toBeVisible()
+  await expect(page.getByRole("heading", { level: 3 })).not.toContainText("第二筆")
+
+  // 3) 確認捨棄才真的離開
+  page.once("dialog", (d) => {
+    void d.accept()
+  })
+  await page.getByRole("button", { name: "取消", exact: true }).click()
+  await expect(page.getByRole("combobox")).toBeHidden()
+
+  /* 🔴 改了又改回來不算 dirty —— 否則使用者會被無謂的警告訓練成無視它 */
+  await page.getByRole("button", { name: "編輯", exact: true }).click()
+  await page.getByRole("combobox").selectOption("已核准")
+  await page.getByRole("combobox").selectOption("待審")
+  await page.getByRole("button", { name: "取消", exact: true }).click()
+  await expect(page.getByRole("combobox")).toBeHidden()
+})
+
+/* 🔴 #110 加了響應式斷點卻沒有任何測試釘住 —— 版面回歸在窄螢幕上看不見。
+   Material 的 list-detail:窄螢幕清單與詳情各佔一畫面,選了記錄清單就讓位。 */
+test("🔴 窄螢幕:清單與詳情各佔一畫面(list-detail 降級)", async ({ page, request }) => {
+  const { poFormId } = await seedLinkedForms(request)
+  await page.setViewportSize({ width: 480, height: 900 })
+  await page.goto(`/app/forms/${poFormId}?mode=record`)
+  await expect(page.getByText("基本資料").first()).toBeVisible({ timeout: 30_000 })
+
+  /* 選了記錄之後,窄螢幕上清單必須讓位 —— 兩者並排會把詳情擠到不能用 */
+  await expect(page.getByRole("option", { name: /PO-/ })).toBeHidden()
+
+  /* app shell 不得橫向捲(#140 同型:窄寬度下版面破裂會把導覽軌捲走)*/
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  )
+  expect(overflow).toBeLessThanOrEqual(1)
+
+  /* header 動作鈕收成純圖示,但名稱要留在 aria-label,否則螢幕閱讀器按不到 */
+  await expect(page.getByRole("button", { name: "編輯", exact: true })).toBeVisible()
+})

@@ -81,7 +81,13 @@ test("🔴 切換記錄必須重置編輯狀態 —— 否則 A 的值會寫進 
   const input = page.getByRole("textbox").first()
   await input.fill("被汙染的值")
 
-  // 切到第二筆
+  /* 切到第二筆。**會先跳未儲存變更的確認**(#110:Fiori 要求離開編輯前警示)——
+     這裡確認捨棄,因為本測試要驗的是「切過去之後草稿不得殘留」。
+     Playwright 預設會自動 dismiss 對話框,不接的話等於按了「不要離開」,
+     切換根本不會發生,看起來像重置壞了。 */
+  page.once("dialog", (d) => {
+    void d.accept()
+  })
   await page.getByText("記錄乙").first().click()
 
   /* 關鍵斷言:切換後必須回到唯讀(編輯狀態已重置),

@@ -31,6 +31,7 @@ export default function CompanySettingsPage(): ReactNode {
     timezone: string
     defaultLocale: string
     defaultCurrency: string
+    requireMfa: boolean
   } | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +44,7 @@ export default function CompanySettingsPage(): ReactNode {
       timezone: data.timezone,
       defaultLocale: data.defaultLocale,
       defaultCurrency: data.defaultCurrency,
+      requireMfa: data.requireMfa,
     })
   }, [data])
 
@@ -63,6 +65,7 @@ export default function CompanySettingsPage(): ReactNode {
         timezone: form.timezone,
         defaultLocale: form.defaultLocale,
         defaultCurrency: form.defaultCurrency,
+        requireMfa: form.requireMfa,
       })
       setMsg("已儲存")
     } catch (e) {
@@ -136,6 +139,27 @@ export default function CompanySettingsPage(): ReactNode {
               ))}
             </Select>
           </Field>
+        </section>
+
+        {/* 🔴 安全政策獨立一區:它與「公司叫什麼名字」不是同一種東西 ——
+            這一個開關會讓沒啟用二步驟驗證的同事**當場被擋在門外**。 */}
+        <section className="flex flex-col gap-3 rounded-sm border border-line bg-card p-4">
+          <h2 className="text-[13px] font-semibold text-ink">安全政策</h2>
+          <label className="flex items-start gap-2 text-[12px] text-ink-2">
+            <input
+              type="checkbox"
+              checked={form.requireMfa}
+              onChange={(e) => set({ requireMfa: e.target.checked })}
+              className="mt-0.5 accent-primary"
+            />
+            <span>
+              要求全公司使用二步驟驗證
+              <span className="mt-0.5 block text-ink-3">
+                開啟後,尚未啟用的同事在啟用之前無法使用公司資料(帳號安全頁仍可進入,以便完成啟用)。
+                你必須先為自己啟用,才能開啟這一項。
+              </span>
+            </span>
+          </label>
         </section>
 
         {error !== null ? <p className="text-[12px] text-er">{error}</p> : null}

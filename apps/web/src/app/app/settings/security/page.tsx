@@ -1,5 +1,7 @@
+import { Suspense } from "react"
 import { AuthLog } from "./_components/auth-log"
 import { DeviceList } from "./_components/device-list"
+import { MfaRequiredNotice } from "./_components/mfa-required-notice"
 import { TwoFactor } from "./_components/two-factor"
 
 /* R1·A-1 M3|帳號安全。三個區塊由上而下依「使用者最可能要做的事」排:
@@ -14,6 +16,10 @@ export default function SecurityPage(): React.ReactNode {
           管理登入中的裝置、二步驟驗證,並查看自己帳號的認證活動紀錄。
         </p>
       </div>
+      {/* useSearchParams 需 Suspense 邊界(Next 靜態預先渲染的要求) */}
+      <Suspense fallback={null}>
+        <MfaRequiredNotice />
+      </Suspense>
       <DeviceList />
       <TwoFactor />
       <AuthLog />

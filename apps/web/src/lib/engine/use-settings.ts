@@ -23,6 +23,8 @@ const tenantSettingsSchema = z.object({
   timezone: z.string(),
   defaultLocale: z.string(),
   defaultCurrency: z.string(),
+  /* 全公司強制二步驟驗證(#112)。開啟者本人須先啟用,後端擋 */
+  requireMfa: z.boolean(),
 })
 
 const userSettingsSchema = z.object({

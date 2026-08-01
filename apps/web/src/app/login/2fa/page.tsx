@@ -12,6 +12,10 @@ import { totpErrorMessage } from "@/lib/auth/totp-error"
 export default function TwoFactorChallengePage(): React.ReactNode {
   const [code, setCode] = useState("")
   const [useBackup, setUseBackup] = useState(false)
+  /* 「記住這台裝置」預設**不勾** —— 降低安全等級的選項不該由系統替使用者決定。
+     Better Auth 的信任記錄是伺服器端可撤銷、且每次登入輪替 identifier;
+     停用 2FA 或按「登出其他裝置」會全部作廢(見 api/src/auth/trusted-device.ts)。 */
+  const [trustDevice, setTrustDevice] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -28,8 +32,8 @@ export default function TwoFactorChallengePage(): React.ReactNode {
     setBusy(true)
     setError(null)
     const result = useBackup
-      ? await twoFactor.verifyBackupCode({ code })
-      : await twoFactor.verifyTotp({ code })
+      ? await twoFactor.verifyBackupCode({ code, trustDevice })
+      : await twoFactor.verifyTotp({ code, trustDevice })
     if (result.error) {
       setBusy(false)
       setError(totpErrorMessage(result.error, useBackup))
@@ -52,6 +56,19 @@ export default function TwoFactorChallengePage(): React.ReactNode {
             placeholder={useBackup ? "備用碼" : "123456"}
           />
         </Field>
+        <label className="flex items-center gap-2 text-[12px] text-ink-2">
+          <input
+            type="checkbox"
+            checked={trustDevice}
+            onChange={(e) => setTrustDevice(e.target.checked)}
+            className="accent-primary"
+          />
+          記住這台裝置,30 天內不再詢問
+        </label>
+        {/* 講清楚代價:公用電腦上勾了,下一個人不必二步驟就能登入 */}
+        <p className="text-[12px] text-ink-3">
+          僅在你自己的裝置上使用。之後可於「帳號安全」按<b>登出其他裝置</b>一次全部取消。
+        </p>
         {error ? <p className="text-[13px] text-er">{error}</p> : null}
         <Button type="submit" variant="primary" disabled={busy} className="mt-1 w-full">
           {busy ? "驗證中…" : "驗證並登入"}

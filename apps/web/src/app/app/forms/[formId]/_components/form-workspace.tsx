@@ -316,6 +316,18 @@ function RecordDetail({
   const records = resp?.records ?? []
   const selected = records.find((r) => r.id === selectedId) ?? records[0] ?? null
 
+  /* 🔴 編輯中切換記錄會**靜默丟棄**整筆編輯 —— ObjectPage 以 `key` 重掛,
+     它自己的 state 在那一刻就沒了,擋不到。故 dirty 由子層往上報,在這裡攔。
+     Fiori 逐字:「show a data loss message whenever the user navigates away
+     from the edit page or clicks Cancel」。 */
+  const dirtyRef = useRef(false)
+  const selectGuarded = (id: number): void => {
+    if (id === selected?.id) return
+    if (dirtyRef.current && !window.confirm("有未儲存的變更,確定要離開這筆記錄?")) return
+    dirtyRef.current = false
+    onSelect(id)
+  }
+
   return (
     <div className="flex min-h-0 flex-1">
       <RecordList
@@ -324,7 +336,7 @@ function RecordDetail({
         records={records}
         loading={recPending}
         selectedId={selected?.id ?? null}
-        onSelect={onSelect}
+        onSelect={selectGuarded}
         hideOnNarrow={selected !== undefined && selected !== null}
       />
       {formPending ? (
@@ -339,6 +351,9 @@ function RecordDetail({
           record={selected}
           childForm={childForm}
           formId={formId}
+          onDirtyChange={(d) => {
+            dirtyRef.current = d
+          }}
         />
       ) : (
         <div className="flex flex-1 items-center justify-center bg-surface p-8 text-center">

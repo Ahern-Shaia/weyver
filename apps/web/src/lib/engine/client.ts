@@ -101,6 +101,15 @@ export async function engineFetch<T>(
       if (parsed.data.code === "PASSWORD_CHANGE_REQUIRED" && typeof window !== "undefined") {
         if (window.location.pathname !== "/set-password") window.location.href = "/set-password"
       }
+      /* 🔴 公司要求二步驟驗證但這個人還沒啟用 → 直接帶去啟用的地方。
+         同上:每一支 API 都會回這個 code,由此統一接。
+         留在原頁只會看到一片「載入失敗」,而使用者根本不知道要去哪裡處理。
+         **`/app/settings/security` 自己的請求已在後端豁免**,不會導成迴圈。 */
+      if (parsed.data.code === "MFA_REQUIRED" && typeof window !== "undefined") {
+        if (window.location.pathname !== "/app/settings/security") {
+          window.location.href = "/app/settings/security?mfa=required"
+        }
+      }
       throw new EngineApiError(
         response.status,
         parsed.data.code,
