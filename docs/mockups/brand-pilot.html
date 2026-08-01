@@ -325,30 +325,38 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .b2.dng{background:transparent;color:var(--er);font-weight:450} .b2.dng.hv{background:var(--er-t)}
 .b2.dis{background:var(--head);color:var(--ink4)}
 .b2.sm{height:26px;padding:0 10px;font-size:12px} .b2.lg{height:36px;padding:0 17px;font-size:14px}
-/* Select */
-.sel{height:30px;min-width:172px;padding:0 28px 0 9px;border:1px solid var(--cell);border-radius:4px;
+/* Select —— 高度吃控件階(30px,與 Button 同)、間距鎖 4/8、圖示用 Lucide 非自繪 */
+.sel{height:30px;padding:0 8px;border:1px solid var(--cell);border-radius:4px;
   background:var(--card);font:inherit;font-size:13px;color:var(--ink);display:inline-flex;
-  align-items:center;position:relative}
-.sel::after{content:"";position:absolute;right:10px;width:7px;height:7px;border-right:1.4px solid var(--ink3);
-  border-bottom:1.4px solid var(--ink3);transform:translateY(-2px) rotate(45deg)}
+  align-items:center;gap:8px;justify-content:space-between}
+.sel .cv{flex:0 0 16px;color:var(--ink3)}
 .sel.fo{border-color:transparent;outline:2px solid var(--primary);outline-offset:-1px}
 .sel.dis{background:var(--head);color:var(--ink4)}
-.selm{width:196px;border-radius:6px;background:var(--card);padding:4px;
+.sel.dis .cv{color:var(--ink4)}
+.selm{border-radius:6px;background:var(--card);padding:4px;
   box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.05)}
-.selm i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;padding:6px 8px;border-radius:4px}
+.selm i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:30px;
+  padding:0 8px;border-radius:4px}
 .selm i.on{background:var(--active);font-weight:500}
 .selm i:hover{background:var(--hover)}
-.selm i .ck{margin-left:auto;color:var(--primary);font-weight:700}
-/* Loading */
-.skl{background:linear-gradient(90deg,var(--head) 25%,var(--line2) 37%,var(--head) 63%);
-  background-size:400% 100%;animation:sk 1.4s ease-in-out infinite;border-radius:3px}
-@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.selm i .ck{margin-left:auto;color:var(--primary);flex:0 0 14px}
+/* Loading —— 🔴 只動 opacity 與 transform(§12);禁 background-position / margin 等會觸發 layout 者 */
+.skl{background:var(--head);border-radius:3px;animation:sk 1.6s ease-in-out infinite}
+@keyframes sk{0%,100%{opacity:1}50%{opacity:.55}}
 .spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--primary);
-  border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+  border-radius:50%;animation:sp 1s linear infinite;display:inline-block}
 @keyframes sp{to{transform:rotate(360deg)}}
 .prog{height:2px;background:var(--line2);border-radius:2px;overflow:hidden}
-.prog i{display:block;height:100%;width:38%;background:var(--primary);animation:pg 1.4s ease-in-out infinite}
-@keyframes pg{0%{margin-left:-38%}100%{margin-left:100%}}
+.prog i{display:block;height:100%;width:38%;background:var(--primary);
+  animation:pg 1.6s cubic-bezier(.2,0,.38,.9) infinite}
+@keyframes pg{0%{transform:translateX(-100%)}100%{transform:translateX(363%)}}
+/* 🔴 §12 的硬規則要**實作**,不能只寫在散文裡 —— 這個檔案先前就只有規則沒有實作。 */
+@media (prefers-reduced-motion: reduce){
+  .skl,.spin,.prog i,.lamp .d.pulse{animation:none!important}
+  .skl{opacity:.8}
+  .spin{border-top-color:var(--primary);opacity:.9}
+  .prog i{width:100%;opacity:.5}
+}
 /* 燈號 / Pill / 狀態章 */
 .lamp{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
 .lamp .d{width:7px;height:7px;border-radius:50%;flex:0 0 7px}
@@ -621,21 +629,29 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 <div class="grp-t" style="margin-top:20px">Select —— 觸發 · 選單 · 狀態</div>
 <div class="ds-row" style="align-items:flex-start">
   <div class="ds-grid">
-    <div class="ds-row"><span class="ds-lbl">rest</span><span class="sel">單行文字</span></div>
-    <div class="ds-row"><span class="ds-lbl">focus</span><span class="sel fo">單行文字</span></div>
-    <div class="ds-row"><span class="ds-lbl">disabled</span><span class="sel dis">系統欄位</span></div>
-    <div class="ds-row"><span class="ds-lbl">placeholder</span><span class="sel" style="color:var(--ink4)">請選擇型別…</span></div>
+    <div class="ds-row"><span class="ds-lbl">rest</span><span class="sel" style="width:190px">單行文字<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+    <div class="ds-row"><span class="ds-lbl">focus</span><span class="sel fo" style="width:190px">單行文字<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+    <div class="ds-row"><span class="ds-lbl">disabled</span><span class="sel dis" style="width:190px">系統欄位<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+    <div class="ds-row"><span class="ds-lbl">placeholder</span><span class="sel" style="width:190px;color:var(--ink4)">請選擇型別…<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
   </div>
-  <div class="selm" style="margin-left:14px">
-    <i class="on">單行文字<span class="ck">✓</span></i>
+  <div class="selm" style="margin-left:14px;width:190px">
+    <i class="on">單行文字<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></i>
     <i>多行文字</i><i>數值</i><i>金額</i><i>日期</i>
     <i style="color:var(--ink4)">關聯(未啟用)</i>
   </div>
 </div>
-<div class="desc" style="margin-top:6px">用 <b>自訂 Select</b> 不用原生 <span class="mono">&lt;select&gt;</span> ——
-原生在各 OS 的外觀不受控,與其餘控件對不齊(這是既有踩坑)。<br>
-選單為<b>浮層</b>:9px 圓角 + 分層陰影;選中列用 <span class="mono">active</span> 階 + 勾號<b>雙編碼</b>,不只靠底色。
-<b>選項 ≤ 4 個改用 Segmented</b>,不用下拉。</div>
+<div class="desc" style="margin-top:6px">
+<b>每個值的來源(禁 vibe / 禁出廠預設)</b><br>
+· <b>高度 30px</b> —— 吃控件階,與 Button md 同高;同一列的控件不得各有各的高度。<br>
+· <b>左右內距 8px · 項目間距 8px</b> —— 鎖 4/8 尺度(§10)。<b>先前寫的 9px / 28px 已修</b>,那是隨手填的。<br>
+· <b>chevron 用 Lucide <span class="mono">chevron-down</span>(16px / stroke 1.5)</b> ——
+  <b>先前是用 CSS 邊框自繪的三角形,已修</b>。自繪圖示與 Lucide 的端點、粗細、視覺重心都對不上,
+  而全庫圖示是 Lucide(§15);「反正看起來像箭頭」正是 vibe。<br>
+· <b>選單寬度 = 觸發器寬度</b> —— 不另設固定寬。<b>先前寫死 196px 已修</b>:選單比觸發器窄或寬都會在展開時位移。<br>
+· <b>不用原生 <span class="mono">&lt;select&gt;</span></b> —— 原生在各 OS 外觀不受控、與其餘控件對不齊(既有踩坑)。<br>
+· <b>選中列用 active 階 + 勾號雙編碼</b> —— 只靠底色在色盲與低對比螢幕下不可辨(§13)。<br>
+· ⚠️ <b>「選項 ≤ 4 改用 Segmented」是我方裁定,非外部依據</b>:Segmented 讓所有選項<b>同時可見</b>、
+  比較成本為零;超過 4 個時在 208px 面板內每段寬度不足以放中文標籤。<b>此數字可被實測推翻。</b></div>
 
 <div class="grp-t" style="margin-top:20px">Loading —— 三種,依「等多久 / 知不知道進度」選</div>
 <table class="ds-tbl">
@@ -649,8 +665,23 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
   <tr><td><b>Progress</b></td><td><div class="prog" style="width:150px"><i></i></div></td>
       <td>背景任務<br>匯入 / 匯出</td><td>可知百分比就顯示百分比,不要用不確定條假裝</td></tr>
 </table>
-<div class="desc" style="margin-top:6px">🔴 <b>禁「載入中」把既有內容清空</b> —— 重新查詢時保留前次資料(keepPreviousData)並在角落顯示狀態,
-畫面不得閃白。&lt;200ms 完成的操作<b>不顯示任何載入指示</b>(閃一下比等一下更吵)。</div>
+<div class="desc" style="margin-top:6px">
+<b>門檻取自 Nielsen 的三個反應時間界線</b>(逐字):<br>
+· <b>&lt; 0.1 秒</b>|「no special feedback is necessary except to display the result」<br>
+· <b>0.1–1.0 秒</b>|「normally, <b>no special feedback is necessary</b> during delays of more than 0.1 but less than 1.0 second」<br>
+· <b>&gt; 10 秒</b>|「they should be given feedback indicating <b>when the computer expects to be done</b>」→ 必須給百分比或預估完成<br>
+⚠️ <b>我先前寫的「&lt;200ms 不顯示指示」是憑印象編的,錯了 —— 正確門檻是 1 秒</b>。
+0.1–1.0 秒之間顯示 spinner 反而製造閃爍。<br><br>
+<b>動效合規(§12 的硬規則要實作,不能只寫在散文裡)</b><br>
+· <b>Skeleton 由「shimmer 漸層掃動」改為 opacity 脈動</b> —— 先前動的是
+  <span class="mono">background-position</span>,違反「只動 opacity 與 transform」,而且 shimmer 是<b>裝飾性動效</b>(§12 明禁)。<br>
+· <b>Progress 由 <span class="mono">margin-left</span> 改為 <span class="mono">transform: translateX</span></b> ——
+  margin 會觸發 layout,在密集表格下掉幀。<br>
+· <b>補上真正的 <span class="mono">@media (prefers-reduced-motion: reduce)</span></b> ——
+  這份文件先前<b>只在散文裡寫了這條規則,CSS 裡一個都沒有</b>。三個載入態與燈號脈動現已一律歸零,
+  並各自退回可讀的靜態樣式(不是單純消失)。<br>
+· <b>Spinner 1s linear</b>|我方裁定,理由是「一秒一圈」可辨識轉動又不顯得急躁;非外部依據,可被推翻。<br><br>
+🔴 <b>禁「載入中」把既有內容清空</b> —— 重新查詢時保留前次資料(keepPreviousData)並在角落顯示狀態,畫面不得閃白。</div>
 
 <div class="grp-t" style="margin-top:20px">燈號 · Pill · 狀態章 —— 三種東西,職責不同</div>
 <table class="ds-tbl">
