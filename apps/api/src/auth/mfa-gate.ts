@@ -43,7 +43,7 @@ export async function hasMfaEnabled(pool: Pool, authUserId: string): Promise<boo
 
 export async function tenantRequiresMfa(pool: Pool, tenantId: number): Promise<boolean> {
   const res = await pool.query<{ require_mfa: boolean }>(
-    `SELECT require_mfa FROM tenants WHERE id = $1`,
+    "SELECT require_mfa FROM tenants WHERE id = $1",
     [tenantId],
   )
   return res.rows[0]?.require_mfa === true

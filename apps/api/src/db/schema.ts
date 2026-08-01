@@ -1324,3 +1324,29 @@ export const authAudits = pgTable(
   },
   (t) => [index("auth_audit_user_idx").on(t.authUserId, t.createdAt)],
 )
+
+/* 🔴 R1·I-1|資料匯出的工作佇列(#145)。狀態機 queued → running → ready|failed,
+   到期後 ready → expired(**列不刪** —— 誰把整包公司資料帶走了是內控要問的)。 */
+export const exportJobs = pgTable(
+  "export_job",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    requestedByActorId: bigint("requested_by_actor_id", { mode: "number" }).notNull(),
+    status: text("status").notNull().default("queued"),
+    /* NULL = 全部表單 */
+    formIds: bigint("form_ids", { mode: "number" }).array(),
+    includeAttachments: boolean("include_attachments").notNull().default(false),
+    objectKey: text("object_key"),
+    sizeBytes: bigint("size_bytes", { mode: "number" }),
+    rowCount: bigint("row_count", { mode: "number" }),
+    downloadCount: integer("download_count").notNull().default(0),
+    /* 給使用者看的訊息 —— 不得放內部細節 */
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    readyAt: timestamp("ready_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+  },
+  (t) => [index("export_job_tenant_idx").on(t.tenantId, t.createdAt)],
+)

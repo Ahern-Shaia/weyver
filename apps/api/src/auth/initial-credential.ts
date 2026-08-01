@@ -32,7 +32,7 @@ export async function claimInitialCredential(
   authUserId: string,
 ): Promise<CredentialClaim> {
   const row = await pool.query<{ expires_at: Date; used_at: Date | null }>(
-    `SELECT expires_at, used_at FROM initial_credential WHERE auth_user_id = $1`,
+    "SELECT expires_at, used_at FROM initial_credential WHERE auth_user_id = $1",
     [authUserId],
   )
   const found = row.rows[0]
@@ -41,7 +41,7 @@ export async function claimInitialCredential(
   if (found.used_at === null) {
     if (found.expires_at.getTime() <= Date.now()) return "expired"
     await pool.query(
-      `UPDATE initial_credential SET used_at = now() WHERE auth_user_id = $1 AND used_at IS NULL`,
+      "UPDATE initial_credential SET used_at = now() WHERE auth_user_id = $1 AND used_at IS NULL",
       [authUserId],
     )
   }
@@ -62,5 +62,5 @@ export async function mustChangePassword(pool: Pool, authUserId: string): Promis
 /* 使用者自己改完密碼 → 憑證退場。**刪列**而不是加旗標:
    少一個「已改但列還在」的中間態,也讓成員頁的既有推導直接得到「已設定」。 */
 export async function clearInitialCredential(pool: Pool, authUserId: string): Promise<void> {
-  await pool.query(`DELETE FROM initial_credential WHERE auth_user_id = $1`, [authUserId])
+  await pool.query("DELETE FROM initial_credential WHERE auth_user_id = $1", [authUserId])
 }

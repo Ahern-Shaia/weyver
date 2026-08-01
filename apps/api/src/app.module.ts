@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core"
 import { ScheduleModule } from "@nestjs/schedule"
+import { ExportModule } from "./export/export.module.js"
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler"
 import { ActionsModule } from "./actions/actions.module.js"
 import { ApprovalLockInterceptor } from "./actions/approval-lock.interceptor.js"
@@ -39,6 +40,7 @@ import { ViewsModule } from "./views/views.module.js"
        同樣的寫法會變成三個獨立實例 → 每個 @Cron 跑三次(通知重複寄送、用量統計 ×3)。
        此為單元/整合測試結構上抓不到的失效,故以 `schedule-registration.test.ts` 斷言註冊次數。 */
     ScheduleModule.forRoot(),
+    ExportModule,
     DbModule,
     /* F-8:@Global,須早於 AuthModule(TenantGuard 注入 EntitlementService)*/
     BillingModule,

@@ -22,9 +22,15 @@ export interface StorageDriver {
 
 export const STORAGE_DRIVER = Symbol("STORAGE_DRIVER")
 
-/* key 格式(伺服器生成,不含使用者輸入):t{tenantId}/f{formId}/{uuid}{ext}
-   —— 路徑穿越防護:任何不符此形狀者一律拒(FMEA S4)。 */
-const KEY_RE = /^t\d+\/f\d+\/[0-9a-f-]{36}(\.thumb)?(\.[A-Za-z0-9]{1,8})?$/
+/* key 格式(伺服器生成,不含使用者輸入)—— 路徑穿越防護:任何不符此形狀者一律拒(FMEA S4)。
+   兩種物件:
+   · 表單附件|`t{tenantId}/f{formId}/{uuid}{ext}`
+   · 資料匯出|`t{tenantId}/exports/{uuid}.zip`(R1·I-1)
+
+   🔴 匯出用 **uuid 而非 job id**:物件名會出現在存取日誌與簽名 URL 裡,
+   流水號等於把「猜下一包」變成加一。 */
+const KEY_RE =
+  /^t\d+\/(f\d+\/[0-9a-f-]{36}(\.thumb)?(\.[A-Za-z0-9]{1,8})?|exports\/[0-9a-f-]{36}\.zip)$/
 
 export function isValidKey(key: string): boolean {
   return KEY_RE.test(key)
