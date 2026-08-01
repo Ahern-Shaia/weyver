@@ -2,6 +2,7 @@ import {
   BellRing,
   Building2,
   KeyRound,
+  Radio,
   ShieldCheck,
   Share2,
   Trash2,
@@ -59,6 +60,13 @@ export const SETTINGS_NAV: readonly SettingsNavItem[] = [
     desc: "通知規則與發送通道",
     icon: BellRing,
     scope: "personal",
+  },
+  {
+    href: "/app/settings/channels",
+    label: "通知通道",
+    desc: "連接 LINE / Slack / Teams 等外部通知服務",
+    icon: Radio,
+    scope: "tenant",
   },
   {
     href: "/app/settings/public-forms",

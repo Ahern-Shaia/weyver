@@ -43,10 +43,19 @@ test("🔴 入職:初始密碼只能用一次,設完自己的密碼才進得去"
 
   // 設定自己的密碼 → 閘門解除
   const own = `Hx7-vQm${suffix}-Ztp2`
-  await hirePage.getByLabel("管理員給的初始密碼").fill(initial)
-  await hirePage.getByLabel("你的新密碼(至少 15 碼)").fill(own)
-  await hirePage.getByRole("button", { name: "設定並進入" }).click()
-  await expect(hirePage).toHaveURL(/\/app/, { timeout: 30_000 })
+  /* 🔴 **填寫與送出要一起重試,直到頁面真的 hydrate**。這一頁是整頁導向過來的,
+     在 hydration 完成之前互動會有兩種壞法,而且兩種都不像「還沒好」:
+       · 填得進去但 React 接手時把受控輸入框重設 → 送出**空密碼**
+         → 後端回「密碼至少 15 個字」,看起來像功能壞掉
+       · 送出時 onSubmit 尚未掛上 → 走**原生 GET**,網址變成 `/set-password?`
+     兩者都只在整套跑時出現(單獨跑時頁面早已編譯、hydration 快),
+     所以不能靠「單獨跑得過」就當作沒事。 */
+  await expect(async () => {
+    await hirePage.getByLabel("管理員給的初始密碼").fill(initial)
+    await hirePage.getByLabel("你的新密碼(至少 15 碼)").fill(own)
+    await hirePage.getByRole("button", { name: "設定並進入" }).click()
+    await expect(hirePage).toHaveURL(/\/app/, { timeout: 8_000 })
+  }).toPass({ timeout: 40_000 })
   await expect(hirePage).not.toHaveURL(/\/set-password/)
 
   await hire.close()

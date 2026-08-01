@@ -13,7 +13,14 @@ const DATABASE_URL =
    **再加一支「會註冊或登入」的 spec 就會撞 429**,而畫面上只會顯示
    「Too many requests」——看起來像功能壞掉,其實是限流。
    屆時的正解是讓新 spec **重用既有帳號**(Playwright 的 storageState),
-   而不是把 production 的限流調鬆。 */
+   而不是把 production 的限流調鬆。
+
+   ⚠️ **同一分鐘內連跑兩輪整套 e2e 會出現假紅**,而且每輪紅的 spec 都不同 ——
+   限流是逐 IP 的滑動視窗,兩輪的請求會疊在同一個桶裡。受影響的端點與額度:
+   `/sign-up/email` 5 · `/sign-in/email` 20 · `/two-factor/verify-totp` 5 ·
+   `/two-factor/verify-backup-code` 5(見 apps/api `auth.ts` 的 customRules)。
+   單輪的用量都在額度內;要連跑請中間等滿 60 秒。
+   實測症狀:`429 POST /auth/two-factor/verify-totp`,但畫面上只看到「等不到某個元素」。 */
 export default async function globalSetup(): Promise<void> {
   execSync("pnpm --filter @weyver/api db:migrate", {
     stdio: "inherit",

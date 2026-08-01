@@ -35,11 +35,18 @@ test("MFA:啟用 TOTP → 登出 → 登入需二步 → 驗證進工作區", as
 
   // 登出 → 登入 → 密碼步後導二步
   await page.getByRole("button", { name: "登出", exact: true }).click()
-  await expect(page).toHaveURL(/\/login$/)
-  await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼" }).fill(password)
-  await page.getByRole("button", { name: "登入" }).click()
-  await expect(page).toHaveURL(/\/login\/2fa/)
+  /* dev server 會即時編譯路由,導向本身就可能花數秒 ——
+     這條給與同檔其他斷言一致的預算,別讓「還在導」看起來像「登出壞了」。 */
+  await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 })
+  /* 🔴 填寫與送出一起重試,直到真的導走 —— 剛從 /app 導過來的 /login 可能
+     還沒 hydrate,此時點下去會走**原生 GET**(網址變 `/login?`、欄位被清空),
+     看起來像「密碼錯了」。整套跑時才會出現,單獨跑不會。 */
+  await expect(async () => {
+    await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
+    await page.getByRole("textbox", { name: "密碼" }).fill(password)
+    await page.getByRole("button", { name: "登入" }).click()
+    await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 8_000 })
+  }).toPass({ timeout: 40_000 })
 
   /* 🔴 RFC 6238 §5.2:「The verifier MUST NOT accept the second attempt of the OTP
      after the successful validation has been issued for the first OTP.」
@@ -61,10 +68,15 @@ test("MFA:啟用 TOTP → 登出 → 登入需二步 → 驗證進工作區", as
      這是**現況行為的記錄**,不是本測試的偏好 —— 若日後決定讓 challenge 在重放後存活,
      這一段就會紅,那正是它該提醒的時機。 */
   await page.goto("/login")
-  await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼" }).fill(password)
-  await page.getByRole("button", { name: "登入" }).click()
-  await expect(page).toHaveURL(/\/login\/2fa/)
+  /* 🔴 填寫與送出一起重試,直到真的導走 —— 剛從 /app 導過來的 /login 可能
+     還沒 hydrate,此時點下去會走**原生 GET**(網址變 `/login?`、欄位被清空),
+     看起來像「密碼錯了」。整套跑時才會出現,單獨跑不會。 */
+  await expect(async () => {
+    await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
+    await page.getByRole("textbox", { name: "密碼" }).fill(password)
+    await page.getByRole("button", { name: "登入" }).click()
+    await expect(page).toHaveURL(/\/login\/2fa/, { timeout: 8_000 })
+  }).toPass({ timeout: 40_000 })
 
   // 等到下一個 time step 才會有新碼(step = 30 秒;+2 秒緩衝避開邊界)
   await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 2_000)

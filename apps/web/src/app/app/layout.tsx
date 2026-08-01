@@ -198,6 +198,10 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
 
   const onLogout = async (): Promise<void> => {
     await signOut()
+    /* ⚠️ 用 client 導向,**不要**改成 `window.location.href`。
+       曾經為了修「偶發停在原頁」而改成全頁導向 —— 那會強制重抓 HTML 與 chunk,
+       在 dev server 下反而穩定地變慢(實測:auth / mfa 兩支 e2e 從偶發紅變成必紅)。
+       登出後停在原頁的真正原因是導向需要時間,不是導向沒發生。 */
     router.replace("/login")
   }
 
