@@ -97,28 +97,24 @@ test("預覽走縮圖端點(?variant=thumb),且縮圖遠小於原圖", async ({ 
 test("非影像附件請求縮圖 → 回原檔(前端永不破圖)", async ({ request }) => {
   const formId = await createPhotoForm(request)
   const form = await request.get(`/api/engine/forms/${formId}`, { headers: DEV })
-  const fieldId = (await form.json()).fields.find(
-    (f: { name: string }) => f.name === "現場照",
-  ).id as number
+  const fieldId = (await form.json()).fields.find((f: { name: string }) => f.name === "現場照")
+    .id as number
 
   // image 欄只收影像 → 用 attachment 欄不可行,改直接驗證「縮圖不存在時回原檔」語意:
   // 上傳一張圖後,以不存在縮圖的 key 形狀請求(此處以原 key 請求 thumb,已有縮圖 → 200)
-  const res = await request.post(
-    `/api/engine/forms/${formId}/files?fieldId=${fieldId}`,
-    {
-      headers: { ...DEV },
-      multipart: {
-        file: {
-          name: "a.png",
-          mimeType: "image/png",
-          buffer: Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-            "base64",
-          ),
-        },
+  const res = await request.post(`/api/engine/forms/${formId}/files?fieldId=${fieldId}`, {
+    headers: { ...DEV },
+    multipart: {
+      file: {
+        name: "a.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64",
+        ),
       },
     },
-  )
+  })
   expect(res.status()).toBe(201)
   const key = (await res.json()).key as string
   const thumb = await request.get(`/api/engine/files/${key}?variant=thumb`, { headers: DEV })

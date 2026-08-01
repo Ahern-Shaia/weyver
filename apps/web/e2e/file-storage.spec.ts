@@ -38,7 +38,9 @@ test("附件:填單上傳 → 存檔 → 記錄頁下載", async ({ page, reques
     mimeType: "application/pdf",
     buffer: PDF,
   })
-  await expect(page.getByRole("button", { name: "驗收單.pdf", exact: true })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole("button", { name: "驗收單.pdf", exact: true })).toBeVisible({
+    timeout: 30_000,
+  })
 
   await page.getByRole("button", { name: "儲存" }).click()
   await expect(page.getByText("已儲存")).toBeVisible({ timeout: 30_000 })
@@ -71,7 +73,9 @@ test("附件:移除後欄值不再包含該檔", async ({ page, request }) => {
     mimeType: "application/pdf",
     buffer: PDF,
   })
-  await expect(page.getByRole("button", { name: "待移除.pdf", exact: true })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByRole("button", { name: "待移除.pdf", exact: true })).toBeVisible({
+    timeout: 30_000,
+  })
 
   await page.getByRole("button", { name: "移除 待移除.pdf" }).click()
   await expect(page.getByRole("button", { name: "待移除.pdf", exact: true })).toBeHidden()

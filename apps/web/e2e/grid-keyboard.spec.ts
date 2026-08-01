@@ -97,9 +97,7 @@ test("F2 / Enter 進編輯,Esc 回導覽態且不改值", async ({ page, request
   await page.keyboard.press("F2")
   // 編輯態:焦點在格內的輸入元件
   await expect
-    .poll(async () =>
-      page.evaluate(() => document.activeElement?.tagName.toLowerCase() ?? ""),
-    )
+    .poll(async () => page.evaluate(() => document.activeElement?.tagName.toLowerCase() ?? ""))
     .toBe("input")
 
   await page.keyboard.type("鋼板")
@@ -118,7 +116,9 @@ test("直接打字即進編輯並取代內容", async ({ page, request }) => {
   await page.locator('[data-grid-cell="0:0"]').focus()
   await page.keyboard.press("A")
   await expect
-    .poll(async () => page.evaluate(() => (document.activeElement as HTMLInputElement)?.value ?? ""))
+    .poll(async () =>
+      page.evaluate(() => (document.activeElement as HTMLInputElement)?.value ?? ""),
+    )
     .toBe("A")
 })
 
@@ -180,7 +180,10 @@ test("記錄清單:↑↓ 切換選取,只有一個 Tab 停點", async ({ page, 
 
   // roving tabindex:整份清單只有一個停點
   const stops = await listbox.evaluate(
-    (el) => [...el.querySelectorAll("[data-record-option]")].filter((o) => (o as HTMLElement).tabIndex === 0).length,
+    (el) =>
+      [...el.querySelectorAll("[data-record-option]")].filter(
+        (o) => (o as HTMLElement).tabIndex === 0,
+      ).length,
   )
   expect(stops).toBe(1)
 

@@ -53,8 +53,11 @@ test("記錄清單:列高與可見列數不得比字階收斂前更差", async (
     }
   })
 
-  expect(m.rowHeight, `列高 ${String(m.rowHeight)}px 超過上限 —— 密度應靠間距回收,不得放寬`).
-    toBeLessThanOrEqual(MAX_ROW_HEIGHT)
-  expect(m.visibleRows, `可見列數 ${String(m.visibleRows)} 低於下限`).
-    toBeGreaterThanOrEqual(MIN_VISIBLE_ROWS)
+  expect(
+    m.rowHeight,
+    `列高 ${String(m.rowHeight)}px 超過上限 —— 密度應靠間距回收,不得放寬`,
+  ).toBeLessThanOrEqual(MAX_ROW_HEIGHT)
+  expect(m.visibleRows, `可見列數 ${String(m.visibleRows)} 低於下限`).toBeGreaterThanOrEqual(
+    MIN_VISIBLE_ROWS,
+  )
 })

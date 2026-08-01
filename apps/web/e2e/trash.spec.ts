@@ -20,14 +20,19 @@ async function createForm(request: Req, name: string): Promise<number> {
 }
 
 async function addRecord(request: Req, formId: number, 品名: string): Promise<void> {
-  await request.post(`${API}/forms/${String(formId)}/records`, { headers: H, data: { values: { 品名 } } })
+  await request.post(`${API}/forms/${String(formId)}/records`, {
+    headers: H,
+    data: { values: { 品名 } },
+  })
 }
 
 test("刪記錄 → 回收桶顯示首欄值與表單名 → 還原後資料回來", async ({ page, request }) => {
   const stamp = String(Date.now()).slice(-6)
   const formId = await createForm(request, `E2E回收桶_${stamp}`)
   await addRecord(request, formId, `醬油_${stamp}`)
-  await request.delete(`${API}/forms/${String(formId)}/records/1`, { headers: { "x-dev-tenant": "1" } })
+  await request.delete(`${API}/forms/${String(formId)}/records/1`, {
+    headers: { "x-dev-tenant": "1" },
+  })
 
   await page.goto("/app/settings/trash")
   /* 名稱帶 stamp:dev DB 會累積前幾輪(含手動實走)留下的同名回收項目,
@@ -68,7 +73,9 @@ test("🔴 永久刪除需兩段確認,父表單已入桶仍可刪", async ({ pa
   const stamp = String(Date.now()).slice(-6)
   const formId = await createForm(request, `E2E硬刪_${stamp}`)
   await addRecord(request, formId, `鮪魚罐頭_${stamp}`)
-  await request.delete(`${API}/forms/${String(formId)}/records/1`, { headers: { "x-dev-tenant": "1" } })
+  await request.delete(`${API}/forms/${String(formId)}/records/1`, {
+    headers: { "x-dev-tenant": "1" },
+  })
   await request.delete(`${API}/forms/${String(formId)}`, { headers: { "x-dev-tenant": "1" } })
 
   await page.goto("/app/settings/trash")

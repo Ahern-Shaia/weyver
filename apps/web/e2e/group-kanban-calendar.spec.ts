@@ -51,7 +51,10 @@ test("分組:群組標頭顯示後端計數,折疊後記錄從查詢排除", asy
   /* 折疊「已完成」→ 該群的記錄從查詢排除,但標頭與計數仍在
      (若只在前端隱藏,那些記錄仍會吃掉 page size) */
   const before = await page.locator("table tbody tr").count()
-  await page.getByRole("button", { name: /已完成/ }).first().click()
+  await page
+    .getByRole("button", { name: /已完成/ })
+    .first()
+    .click()
   await expect(page.locator("table tbody tr")).toHaveCount(before - 1)
   await expect(page.getByText("1 筆")).toBeVisible()
 })
@@ -85,10 +88,9 @@ test("看板:依單選欄分欄,拖曳改值寫入 DB", async ({ page, request }
   await expect
     .poll(
       async () => {
-        const res = await request.get(
-          `http://localhost:3001/api/forms/${String(formId)}/records`,
-          { headers: { "x-dev-tenant": "1" } },
-        )
+        const res = await request.get(`http://localhost:3001/api/forms/${String(formId)}/records`, {
+          headers: { "x-dev-tenant": "1" },
+        })
         const body = (await res.json()) as { records: { values: Record<string, unknown> }[] }
         return body.records[0]?.values.狀態
       },
@@ -104,13 +106,25 @@ test("行事曆:跨月事件在兩個月都顯示", async ({ page, request }) =>
     { name: "開始", type: "date" },
     { name: "結束", type: "date" },
   ])
-  await addRecord(request, formId, { 事由: "跨月假", 開始: "2026-07-29", 結束: "2026-08-03" })
+  /* 🔴 日期必須**相對於今天**算。原本寫死 2026-07-29 → 2026-08-03 並假設
+     「當月 = 2026-07」;行事曆開在**今天所在的月份**,所以這支測試在 2026-08-01
+     零時自己爆掉 —— 寫死日期的測試是定時炸彈,而且爆的時候看起來像功能壞了。
+     改成「本月最後一天 → 下月第 3 天」,無論今天是哪一天都橫跨兩個月。 */
+  const iso = (d: Date): string => d.toISOString().slice(0, 10)
+  const now = new Date()
+  const lastOfThisMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0))
+  const thirdOfNextMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 3))
+  await addRecord(request, formId, {
+    事由: "跨月假",
+    開始: iso(lastOfThisMonth),
+    結束: iso(thirdOfNextMonth),
+  })
 
   await page.goto(`/app/forms/${String(formId)}?mode=calendar`)
   await expect(page.getByLabel("行事曆日期欄")).toBeVisible({ timeout: 30_000 })
   await page.getByLabel("行事曆結束欄").selectOption("結束")
 
-  // 當月(2026-07)顯示;切到下個月仍顯示 —— 一筆佔多格
+  // 當月顯示;切到下個月仍顯示 —— 一筆佔多格
   await expect(page.getByRole("button", { name: "跨月假" }).first()).toBeVisible({
     timeout: 15_000,
   })

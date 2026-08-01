@@ -23,7 +23,10 @@ test("進階型別:自動編號 pattern 設定(日期段 + 重設)", async ({ pa
   await page.goto("/app/builder?form=1")
   await expect(page.getByText("進階 · 計算/關聯")).toBeVisible({ timeout: 30_000 })
   // 自動編號在主 palette(.first():避開 canvas 上型別=自動編號的欄位卡)
-  await page.getByRole("button", { name: /自動編號/ }).first().click()
+  await page
+    .getByRole("button", { name: /自動編號/ })
+    .first()
+    .click()
   await expect(page.getByText("加入自動編號欄位")).toBeVisible()
   // pattern 控制:日期段 + 重設範圍
   await expect(page.getByRole("option", { name: "yyyyMM", exact: true })).toBeAttached()

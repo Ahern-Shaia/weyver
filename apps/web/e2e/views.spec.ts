@@ -92,6 +92,8 @@ test("🔴 切換記錄必須重置編輯狀態 —— 否則 A 的值會寫進 
 
   // 資料庫端確認兩筆都沒被汙染
   const list = await request.get(`/api/engine/forms/${formId}/records?limit=50`, { headers: DEV })
-  const names = (await list.json()).records.map((r: { values: Record<string, string> }) => r.values.品名)
+  const names = (await list.json()).records.map(
+    (r: { values: Record<string, string> }) => r.values.品名,
+  )
   expect(names.sort()).toEqual(["記錄乙", "記錄甲"])
 })

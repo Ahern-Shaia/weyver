@@ -33,7 +33,9 @@ export function setTabOrgIntent(orgId: string | null): void {
 
 /* 🔴 **所有** 對引擎的請求都必須經過這裡。
    FMEA T2:漏帶的路徑會靜默退回 session 行為,等於沒修 —— 所以只留這一個出口。 */
-export function engineHeaders(extra: Readonly<Record<string, string>> = {}): Record<string, string> {
+export function engineHeaders(
+  extra: Readonly<Record<string, string>> = {},
+): Record<string, string> {
   return {
     "x-dev-tenant": getDevTenant(),
     ...(tabOrgIntent === null ? {} : { [ORG_INTENT_HEADER]: tabOrgIntent }),
@@ -93,6 +95,12 @@ export async function engineFetch<T>(
     const raw: unknown = await response.json().catch(() => ({}))
     const parsed = errorEnvelopeSchema.safeParse(raw)
     if (parsed.success) {
+      /* 🔴 首次登入尚未自設密碼 → 後端**每一支 API** 都回這個 code(AuthGuard)。
+         在這裡統一導出去,不讓每頁自己接:同一個道理 #140 已經學過一次 ——
+         「逐頁自律」會漏,而漏掉的那幾頁不會有人發現。 */
+      if (parsed.data.code === "PASSWORD_CHANGE_REQUIRED" && typeof window !== "undefined") {
+        if (window.location.pathname !== "/set-password") window.location.href = "/set-password"
+      }
       throw new EngineApiError(
         response.status,
         parsed.data.code,
@@ -135,11 +143,7 @@ export async function uploadFile(
 
 /* #106 匯入既有表單:解析在後端(OQ-IMP-6)—— 前端只上傳與顯示。
    同 uploadFile,不設 content-type 交瀏覽器帶 boundary。 */
-export async function analyzeImport(
-  formId: number,
-  file: File,
-  sheet?: string,
-): Promise<unknown> {
+export async function analyzeImport(formId: number, file: File, sheet?: string): Promise<unknown> {
   const body = new FormData()
   body.append("file", file)
   const query = sheet === undefined ? "" : `?sheet=${encodeURIComponent(sheet)}`
