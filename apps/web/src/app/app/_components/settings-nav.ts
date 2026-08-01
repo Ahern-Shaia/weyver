@@ -7,6 +7,7 @@ import {
   Share2,
   Trash2,
   UserRound,
+  UserRoundCheck,
   UsersRound,
   Webhook,
   type LucideIcon,
@@ -94,6 +95,13 @@ export const SETTINGS_NAV: readonly SettingsNavItem[] = [
     label: "帳號安全",
     desc: "密碼與雙因素驗證",
     icon: ShieldCheck,
+    scope: "personal",
+  },
+  {
+    href: "/app/settings/delegates",
+    label: "簽核代理人",
+    desc: "請假期間把你的簽核交給同事",
+    icon: UserRoundCheck,
     scope: "personal",
   },
   {
