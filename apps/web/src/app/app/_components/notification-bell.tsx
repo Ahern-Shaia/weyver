@@ -107,9 +107,9 @@ export function NotificationBell({
            title 僅收合態需要:展開態筆數已以徽章呈現於標籤旁。 */
         {...(collapsed ? { title: unread > 0 ? `通知(${unread} 則未讀)` : "通知" } : {})}
         aria-label={unread > 0 ? `通知(${unread} 則未讀)` : "通知"}
-        /* 導覽軌為主色深底 → 吃 nav 系列 token(與 layout.tsx 的導覽項同一組)。 */
-        className={`relative flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
-          collapsed ? "size-9 justify-center" : "h-8 w-full gap-2.5 px-2.5 text-[14px]"
+        /* v4|與導覽項同一組狀態階,不畫框。 */
+        className={`relative flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-hover hover:text-ink ${
+          collapsed ? "size-9 justify-center" : "h-8 w-full gap-2.5 px-2.5 text-[13px]"
         }`}
       >
         <Bell size={17} strokeWidth={1.9} className="shrink-0" />

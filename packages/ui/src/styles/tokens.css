@@ -1,56 +1,66 @@
 /* ═══════════════════════════════════════════════════════════════════
-   Weyver 織雲 — Design Tokens v3.0(single source of truth)
-   方向:精緻資料工具(Airtable / Attio / Retool tier)—— 資料密集但有工藝。
-   相對 v2.1 austere:中性色更淺更柔、border 降為 hairline、加極淡層次(shadow)、
-   柔和圓角(3–10px,仍非 pill)、hover 150ms 平滑。三配色主題 + IBM Plex 保留。
-   ⚠️ 禁在元件硬編 hex,一律走語意 token。深度靠 border + 極淡 shadow(非重陰影)。
+   Weyver 織雲 — Design Tokens v4.0(single source of truth)
+
+   🔴 v4 方向 B「工作台」(2026-08-01 定案,推翻 v3 的色彩模型)。
+   起因:review 三次指出畫面「像公司內部後台、沒有品牌感」。
+   根因不是缺顏色,是**色彩沒有模型** —— v3 是一張扁平的語意 token 清單,
+   `hover` / `active` 一階都沒有,於是全庫每個互動狀態都是臨時寫的
+   (`hover:bg-head`、`hover:border-primary`…),互動因此顯得隨機。
+
+   v4 改為 **12 階冷中性 + 角色對映**,一手依據:
+   · Radix 12 階語意(逐字):1 App background · 2 Subtle background ·
+     3 UI element background · 4 Hovered UI element background ·
+     5 Active/Selected UI element background · 6 Subtle borders and separators ·
+     7 UI element border and focus rings · 8 Hovered UI element border ·
+     9 Solid backgrounds · 10 Hovered solid · 11 Low-contrast text · 12 High-contrast text
+   · Vercel Geist 同構(100–300 背景 / 400–600 框線 / 900–1000 文字)
+
+   **語意 token 一律由 `--s*` 對映**,元件端不必改碼即換到新色;
+   元件只能用 `--color-*`,`--s*` 與 `--base-*` 皆不得外用。
+
+   ⚠️ 兩套視覺語言(docs/14 §0.5 / docs/29):
+   **單據**(欄位表 / 記錄頁 / 列印)靠框線;**殼**(導覽 / 面板 / 清單 / 工具列)靠面。
+   殼的互動項**不畫框**,吃 `--color-hover` / `--color-active`。
 ═══════════════════════════════════════════════════════════════════ */
 
-/* 🔴 `static` 不能拿掉。
-
-   Tailwind 4 的 `@theme` **只輸出被 class 用到的變數**(4.3.3 實測:未被使用的
-   `--color-icon-3` 在瀏覽器裡 `getComputedStyle` 讀出來是空字串,加上 `static` 後才出現)。
-   但本庫有**在執行期讀 token** 的程式:`grid-tone.ts` 以 `getComputedStyle` 取 24 個狀態色
-   餵給 Glide 網格(該處無法用 class)。少了 `static`,那些變數之所以還在,
-   純粹是因為別的元件剛好也用了同名 class —— 哪天最後一處 `bg-c5-t` 被刪掉,
-   網格的 c5 色就會**安靜地消失**,沒有任何錯誤。
-
-   代價實測 **410 bytes**(dev 全站 CSS 71227 vs 70817,+0.6%),換掉一個無聲失效路徑。 */
 @theme static {
-  /* ── 結構中性色(淺冷灰;層次靠明度微差,非重灰)─────────── */
-  --color-surface: #f6f7f9; /* 應用底(淺,不再是 v2.1 重灰 #e8eaed)*/
-  --color-card: #ffffff; /* 面板 / 表單 */
-  --color-head: #f1f3f5; /* 表頭 / 次底 */
-  --color-label: #f4f6f8; /* 欄位 label 格底 */
-  --color-ink: #16191f; /* 主文 */
-  --color-ink-2: #3d4753; /* 次文 */
-  /* 🔴 R1·UX-1 M9|由 `#697585` 加深。原值只有在**純白**底上過 4.5:1(4.68),
-     在 surface 4.37 / head 4.21 / label 4.32 **全部不足** —— 而輔助文字大量出現在
-     那三種底上。「只量白底」是先前稽核的盲點,由 CI 對比檢查抓到。
-     新值於四種底色皆 ≥4.8:1。 */
-  --color-ink-3: #606c7b; /* 輔助 / 說明(全底色 ≥4.8:1)*/
-  /* 🔴 R1·UX-1 M9|`ink-4` 對白底僅 **2.52:1**,連 3:1 都不過,原用於時間戳 / 識別碼 /
-     空狀態訊息等**資訊性**文字(全庫 209 處)—— 那些是使用者需要讀的內容,不是裝飾。
-     **AA 之下白底放不下第四階可讀灰**(最淺約 `#767676` = 4.54:1,而 `ink-3` 已 4.68:1)
-     → 資訊性用途一律併入 `ink-3`;**層級改靠字重 / 字級 / 位置,不再靠明度**。
-     本 token 更名為 disabled 並限縮:**僅停用元件內的文字**可用
-     (WCAG 1.4.3 對 inactive 元件有 incidental 豁免)。 */
-  --color-ink-disabled: #9aa4b1; /* 2.52:1 —— 僅限停用元件內文字 */
-  /* ⚠️ 這裡**刻意沒有** `--color-icon-*` —— docs/28 A4 曾裁定採用,落地時撤回。
-     Metabase 需要它是因為其圖示吃 `color` prop;本庫全庫只有一處直接給圖示上色
-     (`select.tsx` 的 chevron),其餘一律**繼承容器**,A4 想要的「圖示與相鄰文字同階」
-     在架構上已經成立。加三個純 alias 的 token 不會讓它更成立,只會多三個沒人用的名字。 */
+  /* ══ 12 階冷中性(Radix 語意;此層為 BASE,元件不得直接使用)══════════ */
+  --s1: #fcfdfe; /*  1 內容面(最亮,浮在應用底之上)*/
+  --s2: #f6f8fa; /*  2 應用底 */
+  --s3: #eef1f5; /*  3 元件底 / hover */
+  --s4: #e4e9ef; /*  4 選中 / active */
+  --s5: #d8dfe8; /*  5 更強的 active */
+  --s6: #e6eaf0; /*  6 次分隔線 */
+  --s7: #d3dae3; /*  7 框線 / focus ring */
+  --s8: #bcc6d2; /*  8 hover 框線 */
+  --s11: #5c6876; /* 11 次文(於 s1–s4 四種底皆 ≥4.5:1,由 CI 把關)*/
+  --s12: #0f1720; /* 12 主文 */
 
-  --color-line: #e3e6ea; /* 面板框(hairline,由 v2.1 #c9cfd6 軟化)*/
-  --color-line-2: #eef0f3; /* 次分隔 */
-  --color-cell: #e7eaee; /* 欄位格線(全框線表)*/
+  /* ══ 語意層(元件唯一可用)—— 全部由上面的色階對映 ═══════════════ */
+  --color-surface: var(--s2); /* 應用底 */
+  --color-card: var(--s1); /* 內容面 —— 比應用底**更亮**,靠明度浮起而非框線 */
+  --color-head: var(--s3); /* 表頭 / 次底 */
+  --color-label: var(--s3); /* 欄位 label 格底 */
 
-  /* 🔴 R1·UX-1 M9|**僅輸入框**的 resting border。
-     WCAG 1.4.11 判準是「邊界是否為識別該控制項所必需」——**空白且無 placeholder 的
-     輸入框**,邊框即是唯一線索,須達 3:1。`#8d8d8d` = Carbon Gray-50(3.32:1)。
-     ⚠️ **表格 / 卡片 / 分隔框線維持 `--color-line` 1.25:1 不動** ——
-     表格非 UI component,資料本身傳達結構;Carbon 官方 border-subtle 更淡(1.32:1)
-     且明知照發。把整體框線加深會毀掉全框線語言,且無規範依據。 */
+  /* 🔴 v4 新增:互動狀態進色階。
+     v3 沒有這兩個,於是全庫每個 hover 都是就地挑一個底色來用
+     (`hover:bg-head` / `hover:bg-primary-t` / `hover:bg-er-t` 混用),
+     互動語彙因此不一致。殼的互動項一律吃這兩個,**不畫框**。 */
+  --color-hover: var(--s3);
+  --color-active: var(--s4);
+
+  --color-ink: var(--s12); /* 主文 */
+  --color-ink-2: #3a4553; /* 次文 */
+  /* 🔴 M9 的結論在 v4 仍成立:輔助文字會出現在 s1/s2/s3/s4 四種底上,
+     只量白底是先前稽核的盲點。`--s11` 已對四種底逐一驗過(contrast.test.ts)。 */
+  --color-ink-3: var(--s11); /* 輔助 / 說明 */
+  --color-ink-disabled: #9aa6b4; /* 僅停用元件內文字(WCAG 1.4.3 incidental 豁免)*/
+
+  /* 框線:🔴 **殼不用**,只給單據語言(欄位表 / 記錄頁 / 列印)與跨功能邊界。 */
+  --color-line: var(--s6); /* 面板 / 跨功能邊界 */
+  --color-line-2: var(--s3); /* 次分隔(幾乎看不見)*/
+  --color-cell: #dfe4ea; /* 欄位表格線 —— 單據語言,需可辨識 */
+
   --color-line-input: #8d8d8d; /* 3.32:1,僅輸入框 */
 
   /* ── 主題主色(預設深藍;克制使用:選取 / 主按鈕 / 焦點)── */
@@ -67,18 +77,16 @@
   --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%); /* 選取列 / 主色極淡底 */
 
   /* ── 功能色(跨主題共用)───────────────────────────────── */
-  /* ── 導覽軌(chrome 帶品牌)────────────────────────────────────────
-     🔴 2026-08-01|導覽軌由白底改為主色深底。
+  /* ── 導覽軌 ────────────────────────────────────────────────────
+     🔴 v4 方向 B|導覽軌**改回中性**,不再是大面積主色。
 
-     判準沿用 §0.2:**顏色有沒有在傳遞資訊**。這裡傳遞的是「你在 Weyver」——
-     產品識別。原本整個 app 是白底細框,與任何一套內部後台無法區分。
-
-     四個值全部由 `--base-brand` 推導,所以三主題與白牌客戶換色時導覽軌自動跟上;
-     若改成手寫,白牌客戶會得到「自己的品牌色 + 別人的導覽軌顏色」。 */
-  --color-nav: color-mix(in srgb, var(--base-brand), black 34%);
-  --color-nav-ink-2: color-mix(in srgb, var(--base-brand), white 70%);
-  --color-nav-hover: color-mix(in srgb, var(--base-brand), black 20%);
-  --color-nav-active: color-mix(in srgb, var(--base-brand), black 6%);
+     v3(2026-08-01 稍早)把整條軌做成主色深底,以為那就是品牌識別 ——
+     實際上「深色側欄 + 白色多欄」是 AdminLTE / cPanel / Bootstrap admin
+     十五年來的原型,是**最沒有作者性**的一個手勢,review 的結論是它
+     **加強**了內部後台的印象。品牌識別的載體改為標誌用法 / 標題排版 /
+     空狀態 / 列印抬頭(docs/29 §4),主色只出現在**主要動作**。 */
+  --color-nav: var(--s3); /* 圖示軌底 */
+  --color-nav-2: var(--s2); /* 清單欄底 */
 
   --color-link: #1160b4;
   --color-fx: #0b6b5d; /* 公式 / 計算 */
@@ -189,10 +197,6 @@
   --color-primary: var(--base-brand);
   --color-primary-d: color-mix(in srgb, var(--base-brand), black 20%);
   --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%);
-  --color-nav: color-mix(in srgb, var(--base-brand), black 34%);
-  --color-nav-ink-2: color-mix(in srgb, var(--base-brand), white 70%);
-  --color-nav-hover: color-mix(in srgb, var(--base-brand), black 20%);
-  --color-nav-active: color-mix(in srgb, var(--base-brand), black 6%);
 }
 
 /* ── reduced-motion:採 Cloudscape「全部歸零」式(R1·UX-1 OQ-10=A 維持現況)。

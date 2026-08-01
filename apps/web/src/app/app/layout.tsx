@@ -65,10 +65,12 @@ function NavItem({
 }): ReactNode {
   const base =
     "flex items-center rounded-sm transition-colors duration-fast-01 ease-productive-exit"
-  /* 導覽軌為主色深底(§0.4 chrome 帶品牌),故此處吃 nav 系列 token 而非 ink 系列。 */
+  /* 🔴 v4 方向 B|導覽項**不畫框**,靠狀態階(hover=s3 / active=s4)。
+     這是 docs/29 S1 的落地:量測顯示現行 78 個帶框元素中 65 個是按鈕,
+     Directus 同指標只有 1 個 —— 互動項各自畫框正是「雜亂」的來源。 */
   const tone = active
-    ? "bg-nav-active font-medium text-white"
-    : "text-nav-ink-2 hover:bg-nav-hover hover:text-white"
+    ? "bg-active font-medium text-ink"
+    : "text-ink-2 hover:bg-hover hover:text-ink"
   return (
     <Link
       href={href}
@@ -109,8 +111,8 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
         }}
         {...(collapsed ? { title: "配色主題" } : {})}
         aria-label="配色主題"
-        className={`flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
-          collapsed ? "size-9 justify-center" : "h-8 w-full gap-2.5 px-2.5 text-[14px]"
+        className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-hover hover:text-ink ${
+          collapsed ? "size-9 justify-center" : "h-8 w-full gap-2.5 px-2.5 text-[13px]"
         }`}
       >
         <Palette size={17} strokeWidth={1.9} className="shrink-0" />
@@ -250,7 +252,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
           /* overflow-y-auto:WCAG 1.4.12 —— 使用者加大行高/字距時導覽項會變高,
              沒有自己的捲動就會被 app-shell 的 overflow-hidden 裁掉而搆不到 */
           className={`flex shrink-0 flex-col gap-0.5 overflow-y-auto bg-nav py-3 ${
-            collapsed ? "w-14 items-center px-0" : "w-[180px] px-2.5"
+            collapsed ? "w-13 items-center px-0" : "w-[196px] px-2.5"
           }`}
         >
           <Link
@@ -259,17 +261,19 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
             aria-label="Weyver 織雲 — 回工作區"
             className={`mb-4 flex items-center rounded-sm ${collapsed ? "justify-center" : "gap-2.5 px-0.5"}`}
           >
-            {/* 深底上的品牌記號改為**反相**(白方塊 + 主色 W)——
-                主色方塊放在主色底上會消失,而品牌記號正是不該消失的那一個元素。 */}
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-white text-[16px] font-bold text-primary">
+            {/* v4|軌已改中性,記號回到**深色實方塊**:在淺色殼裡它是畫面上
+                唯一的深色實體,那就是它的存在感來源 —— 不需要一整條側欄替它宣告。 */}
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-ink text-[14px] font-bold tracking-[-0.04em] text-card">
               W
             </span>
             {/* 產品名而非租戶名 —— 租戶身分歸狀態列(docs/14 §3.1);
                 兩處都顯示是冗餘,且會讓「這是哪家公司」出現兩個真實來源。 */}
             {collapsed ? null : (
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-[16px] font-semibold text-white">Weyver</span>
-                <span className="truncate text-[12px] text-nav-ink-2">織雲</span>
+                <span className="truncate text-[14px] font-semibold tracking-[-0.012em] text-ink">
+                  Weyver
+                </span>
+                <span className="truncate text-[12px] tracking-[0.14em] text-ink-3">織雲</span>
               </span>
             )}
           </Link>
@@ -287,8 +291,8 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
                 onClick={() => void onLogout()}
                 {...(collapsed ? { title: `登出(${session.user.email})` } : {})}
                 aria-label="登出"
-                className={`flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
-                  collapsed ? "size-9 justify-center" : "h-8 gap-2.5 px-2.5 text-[14px]"
+                className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-hover hover:text-ink ${
+                  collapsed ? "size-9 justify-center" : "h-8 gap-2.5 px-2.5 text-[13px]"
                 }`}
               >
                 <LogOut size={17} strokeWidth={1.9} className="shrink-0" />
@@ -308,7 +312,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
               title={collapsed ? "展開導覽" : "收合導覽"}
               aria-label={collapsed ? "展開導覽" : "收合導覽"}
               aria-expanded={!collapsed}
-              className={`mt-0.5 flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
+              className={`mt-0.5 flex items-center rounded-sm text-ink-3 transition-colors duration-fast-01 ease-productive-exit hover:bg-hover hover:text-ink ${
                 collapsed ? "size-9 justify-center" : "h-7 gap-2.5 px-2.5 text-[12px]"
               }`}
             >
@@ -324,14 +328,16 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
 
             {process.env.NODE_ENV !== "production" ? (
               <span
-                className={`font-mono text-[12px] text-nav-ink-2 ${collapsed ? "text-center" : "px-2.5"}`}
+                className={`font-mono text-[12px] text-ink-3 ${collapsed ? "text-center" : "px-2.5"}`}
               >
                 dev
               </span>
             ) : null}
           </div>
         </nav>
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        {/* 🔴 v4 方向 B|內容面**比應用底更亮**並以圓角浮起,左側一條 hairline
+            取代 border —— 深度靠明度差,不靠框(docs/29 S2)。 */}
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-l-lg bg-card shadow-[-1px_0_0_var(--color-line)]">
           <TenantContextGuard>{children}</TenantContextGuard>
         </main>
       </div>
