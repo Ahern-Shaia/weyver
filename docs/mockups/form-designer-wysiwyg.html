@@ -195,6 +195,21 @@ table.doc th.hov{background:var(--s4)}
   font-weight:500;line-height:16px}
 .chip.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-l)}
 .rel{position:relative}
+/* 🔴 建立後的可撤銷 toast(§19:沒有 Undo 的 Toast 不要做;此處剛好有)。
+   剛建立、無資料的欄位刪掉是安全的 —— 這是「即時 DDL」的補償機制。 */
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r2);
+  background:var(--ink);color:var(--s1);font-size:13px;line-height:18px;
+  box-shadow:0 12px 28px -10px rgb(15 23 32 / .34),0 2px 6px rgb(15 23 32 / .12);z-index:30}
+.toast .u{margin-left:4px;color:#8fb6e0;font-weight:500;text-decoration:underline;
+  text-underline-offset:2px}
+/* 🔴 兩種狀態必須看得出差別:已建立的欄位 vs **未儲存的版面變更**。
+   未存者以 warn 左緣標記(語意=待處理),並在儲存鈕上計數。
+   先前設計模式同時跑兩個心智模型(移動=草稿可 undo / 新增=永久)而**沒有任何視覺區分**。 */
+table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
+.dirty-note{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:16px;
+  color:var(--wn);margin-left:8px}
+.dirty-note .d{width:6px;height:6px;border-radius:1px;background:var(--wn);flex:0 0 6px}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 .mtab{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
 .mtab th,.mtab td{border:1px solid var(--cell);padding:8px 12px;text-align:left;vertical-align:top}
@@ -324,9 +339,11 @@ table.doc th.hov{background:var(--s4)}
   </nav>
   <div class="main">
     <div class="top">
-      <h2>影像處理驗證</h2><span class="m mono">v1 · 3 欄</span><span class="sp"></span>
+      <h2>影像處理驗證</h2><span class="m mono">v1 · 4 欄</span>
+      <span class="dirty-note"><span class="d"></span>2 項版面變更未儲存</span>
+      <span class="sp"></span>
       <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
-      <button class="btn gho">加子表</button><button class="btn pri">儲存 · 1 項待套用</button>
+      <button class="btn gho">加子表</button><button class="btn pri">儲存版面 · 2 項未存</button>
     </div>
     <div class="body">
       <div class="canvas rel">
@@ -335,16 +352,21 @@ table.doc th.hov{background:var(--s4)}
           <div class="sub">PO-2026-0184 · 版本 v1</div>
           <div class="secbar">基本資料</div>
           <table class="doc">
-            <tr><th>品名</th><td class="ex">範例文字</td><th>批號</th><td class="ex mono">BN-0000-A</td></tr>
-            <tr><th>供應商</th><td class="ex">範例文字</td><th>單據日期</th><td class="ex mono">2026-08-01</td></tr>
+            <tr><th class="dirty">品名<span class="hlp">?</span></th><td class="ex">範例文字</td><th>批號<span class="hlp">?</span></th><td class="ex mono">BN-0000-A</td></tr>
+            <tr><th>供應商</th><td class="ex">範例文字</td><th class="dirty">單據日期</th><td class="ex mono">2026-08-01</td></tr>
           </table>
           <!-- ghost row 進入編輯:名稱可打字,型別 popover 就在它身上 -->
           <div class="ghost editing">
             <span class="nm">運費<span class="cur"></span></span>
             <span style="font-size:13px;color:var(--ink3)">單行文字</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
-            <span class="hint"><span class="kbd">Enter</span> 加入草稿 · <span class="kbd">Esc</span> 取消</span>
+            <span class="hint"><span class="kbd">Enter</span> 建立 · <span class="kbd">Esc</span> 取消</span>
           </div>
+
+          <!-- 建立後的可撤銷 toast(此處示意上一個動作的結果) -->
+          <div class="toast">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            已新增欄位「單價」<span class="u">復原</span></div>
 
           <!-- 型別 popover:固定分組固定順序(OQ-FDW-4=C) -->
           <div class="pop" style="top:236px;left:214px">
@@ -369,11 +391,17 @@ table.doc th.hov{background:var(--s4)}
 </div>
 <div class="cap"><b>畫面二 · 就地新增。</b>點表尾 ghost row → <b>就地出現一格</b>,游標落在欄名可直接打字,
   型別 popover 掛在該格上(固定分組固定順序,位置穩定可養成肌肉記憶)。
-  🔴 <b><code>Enter</code> 只加入草稿,真正建欄在「儲存」</b> —— 這是<b>查證後的更正</b>。
-  Ragic 官方逐字:「<b>設計完成後,點選儲存再離開設計模式</b>」,即<b>整批儲存</b>;
-  我原本裁定的 OQ-FDW-3=B(Enter 即建欄)等於每個欄位各自即時,與 Ragic 不同。
-  ⚠️ 但這與我方已 SHIPPED 的 <code>OQ-FD2-2</code>「結構性加/刪/改型別維持即時 DDL」**衝突**,
-  需重新裁定 —— 見下方 §待重議。</div>
+  🔴 <b><code>Enter</code> 即建欄(裁定 B′)</b>,並配<b>三項補償</b>。<br>
+  <b>為何不對齊 Ragic 的「整批儲存」</b>|該 parity 的是<b>範式</b>(自己建自己填、表單即畫布),
+  不是每個互動細節。三個理由:① <b>錯誤定位</b> —— 批次下建了 10 個欄位才在儲存時撞名失敗,
+  使用者已失去當時的上下文;即時 DDL 在動作當下就報錯。② <b>業界分裂</b> ——
+  <code>OQ-FD2-2</code> 自己記了「Baserow live 為另一極」,Airtable 亦 live;Ragic 的批次是較舊的模型。
+  ③ <b>成本落在 P0 安全鏈</b> —— 批次 DDL 要動 provision 鏈(identifier 白名單 / advisory lock /
+  ddl_audit / 部分失敗回滾),為一個互動細節去動鐵則區域不划算。<br>
+  <b>三項補償</b>|① 建立後給<b>可撤銷 toast</b>(剛建立、無資料的欄位刪掉是安全的);
+  ② <b>未儲存的版面變更以 warn 左緣標記 + 儲存鈕計數</b> ——
+  先前設計模式同時跑兩個心智模型(移動=草稿可 undo / 新增=永久)卻<b>沒有任何視覺區分</b>,這是真缺陷;
+  ③ 此取捨寫入文件為已知限制,不假裝沒有兩個模型。</div>
 
 <div style="max-width:1460px;margin:24px auto 0">
   <h3 style="font-size:16px;font-weight:600;letter-spacing:-.014em">量測對照(1440px)</h3>
