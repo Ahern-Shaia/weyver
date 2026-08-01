@@ -166,10 +166,15 @@ export_job(
 | M | 內容 | 產出 |
 |---|---|---|
 | M1 ✅ | `export_job` + 佇列 worker + zip 產生(CSV + manifest,無附件)**+ 授權(提前自 M2)** | api |
-| M2 | ~~授權~~(已於 M1 完成)+ 唯讀豁免 + 頻率限制 + **端點**(controller)| api |
+| M2 ✅ | ~~授權~~(已於 M1 完成)+ 唯讀豁免 + 頻率限制 + **端點**(controller)| api |
 | M3 | 下載(presign / 代理回退)+ 再認證 + 下載次數 + 到期清理排程 | api |
 | M4 | 設定中心「資料匯出」頁:請求 / 進度 / 下載 / 到期倒數 | web |
 | M5 | e2e + FMEA 收尾 | 兩側 |
+
+> 🔴 **M5 的 e2e 必須涵蓋「請求匯出 → 等到 ready」**,而不只是畫面渲染。
+> 理由是 M2 實測踩到的:`archiver` 是 CJS,**vitest 與 tsx 的 interop 形狀不同** ——
+> 單元測試全綠、真伺服器一跑就 `createArchive is not a function`。
+> 只有跑在 dev server(tsx)上的 e2e 攔得住這一類。
 
 ≈ 0.3–0.4 人月。
 
@@ -179,6 +184,8 @@ export_job(
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-01 | v0.5 | **🔴 M2 實測抓到 M1 的隱形缺陷**:`archiver` 為 CJS 而本專案是 ESM,`import * as m` 之後 `m.create` 在 **vitest 下存在、在 tsx(dev/prod 的實際執行方式)下是 undefined** —— 整個 `module.exports` 被塞進 `m.default`。表現是**單元測試 9 條全綠、瀏覽器一按匯出就失敗**,錯誤只出現在 dev server 的 stderr。改用 `createRequire`(Node 原生 CJS 載入,不經任何轉換器的 interop 詮釋)後兩個執行環境一致。同一個檔案在此已踩兩次(前一次是 `@types/archiver` 宣告的 `ZipArchive` 執行期不存在),註解記錄兩次的形狀。**M5 的 e2e 因此必須驗到 `ready` 而非只驗畫面** —— 這一類只有跑在 tsx 上才攔得住。dev server 實測:114 張表 / 343 筆 / 28KB / 7 天到期,manifest 帶回欄位型別 | Claude Code |
+| 2026-08-01 | v0.4 | **M2 SHIPPED**(#146)。端點 `api/exports`(POST/GET/GET :id)。**POST 回 202 而非 201** —— RFC 9110 §15.3.3 逐字:「the request has been accepted for processing, but the **processing has not been completed**」且「SHOULD include ... a **pointer to a status monitor**」,回應裡的 job 資源即該 monitor;回 201「已建立」會誤導,使用者真正在意的封存檔那時還不存在。🔴 **唯讀閘門豁免匯出**(設計文件 §7 第一條自我打臉):`TenantGuard` 對停權租戶擋掉所有 POST,而請求匯出正是 POST —— 不豁免的話停權客戶依然拿不到資料。採**白名單**而非「唯讀時放行所有 POST」,否則日後任何新 POST 都會意外取得豁免;整合測同時斷言「其他寫入照擋 403 TENANT_READ_ONLY」。三層限制各擋不同的東西:throttler 擋瞬間洪水 / 每日 10 次擋接力 / DB 部分唯一索引擋並行(409 而非約束錯誤)。**誠實標注證據缺口**:每日次數兩家巨人皆無可抄數字(Google 對組織匯出未載頻率限制;Salesforce 每 7 天已判定太嚴),此為我方自訂界線,理由記於 `export-specs.ts`。另:`formIds: []` 明確拒絕而非靜默當成「全部」。api 38 export 測綠 | Claude Code |
 | 2026-08-01 | v0.3 | **M1 SHIPPED**(#145)。`export_job`(狀態機 + **部分唯一索引**保證同租戶同時只有一個進行中;app 車道只授 SELECT/INSERT → 使用者改不動狀態、刪不掉紀錄,由 DB 執法)+ worker(`@nestjs/schedule` 輪詢 + `FOR UPDATE SKIP LOCKED` 原子認領)+ 封存檔(逐表 CSV 串流寫入暫存檔 + `manifest.json`)。**授權自 M2 提前到 M1** —— 匯出天生是「一次全拿」,先做一版讀得到全部的 runner 會留在歷史裡;`EffectivePermissions` 結構相容 `FieldAccessPolicy`,成本只有兩行。**實作期查證推翻三個假設**:(a) `@types/archiver@8` 宣告 `export class ZipArchive`,但 `archiver@7` 執行期只有掛著 `create` 的函式 —— tsc 全綠、一跑就 `not a constructor`;(b) 大小上限原掛 archiver 的 `progress` 事件,其 `fs.processedBytes` **只涵蓋檔案系統來源的 entry**,我方全是 stream → 恆為 0,上限形同虛設,改自己累加;(c) 檔名淨化的 `[ -/…]` ASCII range **沒擋住 `.`**(路徑穿越的關鍵字元),改明確列舉。另:`unzip -l` 顯示中文檔名亂碼是 macOS Info-ZIP 6.0 不理會 UTF-8 旗標,實測 EFS bit 11 確有設定(Windows 檔案總管正確),測試改為斷言該位元;storage key 白名單擴充第二種形狀 `t{tenant}/exports/{uuid}.zip`(用 uuid 不用 job id —— 物件名會進存取日誌與簽名 URL,流水號等於把「猜下一包」變成加一)。api 12 integration + 17 unit 綠 | Claude Code |
 | 2026-08-01 | v0.2 | **OQ-EX-1..8 全數裁定(全採建議),DRAFT → APPROVED,進 M1**。定調:DB 佇列表 + schedule 輪詢(零新相依)、7 天 + 限 5 次、附件 opt-in、依 `export` 權逐表、下載再認證、唯讀豁免匯出端點、zip(CSV + manifest.json)、同時一個 job | Claude Code |
 | 2026-08-01 | v0.1 | 初版 DRAFT。一手查證 GDPR Art. 20 逐字 + Salesforce Data Export(48 小時 / zip CSV / 附件 opt-in / 每 7 天)+ Google Takeout(7 天 / 限 5 次 / 下載再認證)。核心主張:**既有「匯出 Excel」是看的便利,不是帶得走**,不可做成它的放大版;動態 schema 平台必須「資料 + metadata 一起出」才滿足 Art. 20 的三個形容詞。點出三個自我打臉(唯讀閘門擋住自己的救命出口 / 匯出是欄位級權限的第 17 條旁路 / CSV 注入方向相反)。OQ-EX-1..8 待裁定 | Claude Code |

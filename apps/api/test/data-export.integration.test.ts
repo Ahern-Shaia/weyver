@@ -353,3 +353,145 @@ describe("🔴 端到端:runner 產出的封存檔", () => {
     }
   }, 180_000)
 })
+
+/* 🔴 M2|端點。最關鍵的一條是**停權租戶仍請求得到匯出** ——
+   `TenantGuard` 對唯讀租戶擋掉所有 POST,而請求匯出正是 POST。
+   不豁免的話,本模組上線後停權客戶依然拿不到資料,而那是它存在的第一個理由。 */
+describe("🔴 M2 端點", () => {
+  let app: import("@nestjs/platform-fastify").NestFastifyApplication
+  const H = (): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorA),
+  })
+
+  beforeAll(async () => {
+    const { FastifyAdapter } = await import("@nestjs/platform-fastify")
+    const { Test } = await import("@nestjs/testing")
+    const { mkdtemp } = await import("node:fs/promises")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    process.env.STORAGE_LOCAL_DIR = await mkdtemp(join(tmpdir(), "weyver-export-m2-"))
+    process.env.DATABASE_URL = container.getConnectionUri()
+    process.env.APP_DATABASE_URL = container.getConnectionUri()
+    const { AppModule } = await import("../src/app.module.js")
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
+    app = moduleRef.createNestApplication<typeof app>(new FastifyAdapter())
+    await app.init()
+    await app.getHttpAdapter().getInstance().ready()
+  }, 180_000)
+
+  afterAll(async () => {
+    await app?.close()
+  })
+
+  /* 🔴 RFC 9110 §15.3.3:「the request has been accepted for processing, but the
+     processing has not been completed」—— 回 201「已建立」會誤導,
+     使用者真正在意的封存檔那時候還不存在。 */
+  it("🔴 POST 回 202 Accepted,且帶得回可輪詢的工作資源", async () => {
+    await reset()
+    const res = await app.inject({ method: "POST", url: "/api/exports", headers: H(), payload: {} })
+    expect(res.statusCode).toBe(202)
+    const job = res.json() as { id: number; status: string; downloadsLeft: number }
+    expect(job.status).toBe("queued")
+    expect(job.downloadsLeft).toBe(5)
+
+    const one = await app.inject({
+      method: "GET",
+      url: `/api/exports/${String(job.id)}`,
+      headers: H(),
+    })
+    expect(one.statusCode).toBe(200)
+  })
+
+  it("🔴 停權(唯讀)租戶仍請求得到匯出 —— 那是停權訊息裡逐字承諾的事", async () => {
+    await reset()
+    await pool.query("UPDATE tenants SET status = 'suspended' WHERE id = $1", [tenantA])
+    try {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/exports",
+        headers: H(),
+        payload: {},
+      })
+      expect(res.statusCode).toBe(202)
+
+      /* 但其他寫入照擋 —— 豁免的是匯出,不是「停權時什麼都能做」 */
+      const write = await app.inject({
+        method: "POST",
+        url: "/api/forms",
+        headers: H(),
+        payload: { name: "停權時不該建得起來", fields: [{ name: "x", type: "text" }] },
+      })
+      expect(write.statusCode).toBe(403)
+      expect((write.json() as { code: string }).code).toBe("TENANT_READ_ONLY")
+    } finally {
+      await pool.query("UPDATE tenants SET status = 'active' WHERE id = $1", [tenantA])
+    }
+  })
+
+  it("🔴 已有一個在跑時回 409,而不是資料庫約束錯誤", async () => {
+    await reset()
+    await app.inject({ method: "POST", url: "/api/exports", headers: H(), payload: {} })
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/exports",
+      headers: H(),
+      payload: {},
+    })
+    expect(second.statusCode).toBe(409)
+    expect((second.json() as { code: string }).code).toBe("EXPORT_ALREADY_RUNNING")
+  })
+
+  /* 空陣列與「不指定」是兩回事:前者是「一張都不要」,那不是匯出。
+     靜默當成「全部」會讓使用者拿到他沒打算要的整包資料。 */
+  it("🔴 formIds 給空陣列 → 明確拒絕,不靜默當成全部", async () => {
+    await reset()
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/exports",
+      headers: H(),
+      payload: { formIds: [] },
+    })
+    expect(res.statusCode).toBe(400)
+    expect((res.json() as { code: string }).code).toBe("EXPORT_EMPTY_SCOPE")
+  })
+
+  /* 🔴 每日上限擋的是**接力**:跑完立刻再送一次,就能讓匯出無限地把整個租戶
+     掃一遍又一遍。「同時只有一個」擋不到這個。 */
+  it("🔴 達每日上限後拒絕,訊息說得出還能怎麼辦", async () => {
+    await reset()
+    /* 直接以特權車道塞 10 筆**已完成**的今日紀錄 —— 走 API 會被「同時一個」擋住 */
+    for (let i = 0; i < 10; i += 1) {
+      await pool.query(
+        `INSERT INTO export_job (tenant_id, requested_by_actor_id, status) VALUES ($1, $2, 'ready')`,
+        [tenantA, actorA],
+      )
+    }
+    const res = await app.inject({ method: "POST", url: "/api/exports", headers: H(), payload: {} })
+    expect(res.statusCode).toBe(400)
+    const body = res.json() as { code: string; message: string }
+    expect(body.code).toBe("EXPORT_DAILY_LIMIT")
+    expect(body.message).toContain("明天")
+
+    /* 別的租戶不受影響 —— 上限是 per-tenant */
+    const other = await app.inject({
+      method: "POST",
+      url: "/api/exports",
+      headers: { "x-dev-tenant": String(tenantB), "x-dev-actor": String(actorA) },
+      payload: {},
+    })
+    expect(other.statusCode).toBe(202)
+  })
+
+  it("🔴 跨租戶讀不到別人的匯出", async () => {
+    await reset()
+    const res = await app.inject({ method: "POST", url: "/api/exports", headers: H(), payload: {} })
+    const id = (res.json() as { id: number }).id
+    const other = await app.inject({
+      method: "GET",
+      url: `/api/exports/${String(id)}`,
+      headers: { "x-dev-tenant": String(tenantB), "x-dev-actor": String(actorA) },
+    })
+    expect(other.statusCode).toBe(404)
+  })
+})

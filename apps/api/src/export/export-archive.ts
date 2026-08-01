@@ -1,21 +1,27 @@
 import { createWriteStream } from "node:fs"
 import { mkdtemp, rm, stat } from "node:fs/promises"
+import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { PassThrough } from "node:stream"
-import * as archiverModule from "archiver"
 import type { Archiver } from "archiver"
 import { UTF8_BOM, csvRow } from "./csv.js"
 
-/* ⚠️ `@types/archiver@8` 的型別與 `archiver@7` 的執行期**對不上**:
-   型別宣告 `export class ZipArchive`,但 `require("archiver")` 實際拿到的是一個
-   函式(掛著 `create` / `registerFormat`),沒有 `ZipArchive` 這個匯出。
-   照型別寫會 tsc 全綠、一跑就 `ZipArchive is not a constructor` ——
-   這一版是**先被測試抓到才發現**的,不是照著文件猜出來的。
-   故取執行期確實存在的 `create()`;轉型無可避免,理由如上。 */
-const createArchive = (
-  archiverModule as unknown as { create: (f: string, o?: unknown) => Archiver }
-).create
+/* 🔴 `archiver` 是 CJS,而本專案是 ESM。這一段踩了**兩次**,兩次的表現都是
+   「型別對、測試綠、真伺服器炸」:
+
+   1. `import { ZipArchive }` —— `@types/archiver@8` 這樣宣告,但執行期沒有這個匯出
+      → `ZipArchive is not a constructor`(單元測試抓到)
+   2. `import * as m from "archiver"; m.create(...)` —— **vitest 與 tsx 的
+      CJS interop 形狀不同**:vitest 下 `m.create` 存在,tsx(即 dev / prod 的
+      實際執行方式)下整個 `module.exports` 被塞進 `m.default`,`m.create` 是
+      undefined → `createArchive is not a function`。
+      **單元測試全綠、瀏覽器一按就失敗** —— 只有真的跑起來才看得到。
+
+   故改用 `createRequire`:它就是 Node 的 CJS 載入,不經過任何轉換器的 interop
+   詮釋,兩個執行環境拿到的是同一個東西。 */
+const require = createRequire(import.meta.url)
+const createArchive = require("archiver") as (format: string, opts?: unknown) => Archiver
 
 /* 🔴 R1·I-1|封存檔的產生。
 
@@ -133,7 +139,9 @@ export async function buildArchive(input: {
       do {
         const page = await input.source.readPage(form.formId, cursor)
         for (const row of page.rows) {
-          const values = form.columns.map((c) => (row.values as Record<string, unknown> | undefined)?.[c])
+          const values = form.columns.map(
+            (c) => (row.values as Record<string, unknown> | undefined)?.[c],
+          )
           emit(csvRow([row.id, ...values]))
           rowCount += 1
         }

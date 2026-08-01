@@ -32,3 +32,7 @@ describe("🔴 豁免路徑", () => {
     expect(isMfaExemptPath("/api/settings/mexico")).toBe(false)
   })
 })
+
+it("🔴 path 為 undefined 時不豁免(fail-closed)", () => {
+  expect(isMfaExemptPath(undefined)).toBe(false)
+})

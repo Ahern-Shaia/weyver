@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { and, asc, desc, eq, isNotNull, lte, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb, TenantDb } from "../db/db.module.js"
 import { exportJobs } from "../db/schema.js"
 
@@ -76,6 +76,17 @@ export class ExportRepository {
         .from(exportJobs)
         .where(and(eq(exportJobs.tenantId, tenantId), eq(exportJobs.id, id)))
       return (rows[0] as ExportJobRow | undefined) ?? null
+    })
+  }
+
+  /* 每日上限用。走 app 車道 → RLS 保證只數自己的。 */
+  async countSince(tenantId: number, since: Date): Promise<number> {
+    return this.tenantDb.withTenant(tenantId, async (tx) => {
+      const rows = await tx
+        .select({ n: sql<string>`count(*)` })
+        .from(exportJobs)
+        .where(and(eq(exportJobs.tenantId, tenantId), gte(exportJobs.createdAt, since)))
+      return Number(rows[0]?.n ?? 0)
     })
   }
 

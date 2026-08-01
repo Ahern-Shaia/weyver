@@ -26,7 +26,9 @@ const EXEMPT_PREFIXES = [
   "/api/settings/me",
 ] as const
 
-export function isMfaExemptPath(path: string): boolean {
+/* 缺值時回 **false = 不豁免**(fail-closed,同 export-gate)。 */
+export function isMfaExemptPath(path: string | undefined): boolean {
+  if (path === undefined) return false
   const clean = path.split("?")[0] ?? path
   return EXEMPT_PREFIXES.some((p) => clean === p || clean.startsWith(`${p}/`))
 }

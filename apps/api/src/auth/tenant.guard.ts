@@ -1,21 +1,22 @@
 import {
+  type CanActivate,
+  type ExecutionContext,
   ForbiddenException,
   Inject,
   Injectable,
-  type CanActivate,
-  type ExecutionContext,
 } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { fromNodeHeaders } from "better-auth/node"
 import type pg from "pg"
 import { EntitlementService } from "../billing/entitlement.service.js"
 import { isReadOnlyStatus, isWriteMethod } from "../billing/tenant-status.js"
+import { PG_POOL } from "../db/db.module.js"
+import { isReadOnlyExemptPath } from "../export/export-gate.js"
 import { DevTenantGuard } from "../http/dev-tenant.guard.js"
 import type { RequestWithTenant } from "../http/tenant-context.js"
-import { PG_POOL } from "../db/db.module.js"
 import { AuthGuard } from "./auth-guard.js"
-import { AUTH } from "./auth.tokens.js"
 import type { Auth } from "./auth.js"
+import { AUTH } from "./auth.tokens.js"
 import { mustChangePassword } from "./initial-credential.js"
 import { hasMfaEnabled, isMfaExemptPath, tenantRequiresMfa } from "./mfa-gate.js"
 
@@ -101,6 +102,10 @@ export class TenantGuard implements CanActivate {
     }
 
     if (!isWriteMethod(request.method)) return true
+
+    /* 🔴 停權(唯讀)租戶仍必須能請求匯出 —— 那是 F-8 停權訊息裡逐字承諾的事,
+       而請求匯出是 POST,不豁免就會被下面這一刀擋掉。見 export-gate.ts。 */
+    if (isReadOnlyExemptPath(request.url)) return true
 
     const plan = await this.entitlement.planFor(tenantId)
     if (isReadOnlyStatus(plan.status)) {
