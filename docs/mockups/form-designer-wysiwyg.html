@@ -7,11 +7,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════
-   UP-3c 高保真 mockup —— review 用,尚未進 prod。
+   UP-3c 高保真 mockup。
    OQ-FDW 全採建議:1=A 示例值依型別生成 · 2=A 設計/填單共用渲染 ·
-   3=B 就地新增延到 Enter · 4=C 型別固定順序 · 5=A 表單級歸表單設定 · 6=A 另立。
+   3=B′ 就地新增延到 Enter · 4=C 型別固定順序 · 5=A 表單級歸表單設定 · 6=A 另立。
 
-   🔴 本檔自我約束(前兩次 review 抓到我違反自己的規則):
+   ⚠️ v2(2026-08-02)|**畫布模型改正**。v1 把畫布畫成 th|td|th|td 的流式表格,
+   但引擎的版面 metadata 是 **12 欄座標**(col / row / colSpan)—— 兩者不是同一個東西:
+   流式表格排不出「第 3 欄起、寬 4 格」這種版面,也畫不出空白座標。
+   v2 改以真正的 12 × 60px 格線繪製,並補上 v1 缺席的**填單屏**(整份主張的另一半)。
+
+   🔴 本檔自我約束(前幾輪 review 抓到違反自己寫的規則)
    · 間距只用 4 / 8 / 12 / 16 / 24
    · 不用 opacity 造文字階(用 ink / ink-2 / ink-3)
    · 圖示一律 Lucide 真路徑,不自繪
@@ -33,6 +38,8 @@
   --fast:110ms cubic-bezier(0,0,.38,.9);
   --hair:0 0 0 1px var(--line);
   --ovl:0 0 0 1px var(--line),0 12px 28px -10px rgb(15 23 32 / .18),0 2px 6px rgb(15 23 32 / .05);
+  /* 版面幾何 —— 與 apps/web/src/lib/engine/form-geometry.ts 同一組數字 */
+  --colw:60px;--rowh:32px;--labw:112px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--s3);color:var(--ink);padding:24px;
@@ -45,6 +52,8 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
 .tags b{font-size:12px;font-weight:500;line-height:16px;color:var(--ink2);background:var(--s1);
   border-radius:var(--r1);padding:4px 8px}
+.tags b.done{color:var(--ok);background:var(--ok-t)}
+.tags b.todo{color:var(--wn);background:var(--wn-t)}
 .cap{max-width:1460px;margin:8px auto 24px;font-size:13px;line-height:18px;color:var(--ink3)}
 .cap b{color:var(--ink)}
 
@@ -58,8 +67,7 @@ body{background:var(--s3);color:var(--ink);padding:24px;
   letter-spacing:-.04em;margin-bottom:12px}
 .rail a{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;
   color:var(--ink3);transition:background var(--fast),color var(--fast)}
-.rail a:hover{background:var(--s4);color:var(--ink)}
-.rail a.on{background:var(--s4);color:var(--ink)}
+.rail a:hover,.rail a.on{background:var(--s4);color:var(--ink)}
 .rail .sp{flex:1}
 .side{width:208px;flex:0 0 208px;background:var(--s2);padding:12px 8px;overflow:auto}
 .side .hd{display:flex;align-items:center;padding:0 8px 8px;gap:8px}
@@ -100,53 +108,72 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 
 .body{flex:1;min-height:0;display:flex}
 .canvas{flex:1;min-width:0;overflow:auto;padding:24px}
-
-/* ── 單據語言:設計 = 填單 ── */
-.sheet{max-width:760px;margin:0 auto}
 .sheet .ttl{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:26px}
 .sheet .sub{font-size:12px;line-height:16px;color:var(--ink3);margin-top:4px;
   font-family:'IBM Plex Mono',monospace}
-.secbar{margin-top:24px;background:var(--pri);color:#fff;font-size:12px;font-weight:600;
-  line-height:16px;letter-spacing:.06em;padding:6px 12px;border-radius:var(--r2) var(--r2) 0 0;
-  display:flex;align-items:center;gap:8px}
+
+/* ══ 版面畫布:12 欄座標,不是流式表格 ══
+   🔴 v1 的錯誤:畫成 th|td|th|td 的 <table>。那排不出「第 3 欄起、寬 4 格」,
+   也畫不出**空白座標** —— 而空白座標正是使用者判斷「還能放哪」的唯一線索。
+   gap 必須是 0:一有間距,欄位就變成浮著的卡片,填起來長怎樣又看不出來了。 */
+.g12{margin-top:24px;display:grid;grid-template-columns:repeat(12,var(--colw));
+  grid-auto-rows:var(--rowh);gap:0;width:calc(12 * var(--colw));
+  /* 多留幾列空白座標:它是「還能放哪」的唯一線索,內容有多高就只畫多高等於沒畫 */
+  min-height:calc(14 * var(--rowh));
+  background-image:linear-gradient(to right,var(--cell) 1px,transparent 1px),
+                   linear-gradient(to bottom,var(--cell) 1px,transparent 1px);
+  background-size:var(--colw) var(--rowh)}
+/* 一個欄位 = label 格 + 值格(Ragic 逐字:「一個欄位會佔兩格儲存格的空間」) */
+.f{display:grid;grid-template-columns:var(--labw) 1fr;border:1px solid var(--cell);
+  margin:0 -1px -1px 0;position:relative;background:var(--s1);
+  transition:box-shadow var(--fast)}
+.f > .k{display:flex;align-items:center;justify-content:flex-end;gap:3px;
+  background:#f7f8f9;border-right:1px solid var(--cell);padding:0 10px;
+  font-size:12px;line-height:16px;color:var(--ink2);text-align:right}
+.f > .v{display:flex;align-items:center;gap:6px;min-width:0;padding:0 10px;
+  font-size:13px;line-height:18px;color:var(--ink3)}
+.f > .v .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f .req{color:var(--er);font-weight:600}
+.f .hlp{display:inline-flex;width:12px;height:12px;border-radius:50%;border:1px solid var(--s7);
+  align-items:center;justify-content:center;font-size:11px;color:var(--ink3)}
+.f .n{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
+/* 選取用 inset 環:格子彼此相貼,外擴的環會蓋到鄰格 */
+.f.sel{box-shadow:inset 0 0 0 1px var(--pri);z-index:2}
+.f.sel > .k{background:var(--pri-t);color:var(--pri-d);font-weight:500}
+.f.hov{box-shadow:inset 0 0 0 1px var(--s8);z-index:1}
+/* 🔴 拖曳把手**疊在標籤格左緣**,不佔版面寬度 ——
+   佔一格的話設計側值格從 132px 開始、填單側從 112px 開始,「設計即所見」就差了 20px。 */
+.f .grip{position:absolute;left:0;top:0;bottom:0;width:16px;display:flex;align-items:center;
+  justify-content:center;color:var(--ink4);background:#f7f8f9;opacity:0;transition:opacity var(--fast)}
+.f:hover .grip,.f.sel .grip{opacity:1}
+/* 未儲存的版面變更 —— 與「已建立的欄位」必須看得出差別 */
+.f.dirty > .k{box-shadow:inset 3px 0 0 var(--wn)}
+/* 分段橫跨整列 */
+.secbar{grid-column:1 / -1;background:var(--pri);color:#fff;font-size:12px;font-weight:600;
+  line-height:16px;letter-spacing:.06em;padding:0 12px;display:flex;align-items:center;gap:8px;
+  margin:0 -1px -1px 0}
 .secbar .h{margin-left:auto;display:flex;gap:4px;opacity:0}
 .secbar:hover .h{opacity:1}
-table.doc{width:100%;border-collapse:collapse;font-size:13px;line-height:18px}
-/* 🔴 對齊 Ragic 實際的單據語言(官方文件 + repo 截圖 formbuilder-09/11 查證):
-   · 逐字「一個欄位會佔兩格儲存格的空間,左邊是欄位名稱(也稱為欄位標頭),右邊是欄位值」
-   · label **右對齊**靠近值(截圖確認),不是左對齊
-   · label 底色**極淡**,不是明顯的灰塊
-   · **橫線為主**,無粗外框 —— 我初版做成全框 + 左對齊 + 較藍的灰底,三處都錯 */
-table.doc{border-top:1px solid var(--cell)}
-table.doc th,table.doc td{border-bottom:1px solid var(--cell);padding:7px 12px;vertical-align:middle}
-table.doc th{background:#f7f8f9;color:var(--ink2);font-weight:400;width:120px;font-size:12px;
-  text-align:right;border-right:1px solid var(--cell)}
-table.doc td{border-right:1px solid var(--cell)}
-table.doc td:last-child,table.doc th:last-child{border-right:0}
-table.doc .req{color:var(--er);margin-right:2px}
-table.doc .hlp{color:var(--ink4);margin-left:4px;font-size:11px}
-table.doc td{color:var(--ink)}
-/* 🔴 示例值:OQ-FDW-1=A 依型別生成。ink-3 + label 淡底 = 看得出不是真值 */
-table.doc td.ex{color:var(--ink3);background:repeating-linear-gradient(-45deg,
-  var(--s1),var(--s1) 6px,var(--s2) 6px,var(--s2) 12px)}
-table.doc td.n{font-family:'IBM Plex Mono',monospace;text-align:right}
-/* 🔴 設計模式的選取是**一個欄位**(label 格 + 值格),不是一整列 ——
-   同一列可能有兩個不同欄位(th|td|th|td 四欄版面),染整列會讓使用者
-   以為選到了兩個欄位。hover 同理。 */
-table.doc th.sel{background:var(--pri-t);color:var(--pri-d);font-weight:600}
-table.doc th.sel,table.doc td.sel{border-color:var(--pri);box-shadow:inset 0 0 0 1px var(--pri)}
-table.doc th.hov{background:var(--s4)}
-.ghost{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;
-  height:34px;border:1px dashed var(--s8);border-radius:var(--r1);color:var(--ink3);font-size:13px;
+
+/* 填單:同一組格線,值格換成可輸入區(格子就是輸入框,不再格子裡浮一個框) */
+.f.fill > .v{color:var(--ink);padding:0}
+.f.fill .in{flex:1;min-width:0;height:100%;display:flex;align-items:center;padding:0 10px;
+  color:var(--ink)}
+.f.fill .in.ph{color:var(--ink4)}
+.f.fill .in.focus{box-shadow:inset 0 0 0 1px var(--pri);background:var(--pri-t)}
+.f.fill .cur{display:inline-block;width:1px;height:15px;background:var(--pri);
+  animation:bl 1s step-end infinite;margin-left:1px}
+@keyframes bl{50%{opacity:0}}
+.f.fill .ro{color:var(--ink4)}
+
+.ghost{grid-column:1 / span 6;display:flex;align-items:center;gap:6px;padding:0 10px;
+  border:1px dashed var(--s8);margin:0 -1px -1px 0;color:var(--ink3);font-size:13px;
   transition:background var(--fast),color var(--fast),border-color var(--fast)}
 .ghost:hover{background:var(--s2);color:var(--ink2);border-color:var(--ink4)}
-.ghost.editing{border-style:solid;border-color:var(--pri);background:var(--s1);justify-content:flex-start;
-  padding:0 8px;gap:8px}
-.ghost.editing .nm{font-size:13px;color:var(--ink);border-right:1px solid var(--cell);padding-right:10px}
-.ghost.editing .cur{display:inline-block;width:1px;height:15px;background:var(--pri);
-  animation:bl 1s step-end infinite;vertical-align:-2px}
-@keyframes bl{50%{opacity:0}}
-.ghost.editing .hint{margin-left:auto;font-size:12px;color:var(--ink3)}
+.ghost.editing{border-style:solid;border-color:var(--pri);background:var(--s1)}
+.ghost.editing .nm{font-size:13px;color:var(--ink);border-right:1px solid var(--cell);
+  padding-right:10px;margin-right:4px}
+.ghost .hint{margin-left:auto;font-size:12px;color:var(--ink3)}
 .kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s3);border-radius:3px;
   padding:2px 5px;color:var(--ink2)}
 
@@ -178,7 +205,7 @@ table.doc th.hov{background:var(--s4)}
 .fld label{display:block;font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:4px}
 .inp{width:100%;height:30px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
   background:var(--s1);font:inherit;font-size:13px;line-height:18px;color:var(--ink)}
-.sel{width:100%;height:30px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
+.selbox{width:100%;height:30px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
   background:var(--s1);font-size:13px;color:var(--ink);display:flex;align-items:center;
   justify-content:space-between;gap:8px}
 .two{display:flex;gap:8px}
@@ -203,10 +230,6 @@ table.doc th.hov{background:var(--s4)}
   box-shadow:0 12px 28px -10px rgb(15 23 32 / .34),0 2px 6px rgb(15 23 32 / .12);z-index:30}
 .toast .u{margin-left:4px;color:#8fb6e0;font-weight:500;text-decoration:underline;
   text-underline-offset:2px}
-/* 🔴 兩種狀態必須看得出差別:已建立的欄位 vs **未儲存的版面變更**。
-   未存者以 warn 左緣標記(語意=待處理),並在儲存鈕上計數。
-   先前設計模式同時跑兩個心智模型(移動=草稿可 undo / 新增=永久)而**沒有任何視覺區分**。 */
-table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
 .dirty-note{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:16px;
   color:var(--wn);margin-left:8px}
 .dirty-note .d{width:6px;height:6px;border-radius:1px;background:var(--wn);flex:0 0 6px}
@@ -216,22 +239,30 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
 .mtab th{background:var(--s3);font-size:12px;font-weight:500;color:var(--ink2)}
 .mtab td.k{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink3);white-space:nowrap}
 .ok{color:var(--ok);font-weight:600}
+.wn{color:var(--wn);font-weight:600}
+h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <div class="lede">
-  <h1>表單設計器 — UP-3c 高保真 mockup</h1>
+  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v2</span></h1>
   <p><b>設計檢視就是表單本身。</b>補完 <code>form-designer-2d</code> 已裁定但只實作一半的
-     D1「2D 格線畫布 = 填單畫面本身」。OQ-FDW-1..6 全採建議。<b>此稿供 review,尚未進 prod。</b></p>
+     D1「2D 格線畫布 = 填單畫面本身」。<br>
+     v2 改正 v1 的畫布模型(流式表格 → <b>12 欄座標格線</b>),並補上 v1 缺席的
+     <b>填單屏</b> —— 沒有它,「設計即所見」只講了一半。</p>
   <div class="tags">
-    <b>1=A 示例值依型別生成</b><b>2=A 設計/填單共用渲染</b><b>3=B 新增延到 Enter</b>
-    <b>4=C 型別固定順序</b><b>5=A 表單級歸表單設定</b><b>6=A 另立</b>
+    <b class="done">✓ 已實作 1=A 示例值依型別生成</b>
+    <b class="done">✓ 已實作 2=A 設計/填單共用渲染</b>
+    <b class="todo">M4 3=B′ 新增延到 Enter</b>
+    <b class="todo">M4 4=C 型別固定順序</b>
+    <b class="todo">M2/M3 5=A 表單級歸表單設定</b>
+    <b>6=A 另立</b>
   </div>
 </div>
 
-<!-- ═══ 畫面一:預設狀態(選中一個欄位) ═══ -->
+<!-- ═══════════ 畫面一:設計(選中一個欄位) ═══════════ -->
 <div class="app">
   <nav class="rail">
     <div class="mk">W</div>
@@ -245,17 +276,17 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
   <nav class="side">
     <div class="hd"><b>我的表單</b>
       <button class="add" aria-label="新增表單"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <a>採購單<i>24</i></a>
+    <a class="on">採購單<i>24</i></a>
     <a class="sub">採購明細<i>子表</i></a>
     <a>供應商評鑑<i>8</i></a>
-    <a class="on">影像處理驗證<i>2</i></a>
+    <a>影像處理驗證<i>2</i></a>
     <a>進貨驗收單<i>61</i></a>
   </nav>
 
   <div class="main">
-    <!-- 🔴 唯一一條 header。表單設定(含表單級條件式格式/動作/列印)收在單一選單 -->
+    <!-- 🔴 唯一一條 header。表單設定(含表單級條件式格式/動作/列印)收在單一齒輪 -->
     <div class="top">
-      <h2>影像處理驗證</h2><span class="m mono">v1 · 3 欄</span>
+      <h2>採購單</h2><span class="m mono">v74 · 6 欄</span>
       <span class="sp"></span>
       <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
       <button class="btn gho"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>加子表</button>
@@ -266,47 +297,73 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
     <div class="body">
       <div class="canvas">
         <div class="sheet">
-          <div class="ttl">影像處理驗證單</div>
-          <div class="sub">PO-2026-0184 · 建立 2026/07/31 09:12 · 版本 v1</div>
+          <div class="ttl">採購單</div>
+          <div class="sub">PO-2026-0184 · 建立 2026/08/02 09:12 · 版本 v74</div>
 
-          <div class="secbar">基本資料
-            <span class="h"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></span></div>
-          <table class="doc">
-            <tr><th class="sel"><span class="req">*</span>品名<span class="hlp">?</span></th><td class="ex sel">範例文字</td><th class="hov">批號<span class="hlp">?</span></th><td class="ex mono">BN-0000-A</td></tr>
-            <tr><th>供應商</th><td class="ex">範例文字</td><th>單據日期</th><td class="ex mono">2026-08-01</td></tr>
-            <tr><th>金額</th><td class="ex n">128,400.00</td><th>狀態</th><td class="ex"><span class="chip wn">待簽核</span></td></tr>
-          </table>
+          <div class="g12">
+            <div class="secbar">基本資料
+              <span class="h"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></span></div>
 
-          <div class="secbar">現場照片</div>
-          <table class="doc">
-            <tr><th>影像</th><td class="ex" colspan="3">範例圖片.jpg</td></tr>
-            <tr><th>檢驗人</th><td class="ex">範例文字</td><th>檢驗時間</th><td class="ex mono">2026-08-01 09:12</td></tr>
-          </table>
+            <!-- 座標:col 起點 / span。示例值依型別生成(OQ-FDW-1=A),ink-3 = 一眼看得出不是真資料 -->
+            <div class="f sel" style="grid-column:1 / span 6">
+              <span class="grip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r=".6"/><circle cx="9" cy="12" r=".6"/><circle cx="9" cy="18" r=".6"/><circle cx="15" cy="6" r=".6"/><circle cx="15" cy="12" r=".6"/><circle cx="15" cy="18" r=".6"/></svg></span>
+              <span class="k">單號</span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg><span class="t n">AUTO-000001</span></span>
+            </div>
+            <div class="f hov" style="grid-column:7 / span 6">
+              <span class="k">批號<span class="hlp">?</span></span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg><span class="t n">4710085120697</span></span>
+            </div>
 
-          <div class="ghost">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            新增欄位</div>
+            <div class="f" style="grid-column:1 / span 6">
+              <span class="k"><span class="req">*</span>供應商</span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg><span class="t">範例文字</span></span>
+            </div>
+            <div class="f" style="grid-column:7 / span 6">
+              <span class="k">交期</span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg><span class="t n">2026-08-02</span></span>
+            </div>
+
+            <div class="f" style="grid-column:1 / span 6">
+              <span class="k">金額</span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="t n">128,400.00</span></span>
+            </div>
+            <div class="f" style="grid-column:7 / span 6">
+              <span class="k">狀態</span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 11 4 4 4-4"/></svg><span class="t">待簽核</span></span>
+            </div>
+
+            <div class="secbar">說明</div>
+            <div class="f" style="grid-column:1 / span 12">
+              <span class="k"><span class="req">*</span>備註</span>
+              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="t">範例的多行說明文字，用來看清楚欄位的寬度與換行。</span></span>
+            </div>
+
+            <div class="ghost">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新增欄位</div>
+          </div>
         </div>
       </div>
 
       <!-- 🔴 唯一一欄輔助面板。屬性歸屬到「那一格」 -->
       <aside class="drw">
         <div class="h">
-          <div><b>品名</b><div class="t">單行文字 · 第 1 列</div></div>
+          <div><b>單號</b><div class="t">自動編號 · 第 1 列 · 第 1–6 格</div></div>
           <button class="ico-btn x" aria-label="關閉"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
 
         <div class="acc">
           <h4>基本<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></h4>
-          <div class="fld"><label>欄位名稱</label><input class="inp" value="品名"></div>
+          <div class="fld"><label>欄位名稱</label><input class="inp" value="單號"></div>
           <div class="fld"><label>型別</label>
-            <div class="sel">單行文字<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div class="selbox">自動編號<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
           <div class="fld two">
-            <div style="flex:1"><label>欄寬</label><div class="sel">2 格<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div style="flex:1"><label>欄寬</label><div class="selbox">6 格<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
             <div style="flex:1"><label>說明文字</label><input class="inp" placeholder="選填"></div>
           </div>
-          <div class="fld"><span class="sw"><span class="t"></span>必填</span></div>
-          <div class="fld"><span class="sw off"><span class="t"></span>唯讀</span></div>
+          <div class="fld"><span class="sw off"><span class="t"></span>必填</span></div>
+          <div class="fld"><span class="sw"><span class="t"></span>唯讀</span></div>
         </div>
         <div class="acc"><h4>驗證<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
         <div class="acc"><h4>條件式格式<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
@@ -314,17 +371,20 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
       </aside>
     </div>
 
-    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 22:51:19</span>
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 01:37:15</span>
       <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
   </div>
 </div>
-<div class="cap"><b>畫面一 · 預設。</b>對照現況:5 欄 3 帶 → <b>3 區 1 帶</b>。
-  畫布是<b>真正的欄位表</b>(與填單同一組 <code>FormSection</code>/<code>FieldGrid</code>),
-  示例值以斜紋淡底 + <code>ink-3</code> 標示為非真值 —— 一眼看得出欄寬與換行,不必切到填單才發現版面問題。
-  「加子表」升到與「新增欄位」同層(task #154);表單級設定(動作/簽核、列印、表單級條件式格式)
-  收在齒輪單一入口(OQ-FDW-5=A)。</div>
+<div class="cap"><b>畫面一 · 設計。</b>畫布是<b>真正的欄位表</b>,不是欄位卡片清單 ——
+  同一組 label 格 + 值格、同一套 12 × 60px 座標。<b>底下露出空白格線</b>是刻意的:
+  它是使用者判斷「還能放哪」的唯一線索(Ragic 設計模式同樣露出試算表的空格子)。<br>
+  <b>型別怎麼知道?</b>值格左側一個 Lucide 圖示,加上示例值本身就會說話(<code>128,400.00</code> /
+  <code>2026-08-02</code> / <code>AUTO-000001</code>)。<b>不放型別文字標籤</b> ——
+  那會讓每一列多一塊與填單無關的內容,設計與填單的差別應該只有這一個圖示。<br>
+  <b>拖曳把手疊在標籤格左緣</b>(hover 才出現),不佔版面寬度:佔一格的話設計側值格從 132px 起、
+  填單側從 112px 起,「設計即所見」當場差 20px。</div>
 
-<!-- ═══ 畫面二:就地新增(OQ-FDW-3=B 延到 Enter) ═══ -->
+<!-- ═══════════ 畫面二:填單(同一份版面) ═══════════ -->
 <div class="app">
   <nav class="rail">
     <div class="mk">W</div>
@@ -334,12 +394,96 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
   </nav>
   <nav class="side">
     <div class="hd"><b>我的表單</b></div>
-    <a>採購單<i>24</i></a><a class="sub">採購明細<i>子表</i></a>
-    <a>供應商評鑑<i>8</i></a><a class="on">影像處理驗證<i>2</i></a>
+    <a class="on">採購單<i>24</i></a><a class="sub">採購明細<i>子表</i></a>
+    <a>供應商評鑑<i>8</i></a><a>影像處理驗證<i>2</i></a>
   </nav>
   <div class="main">
     <div class="top">
-      <h2>影像處理驗證</h2><span class="m mono">v1 · 4 欄</span>
+      <h2>採購單</h2><span class="m mono">新增記錄</span>
+      <span class="sp"></span>
+      <span class="seg"><b>設計</b><b class="on">填單</b><b>網格</b><b>資料</b></span>
+      <button class="btn gho">清除</button><button class="btn pri">儲存</button>
+    </div>
+    <div class="body">
+      <div class="canvas">
+        <div class="sheet">
+          <div class="ttl">採購單</div>
+          <div class="sub">新增記錄 · 尚未儲存</div>
+          <div class="g12" style="background-image:none">
+            <div class="secbar">基本資料</div>
+
+            <div class="f fill" style="grid-column:1 / span 6">
+              <span class="k">單號</span>
+              <span class="v"><span class="in ro">儲存後自動產生</span></span>
+            </div>
+            <div class="f fill" style="grid-column:7 / span 6">
+              <span class="k">批號<span class="hlp">?</span></span>
+              <span class="v"><span class="in n">4710085120697</span></span>
+            </div>
+
+            <div class="f fill" style="grid-column:1 / span 6">
+              <span class="k"><span class="req">*</span>供應商</span>
+              <span class="v"><span class="in focus">大安食品原料<span class="cur"></span></span></span>
+            </div>
+            <div class="f fill" style="grid-column:7 / span 6">
+              <span class="k">交期</span>
+              <span class="v"><span class="in n">2026-08-15</span></span>
+            </div>
+
+            <div class="f fill" style="grid-column:1 / span 6">
+              <span class="k">金額</span>
+              <span class="v"><span class="in n">128,400.00</span></span>
+            </div>
+            <div class="f fill" style="grid-column:7 / span 6">
+              <span class="k">狀態</span>
+              <span class="v"><span class="in"><span class="chip wn">待簽核</span></span></span>
+            </div>
+
+            <div class="secbar">說明</div>
+            <div class="f fill" style="grid-column:1 / span 12;grid-row:span 3">
+              <span class="k"><span class="req">*</span>備註</span>
+              <span class="v" style="align-items:flex-start"><span class="in ph" style="padding-top:7px">請說明採購事由與規格</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="drw">
+        <div class="h"><div><b>採購明細</b><div class="t">子表 · 0 行</div></div>
+          <button class="ico-btn x" aria-label="加一行"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+        <div class="acc" style="color:var(--ink3);font-size:13px;line-height:18px">
+          點右上「＋」新增明細行。</div>
+      </aside>
+    </div>
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 01:37:17</span>
+      <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
+  </div>
+</div>
+<div class="cap"><b>畫面二 · 填單。</b>與畫面一<b>逐格對齊</b>:同樣的欄寬、同樣 112px 標籤欄、同樣座標。
+  三處刻意的差異,各有理由:<br>
+  ① <b>不畫空白格線</b> —— 填單時空座標不是可操作的東西,畫出來只是雜訊;
+  ② <b>沒有型別圖示</b> —— 填的人不需要知道欄位型別,他只需要知道要填什麼;
+  ③ <b>列高會長高</b>(多行文字 / 附件 / 簽名)—— 設計看的是版面,截斷即可;填單要真的打字。
+  欄的幾何完全一致,只有列會長。<br>
+  <b>格子就是輸入框。</b>不再是格子裡浮一個框 —— 邊界由格子畫、狀態由 focus 畫(inset 環 + 主色淡底),
+  與 B-3「拆互動項框線、改吃狀態階」同一條規則。改動前同一張表單有三種輸入寬度
+  (<code>&lt;Input&gt;</code> 內建 ~250px / <code>w-full</code> / textarea),那正是「排版錯位」的來源。</div>
+
+<!-- ═══════════ 畫面三:就地新增(M4,尚未實作) ═══════════ -->
+<div class="app">
+  <nav class="rail">
+    <div class="mk">W</div>
+    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+    <a class="on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg></a>
+    <div class="sp"></div>
+  </nav>
+  <nav class="side">
+    <div class="hd"><b>我的表單</b></div>
+    <a class="on">採購單<i>24</i></a><a class="sub">採購明細<i>子表</i></a>
+    <a>供應商評鑑<i>8</i></a>
+  </nav>
+  <div class="main">
+    <div class="top">
+      <h2>採購單</h2><span class="m mono">v74 · 7 欄</span>
       <span class="dirty-note"><span class="d"></span>2 項版面變更未儲存</span>
       <span class="sp"></span>
       <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
@@ -348,28 +492,41 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
     <div class="body">
       <div class="canvas rel">
         <div class="sheet">
-          <div class="ttl">影像處理驗證單</div>
-          <div class="sub">PO-2026-0184 · 版本 v1</div>
-          <div class="secbar">基本資料</div>
-          <table class="doc">
-            <tr><th class="dirty">品名<span class="hlp">?</span></th><td class="ex">範例文字</td><th>批號<span class="hlp">?</span></th><td class="ex mono">BN-0000-A</td></tr>
-            <tr><th>供應商</th><td class="ex">範例文字</td><th class="dirty">單據日期</th><td class="ex mono">2026-08-01</td></tr>
-          </table>
-          <!-- ghost row 進入編輯:名稱可打字,型別 popover 就在它身上 -->
-          <div class="ghost editing">
-            <span class="nm">運費<span class="cur"></span></span>
-            <span style="font-size:13px;color:var(--ink3)">單行文字</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
-            <span class="hint"><span class="kbd">Enter</span> 建立 · <span class="kbd">Esc</span> 取消</span>
+          <div class="ttl">採購單</div>
+          <div class="sub">PO-2026-0184 · 版本 v74</div>
+          <div class="g12">
+            <div class="secbar">基本資料</div>
+            <div class="f dirty" style="grid-column:1 / span 6">
+              <span class="k">單號</span>
+              <span class="v"><span class="t n">AUTO-000001</span></span>
+            </div>
+            <div class="f" style="grid-column:7 / span 6">
+              <span class="k">批號</span>
+              <span class="v"><span class="t n">4710085120697</span></span>
+            </div>
+            <div class="f" style="grid-column:1 / span 6">
+              <span class="k"><span class="req">*</span>供應商</span>
+              <span class="v"><span class="t">範例文字</span></span>
+            </div>
+            <div class="f dirty" style="grid-column:7 / span 6">
+              <span class="k">交期</span>
+              <span class="v"><span class="t n">2026-08-02</span></span>
+            </div>
+
+            <!-- ghost 就地進入編輯:名稱可打字,型別 popover 掛在它身上 -->
+            <div class="ghost editing" style="grid-column:1 / span 6">
+              <span class="nm">運費<span class="cur"></span></span>
+              <span style="font-size:13px;color:var(--ink3)">單行文字</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+              <span class="hint"><span class="kbd">Enter</span> 建立 · <span class="kbd">Esc</span> 取消</span>
+            </div>
           </div>
 
-          <!-- 建立後的可撤銷 toast(此處示意上一個動作的結果) -->
           <div class="toast">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
             已新增欄位「單價」<span class="u">復原</span></div>
 
-          <!-- 型別 popover:固定分組固定順序(OQ-FDW-4=C) -->
-          <div class="pop" style="top:236px;left:214px">
+          <div class="pop" style="top:200px;left:196px">
             <div class="srch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>搜尋型別…</div>
             <div class="g">文字</div>
             <i class="on">單行文字<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></i>
@@ -385,12 +542,12 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
         <div class="h"><div><b>尚未選取欄位</b><div class="t">點畫布上任一格以編輯</div></div></div>
       </aside>
     </div>
-    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 22:51:19</span>
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 01:37:19</span>
       <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
   </div>
 </div>
-<div class="cap"><b>畫面二 · 就地新增。</b>點表尾 ghost row → <b>就地出現一格</b>,游標落在欄名可直接打字,
-  型別 popover 掛在該格上(固定分組固定順序,位置穩定可養成肌肉記憶)。
+<div class="cap"><b>畫面三 · 就地新增(M4,尚未實作)。</b>點表尾 ghost 格 → <b>就地出現一格</b>,
+  游標落在欄名可直接打字,型別 popover 掛在該格上(固定分組固定順序,位置穩定可養成肌肉記憶)。
   🔴 <b><code>Enter</code> 即建欄(裁定 B′)</b>,並配<b>三項補償</b>。<br>
   <b>為何不對齊 Ragic 的「整批儲存」</b>|該 parity 的是<b>範式</b>(自己建自己填、表單即畫布),
   不是每個互動細節。三個理由:① <b>錯誤定位</b> —— 批次下建了 10 個欄位才在儲存時撞名失敗,
@@ -400,24 +557,52 @@ table.doc th.dirty{box-shadow:inset 3px 0 0 var(--wn)}
   ddl_audit / 部分失敗回滾),為一個互動細節去動鐵則區域不划算。<br>
   <b>三項補償</b>|① 建立後給<b>可撤銷 toast</b>(剛建立、無資料的欄位刪掉是安全的);
   ② <b>未儲存的版面變更以 warn 左緣標記 + 儲存鈕計數</b> ——
-  先前設計模式同時跑兩個心智模型(移動=草稿可 undo / 新增=永久)卻<b>沒有任何視覺區分</b>,這是真缺陷;
+  設計模式同時跑兩個心智模型(移動=草稿可 undo / 新增=永久)卻<b>沒有任何視覺區分</b>,這是真缺陷;
   ③ 此取捨寫入文件為已知限制,不假裝沒有兩個模型。</div>
 
 <div style="max-width:1460px;margin:24px auto 0">
-  <h3 style="font-size:16px;font-weight:600;letter-spacing:-.014em">量測對照(1440px)</h3>
+  <h3 class="sec">量測對照</h3>
+  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:4px">
+    「本稿」欄位若標 <span class="ok">已量測</span>,數字來自 Playwright 對真實瀏覽器的
+    <code>getBoundingClientRect()</code>,不是從稿子上量的。</p>
   <table class="mtab">
-    <tr><th style="width:180px">指標</th><th style="width:150px">現況</th><th style="width:150px">本稿</th><th>依據</th></tr>
-    <tr><td>水平 header 帶</td><td class="k">3 條 · 133px</td><td class="k ok">1 條 · 48px</td><td>docs/29 S5 ≤1</td></tr>
-    <tr><td>直向欄(軌除外)</td><td class="k">4(123/228/227/178)</td><td class="k ok">2(清單 + 抽屜)</td><td>docs/29 S3 輔助面板 ≤1</td></tr>
-    <tr><td>主體佔內容區</td><td class="k">約 21%</td><td class="k ok">約 70%</td><td>docs/29 S4 ≥60%</td></tr>
-    <tr><td>設計 vs 填單</td><td class="k">卡片 vs 欄位表</td><td class="k ok">同一組元件</td><td>form-designer-2d D1</td></tr>
-    <tr><td>字體</td><td class="k">IBM Plex</td><td class="k ok">Inter + Noto Sans TC</td><td>品牌板明訂四階</td></tr>
+    <tr><th style="width:190px">指標</th><th style="width:170px">改動前</th><th style="width:190px">本稿 / 現況</th><th>依據</th></tr>
+    <tr><td>設計側欄寬 / 標籤欄寬</td><td class="k">361 / 132</td><td class="k ok">361 / 112 已量測</td><td rowspan="2">form-designer-2d D1;<br><code>wysiwyg-parity.spec</code> 逐格斷言</td></tr>
+    <tr><td>填單側欄寬 / 標籤欄寬</td><td class="k">撐滿 / 136(不吃版面)</td><td class="k ok">361 / 112 已量測</td></tr>
+    <tr><td>畫布格線間距</td><td class="k">8px(卡片浮著)</td><td class="k ok">0 已量測</td><td>間距一出現,填起來長怎樣就看不出來</td></tr>
+    <tr><td>列高</td><td class="k">60px</td><td class="k ok">32px(= 填單格 min-h)</td><td>兩邊同一個數字才叫設計即所見</td></tr>
+    <tr><td>拖曳位移換算節距</td><td class="k">52(實際 60 → 錯位)</td><td class="k ok">60</td><td>拖五格 <code>round(300/52)=6</code> 會偏一格</td></tr>
+    <tr><td>填單輸入寬度種類</td><td class="k">3 種</td><td class="k ok">1(填滿格子)</td><td>docs/14 B-3 拆框線吃狀態階</td></tr>
+    <tr><td>型別標記</td><td class="k">自造字元含 📎 emoji</td><td class="k ok">Lucide,tsc 保證窮盡</td><td>emoji 顏色不受 token 管、會混進可及名稱</td></tr>
+    <tr><td>水平 header 帶</td><td class="k">3 條</td><td class="k wn">目標 1 條 · <b>M3 未實作</b></td><td>docs/29 S5 ≤1</td></tr>
+    <tr><td>直向欄(軌除外)</td><td class="k">3(清單 + 型別盤 + 設定)</td><td class="k wn">目標 2 · <b>M2 未實作</b></td><td>docs/29 S3 輔助面板 ≤1</td></tr>
+    <tr><td>日期欄顯示</td><td class="k">mm/dd/yyyy</td><td class="k wn">未修 · <b>task #155</b></td><td>原生控制項吃瀏覽器語系,不吃 <code>html lang</code></td></tr>
   </table>
-  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:12px">
-  ⚠️ <b>此稿的自我約束</b>(前兩輪 review 抓到我違反自己寫的規則,故列出來讓你可以驗):
+
+  <h3 class="sec">此稿的自我約束</h3>
+  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:4px">
+  前幾輪 review 抓到違反自己寫的規則,故列出來讓你可以驗:
   間距只用 4/8/12/16/24 · 不用 <code>opacity</code> 造文字階 · 圖示全 Lucide 真路徑不自繪 ·
   字級只用 12/13/14/16/20/24 且行高照表 · 殼的互動項不畫框(只有文字輸入保留框) ·
   動效只動 <code>opacity</code>/<code>transform</code> 且有 <code>prefers-reduced-motion</code>。</p>
+
+  <h3 class="sec">v1 → v2 改了什麼</h3>
+  <table class="mtab">
+    <tr><th style="width:190px">項目</th><th style="width:250px">v1</th><th>為什麼改</th></tr>
+    <tr><td>畫布模型</td><td class="k">th|td|th|td 流式表格</td>
+      <td>引擎的版面 metadata 是 <b>col / row / colSpan</b> 座標。流式表格排不出「第 3 欄起、寬 4 格」,
+        也畫不出空白座標 —— 稿子與可實作的東西不是同一件事。</td></tr>
+    <tr><td>填單屏</td><td class="k">缺席(兩屏都是設計)</td>
+      <td>「設計即所見」的另一半在填單。只畫設計屏,等於只證明了一半 ——
+        實際跑起來才發現斷掉的正是填單側。</td></tr>
+    <tr><td>示例值底紋</td><td class="k">45° 斜紋淡底</td>
+      <td>每一格都鋪斜紋在整屏尺度上是雜訊;<code>ink-3</code> + 型別圖示已足以讀成「非真值」。
+        <b>此為對 v1 的推翻,不是實作偷工。</b></td></tr>
+    <tr><td>拖曳把手</td><td class="k">未畫</td>
+      <td>把手若佔一個實體欄,設計與填單的值格起點就差 20px —— 主張當場失效。改為疊在標籤格左緣。</td></tr>
+    <tr><td>型別如何呈現</td><td class="k">未定</td>
+      <td>值格左側 Lucide 圖示。不用文字標籤:那會讓每列多一塊與填單無關的內容。</td></tr>
+  </table>
 </div>
 
 </div>
