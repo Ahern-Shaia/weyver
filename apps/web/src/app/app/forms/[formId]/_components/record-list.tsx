@@ -20,6 +20,7 @@ export function RecordList({
   records,
   loading,
   selectedId,
+  hideOnNarrow = false,
   onSelect,
 }: {
   readonly formName: string
@@ -27,6 +28,8 @@ export function RecordList({
   readonly records: readonly RecordRow[]
   readonly loading: boolean
   readonly selectedId: number | null
+  /* 窄螢幕已選記錄 → 清單讓位給詳情 */
+  readonly hideOnNarrow?: boolean
   readonly onSelect: (id: number) => void
 }): ReactNode {
   const statusField = fields.find((f) => f.type === "singleSelect")
@@ -34,7 +37,13 @@ export function RecordList({
   const rovingId = records.find((r) => r.id === selectedId)?.id ?? records[0]?.id ?? null
 
   return (
-    <div data-noprint className="flex w-60 shrink-0 flex-col border-r border-line bg-card">
+    /* 🔴 Material 的 list-detail 降級:**窄螢幕時清單與詳情各佔一畫面**,
+       不是硬把兩欄擠在一起。選了記錄之後清單讓位給詳情(由 `hidden` 控制),
+       ≥md 才恢復並排。原本固定 `w-60` 在平板/手機必定爆版。 */
+    <div
+      data-noprint
+      className={`${hideOnNarrow ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r border-line bg-card md:w-60`}
+    >
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line px-3">
         <b className="truncate text-[13px] font-semibold">{formName}</b>
         <span className="ml-auto rounded-xs border border-line px-1.5 font-mono text-[12px] text-ink-3">

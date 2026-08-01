@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { actUntil } from "./hydration"
 
 /* F-5 M5 UI 固化:附件欄上傳 → 記錄存檔(pending→bound)→ 記錄頁下載 → 移除。
    引擎側(magic bytes / 跨租戶 / hidden 欄 / 配額 / 綁定)由 api integration 16 測固化。
@@ -30,7 +31,15 @@ async function createFormWithAttachment(
 test("附件:填單上傳 → 存檔 → 記錄頁下載", async ({ page, request }) => {
   const { formId } = await createFormWithAttachment(request)
   await page.goto(`/app/builder?form=${formId}&tab=fill`)
-  await page.getByRole("tab", { name: "填單" }).click()
+  /* tab 的 onClick 要 hydrate 之後才存在 —— 按到填單面板真的出現為止(見 hydration.ts) */
+  await actUntil(
+    async () => {
+      await page.getByRole("tab", { name: "填單" }).click()
+    },
+    async () => {
+      await expect(page.locator('input[type="file"]')).toBeAttached({ timeout: 3_000 })
+    },
+  )
 
   await page.getByRole("textbox").first().fill("冷凍雞胸肉")
   await page.setInputFiles('input[type="file"]', {

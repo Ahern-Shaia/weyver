@@ -325,6 +325,7 @@ function RecordDetail({
         loading={recPending}
         selectedId={selected?.id ?? null}
         onSelect={onSelect}
+        hideOnNarrow={selected !== undefined && selected !== null}
       />
       {formPending ? (
         <div className="flex-1 bg-surface p-6 text-[12px] text-ink-3">載入…</div>

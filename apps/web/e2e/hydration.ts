@@ -49,3 +49,15 @@ export async function openPalette(page: Page, query: string): Promise<void> {
   )
   await input.fill(query)
 }
+
+/* ## 風險形狀:`goto` 之後**沒有等任何東西**就直接互動
+
+   掃過全部 spec,符合這個形狀的有 16 處(auth / file-storage / grid-import /
+   grid-keyboard / group-kanban-calendar / image-processing / image-signature /
+   mfa / onboarding / security)。其中四處已經真的紅過並改用本檔的 helper;
+   其餘目前是綠的,**沒有預先全部改** —— 但下次若有 spec 出現
+   「單獨跑綠、整套跑紅」且症狀是「等不到某元素」或「送出了空值」,
+   先往這裡看,不要當成測試不穩。
+
+   判斷方法:`goto` 之後的第一個 `click` / `fill` / `press`,
+   中間如果沒有任何 `expect(...).toBeVisible()` 之類的等待,就是它。 */

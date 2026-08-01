@@ -1,17 +1,26 @@
 "use client"
 
+import { Button } from "@weyver/ui/button"
+
 import { FieldInput } from "@/components/form/field-input"
 import { toSubmitValue } from "@/components/form/value"
 import { ImageThumb } from "@/components/form/image-input"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
-import { useCreateRecord, useDeleteRecord, useUpdateRecord, useUserNames } from "@/lib/engine/hooks"
+import {
+  useButtons,
+  useCreateRecord,
+  useDeleteRecord,
+  useRecordApproval,
+  useUpdateRecord,
+  useUserNames,
+} from "@/lib/engine/hooks"
 import { useLayout } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
 import { StatusChip, chipToneTextClass } from "@weyver/ui/status-chip"
-import { Check, Copy, Paperclip, Pencil, Printer, Trash2, X } from "lucide-react"
+import { Copy, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
@@ -139,11 +148,27 @@ export function ObjectPage({
     deleteRecord.mutate(record.id, { onError: (e) => setMsg(describeEngineError(e)) })
   }
   const busy = createRecord.isPending || deleteRecord.isPending || updateRecord.isPending
+  /* 🔴 Fiori 硬規則:**section 一律直接反映在導覽列**。
+     原本只列了三段,而畫面上實際還有「摘要」與「動作/簽核」兩個區塊 ——
+     使用者看得到卻跳不過去,捲到它們時導覽列也不會亮任何一項。
+
+     ⚠️ **有內容才列**:`RecordActions` 在沒有自訂按鈕也沒有簽核流程時回 `null`,
+     若無條件列出「動作」,點下去會跳到一片空白 —— 那正是本專案禁止的死控件。
+     故用同一組 hook 在此判斷,不猜。 */
+  const { data: buttons = [] } = useButtons(formId)
+  const { data: approval } = useRecordApproval(formId, record.id)
+  const hasActions = buttons.length > 0 || (approval?.instance ?? null) !== null
   const sections = useMemo<readonly string[]>(
-    () => ["基本資料", ...(childForm ? ["明細"] : []), "稽核"],
-    [childForm],
+    () => [
+      ...(summaryFields.length > 0 ? ["摘要"] : []),
+      ...(hasActions ? ["動作"] : []),
+      "基本資料",
+      ...(childForm ? ["明細"] : []),
+      "稽核",
+    ],
+    [childForm, summaryFields.length, hasActions],
   )
-  const [active, setActive] = useState<string>("基本資料")
+  const [active, setActive] = useState<string>(sections[0] ?? "基本資料")
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -197,22 +222,10 @@ export function ObjectPage({
             </span>
           ) : null}
           <div data-noprint className={`flex items-center gap-1.5 ${moneyField ? "" : "ml-auto"}`}>
-            {editing ? (
-              <>
-                <ActBtn
-                  icon={<Check size={13} strokeWidth={1.9} />}
-                  label="儲存"
-                  onClick={saveEdit}
-                  disabled={busy}
-                />
-                <ActBtn
-                  icon={<X size={13} strokeWidth={1.9} />}
-                  label="取消"
-                  onClick={() => setEditing(false)}
-                  disabled={busy}
-                />
-              </>
-            ) : (
+            {/* 🔴 Fiori 官方分工:**Edit / Delete / Copy 在 header,
+                Save / Post / Accept / Reject 在 footer**。編輯中時 header 不放
+                儲存/取消 —— 它們在下方的 footer toolbar(見本檔結尾)。 */}
+            {editing ? null : (
               <ActBtn
                 icon={<Pencil size={13} strokeWidth={1.9} />}
                 label="編輯"
@@ -270,13 +283,13 @@ export function ObjectPage({
         </div>
       </div>
 
-      {/* R1·後續-1:自訂按鈕 + 簽核 */}
-      <RecordActions formId={formId} recordId={record.id} />
-
       {/* 區段 */}
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
         {summaryFields.length > 0 ? (
-          <section className="mb-4 flex flex-wrap gap-x-8 gap-y-2 border border-line bg-card px-4 py-3">
+          <section
+            id="sec-摘要"
+            className="mb-4 flex scroll-mt-2 flex-wrap gap-x-8 gap-y-2 border border-line bg-card px-4 py-3"
+          >
             {summaryFields.map((f) => (
               <div key={f.id} className="flex flex-col gap-0.5">
                 <span className="text-[12px] text-ink-3">{f.name}</span>
@@ -288,9 +301,19 @@ export function ObjectPage({
           </section>
         ) : null}
 
-        <section id="sec-基本資料" className="scroll-mt-2 pb-5">
+        {/* R1·後續-1:自訂按鈕 + 簽核。**移進捲動容器**才量得到位置 ——
+            放在容器外的話 scroll-spy 永遠不會把它算成當前區段。 */}
+        {hasActions ? (
+          <section id="sec-動作" className="scroll-mt-2 pb-4" data-noprint>
+            <RecordActions formId={formId} recordId={record.id} />
+          </section>
+        ) : null}
+
+        <section id="sec-基本資料" className="scroll-mt-2 border-t border-line pt-4 pb-5">
           <h4 className="mb-2.5 text-[12px] font-semibold text-ink-3">基本資料</h4>
-          <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+          {/* 🔴 欄數隨寬度降級(Material adaptive layout):寬螢幕放得下就多欄,
+              窄螢幕強行兩欄會讓每欄只剩一半寬、標籤與值互相擠壓。 */}
+          <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {fields.map((f) => (
               <div
                 key={f.id}
@@ -381,6 +404,23 @@ export function ObjectPage({
           </div>
         </section>
       </div>
+
+      {/* 🔴 footer toolbar(Fiori 官方分工:Save / Post / Accept / Reject 在 footer)。
+          **只在編輯中出現** —— 常駐一條空工具列只會吃掉垂直空間。
+          黏在底部而非跟著內容捲走:長表單捲到一半要存檔時,按鈕必須還在。 */}
+      {editing ? (
+        <div
+          data-noprint
+          className="flex shrink-0 items-center justify-end gap-2 border-t border-line bg-card px-6 py-2.5"
+        >
+          <Button onClick={() => setEditing(false)} disabled={busy}>
+            取消
+          </Button>
+          <Button variant="primary" onClick={saveEdit} disabled={busy}>
+            {busy ? "儲存中…" : "儲存"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -453,14 +493,19 @@ function ActBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex h-7 items-center gap-1 rounded-md border px-2 text-[12px] transition-colors duration-fast-01 ease-productive-exit disabled:opacity-50 ${
+      /* 🔴 窄螢幕收成純圖示。原本標籤恆顯示,600px 下每顆按鈕都折成兩行
+         (「編 輯」「複 製」),既醜也難點。名稱留在 `title` 與 `aria-label`
+         —— 圖示按鈕沒有可及名稱等於螢幕閱讀器使用者按不到。 */
+      title={label}
+      aria-label={label}
+      className={`flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[12px] whitespace-nowrap transition-colors duration-fast-01 ease-productive-exit disabled:opacity-50 ${
         danger
           ? "border-er-line text-er hover:bg-er-t"
           : "border-line bg-card text-ink-2 hover:bg-head"
       }`}
     >
       {icon}
-      {label}
+      <span className="hidden lg:inline">{label}</span>
     </button>
   )
 }
