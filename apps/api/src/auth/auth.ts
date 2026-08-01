@@ -4,6 +4,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api"
 import { organization, twoFactor } from "better-auth/plugins"
 import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
 import { PEER_IP_HEADER, recordAuthEvent, recordFromContext } from "./auth-events.js"
+import { blockedPasswordMessage, checkPassword } from "./password-blocklist.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
 import type { Pool } from "pg"
 
@@ -149,6 +150,22 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
               throw new APIError("BAD_REQUEST", {
                 code: "PASSWORD_TOO_SHORT",
                 message: "密碼至少 15 個字;若已啟用二步驟驗證則可 8 個字",
+              })
+            }
+          }
+
+          /* 🔴 (0b) 外洩 / 常見 / 情境字比對(63B-4 §3.1.1.2 亦為 SHALL)。
+             在長度檢查**之後**跑:先講「太短」比先講「太常見」更可行動。 */
+          if (typeof pw === "string") {
+            const who = ctx.body as { email?: unknown; name?: unknown } | undefined
+            const reason = checkPassword(pw, {
+              email: typeof who?.email === "string" ? who.email : undefined,
+              name: typeof who?.name === "string" ? who.name : undefined,
+            })
+            if (reason !== null) {
+              throw new APIError("BAD_REQUEST", {
+                code: "PASSWORD_BLOCKED",
+                message: blockedPasswordMessage(reason),
               })
             }
           }
