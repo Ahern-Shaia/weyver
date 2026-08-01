@@ -5,6 +5,9 @@ import { openSecret, rewrapSecret, sealSecret } from "./secret-box.js"
    而是四條**出事時才會發現**的性質。 */
 
 const KEK = "dev-kek-material-0123456789abcdef"
+/* ⚠️ fixture 刻意**不長成真憑證的樣子**。原本寫 `xoxb-…`(Slack bot token 的形狀)
+   時被 GitHub Push Protection 擋下推送 —— 掃描器分不出真假,人也分不出。
+   測試只需要「一段要被加密的明文」,不需要它像真的。 */
 const TOKEN = "fake-channel-credential-for-tests"
 
 describe("封裝 / 開啟", () => {

@@ -20,6 +20,8 @@ let tenantB = 0
 let actorA = 0
 
 const KEK = "test-kek-material-0123456789abcdefgh"
+/* host 必須是 hooks.slack.com(allow-list 要認),但路徑刻意不排成真 webhook 的形狀
+   —— 排成 `T…/B…/24 字` 會被 GitHub 的密鑰掃描判為真憑證而擋下推送。 */
 const WEBHOOK = "https://hooks.slack.com/services/EXAMPLE-NOT-A-REAL-WEBHOOK"
 
 beforeAll(async () => {
