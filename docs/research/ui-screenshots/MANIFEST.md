@@ -48,7 +48,7 @@
 | **Grafana** | 7 | 1.7 MB | F BI / dark dashboard | 🟢 高 |
 | **正航 Chi-Hang** | 19 | 544 KB | J-Q ERP 台灣 | 🔴 弱(多 icon) |
 | **鼎新 Digiwin** | 18 | 1.2 MB | J-Q ERP 台灣 | 🟡 中 |
-| **Ragic** | 15 | 1.7 MB | A-I 表單引擎 | 🟢 高(官方 doc 真實 UI)|
+| **Ragic** | 15 + 63 detail | 1.7 MB | A-I 表單引擎 | 🟢 高(官方 doc 真實 UI)。⚠️ **2026-08-01 更正**:`ragic-detail-formbuilder-*` 13 張其實是**帳號管理**畫面,不是表單設計器;**全庫無 Ragic 設計模式截圖**。設計模式行為請查官方 doc/37,勿據此檔名推論 |
 | **SAP B1** | 9 | 1.3 MB | J-Q ERP | 🟡 中 |
 | **NetSuite** | 0 | — | J-Q ERP 對標 | ⏳ 需手動 |
 | **Dynamics 365** | 0 | — | J-Q + R HR | ⏳ 需手動 |

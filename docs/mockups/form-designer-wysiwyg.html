@@ -112,8 +112,19 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .secbar .h{margin-left:auto;display:flex;gap:4px;opacity:0}
 .secbar:hover .h{opacity:1}
 table.doc{width:100%;border-collapse:collapse;font-size:13px;line-height:18px}
-table.doc th,table.doc td{border:1px solid var(--cell);padding:8px 12px;text-align:left;vertical-align:middle}
-table.doc th{background:var(--s3);color:var(--ink2);font-weight:500;width:112px;font-size:12px}
+/* 🔴 對齊 Ragic 實際的單據語言(官方文件 + repo 截圖 formbuilder-09/11 查證):
+   · 逐字「一個欄位會佔兩格儲存格的空間,左邊是欄位名稱(也稱為欄位標頭),右邊是欄位值」
+   · label **右對齊**靠近值(截圖確認),不是左對齊
+   · label 底色**極淡**,不是明顯的灰塊
+   · **橫線為主**,無粗外框 —— 我初版做成全框 + 左對齊 + 較藍的灰底,三處都錯 */
+table.doc{border-top:1px solid var(--cell)}
+table.doc th,table.doc td{border-bottom:1px solid var(--cell);padding:7px 12px;vertical-align:middle}
+table.doc th{background:#f7f8f9;color:var(--ink2);font-weight:400;width:120px;font-size:12px;
+  text-align:right;border-right:1px solid var(--cell)}
+table.doc td{border-right:1px solid var(--cell)}
+table.doc td:last-child,table.doc th:last-child{border-right:0}
+table.doc .req{color:var(--er);margin-right:2px}
+table.doc .hlp{color:var(--ink4);margin-left:4px;font-size:11px}
 table.doc td{color:var(--ink)}
 /* 🔴 示例值:OQ-FDW-1=A 依型別生成。ink-3 + label 淡底 = 看得出不是真值 */
 table.doc td.ex{color:var(--ink3);background:repeating-linear-gradient(-45deg,
@@ -246,7 +257,7 @@ table.doc th.hov{background:var(--s4)}
           <div class="secbar">基本資料
             <span class="h"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></span></div>
           <table class="doc">
-            <tr><th class="sel">品名</th><td class="ex sel">範例文字</td><th class="hov">批號</th><td class="ex mono">BN-0000-A</td></tr>
+            <tr><th class="sel"><span class="req">*</span>品名<span class="hlp">?</span></th><td class="ex sel">範例文字</td><th class="hov">批號<span class="hlp">?</span></th><td class="ex mono">BN-0000-A</td></tr>
             <tr><th>供應商</th><td class="ex">範例文字</td><th>單據日期</th><td class="ex mono">2026-08-01</td></tr>
             <tr><th>金額</th><td class="ex n">128,400.00</td><th>狀態</th><td class="ex"><span class="chip wn">待簽核</span></td></tr>
           </table>
@@ -315,7 +326,7 @@ table.doc th.hov{background:var(--s4)}
     <div class="top">
       <h2>影像處理驗證</h2><span class="m mono">v1 · 3 欄</span><span class="sp"></span>
       <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
-      <button class="btn gho">加子表</button><button class="btn pri">儲存版面</button>
+      <button class="btn gho">加子表</button><button class="btn pri">儲存 · 1 項待套用</button>
     </div>
     <div class="body">
       <div class="canvas rel">
@@ -332,7 +343,7 @@ table.doc th.hov{background:var(--s4)}
             <span class="nm">運費<span class="cur"></span></span>
             <span style="font-size:13px;color:var(--ink3)">單行文字</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
-            <span class="hint"><span class="kbd">Enter</span> 建立 · <span class="kbd">Esc</span> 取消</span>
+            <span class="hint"><span class="kbd">Enter</span> 加入草稿 · <span class="kbd">Esc</span> 取消</span>
           </div>
 
           <!-- 型別 popover:固定分組固定順序(OQ-FDW-4=C) -->
@@ -358,8 +369,11 @@ table.doc th.hov{background:var(--s4)}
 </div>
 <div class="cap"><b>畫面二 · 就地新增。</b>點表尾 ghost row → <b>就地出現一格</b>,游標落在欄名可直接打字,
   型別 popover 掛在該格上(固定分組固定順序,位置穩定可養成肌肉記憶)。
-  🔴 <b>按 <code>Enter</code> 才真的建欄</b>(OQ-FDW-3=B)—— 沿用即時 DDL 會讓手滑點一下就在真表產生欄位,
-  而結構性 DDL 不入 undo。<code>Esc</code> 取消。這是對 <code>OQ-FD2-2</code> 的局部例外,已記錄在 M0。</div>
+  🔴 <b><code>Enter</code> 只加入草稿,真正建欄在「儲存」</b> —— 這是<b>查證後的更正</b>。
+  Ragic 官方逐字:「<b>設計完成後,點選儲存再離開設計模式</b>」,即<b>整批儲存</b>;
+  我原本裁定的 OQ-FDW-3=B(Enter 即建欄)等於每個欄位各自即時,與 Ragic 不同。
+  ⚠️ 但這與我方已 SHIPPED 的 <code>OQ-FD2-2</code>「結構性加/刪/改型別維持即時 DDL」**衝突**,
+  需重新裁定 —— 見下方 §待重議。</div>
 
 <div style="max-width:1460px;margin:24px auto 0">
   <h3 style="font-size:16px;font-weight:600;letter-spacing:-.014em">量測對照(1440px)</h3>
