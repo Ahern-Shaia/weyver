@@ -1195,7 +1195,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 </div></div>
 
 <!-- 決策狀態 -->
-<div class="sec"><div class="sec-h"><span class="n">19</span>決策狀態<span class="r">品牌板判定 5 項 · 待裁定 2 項</span></div><div class="sec-b">
+<div class="sec"><div class="sec-h"><span class="n">19</span>決策狀態<span class="r">品牌板判定 5 項 · 已裁定 2 項 · 修正 2 項 · 無待決</span></div><div class="sec-b">
 <table style="width:100%;border-collapse:collapse;font-size:13px">
   <tr style="background:var(--head)"><th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px">項目</th>
     <th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px;width:110px">狀態</th>
@@ -1205,8 +1205,10 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">主色</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">織藍 oklch(58% .15 240)。原 #22568a SUPERSEDED</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">標誌</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">經緯交織符號。原「W 方塊」作廢</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">導覽軌深色底</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>否決</b>(「品牌感僅來自結構與留白」)。已於 08-01 撤回</td></tr>
-  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">🔴 動作色推導</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--er);font-weight:600">待你確認</td><td style="padding:7px 10px;border:1px solid var(--cell)">織藍白字 4.13 &lt; AA 4.5。建議推導至 52%(§03)</td></tr>
-  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">狀態章形狀</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--er);font-weight:600">待你決定</td><td style="padding:7px 10px;border:1px solid var(--cell)">pill(外部慣例)vs 方形帶框(與符號同語言)。<b>我傾向方形</b></td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">動作色推導</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">採用建議:織藍 58% 維持標誌真值;介面動作色 <span class="mono">oklch(52% .15 240)</span>(白字 5.27 / 紙底 4.83)。詳 §03 ③</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">狀態章形狀</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">採用建議:<b>方形帶框</b>(3px 方角 + 字/框/底三值)。Pill 解禁但<b>限用於計數與標籤</b>,不得承載語意。詳 §06</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">載入門檻</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已更正 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">先前寫的「&lt;200ms 不顯示指示」是憑印象,錯。Nielsen 逐字門檻為 <b>1 秒</b>;&gt;10 秒須給預估完成。詳 §06</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">Select / Loading 合規</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已修 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">六條違規:自繪 chevron → Lucide、9/28px → 4/8 尺度、選單寬 = 觸發器寬、shimmer → opacity、margin → transform、<b>補上 0 個實作的 reduced-motion</b></td></tr>
 </table>
 </div></div>
 
