@@ -36,7 +36,7 @@ export function PendingApprovals(): ReactNode {
           <Link
             key={p.id}
             href={`/app/forms/${p.formId}?mode=record&rid=${p.recordId}`}
-            className="flex items-center gap-2.5 rounded-sm border border-line bg-card px-3.5 py-2.5 transition-colors duration-fast-01 ease-productive-exit hover:border-primary hover:bg-primary-t"
+            className="flex items-center gap-2.5 rounded-sm bg-card px-3.5 py-2.5 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t"
           >
             <span className="text-[14px] font-medium text-ink">{nameOf(p.formId)}</span>
             <span className="font-mono text-[12px] text-ink-3">#{p.recordId}</span>

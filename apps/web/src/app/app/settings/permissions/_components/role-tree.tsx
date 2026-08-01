@@ -47,7 +47,7 @@ export function RoleTree({
           type="button"
           onClick={() => setAdding((v) => !v)}
           title="新增角色"
-          className="ml-auto flex size-6 items-center justify-center rounded-sm border border-line text-ink-2 hover:bg-head hover:text-ink"
+          className="ml-auto flex size-6 items-center justify-center rounded-sm text-ink-2 hover:bg-hover hover:text-ink"
         >
           <Plus size={13} strokeWidth={2} />
         </button>

@@ -150,14 +150,23 @@
   --shadow-md: 0 4px 14px rgba(20, 24, 29, 0.1), 0 2px 6px rgba(20, 24, 29, 0.07);
   --shadow-lg: 0 10px 34px rgba(20, 24, 29, 0.15);
 
-  /* ── 字型(IBM Plex 鎖定;變數由 next/font 注入)────────── */
-  --font-sans: var(--font-plex-sans), "IBM Plex Sans TC", "Noto Sans TC", "PingFang TC", system-ui,
-    sans-serif;
+  /* ── 字型(Inter + Noto Sans TC;品牌板明訂四階;變數由 next/font 注入)── */
+  --font-sans: var(--font-inter), "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 
+  /* 🔴 大字負字距 —— 愈大愈緊。實測依據(Playwright 抓 computed style):
+     Linear 48px→−1.056px(−2.2%)· Vercel 56px→−3.36px(−6%)· Attio 48px→−0.72px(−1.5%)。
+     三家皆做,而本庫先前只有首頁一個標題有。≤14px 不加(小字加負字距會黏)。 */
+  --tracking-24: -0.026em;
+  --tracking-20: -0.02em;
+  --tracking-16: -0.014em;
+
   /* ── 動效:**Carbon productive** token(R1·UX-1 M8)────────────────
-     選它不是因為好聽:IBM 明標為**企業生產力軟體**設計,且與本專案已採用的
-     IBM Plex 同源。原「近乎無動效」措辭與 120/150ms 數值**查無出處**,已刪。
+     選它不是因為好聽:IBM 明標為**企業生產力軟體**設計(與 expressive 組區分)。
+     原「近乎無動效」措辭與 120/150ms 數值**查無出處**,已刪。
+     ⚠️ 2026-08-02|原文另有「與本專案已採用的 IBM Plex 同源」一句,
+     字體換成 Inter 後該理由失效,已移除 —— 曲線的正當性來自「為生產力工具設計」,
+     與字體是誰家的無關。
      跨系統唯一共識:**進場減速、離場加速、離場短於進場、生產力情境用較短一檔**。
      ⚠️ 既有 `duration-150` 恰等於 `moderate-01` —— 值不動,只補命名與出處。
      ⚠️ **命名空間**:Tailwind 4 由 `--transition-duration-*` 產生 `duration-*` utility。

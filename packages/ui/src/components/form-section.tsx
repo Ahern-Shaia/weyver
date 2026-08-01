@@ -11,9 +11,7 @@ export interface FormSectionProps {
 
 export function FormSection({ title, hint, children, className }: FormSectionProps): ReactElement {
   return (
-    <section
-      className={cn("overflow-hidden rounded-md border border-line bg-card", className)}
-    >
+    <section className={cn("overflow-hidden rounded-md border border-line bg-card", className)}>
       <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[12px] font-semibold text-ink-2">
         <span className="size-1.5 shrink-0 rounded-full bg-primary" />
         {title}

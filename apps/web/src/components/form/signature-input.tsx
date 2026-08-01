@@ -164,7 +164,7 @@ export function SignatureInput({
         <button
           type="button"
           onClick={removeExisting}
-          className="flex items-center gap-1 rounded-xs border border-line bg-card px-2 py-1 text-[12px] text-ink-2 hover:bg-head"
+          className="flex items-center gap-1 rounded-xs bg-card px-2 py-1 text-[12px] text-ink-2 hover:bg-hover"
         >
           <Eraser size={12} strokeWidth={1.9} />
           重新簽名
@@ -199,7 +199,7 @@ export function SignatureInput({
           type="button"
           onClick={clear}
           disabled={busy}
-          className="flex items-center gap-1 rounded-xs border border-line bg-card px-2 py-1 text-[12px] text-ink-2 hover:bg-head"
+          className="flex items-center gap-1 rounded-xs bg-card px-2 py-1 text-[12px] text-ink-2 hover:bg-hover"
         >
           <Eraser size={12} strokeWidth={1.9} />
           清除

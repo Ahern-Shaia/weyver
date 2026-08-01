@@ -44,7 +44,7 @@ function FormCard({ form }: { readonly form: FormSummary }): ReactNode {
   return (
     <Link
       href={`/app/forms/${form.id}`}
-      className="group rounded-md border border-line bg-card px-3.5 py-3 transition-colors duration-fast-01 ease-productive-exit hover:border-primary hover:bg-primary-t"
+      className="group rounded-md bg-card px-3.5 py-3 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t"
     >
       <div className="flex items-center gap-2">
         <Table2

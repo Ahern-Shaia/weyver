@@ -92,7 +92,7 @@ export function RecordActions({
             type="button"
             onClick={() => onRun(b)}
             disabled={runButton.isPending || (locked && b.actionType !== "openUrl")}
-            className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
             title={locked && b.actionType !== "openUrl" ? "簽核中,不可執行寫入動作" : undefined}
           >
             {b.actionType === "openUrl" ? <ExternalLink size={13} /> : <Play size={13} />}
@@ -110,7 +110,7 @@ export function RecordActions({
               })
             }
             disabled={submitApproval.isPending}
-            className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
           >
             <Send size={13} />
             送簽
@@ -147,7 +147,7 @@ export function RecordActions({
                   },
                 )
               }
-              className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t"
+              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t"
             >
               <CircleSlash size={13} />
               退回
@@ -160,7 +160,7 @@ export function RecordActions({
                   onError: (e) => setMsg(describeEngineError(e)),
                 })
               }
-              className="flex items-center gap-1 rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
+              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover"
             >
               <Undo2 size={13} />
               撤回

@@ -224,7 +224,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                 >
                   <thead>
                     <tr className="bg-head">
-                      <th className="w-8 border-b border-cell px-2 py-1.5 text-left font-semibold text-ink-3">
+                      <th className="w-8 border-b border-line-2 px-2 py-1.5 text-left font-semibold text-ink-3">
                         #
                       </th>
                       {childFields.map((field) => (
@@ -310,7 +310,7 @@ function FieldRow({
       <div
         className={cn(
           "flex min-h-[34px] items-center px-2.5 py-1",
-          !isLast && "border-b border-cell",
+          !isLast && "border-b border-line-2",
         )}
       >
         {children}

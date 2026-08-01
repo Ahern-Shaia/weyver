@@ -91,7 +91,7 @@ export function LineItems({
         </tbody>
         {hasTotals ? (
           <tfoot>
-            <tr className="border-t border-cell bg-label font-semibold">
+            <tr className="border-t border-line-2 bg-label font-semibold">
               <td className="px-2 py-2 text-[12px] text-ink-2">合計</td>
               {cols.map((f) => (
                 <td

@@ -306,7 +306,7 @@ export function CollectionView({
           <button
             type="button"
             onClick={() => void onBatchDelete()}
-            className="rounded-xs border border-line px-2 py-0.5 text-er hover:border-er hover:bg-er-t"
+            className="rounded-xs px-2 py-0.5 text-er hover:border-er hover:bg-er-t"
           >
             批次刪除
           </button>
@@ -315,7 +315,7 @@ export function CollectionView({
           type="button"
           onClick={onExport}
           disabled={records.length === 0}
-          className="rounded-xs border border-line px-2 py-0.5 hover:bg-head disabled:opacity-50"
+          className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-50"
         >
           匯出 Excel
         </button>
@@ -325,7 +325,7 @@ export function CollectionView({
               type="button"
               onClick={() => void recordsQuery.fetchNextPage()}
               disabled={recordsQuery.isFetchingNextPage}
-              className="rounded-xs border border-line px-2 py-0.5 hover:bg-head disabled:opacity-50"
+              className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-50"
             >
               {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
             </button>

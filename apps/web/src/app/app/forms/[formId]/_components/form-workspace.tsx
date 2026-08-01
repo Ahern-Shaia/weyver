@@ -211,7 +211,7 @@ export function FormWorkspace(): ReactNode {
             <button
               type="button"
               onClick={() => setImporting(true)}
-              className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
+              className="shrink-0 rounded-xs px-2.5 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover"
             >
               匯入資料
             </button>
@@ -220,7 +220,7 @@ export function FormWorkspace(): ReactNode {
               使用者到了那裡還要自己在清單裡找回剛才那張表。 */}
           <Link
             href={`/app/builder?form=${formId}&mode=design`}
-            className="shrink-0 rounded-xs border border-line px-2.5 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
+            className="shrink-0 rounded-xs px-2.5 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover"
           >
             設計
           </Link>

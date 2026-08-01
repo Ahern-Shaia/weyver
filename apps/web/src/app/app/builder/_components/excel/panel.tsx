@@ -265,7 +265,7 @@ export function ExcelImportPanel({
                       key={d.key}
                       className={cn(
                         "flex items-center gap-2 p-2.5",
-                        !isLast && "border-b border-cell",
+                        !isLast && "border-b border-line-2",
                         d.skip && "opacity-45",
                       )}
                     >

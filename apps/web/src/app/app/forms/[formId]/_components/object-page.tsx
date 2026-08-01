@@ -238,7 +238,7 @@ export function ObjectPage({
             <Link
               href={`/app/builder?form=${formId}`}
               title="在設計器開啟"
-              className="flex size-7 items-center justify-center rounded-md border border-line bg-card text-ink-2 hover:bg-head"
+              className="flex size-7 items-center justify-center rounded-md bg-card text-ink-2 hover:bg-hover"
             >
               <Pencil size={13} strokeWidth={1.9} />
             </Link>

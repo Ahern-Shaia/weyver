@@ -363,7 +363,7 @@ export function DesignCanvas({
                 disabled={!dirty}
                 title="復原 (Ctrl+Z)"
                 aria-label="復原"
-                className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
+                className="rounded-xs p-1 text-ink-disabled hover:text-primary disabled:opacity-30 hover:bg-hover"
               >
                 <Undo2 size={13} />
               </button>
@@ -373,7 +373,7 @@ export function DesignCanvas({
                 disabled={!canRedo}
                 title="取消復原 (Ctrl+Shift+Z)"
                 aria-label="取消復原"
-                className="rounded-xs border border-line p-1 text-ink-disabled hover:text-primary disabled:opacity-30"
+                className="rounded-xs p-1 text-ink-disabled hover:text-primary disabled:opacity-30 hover:bg-hover"
               >
                 <Redo2 size={13} />
               </button>
@@ -531,7 +531,7 @@ function TB({
          少了它們,外層的 `overflow-x-auto`(#140 加的)**永遠不會觸發** ——
          flex 會先壓縮子元素,中文沒有詞邊界所以逐字斷行,於是內容永遠塞得下、
          永遠不溢出、也就永遠不捲。結果是按鈕變成直排而不是出現捲軸。 */
-      className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xs border border-line px-2 py-1 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
+      className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover"
     >
       {icon}
       {children}

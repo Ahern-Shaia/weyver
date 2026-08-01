@@ -35,7 +35,7 @@ export function RecordsListPanel({ formId }: { formId: number }) {
           <table className="min-w-full border-collapse text-[12px]">
             <thead>
               <tr className="bg-head">
-                <th className="border-b border-cell px-2.5 py-1.5 text-left font-semibold text-ink-3">
+                <th className="border-b border-line-2 px-2.5 py-1.5 text-left font-semibold text-ink-3">
                   #
                 </th>
                 {fields.map((field) => (
@@ -51,7 +51,7 @@ export function RecordsListPanel({ formId }: { formId: number }) {
             <tbody>
               {recordsQuery.data?.records.map((record) => (
                 <tr key={record.id} className="hover:bg-head">
-                  <td className="border-b border-cell px-2.5 py-1.5 font-mono text-ink-3">
+                  <td className="border-b border-line-2 px-2.5 py-1.5 font-mono text-ink-3">
                     {record.id}
                   </td>
                   {fields.map((field) => (

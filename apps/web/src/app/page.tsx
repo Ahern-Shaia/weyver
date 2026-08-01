@@ -29,11 +29,7 @@ export default function HomePage() {
       </div>
       <div className="grid gap-2">
         {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="border border-line bg-card px-4 py-3 hover:bg-head"
-          >
+          <Link key={link.href} href={link.href} className="bg-card px-4 py-3 hover:bg-hover">
             <div className="text-[13px] font-semibold">{link.title}</div>
             <div className="mt-0.5 text-[12px] text-ink-3">{link.desc}</div>
           </Link>

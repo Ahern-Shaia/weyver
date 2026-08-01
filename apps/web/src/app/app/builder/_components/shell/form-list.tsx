@@ -36,7 +36,7 @@ export function FormListRail({
         <button
           type="button"
           onClick={onImport}
-          className="ml-auto rounded-xs border border-line px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:bg-head"
+          className="ml-auto rounded-xs px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:bg-hover"
         >
           匯入 Excel
         </button>
@@ -68,7 +68,7 @@ export function FormListRail({
                     type="button"
                     onClick={() => onSelect(form.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 border-b border-cell px-3 py-2 text-left text-[13px]",
+                      "flex w-full items-center gap-2 border-b border-line-2 px-3 py-2 text-left text-[13px]",
                       active ? "bg-primary-t font-medium text-ink" : "text-ink-2 hover:bg-head",
                     )}
                   >

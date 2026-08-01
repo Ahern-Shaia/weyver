@@ -187,7 +187,7 @@ export function CalendarView({
                           key={`${key}-${String(r.id)}`}
                           type="button"
                           onClick={() => onOpen(r.id)}
-                          className="mb-0.5 block w-full truncate border border-line bg-surface px-1 py-0.5 text-left text-[12px] text-ink hover:border-primary"
+                          className="mb-0.5 block w-full truncate bg-surface px-1 py-0.5 text-left text-[12px] text-ink hover:bg-hover"
                         >
                           {formatFieldValue(
                             form.fields[0] as FieldDto,

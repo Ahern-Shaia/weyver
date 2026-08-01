@@ -59,7 +59,7 @@ export function ImageThumb({
           type="button"
           onClick={onRemove}
           aria-label={`移除 ${item.name}`}
-          className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center border border-line bg-card text-ink-3 hover:text-er"
+          className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center bg-card text-ink-3 hover:text-er hover:bg-hover"
         >
           <X size={10} />
         </button>
@@ -133,7 +133,7 @@ export function ImageInput({
 
       <label
         htmlFor={inputId}
-        className="flex w-fit cursor-pointer items-center gap-1 rounded-xs border border-line bg-card px-2 py-1 text-[12px] text-ink-2 hover:bg-head"
+        className="flex w-fit cursor-pointer items-center gap-1 rounded-xs bg-card px-2 py-1 text-[12px] text-ink-2 hover:bg-hover"
       >
         <ImagePlus size={12} strokeWidth={1.9} />
         {busy ? "上傳中…" : "選擇圖片"}
