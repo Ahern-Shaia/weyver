@@ -2,32 +2,36 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>Weyver — 表單設計器 UP-3c 高保真 mockup</title>
+<title>Weyver — 表單設計器 UP-3c 高保真 mockup v3</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════
-   UP-3c 高保真 mockup。
-   OQ-FDW 全採建議:1=A 示例值依型別生成 · 2=A 設計/填單共用渲染 ·
-   3=B′ 就地新增延到 Enter · 4=C 型別固定順序 · 5=A 表單級歸表單設定 · 6=A 另立。
+   UP-3c 高保真 mockup v3(2026-08-02)
 
-   ⚠️ v2(2026-08-02)|**畫布模型改正**。v1 把畫布畫成 th|td|th|td 的流式表格,
-   但引擎的版面 metadata 是 **12 欄座標**(col / row / colSpan)—— 兩者不是同一個東西:
-   流式表格排不出「第 3 欄起、寬 4 格」這種版面,也畫不出空白座標。
-   v2 改以真正的 12 × 60px 格線繪製,並補上 v1 缺席的**填單屏**(整份主張的另一半)。
+   ⚠️ v3 是**版面模型的更換**,不是視覺微調。
+   v2 畫的是「12 欄 × 60px 固定格線 + 每欄位自帶 112px 標籤格」的**表單模型**。
+   第二輪查證(M0 §10-ter)證明那是錯的:
 
-   🔴 本檔自我約束(前幾輪 review 抓到違反自己寫的規則)
-   · 間距只用 4 / 8 / 12 / 16 / 24
-   · 不用 opacity 造文字階(用 ink / ink-2 / ink-3)
-   · 圖示一律 Lucide 真路徑,不自繪
-   · 字級只用 12 / 13 / 14 / 16 / 20 / 24,行高照表
-   · 殼的互動項不畫框,吃 hover/active 階;只有文字輸入保留框
-   · 動效只動 opacity / transform,且有 reduced-motion
+   · Ragic 逐字「調整列高與欄寬的方式和 Excel 相同,拖曳欄位右邊的邊線即可調整**整欄**寬度」
+   · Ragic 逐字「系統預設提供 **105 列與 21 欄**…最右側欄位右方自動增加 4 欄」
+   · Ragic 逐字「若在 **T1** 儲存格新增欄位(**會同時佔用 U1**)」→ 欄位佔相鄰兩格,實證欄編號 A–U
+   · **我們自己的** form-designer-2d M2 寫「欄寬/列高 px 可調」,
+     前後端 schema 都有 colWidths / rowHeights —— 而前端 reader 為 0
+
+   v3 依 OQ-FDW-7..12 全數裁定重畫:
+   7=A 試算表模型 · 7b=B 21 欄自動增長 · 8=A 分段改頁籤 · 9=C 子表兩條路徑 ·
+   10=C 敘述欄位佔一格 · 11=A 示例值未選取才顯示 · 12=A 公式用欄位名(刻意分歧)
+   另含 review 指出的:屬性面板改左側 · Ctrl+C 複製欄位 · 拿掉直線與外框
+
+   🔴 本檔自我約束
+   · 間距只用 4 / 8 / 12 / 16 / 24 · 不用 opacity 造文字階 · 圖示一律 Lucide 真路徑
+   · 字級只用 12 / 13 / 14 / 16 / 20 / 24 · 殼的互動項不畫框 · 動效只動 opacity/transform
    ══════════════════════════════════════════════════════════════ */
 :root{
   --s1:#fcfdfe;--s2:#f6f8fa;--s3:#eef1f5;--s4:#e4e9ef;--s6:#e6eaf0;--s7:#d3dae3;--s8:#bcc6d2;
   --ink:#0f1720;--ink2:#3a4553;--ink3:#5c6876;--ink4:#9aa6b4;
-  --cell:#dfe4ea;--line:#e6eaf0;
+  --cell:#dfe4ea;--line:#e6eaf0;--grid:#eaeef3;
   --base:#22568a;--pri:var(--base);
   --pri-d:color-mix(in srgb,var(--base),black 20%);
   --pri-t:color-mix(in srgb,var(--base),white 91%);
@@ -38,8 +42,7 @@
   --fast:110ms cubic-bezier(0,0,.38,.9);
   --hair:0 0 0 1px var(--line);
   --ovl:0 0 0 1px var(--line),0 12px 28px -10px rgb(15 23 32 / .18),0 2px 6px rgb(15 23 32 / .05);
-  /* 版面幾何 —— 與 apps/web/src/lib/engine/form-geometry.ts 同一組數字 */
-  --colw:60px;--rowh:32px;--labw:112px;
+  --rowh:30px;--gut:26px;   /* 列高預設 · 列號欄寬 */
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--s3);color:var(--ink);padding:24px;
@@ -52,12 +55,13 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
 .tags b{font-size:12px;font-weight:500;line-height:16px;color:var(--ink2);background:var(--s1);
   border-radius:var(--r1);padding:4px 8px}
-.tags b.done{color:var(--ok);background:var(--ok-t)}
-.tags b.todo{color:var(--wn);background:var(--wn-t)}
+.tags b.new{color:var(--pri-d);background:var(--pri-t)}
 .cap{max-width:1460px;margin:8px auto 24px;font-size:13px;line-height:18px;color:var(--ink3)}
 .cap b{color:var(--ink)}
+.cap .ev{display:block;margin-top:8px;padding-left:12px;box-shadow:inset 2px 0 0 var(--s7);
+  font-size:12px;line-height:17px}
 
-/* ── app ── */
+/* ── app 殼 ── */
 .app{height:660px;display:flex;background:var(--s2);border-radius:10px;overflow:hidden;
   margin-top:16px;box-shadow:var(--hair),0 12px 32px -12px rgb(15 23 32 / .10)}
 .rail{width:52px;flex:0 0 52px;background:var(--s3);display:flex;flex-direction:column;
@@ -84,7 +88,6 @@ body{background:var(--s3);color:var(--ink);padding:24px;
   font-family:'IBM Plex Mono',monospace}
 .side .sub{padding-left:24px}
 
-/* 唯一一條 header */
 .main{flex:1;min-width:0;background:var(--s1);border-radius:9px 0 0 9px;
   box-shadow:-1px 0 0 var(--line);display:flex;flex-direction:column}
 .top{height:48px;flex:0 0 48px;display:flex;align-items:center;gap:12px;padding:0 16px}
@@ -98,109 +101,92 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .btn{height:30px;padding:0 12px;border:0;border-radius:var(--r1);font:inherit;font-size:13px;
   font-weight:500;line-height:18px;display:inline-flex;align-items:center;gap:6px;cursor:default;
   transition:background var(--fast)}
-.btn.pri{background:var(--pri);color:#fff}
-.btn.pri:hover{background:var(--pri-d)}
+.btn.pri{background:var(--pri);color:#fff} .btn.pri:hover{background:var(--pri-d)}
 .btn.gho{background:transparent;color:var(--ink2);font-weight:400}
 .btn.gho:hover{background:var(--s3)}
 .ico-btn{width:30px;height:30px;border-radius:var(--r1);border:0;background:none;color:var(--ink3);
   display:inline-flex;align-items:center;justify-content:center;cursor:default;transition:background var(--fast)}
 .ico-btn:hover{background:var(--s3);color:var(--ink)}
-
 .body{flex:1;min-height:0;display:flex}
-.canvas{flex:1;min-width:0;overflow:auto;padding:24px}
+.canvas{flex:1;min-width:0;overflow:auto;padding:16px 0 16px 16px}
 .sheet .ttl{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:26px}
 .sheet .sub{font-size:12px;line-height:16px;color:var(--ink3);margin-top:4px;
   font-family:'IBM Plex Mono',monospace}
 
-/* ══ 版面畫布:12 欄座標,不是流式表格 ══
-   🔴 v1 的錯誤:畫成 th|td|th|td 的 <table>。那排不出「第 3 欄起、寬 4 格」,
-   也畫不出**空白座標** —— 而空白座標正是使用者判斷「還能放哪」的唯一線索。
-   gap 必須是 0:一有間距,欄位就變成浮著的卡片,填起來長怎樣又看不出來了。 */
-.g12{margin-top:24px;display:grid;grid-template-columns:repeat(12,var(--colw));
-  grid-auto-rows:var(--rowh);gap:0;width:calc(12 * var(--colw));
-  /* 多留幾列空白座標:它是「還能放哪」的唯一線索,內容有多高就只畫多高等於沒畫 */
-  min-height:calc(14 * var(--rowh));
-  background-image:linear-gradient(to right,var(--cell) 1px,transparent 1px),
-                   linear-gradient(to bottom,var(--cell) 1px,transparent 1px);
-  background-size:var(--colw) var(--rowh)}
-/* 一個欄位 = label 格 + 值格(Ragic 逐字:「一個欄位會佔兩格儲存格的空間」) */
-.f{display:grid;grid-template-columns:var(--labw) 1fr;border:1px solid var(--cell);
-  margin:0 -1px -1px 0;position:relative;background:var(--s1);
-  transition:box-shadow var(--fast)}
-.f > .k{display:flex;align-items:center;justify-content:flex-end;gap:3px;
-  background:#f7f8f9;border-right:1px solid var(--cell);padding:0 10px;
-  font-size:12px;line-height:16px;color:var(--ink2);text-align:right}
-.f > .v{display:flex;align-items:center;gap:6px;min-width:0;padding:0 10px;
-  font-size:13px;line-height:18px;color:var(--ink3)}
-.f > .v .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.f .req{color:var(--er);font-weight:600}
-.f .hlp{display:inline-flex;width:12px;height:12px;border-radius:50%;border:1px solid var(--s7);
-  align-items:center;justify-content:center;font-size:11px;color:var(--ink3)}
-.f .n{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
-/* 選取用 inset 環:格子彼此相貼,外擴的環會蓋到鄰格 */
-.f.sel{box-shadow:inset 0 0 0 1px var(--pri);z-index:2}
-.f.sel > .k{background:var(--pri-t);color:var(--pri-d);font-weight:500}
-.f.hov{box-shadow:inset 0 0 0 1px var(--s8);z-index:1}
-/* 🔴 拖曳把手**疊在標籤格左緣**,不佔版面寬度 ——
-   佔一格的話設計側值格從 132px 開始、填單側從 112px 開始,「設計即所見」就差了 20px。 */
-.f .grip{position:absolute;left:0;top:0;bottom:0;width:16px;display:flex;align-items:center;
-  justify-content:center;color:var(--ink4);background:#f7f8f9;opacity:0;transition:opacity var(--fast)}
-.f:hover .grip,.f.sel .grip{opacity:1}
-/* 未儲存的版面變更 —— 與「已建立的欄位」必須看得出差別 */
-.f.dirty > .k{box-shadow:inset 3px 0 0 var(--wn)}
-/* 分段橫跨整列 */
-.secbar{grid-column:1 / -1;background:var(--pri);color:#fff;font-size:12px;font-weight:600;
-  line-height:16px;letter-spacing:.06em;padding:0 12px;display:flex;align-items:center;gap:8px;
-  margin:0 -1px -1px 0}
-.secbar .h{margin-left:auto;display:flex;gap:4px;opacity:0}
-.secbar:hover .h{opacity:1}
+/* ══════ 分段 = 頁籤(OQ-FDW-8=A) ══════
+   Ragic 逐字:「查看時可以**點擊頁籤來切換分段**」「每張表單只能夠設置一組分段群」
+   —— 不是標題列。v2 畫的藍色橫條其實是使用者自建的**敘述欄位**,見 .desc */
+.stabs{display:flex;gap:2px;margin-top:16px;box-shadow:inset 0 -1px 0 var(--cell)}
+.stabs b{font-size:13px;font-weight:400;line-height:18px;color:var(--ink3);padding:7px 14px;
+  cursor:default;transition:color var(--fast),box-shadow var(--fast)}
+.stabs b:hover{color:var(--ink2)}
+.stabs b.on{color:var(--ink);font-weight:500;box-shadow:inset 0 -2px 0 var(--pri)}
+.stabs .add{margin-left:4px;color:var(--ink4);padding:7px 8px}
 
-/* 填單:同一組格線,值格換成可輸入區(格子就是輸入框,不再格子裡浮一個框) */
-.f.fill > .v{color:var(--ink);padding:0}
-.f.fill .in{flex:1;min-width:0;height:100%;display:flex;align-items:center;padding:0 10px;
-  color:var(--ink)}
-.f.fill .in.ph{color:var(--ink4)}
-.f.fill .in.focus{box-shadow:inset 0 0 0 1px var(--pri);background:var(--pri-t)}
-.f.fill .cur{display:inline-block;width:1px;height:15px;background:var(--pri);
-  animation:bl 1s step-end infinite;margin-left:1px}
+/* ══════ 試算表(OQ-FDW-7=A / 7b=B) ══════
+   欄寬是**整欄全域**的,由 grid-template-columns 一次定義 —— 這正是 layout.grid.colWidths。
+   🔴 結構上的關鍵改變:欄位**不再是一個內含子格線的容器**,
+   而是**兩個獨立的試算表格**(標籤格在第 N 欄、值格在第 N+1 欄)。
+   只有這樣「同一欄的所有標籤共用寬度」才成立。 */
+.ss{display:grid;grid-auto-rows:var(--rowh);width:max-content;font-size:13px;line-height:18px}
+.ss .ch,.ss .rh,.ss .corner{background:var(--s3);color:var(--ink4);font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',monospace;position:relative}
+.ss .ch,.ss .corner{box-shadow:inset -1px 0 0 var(--s7),inset 0 -1px 0 var(--s7);height:20px}
+.ss .rh{box-shadow:inset -1px 0 0 var(--s7),inset 0 -1px 0 var(--s7)}
+.ss .ch.hi,.ss .rh.hi{background:var(--pri-t);color:var(--pri-d);font-weight:600}
+/* 拖欄邊線的把手 —— 「拖曳欄位右邊的邊線即可調整整欄寬度」 */
+.ss .ch::after{content:"";position:absolute;right:-3px;top:0;bottom:0;width:6px;cursor:col-resize}
+.ss .ch.drag::after{background:var(--pri);width:2px;right:-1px}
+.ss .e{box-shadow:inset -1px 0 0 var(--grid),inset 0 -1px 0 var(--grid)}
+/* 欄位格:**只有橫線,沒有直線、沒有外框**(對照 Ragic 記錄頁截圖放大確認) */
+.ss .k,.ss .v{display:flex;align-items:center;box-shadow:inset 0 -1px 0 var(--cell);
+  padding:0 8px;min-width:0}
+.ss .k{background:#f7f8f9;color:var(--ink2);font-size:12px;justify-content:flex-end;
+  text-align:right;gap:3px}
+.ss .v{color:var(--ink);gap:6px}
+.ss .v .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ss .v.n{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
+.ss .req{color:var(--er);font-weight:600}
+.ss .hlp{display:inline-flex;width:12px;height:12px;border-radius:50%;border:1px solid var(--s7);
+  align-items:center;justify-content:center;font-size:11px;color:var(--ink3);flex:0 0 12px}
+/* 示例值:OQ-FDW-11=A —— **未選取時才顯示**,選取即清空為可輸入 */
+.ss .v .ex{color:var(--ink4)}
+.ss .sel{box-shadow:inset 0 0 0 2px var(--pri);z-index:2;position:relative;background:var(--s1)}
+.ss .sel.k{background:var(--pri-t);color:var(--pri-d);font-weight:500}
+.ss .cur{display:inline-block;width:1px;height:14px;background:var(--pri);
+  animation:bl 1s step-end infinite}
 @keyframes bl{50%{opacity:0}}
-.f.fill .ro{color:var(--ink4)}
+/* 敘述欄位(OQ-FDW-10=C):**佔一格**,可跨欄、可設樣式 —— 藍條是使用者做出來的,不是系統功能 */
+.ss .desc{display:flex;align-items:center;padding:0 10px;font-size:12px;font-weight:600;
+  letter-spacing:.04em;background:var(--pri);color:#fff}
+.ss .desc.plain{background:transparent;color:var(--ink3);font-weight:400;letter-spacing:0}
+/* 子表(OQ-FDW-9=C):**水平排列標頭**即為子表 —— Ragic 逐字 */
+.ss .sk{display:flex;align-items:center;justify-content:center;background:#eef2f6;
+  color:var(--ink2);font-size:12px;font-weight:500;
+  box-shadow:inset 0 -1px 0 var(--cell),inset -1px 0 0 var(--cell)}
+.ss .sv{display:flex;align-items:center;padding:0 8px;color:var(--ink4);
+  box-shadow:inset 0 -1px 0 var(--cell),inset -1px 0 0 var(--cell)}
+.ss .sv.n{font-family:'IBM Plex Mono',monospace;justify-content:flex-end}
+/* 未儲存的設計變更 */
+.ss .dirty{box-shadow:inset 0 -1px 0 var(--cell),inset 3px 0 0 var(--wn)}
 
-.ghost{grid-column:1 / span 6;display:flex;align-items:center;gap:6px;padding:0 10px;
-  border:1px dashed var(--s8);margin:0 -1px -1px 0;color:var(--ink3);font-size:13px;
-  transition:background var(--fast),color var(--fast),border-color var(--fast)}
-.ghost:hover{background:var(--s2);color:var(--ink2);border-color:var(--ink4)}
-.ghost.editing{border-style:solid;border-color:var(--pri);background:var(--s1)}
-.ghost.editing .nm{font-size:13px;color:var(--ink);border-right:1px solid var(--cell);
-  padding-right:10px;margin-right:4px}
-.ghost .hint{margin-left:auto;font-size:12px;color:var(--ink3)}
-.kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s3);border-radius:3px;
-  padding:2px 5px;color:var(--ink2)}
+/* 填單:同一組欄寬,無列號欄、無空白格線 */
+.ss.fill .v{padding:0}
+.ss.fill .in{flex:1;min-width:0;height:100%;display:flex;align-items:center;padding:0 8px}
+.ss.fill .in.ph{color:var(--ink4)}
+.ss.fill .in.focus{box-shadow:inset 0 0 0 2px var(--pri);background:var(--pri-t)}
+.ss.fill .ro{color:var(--ink4)}
 
-/* ── 型別 popover(OQ-FDW-4=C 固定分組固定順序) ── */
-.pop{position:absolute;width:236px;background:var(--s1);border-radius:var(--r3);padding:6px;
-  box-shadow:var(--ovl);z-index:20}
-.pop .srch{height:30px;border:1px solid var(--s7);border-radius:var(--r1);padding:0 8px;
-  font-size:13px;color:var(--ink3);display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.pop .g{font-size:11px;font-weight:600;line-height:16px;letter-spacing:.06em;color:var(--ink3);
-  padding:8px 8px 4px;text-transform:uppercase}
-.pop i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:30px;
-  padding:0 8px;border-radius:var(--r1);color:var(--ink);transition:background var(--fast)}
-.pop i:hover{background:var(--s3)}
-.pop i.on{background:var(--s4);font-weight:500}
-.pop i .ck{margin-left:auto;color:var(--pri)}
-
-/* ── 抽屜(OQ-FDW-5=A 表單級不在此) ── */
-.drw{width:280px;flex:0 0 280px;background:var(--s1);box-shadow:1px 0 0 var(--line) inset;
-  padding:16px;overflow:auto}
-.drw .h{display:flex;align-items:center;gap:8px;padding-bottom:12px}
-.drw .h b{font-size:13px;font-weight:600;line-height:18px}
-.drw .h .t{font-size:12px;line-height:16px;color:var(--ink3)}
-.drw .h .x{margin-left:auto}
-.acc{padding:12px 0;box-shadow:inset 0 1px 0 var(--line)}
-.acc > h4{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;line-height:18px;
-  color:var(--ink2);cursor:default}
-.acc > h4 .ch{margin-left:auto;color:var(--ink4)}
+/* ── 左側屬性面板(Ragic 逐字「左側工具列的 欄位設定」) ── */
+.dsg{width:248px;flex:0 0 248px;background:var(--s1);box-shadow:-1px 0 0 var(--line) inset;
+  padding:12px;overflow:auto;order:-1}
+.dsg .ptab{display:flex;gap:2px;box-shadow:inset 0 -1px 0 var(--cell);margin-bottom:12px}
+.dsg .ptab b{font-size:12px;font-weight:400;color:var(--ink3);padding:6px 10px;cursor:default}
+.dsg .ptab b.on{color:var(--ink);font-weight:500;box-shadow:inset 0 -2px 0 var(--pri)}
+.dsg .who{font-size:13px;font-weight:600;line-height:18px}
+.dsg .whos{font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:12px;
+  font-family:'IBM Plex Mono',monospace}
 .fld{margin-top:12px}
 .fld label{display:block;font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:4px}
 .inp{width:100%;height:30px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
@@ -214,177 +200,159 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .sw .t::after{content:"";position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;
   background:#fff}
 .sw.off .t{background:var(--s7)} .sw.off .t::after{right:auto;left:2px}
+.acc{padding:12px 0;box-shadow:inset 0 1px 0 var(--line);margin-top:12px}
+.acc > h4{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;line-height:18px;
+  color:var(--ink2);cursor:default}
+.acc > h4 .ch{margin-left:auto;color:var(--ink4)}
+.parts{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.parts i{font-style:normal;display:inline-flex;align-items:center;gap:6px;font-size:12px;
+  color:var(--ink2);background:var(--s2);border-radius:var(--r1);padding:5px 8px;cursor:grab}
+.parts i:hover{background:var(--s3)}
 
 .foot{height:28px;flex:0 0 28px;display:flex;align-items:center;gap:16px;padding:0 16px;
   font-size:12px;line-height:16px;color:var(--ink3)}
 .foot .dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.foot .pos{margin-left:auto;font-family:'IBM Plex Mono',monospace}
 .chip{display:inline-block;border-radius:3px;border:1px solid;padding:1px 7px;font-size:12px;
   font-weight:500;line-height:16px}
 .chip.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-l)}
 .rel{position:relative}
-/* 🔴 建立後的可撤銷 toast(§19:沒有 Undo 的 Toast 不要做;此處剛好有)。
-   剛建立、無資料的欄位刪掉是安全的 —— 這是「即時 DDL」的補償機制。 */
-.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
-  display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r2);
-  background:var(--ink);color:var(--s1);font-size:13px;line-height:18px;
-  box-shadow:0 12px 28px -10px rgb(15 23 32 / .34),0 2px 6px rgb(15 23 32 / .12);z-index:30}
-.toast .u{margin-left:4px;color:#8fb6e0;font-weight:500;text-decoration:underline;
-  text-underline-offset:2px}
 .dirty-note{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:16px;
   color:var(--wn);margin-left:8px}
 .dirty-note .d{width:6px;height:6px;border-radius:1px;background:var(--wn);flex:0 0 6px}
+
+/* 右鍵選單 —— 三段來源都有官方逐字依據 */
+.ctx{position:absolute;width:212px;background:var(--s1);border-radius:var(--r3);padding:5px;
+  box-shadow:var(--ovl);z-index:24;font-size:13px}
+.ctx i{font-style:normal;display:flex;align-items:center;gap:8px;height:29px;padding:0 8px;
+  border-radius:var(--r1);color:var(--ink);transition:background var(--fast)}
+.ctx i:hover{background:var(--s3)}
+.ctx i .k{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink4)}
+.ctx hr{border:0;height:1px;background:var(--line);margin:5px 8px}
+.pop{position:absolute;width:224px;background:var(--s1);border-radius:var(--r3);padding:6px;
+  box-shadow:var(--ovl);z-index:20}
+.pop .srch{height:30px;border:1px solid var(--s7);border-radius:var(--r1);padding:0 8px;
+  font-size:13px;color:var(--ink3);display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pop .g{font-size:11px;font-weight:600;line-height:16px;letter-spacing:.06em;color:var(--ink3);
+  padding:8px 8px 4px;text-transform:uppercase}
+.pop i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:29px;
+  padding:0 8px;border-radius:var(--r1);color:var(--ink);transition:background var(--fast)}
+.pop i:hover{background:var(--s3)}
+.pop i.on{background:var(--s4);font-weight:500}
+.pop i .ck{margin-left:auto;color:var(--pri)}
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--r2);
+  background:var(--ink);color:var(--s1);font-size:13px;line-height:18px;
+  box-shadow:0 12px 28px -10px rgb(15 23 32 / .34);z-index:30}
+.toast .u{margin-left:4px;color:#8fb6e0;font-weight:500;text-decoration:underline;
+  text-underline-offset:2px}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 .mtab{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
 .mtab th,.mtab td{border:1px solid var(--cell);padding:8px 12px;text-align:left;vertical-align:top}
 .mtab th{background:var(--s3);font-size:12px;font-weight:500;color:var(--ink2)}
 .mtab td.k{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink3);white-space:nowrap}
-.ok{color:var(--ok);font-weight:600}
-.wn{color:var(--wn);font-weight:600}
+.ok{color:var(--ok);font-weight:600} .wn{color:var(--wn);font-weight:600}
 h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
+q{quotes:"「" "」"}
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <div class="lede">
-  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v2</span></h1>
-  <p><b>設計檢視就是表單本身。</b>補完 <code>form-designer-2d</code> 已裁定但只實作一半的
-     D1「2D 格線畫布 = 填單畫面本身」。<br>
-     v2 改正 v1 的畫布模型(流式表格 → <b>12 欄座標格線</b>),並補上 v1 缺席的
-     <b>填單屏</b> —— 沒有它,「設計即所見」只講了一半。</p>
+  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v3</span></h1>
+  <p><b>v3 換的是版面模型,不是視覺。</b>v2 畫的「12 欄固定格線 + 每欄位自帶 112px 標籤格」是<b>表單模型</b>;
+     第二輪查證證明 Ragic 是<b>試算表模型</b>(整欄全域欄寬 · 21 欄自動增長 · 欄位佔相鄰兩格),
+     而<b>我們自己的 <code>form-designer-2d</code> M2 與前後端 schema 早就這樣規定</b>——只是前端從沒讀過 <code>colWidths</code>。</p>
   <div class="tags">
-    <b class="done">✓ 已實作 1=A 示例值依型別生成</b>
-    <b class="done">✓ 已實作 2=A 設計/填單共用渲染</b>
-    <b class="todo">M4 3=B′ 新增延到 Enter</b>
-    <b class="todo">M4 4=C 型別固定順序</b>
-    <b class="todo">M2/M3 5=A 表單級歸表單設定</b>
-    <b>6=A 另立</b>
+    <b class="new">7=A 試算表模型</b><b class="new">7b=B 21 欄自動增長</b><b class="new">8=A 分段改頁籤</b>
+    <b class="new">9=C 子表兩條路徑</b><b class="new">10=C 敘述欄位佔一格</b><b class="new">11=A 示例值未選取才顯示</b>
+    <b class="new">12=A 公式用欄位名</b><b class="new">屬性面板改左側</b><b class="new">⌘C 複製欄位</b>
   </div>
 </div>
 
-<!-- ═══════════ 畫面一:設計(選中一個欄位) ═══════════ -->
+<!-- ═══════════ 畫面一:設計模式 ═══════════ -->
 <div class="app">
   <nav class="rail">
     <div class="mk">W</div>
     <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
     <a class="on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg></a>
-    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4"/></svg></a>
     <div class="sp"></div>
     <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></a>
   </nav>
 
-  <nav class="side">
-    <div class="hd"><b>我的表單</b>
-      <button class="add" aria-label="新增表單"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
-    <a class="on">採購單<i>24</i></a>
-    <a class="sub">採購明細<i>子表</i></a>
-    <a>供應商評鑑<i>8</i></a>
-    <a>影像處理驗證<i>2</i></a>
-    <a>進貨驗收單<i>61</i></a>
-  </nav>
-
   <div class="main">
-    <!-- 🔴 唯一一條 header。表單設定(含表單級條件式格式/動作/列印)收在單一齒輪 -->
     <div class="top">
-      <h2>採購單</h2><span class="m mono">v74 · 6 欄</span>
+      <h2>採購單</h2><span class="m mono">設計模式 · v74</span>
       <span class="sp"></span>
       <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
-      <button class="btn gho"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>加子表</button>
       <button class="ico-btn" aria-label="表單設定"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.5 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 8"/></svg></button>
-      <button class="btn pri">儲存版面</button>
+      <button class="btn gho"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>復原</button>
+      <button class="btn pri">儲存設計</button>
     </div>
 
     <div class="body">
+      <!-- 🔴 設計模式:表單清單欄**收起**,由屬性面板取代 —— 輔助面板恆為 1 欄(docs/29 S3) -->
+      <aside class="dsg">
+        <div class="ptab"><b class="on">欄位設定</b><b>樣式</b><b>公式</b></div>
+        <div class="who">供應商</div>
+        <div class="whos">單行文字 · A3:B3</div>
+        <div class="fld"><label>欄位名稱</label><input class="inp" value="供應商"></div>
+        <div class="fld"><label>欄位種類</label>
+          <div class="selbox">單行文字<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+        <div class="fld"><label>跨欄數（合併儲存格）</label>
+          <div class="selbox">1<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+        <div class="fld"><label>欄位使用說明</label><input class="inp" placeholder="選填"></div>
+        <div class="fld"><span class="sw"><span class="t"></span>必填</span></div>
+        <div class="fld"><span class="sw off"><span class="t"></span>唯讀</span></div>
+        <div class="acc"><h4>驗證<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+        <div class="acc"><h4>條件式格式<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+        <div class="acc">
+          <h4>新增元件</h4>
+          <div class="parts">
+            <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>敘述欄位</i>
+            <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 14 3-3 5 5"/><circle cx="9" cy="8.5" r="1.2"/></svg>圖片</i>
+            <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>動作按鈕</i>
+            <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 18h16"/><path d="M8 12h8" stroke-dasharray="2 2"/></svg>換頁</i>
+          </div>
+        </div>
+      </aside>
+
       <div class="canvas">
         <div class="sheet">
           <div class="ttl">採購單</div>
-          <div class="sub">PO-2026-0184 · 建立 2026/08/02 09:12 · 版本 v74</div>
-
-          <div class="g12">
-            <div class="secbar">基本資料
-              <span class="h"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></span></div>
-
-            <!-- 座標:col 起點 / span。示例值依型別生成(OQ-FDW-1=A),ink-3 = 一眼看得出不是真資料 -->
-            <div class="f sel" style="grid-column:1 / span 6">
-              <span class="grip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r=".6"/><circle cx="9" cy="12" r=".6"/><circle cx="9" cy="18" r=".6"/><circle cx="15" cy="6" r=".6"/><circle cx="15" cy="12" r=".6"/><circle cx="15" cy="18" r=".6"/></svg></span>
-              <span class="k">單號</span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg><span class="t n">AUTO-000001</span></span>
-            </div>
-            <div class="f hov" style="grid-column:7 / span 6">
-              <span class="k">批號<span class="hlp">?</span></span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg><span class="t n">4710085120697</span></span>
-            </div>
-
-            <div class="f" style="grid-column:1 / span 6">
-              <span class="k"><span class="req">*</span>供應商</span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg><span class="t">範例文字</span></span>
-            </div>
-            <div class="f" style="grid-column:7 / span 6">
-              <span class="k">交期</span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg><span class="t n">2026-08-02</span></span>
-            </div>
-
-            <div class="f" style="grid-column:1 / span 6">
-              <span class="k">金額</span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="t n">128,400.00</span></span>
-            </div>
-            <div class="f" style="grid-column:7 / span 6">
-              <span class="k">狀態</span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 11 4 4 4-4"/></svg><span class="t">待簽核</span></span>
-            </div>
-
-            <div class="secbar">說明</div>
-            <div class="f" style="grid-column:1 / span 12">
-              <span class="k"><span class="req">*</span>備註</span>
-              <span class="v"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="t">範例的多行說明文字，用來看清楚欄位的寬度與換行。</span></span>
-            </div>
-
-            <div class="ghost">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              新增欄位</div>
-          </div>
+          <div class="sub">PO-2026-0184 · 版本 v74</div>
+          <div class="stabs"><b class="on">基本資料</b><b>採購明細</b><b>簽核紀錄</b>
+            <b class="add"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></b></div>
+          <div class="ss" id="ss1"></div>
         </div>
       </div>
-
-      <!-- 🔴 唯一一欄輔助面板。屬性歸屬到「那一格」 -->
-      <aside class="drw">
-        <div class="h">
-          <div><b>單號</b><div class="t">自動編號 · 第 1 列 · 第 1–6 格</div></div>
-          <button class="ico-btn x" aria-label="關閉"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-        </div>
-
-        <div class="acc">
-          <h4>基本<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></h4>
-          <div class="fld"><label>欄位名稱</label><input class="inp" value="單號"></div>
-          <div class="fld"><label>型別</label>
-            <div class="selbox">自動編號<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
-          <div class="fld two">
-            <div style="flex:1"><label>欄寬</label><div class="selbox">6 格<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
-            <div style="flex:1"><label>說明文字</label><input class="inp" placeholder="選填"></div>
-          </div>
-          <div class="fld"><span class="sw off"><span class="t"></span>必填</span></div>
-          <div class="fld"><span class="sw"><span class="t"></span>唯讀</span></div>
-        </div>
-        <div class="acc"><h4>驗證<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
-        <div class="acc"><h4>條件式格式<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
-        <div class="acc"><h4>列印<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
-      </aside>
     </div>
 
-    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 01:37:15</span>
-      <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">3 項設計變更未儲存</span>
+      <span class="pos">A3:B3 · 欄寬 96px</span></div>
   </div>
 </div>
-<div class="cap"><b>畫面一 · 設計。</b>畫布是<b>真正的欄位表</b>,不是欄位卡片清單 ——
-  同一組 label 格 + 值格、同一套 12 × 60px 座標。<b>底下露出空白格線</b>是刻意的:
-  它是使用者判斷「還能放哪」的唯一線索(Ragic 設計模式同樣露出試算表的空格子)。<br>
-  <b>型別怎麼知道?</b>值格左側一個 Lucide 圖示,加上示例值本身就會說話(<code>128,400.00</code> /
-  <code>2026-08-02</code> / <code>AUTO-000001</code>)。<b>不放型別文字標籤</b> ——
-  那會讓每一列多一塊與填單無關的內容,設計與填單的差別應該只有這一個圖示。<br>
-  <b>拖曳把手疊在標籤格左緣</b>(hover 才出現),不佔版面寬度:佔一格的話設計側值格從 132px 起、
-  填單側從 112px 起,「設計即所見」當場差 20px。</div>
+<div class="cap"><b>畫面一 · 設計模式(試算表模型)。</b>
+  最上方是<b>欄標 A–K</b>(實際 21 欄,其餘橫向捲動)、最左是<b>列號</b>,欄與欄之間可拖邊線調<b>整欄</b>寬度 ——
+  同一欄的所有標籤共用寬度,這是與 v2 最根本的差別。
+  <b>欄位 = 相鄰兩格</b>(標籤格 + 值格),不是一個內含子格線的容器;只有這樣全域欄寬才成立。
+  <b>藍色的「基本資料」是使用者自建的敘述欄位</b>(佔一格、跨欄、可設樣式),不是系統的分段功能;
+  真正的分段是上面那排<b>頁籤</b>。<b>「品項/數量/單價/小計」那一段是子表</b> —— 由<b>水平排列標頭</b>形成。
+  選取中的「供應商」值格<b>清空為可輸入</b>(示例值只在未選取時顯示),因為值格必須能打字。
+  <span class="ev">依據(Ragic 官方文件逐字)|<q>調整列高與欄寬的方式和 Excel 相同,拖曳欄位右邊的邊線即可調整整欄寬度</q>(doc/21)·
+  <q>系統預設提供 105 列與 21 欄</q><q>最右側欄位右方自動增加 4 欄</q>(doc-kb/306)·
+  <q>若在 T1 儲存格新增欄位(會同時佔用 U1)</q>(同上,實證欄位佔相鄰兩格且欄編號 A–U)·
+  <q>選擇左方設計面板 跨欄數(合併儲存格) 的選項</q>(doc/21)·
+  <q>查看時可以點擊頁籤來切換分段</q>(doc/121)·
+  <q>一般欄位間需要垂直排列標頭…水平排列標頭則會建立 子表格</q>(doc/38)·
+  <q>在設計模式下點選欄位標頭就可以調整,也可以在左側工具列的 欄位設定 中修改屬性</q>(doc/37)·
+  <q>在設計模式中,你可以直接在原本是欄位值的儲存格中輸入欄位標頭來創造子表格</q>(doc/34,值格須可打字)。
+  ⚠️ <b>屬於推論而非查證的一項</b>:欄標/列號的<b>標尺條</b>。證據是間接的
+  ——「拖曳欄與列的邊線」必須看得見邊線,且搜尋欄位的結果會列出<q>位置(例如 B17)</q>(doc/167),
+  代表 A1 定址對使用者可見。本地文件庫<b>無任何設計模式截圖</b>可佐證外觀。</span></div>
 
-<!-- ═══════════ 畫面二:填單(同一份版面) ═══════════ -->
+<!-- ═══════════ 畫面二:填單 ═══════════ -->
 <div class="app">
   <nav class="rail">
     <div class="mk">W</div>
@@ -393,9 +361,10 @@ h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
     <div class="sp"></div>
   </nav>
   <nav class="side">
-    <div class="hd"><b>我的表單</b></div>
+    <div class="hd"><b>我的表單</b>
+      <button class="add" aria-label="新增表單"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
     <a class="on">採購單<i>24</i></a><a class="sub">採購明細<i>子表</i></a>
-    <a>供應商評鑑<i>8</i></a><a>影像處理驗證<i>2</i></a>
+    <a>供應商評鑑<i>8</i></a><a>進貨驗收單<i>61</i></a>
   </nav>
   <div class="main">
     <div class="top">
@@ -409,201 +378,283 @@ h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
         <div class="sheet">
           <div class="ttl">採購單</div>
           <div class="sub">新增記錄 · 尚未儲存</div>
-          <div class="g12" style="background-image:none">
-            <div class="secbar">基本資料</div>
-
-            <div class="f fill" style="grid-column:1 / span 6">
-              <span class="k">單號</span>
-              <span class="v"><span class="in ro">儲存後自動產生</span></span>
-            </div>
-            <div class="f fill" style="grid-column:7 / span 6">
-              <span class="k">批號<span class="hlp">?</span></span>
-              <span class="v"><span class="in n">4710085120697</span></span>
-            </div>
-
-            <div class="f fill" style="grid-column:1 / span 6">
-              <span class="k"><span class="req">*</span>供應商</span>
-              <span class="v"><span class="in focus">大安食品原料<span class="cur"></span></span></span>
-            </div>
-            <div class="f fill" style="grid-column:7 / span 6">
-              <span class="k">交期</span>
-              <span class="v"><span class="in n">2026-08-15</span></span>
-            </div>
-
-            <div class="f fill" style="grid-column:1 / span 6">
-              <span class="k">金額</span>
-              <span class="v"><span class="in n">128,400.00</span></span>
-            </div>
-            <div class="f fill" style="grid-column:7 / span 6">
-              <span class="k">狀態</span>
-              <span class="v"><span class="in"><span class="chip wn">待簽核</span></span></span>
-            </div>
-
-            <div class="secbar">說明</div>
-            <div class="f fill" style="grid-column:1 / span 12;grid-row:span 3">
-              <span class="k"><span class="req">*</span>備註</span>
-              <span class="v" style="align-items:flex-start"><span class="in ph" style="padding-top:7px">請說明採購事由與規格</span></span>
-            </div>
-          </div>
+          <div class="stabs"><b class="on">基本資料</b><b>採購明細</b><b>簽核紀錄</b></div>
+          <div class="ss fill" id="ss2"></div>
         </div>
       </div>
-      <aside class="drw">
-        <div class="h"><div><b>採購明細</b><div class="t">子表 · 0 行</div></div>
-          <button class="ico-btn x" aria-label="加一行"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
-        <div class="acc" style="color:var(--ink3);font-size:13px;line-height:18px">
-          點右上「＋」新增明細行。</div>
-      </aside>
     </div>
     <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 01:37:17</span>
-      <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
+      <span class="pos">鮮勇食品</span></div>
   </div>
 </div>
-<div class="cap"><b>畫面二 · 填單。</b>與畫面一<b>逐格對齊</b>:同樣的欄寬、同樣 112px 標籤欄、同樣座標。
-  三處刻意的差異,各有理由:<br>
-  ① <b>不畫空白格線</b> —— 填單時空座標不是可操作的東西,畫出來只是雜訊;
-  ② <b>沒有型別圖示</b> —— 填的人不需要知道欄位型別,他只需要知道要填什麼;
-  ③ <b>列高會長高</b>(多行文字 / 附件 / 簽名)—— 設計看的是版面,截斷即可;填單要真的打字。
-  欄的幾何完全一致,只有列會長。<br>
-  <b>格子就是輸入框。</b>不再是格子裡浮一個框 —— 邊界由格子畫、狀態由 focus 畫(inset 環 + 主色淡底),
-  與 B-3「拆互動項框線、改吃狀態階」同一條規則。改動前同一張表單有三種輸入寬度
-  (<code>&lt;Input&gt;</code> 內建 ~250px / <code>w-full</code> / textarea),那正是「排版錯位」的來源。</div>
+<div class="cap"><b>畫面二 · 填單(同一組欄寬)。</b>
+  <code>colWidths</code> 是同一份,所以每一欄的位置與寬度與畫面一<b>逐欄一致</b> ——
+  這才是「設計即所見」在試算表模型下的定義:不是「兩邊都有欄位表」,而是<b>同一組欄寬</b>。
+  三處刻意的差異:① <b>不畫欄標與列號</b>(填的人不需要定址)· ② <b>不畫空白格線</b>(空座標不可操作)·
+  ③ <b>列高會長高</b>(多行文字要真的打字)。分段頁籤兩邊都在 —— 它是使用者看得到的結構,不是設計工具。
+  <span class="ev">⚠️ v2 的錯誤在這裡最明顯:v2 兩邊「都是欄位表」但欄寬各自算,
+  在試算表模型下那根本不是同一張表,只是兩張長得像的表。</span></div>
 
-<!-- ═══════════ 畫面三:就地新增(M4,尚未實作) ═══════════ -->
+<!-- ═══════════ 畫面三:就地新增 + 右鍵選單 ═══════════ -->
 <div class="app">
   <nav class="rail">
     <div class="mk">W</div>
-    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
     <a class="on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg></a>
     <div class="sp"></div>
   </nav>
-  <nav class="side">
-    <div class="hd"><b>我的表單</b></div>
-    <a class="on">採購單<i>24</i></a><a class="sub">採購明細<i>子表</i></a>
-    <a>供應商評鑑<i>8</i></a>
-  </nav>
   <div class="main">
     <div class="top">
-      <h2>採購單</h2><span class="m mono">v74 · 7 欄</span>
-      <span class="dirty-note"><span class="d"></span>2 項版面變更未儲存</span>
+      <h2>採購單</h2><span class="m mono">設計模式 · v74</span>
+      <span class="dirty-note"><span class="d"></span>3 項設計變更未儲存</span>
       <span class="sp"></span>
       <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
-      <button class="btn gho">加子表</button><button class="btn pri">儲存版面 · 2 項未存</button>
+      <button class="btn pri">儲存設計 · 3 項未存</button>
     </div>
     <div class="body">
+      <aside class="dsg">
+        <div class="ptab"><b class="on">欄位設定</b><b>樣式</b><b>公式</b></div>
+        <div class="who">尚未選取欄位</div>
+        <div class="whos">點畫布上任一格</div>
+        <div class="acc" style="box-shadow:none;padding-top:0">
+          <h4>鍵盤</h4>
+          <div class="parts" style="flex-direction:column;align-items:stretch">
+            <i style="cursor:default"><span class="mono" style="color:var(--ink4)">⌘C / ⌘V</span>複製 / 貼上欄位</i>
+            <i style="cursor:default"><span class="mono" style="color:var(--ink4)">⌘Z</span>復原設計</i>
+            <i style="cursor:default"><span class="mono" style="color:var(--ink4)">⌘K</span>搜尋欄位</i>
+            <i style="cursor:default"><span class="mono" style="color:var(--ink4)">Del</span>刪除選取欄位</i>
+          </div>
+        </div>
+      </aside>
       <div class="canvas rel">
         <div class="sheet">
           <div class="ttl">採購單</div>
           <div class="sub">PO-2026-0184 · 版本 v74</div>
-          <div class="g12">
-            <div class="secbar">基本資料</div>
-            <div class="f dirty" style="grid-column:1 / span 6">
-              <span class="k">單號</span>
-              <span class="v"><span class="t n">AUTO-000001</span></span>
-            </div>
-            <div class="f" style="grid-column:7 / span 6">
-              <span class="k">批號</span>
-              <span class="v"><span class="t n">4710085120697</span></span>
-            </div>
-            <div class="f" style="grid-column:1 / span 6">
-              <span class="k"><span class="req">*</span>供應商</span>
-              <span class="v"><span class="t">範例文字</span></span>
-            </div>
-            <div class="f dirty" style="grid-column:7 / span 6">
-              <span class="k">交期</span>
-              <span class="v"><span class="t n">2026-08-02</span></span>
-            </div>
-
-            <!-- ghost 就地進入編輯:名稱可打字,型別 popover 掛在它身上 -->
-            <div class="ghost editing" style="grid-column:1 / span 6">
-              <span class="nm">運費<span class="cur"></span></span>
-              <span style="font-size:13px;color:var(--ink3)">單行文字</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
-              <span class="hint"><span class="kbd">Enter</span> 建立 · <span class="kbd">Esc</span> 取消</span>
-            </div>
-          </div>
-
-          <div class="toast">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-            已新增欄位「單價」<span class="u">復原</span></div>
-
-          <div class="pop" style="top:200px;left:196px">
-            <div class="srch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>搜尋型別…</div>
-            <div class="g">文字</div>
-            <i class="on">單行文字<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></i>
-            <i>多行文字</i>
-            <div class="g">數值</div>
-            <i>數值</i><i>金額</i><i>百分比</i>
-            <div class="g">日期</div>
-            <i>日期</i><i>日期時間</i>
-          </div>
+          <div class="stabs"><b class="on">基本資料</b><b>採購明細</b><b>簽核紀錄</b></div>
+          <div class="ss" id="ss3"></div>
         </div>
+
+        <div class="ctx" style="top:168px;left:462px">
+          <i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>複製欄位<span class="k">⌘C</span></i>
+          <i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>貼上欄位<span class="k">⌘V</span></i>
+          <hr>
+          <i>新增欄位</i>
+          <i>新增敘述欄位</i>
+          <hr>
+          <i>欄寬…</i>
+          <i>列高…</i>
+          <i>新增分段</i>
+          <hr>
+          <i style="color:var(--er)">刪除欄位<span class="k">Del</span></i>
+        </div>
+
+        <div class="pop" style="top:262px;left:206px">
+          <div class="srch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>搜尋型別…</div>
+          <div class="g">文字</div>
+          <i class="on">單行文字<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></i>
+          <i>多行文字</i>
+          <div class="g">數值</div>
+          <i>數值</i><i>金額</i><i>百分比</i>
+          <div class="g">日期</div>
+          <i>日期</i>
+        </div>
+
+        <div class="toast">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+          已新增欄位「運費」<span class="u">復原</span></div>
       </div>
-      <aside class="drw">
-        <div class="h"><div><b>尚未選取欄位</b><div class="t">點畫布上任一格以編輯</div></div></div>
-      </aside>
     </div>
-    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 01:37:19</span>
-      <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">3 項設計變更未儲存</span>
+      <span class="pos">A5</span></div>
   </div>
 </div>
-<div class="cap"><b>畫面三 · 就地新增(M4,尚未實作)。</b>點表尾 ghost 格 → <b>就地出現一格</b>,
-  游標落在欄名可直接打字,型別 popover 掛在該格上(固定分組固定順序,位置穩定可養成肌肉記憶)。
-  🔴 <b><code>Enter</code> 即建欄(裁定 B′)</b>,並配<b>三項補償</b>。<br>
-  <b>為何不對齊 Ragic 的「整批儲存」</b>|該 parity 的是<b>範式</b>(自己建自己填、表單即畫布),
-  不是每個互動細節。三個理由:① <b>錯誤定位</b> —— 批次下建了 10 個欄位才在儲存時撞名失敗,
-  使用者已失去當時的上下文;即時 DDL 在動作當下就報錯。② <b>業界分裂</b> ——
-  <code>OQ-FD2-2</code> 自己記了「Baserow live 為另一極」,Airtable 亦 live;Ragic 的批次是較舊的模型。
-  ③ <b>成本落在 P0 安全鏈</b> —— 批次 DDL 要動 provision 鏈(identifier 白名單 / advisory lock /
-  ddl_audit / 部分失敗回滾),為一個互動細節去動鐵則區域不划算。<br>
-  <b>三項補償</b>|① 建立後給<b>可撤銷 toast</b>(剛建立、無資料的欄位刪掉是安全的);
-  ② <b>未儲存的版面變更以 warn 左緣標記 + 儲存鈕計數</b> ——
-  設計模式同時跑兩個心智模型(移動=草稿可 undo / 新增=永久)卻<b>沒有任何視覺區分</b>,這是真缺陷;
-  ③ 此取捨寫入文件為已知限制,不假裝沒有兩個模型。</div>
+<div class="cap"><b>畫面三 · 就地新增與複製。</b>
+  在<b>空儲存格直接打字</b>即新增欄位,型別 popover 掛在該格上(固定分組固定順序)。
+  <b>右鍵選單</b>三段:複製/貼上欄位 · 新增欄位/敘述欄位 · 欄寬/列高/新增分段 ——
+  三段來源都有官方逐字依據,不是我推的。<b>⌘C 複製欄位會帶走所有屬性</b>(名稱/種類/公式/樣式),
+  這是建表速度的主要槓桿,v1/v2 完全缺席。
+  <b>已改欄位以 warn 左緣標記</b>,標題列與儲存鈕都計數。
+  <span class="ev">依據|<q>在空的儲存格上直接打字就能新增欄位</q><q>你也可以直接在空的儲存格按右鍵從選單中新增欄位或 敘述欄位</q>
+  <q>透過 複製 (右鍵並點選複製、Ctrl+C)來快速建立欄位,複製時會包含所有的欄位屬性(名稱、欄位種類、公式、樣式等)</q>(doc/37)·
+  <q>對想調整的欄寬或列高點右鍵後,選擇 欄寬或列高</q>(doc/21)·
+  <q>在列上點擊右鍵選擇 新增分段</q>(doc/121)·
+  <q>在設計模式中,你可以利用鍵盤快捷鍵來 復原 設定與 取消復原</q>(doc/143)。
+  ⚠️ <b>刻意分歧</b>:Ragic 是<q>設計完成後,點選 儲存 再離開設計模式</q>的整批儲存,
+  我們維持 <b>B′ Enter 即建欄 + 三項補償</b>(理由見 M0 §10-bis)。</span></div>
 
 <div style="max-width:1460px;margin:24px auto 0">
-  <h3 class="sec">量測對照</h3>
-  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:4px">
-    「本稿」欄位若標 <span class="ok">已量測</span>,數字來自 Playwright 對真實瀏覽器的
-    <code>getBoundingClientRect()</code>,不是從稿子上量的。</p>
+  <h3 class="sec">v2 → v3 改了什麼</h3>
   <table class="mtab">
-    <tr><th style="width:190px">指標</th><th style="width:170px">改動前</th><th style="width:190px">本稿 / 現況</th><th>依據</th></tr>
-    <tr><td>設計側欄寬 / 標籤欄寬</td><td class="k">361 / 132</td><td class="k ok">361 / 112 已量測</td><td rowspan="2">form-designer-2d D1;<br><code>wysiwyg-parity.spec</code> 逐格斷言</td></tr>
-    <tr><td>填單側欄寬 / 標籤欄寬</td><td class="k">撐滿 / 136(不吃版面)</td><td class="k ok">361 / 112 已量測</td></tr>
-    <tr><td>畫布格線間距</td><td class="k">8px(卡片浮著)</td><td class="k ok">0 已量測</td><td>間距一出現,填起來長怎樣就看不出來</td></tr>
-    <tr><td>列高</td><td class="k">60px</td><td class="k ok">32px(= 填單格 min-h)</td><td>兩邊同一個數字才叫設計即所見</td></tr>
-    <tr><td>拖曳位移換算節距</td><td class="k">52(實際 60 → 錯位)</td><td class="k ok">60</td><td>拖五格 <code>round(300/52)=6</code> 會偏一格</td></tr>
-    <tr><td>填單輸入寬度種類</td><td class="k">3 種</td><td class="k ok">1(填滿格子)</td><td>docs/14 B-3 拆框線吃狀態階</td></tr>
-    <tr><td>型別標記</td><td class="k">自造字元含 📎 emoji</td><td class="k ok">Lucide,tsc 保證窮盡</td><td>emoji 顏色不受 token 管、會混進可及名稱</td></tr>
-    <tr><td>水平 header 帶</td><td class="k">3 條</td><td class="k wn">目標 1 條 · <b>M3 未實作</b></td><td>docs/29 S5 ≤1</td></tr>
-    <tr><td>直向欄(軌除外)</td><td class="k">3(清單 + 型別盤 + 設定)</td><td class="k wn">目標 2 · <b>M2 未實作</b></td><td>docs/29 S3 輔助面板 ≤1</td></tr>
-    <tr><td>日期欄顯示</td><td class="k">mm/dd/yyyy</td><td class="k wn">未修 · <b>task #155</b></td><td>原生控制項吃瀏覽器語系,不吃 <code>html lang</code></td></tr>
+    <tr><th style="width:150px">項目</th><th style="width:220px">v2</th><th style="width:220px">v3</th><th>依據</th></tr>
+    <tr><td>版面模型</td><td class="k">12 欄 × 60px 固定<br>每欄位自帶 112px 標籤</td><td class="k ok">21 欄,<b>整欄全域欄寬</b><br>欄位 = 相鄰兩格</td><td>Ragic doc/21 + doc-kb/306;<br><b>自家 form-designer-2d M2 與 schema 早已如此規定</b></td></tr>
+    <tr><td>欄數</td><td class="k">固定 12</td><td class="k ok">預設 21,右緣自動 +4</td><td>doc-kb/306 逐字</td></tr>
+    <tr><td>分段</td><td class="k">藍色標題橫條</td><td class="k ok">頁籤切換;<br>藍條降為<b>使用者自建的敘述欄位</b></td><td>doc/121「點擊頁籤來切換分段」</td></tr>
+    <tr><td>子表</td><td class="k">topbar 的「＋加子表」</td><td class="k ok">水平排列標頭即為子表<br>(按鈕保留為可發現入口)</td><td>doc/38「水平排列標頭則會建立 子表格」</td></tr>
+    <tr><td>敘述欄位</td><td class="k">未區分</td><td class="k ok"><b>佔一格</b>(一般欄位佔兩格)</td><td>doc/35</td></tr>
+    <tr><td>示例值</td><td class="k">恆顯示</td><td class="k ok">未選取才顯示,選取即清空</td><td>doc/34:值格須能輸入標頭以轉子表</td></tr>
+    <tr><td>屬性面板</td><td class="k">右側</td><td class="k ok"><b>左側</b>;設計模式收起表單清單欄以維持輔助面板 ≤1</td><td>doc/37「左側工具列的 欄位設定」+ docs/29 S3</td></tr>
+    <tr><td>複製欄位</td><td class="k">無</td><td class="k ok">⌘C/⌘V + 右鍵,帶走全部屬性</td><td>doc/37 逐字</td></tr>
+    <tr><td>欄位框線</td><td class="k">整圈 1px 外框<br>+ 標籤/值之間直線</td><td class="k ok"><b>只有橫線</b>,標籤靠底色分界</td><td>Ragic 記錄頁截圖 <code>ragic-detail-formbuilder-09</code> 放大確認</td></tr>
   </table>
 
-  <h3 class="sec">此稿的自我約束</h3>
-  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:4px">
-  前幾輪 review 抓到違反自己寫的規則,故列出來讓你可以驗:
-  間距只用 4/8/12/16/24 · 不用 <code>opacity</code> 造文字階 · 圖示全 Lucide 真路徑不自繪 ·
-  字級只用 12/13/14/16/20/24 且行高照表 · 殼的互動項不畫框(只有文字輸入保留框) ·
-  動效只動 <code>opacity</code>/<code>transform</code> 且有 <code>prefers-reduced-motion</code>。</p>
-
-  <h3 class="sec">v1 → v2 改了什麼</h3>
+  <h3 class="sec">維持不變 / 刻意分歧</h3>
   <table class="mtab">
-    <tr><th style="width:190px">項目</th><th style="width:250px">v1</th><th>為什麼改</th></tr>
-    <tr><td>畫布模型</td><td class="k">th|td|th|td 流式表格</td>
-      <td>引擎的版面 metadata 是 <b>col / row / colSpan</b> 座標。流式表格排不出「第 3 欄起、寬 4 格」,
-        也畫不出空白座標 —— 稿子與可實作的東西不是同一件事。</td></tr>
-    <tr><td>填單屏</td><td class="k">缺席(兩屏都是設計)</td>
-      <td>「設計即所見」的另一半在填單。只畫設計屏,等於只證明了一半 ——
-        實際跑起來才發現斷掉的正是填單側。</td></tr>
-    <tr><td>示例值底紋</td><td class="k">45° 斜紋淡底</td>
-      <td>每一格都鋪斜紋在整屏尺度上是雜訊;<code>ink-3</code> + 型別圖示已足以讀成「非真值」。
-        <b>此為對 v1 的推翻,不是實作偷工。</b></td></tr>
-    <tr><td>拖曳把手</td><td class="k">未畫</td>
-      <td>把手若佔一個實體欄,設計與填單的值格起點就差 20px —— 主張當場失效。改為疊在標籤格左緣。</td></tr>
-    <tr><td>型別如何呈現</td><td class="k">未定</td>
-      <td>值格左側 Lucide 圖示。不用文字標籤:那會讓每列多一塊與填單無關的內容。</td></tr>
+    <tr><th style="width:150px">項目</th><th style="width:180px">Ragic</th><th style="width:180px">Weyver</th><th>理由</th></tr>
+    <tr><td>公式參照</td><td class="k">儲存格座標 <code>C9*D9</code></td><td class="k">欄位名</td><td><b>我方較好</b>|座標參照使「拖動欄位」變成破壞性操作,與可自由排版的主張直接衝突。遷移時由匯入器把座標轉成欄位名</td></tr>
+    <tr><td>新增欄位時機</td><td class="k">整批儲存</td><td class="k">Enter 即建欄(B′) + 三項補償</td><td>錯誤定位 / 業界分裂 / 批次 DDL 會動 P0 安全鏈(M0 §10-bis)</td></tr>
+    <tr><td>敘述欄位新增方式</td><td class="k">切「編輯描述中」模式後打字</td><td class="k">從左側面板拖曳</td><td>同一個打字動作依模式產生不同物件是高誤觸設計,Ragic 自己也要放模式切換器補救</td></tr>
   </table>
+
+  <h3 class="sec">尚未實作(這份稿子是目標,不是現況)</h3>
+  <table class="mtab">
+    <tr><th style="width:190px">項目</th><th style="width:170px">現況</th><th>歸屬</th></tr>
+    <tr><td>試算表模型全套</td><td class="k wn">仍為 12 欄固定 + 112px 標籤</td><td>本輪裁定後的實作,尚未開工</td></tr>
+    <tr><td>屬性面板</td><td class="k wn">三個工具列開關</td><td>UP-3c M2</td></tr>
+    <tr><td>三條標題帶收成一條</td><td class="k wn">3 條</td><td>UP-3c M3</td></tr>
+    <tr><td>就地新增 + 型別 popover</td><td class="k wn">左側型別盤</td><td>UP-3c M4</td></tr>
+    <tr><td>日期顯示 mm/dd/yyyy</td><td class="k wn">未修</td><td>task #155</td></tr>
+  </table>
+
+  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:12px">
+  <b>此稿的自我約束</b>|間距只用 4/8/12/16/24 · 不用 <code>opacity</code> 造文字階 ·
+  圖示全 Lucide 真路徑不自繪 · 字級只用 12/13/14/16/20/24 · 殼的互動項不畫框(只有文字輸入保留框) ·
+  動效只動 <code>opacity</code>/<code>transform</code> 且有 <code>prefers-reduced-motion</code>。<br>
+  <b>格線由資料驅動</b>|下方 script 的 <code>COLS</code> 陣列就是 <code>layout.grid.colWidths</code>,
+  欄位以 <code>{r, c, span}</code> 定位 —— 稿子與資料模型同構,不是畫出來的假格線。
+  v2 的固定 60px 是「畫出來的」,所以它可以與引擎不一致而沒人發現。</p>
 </div>
+
+<script>
+/* 🔴 格線由資料驅動:COLS 即 layout.grid.colWidths。
+   欄位以 {r, c, span} 定位,與引擎的 col/row/colSpan 同構 —— 稿子與資料模型不會各說各話。 */
+const COLS = [96, 168, 84, 152, 44, 44, 44, 44, 44, 44, 44];  // A..K(實際 21 欄,其餘需橫向捲動)
+const LETTERS = "ABCDEFGHIJK".split("");
+
+function mk(cls, text, pos) {
+  const d = document.createElement("div");
+  d.className = cls;
+  if (text) d.textContent = text;
+  d.style.gridRow = pos.rspan ? `${pos.r} / span ${pos.rspan}` : String(pos.r);
+  d.style.gridColumn = pos.span ? `${pos.c} / span ${pos.span}` : String(pos.c);
+  return d;
+}
+
+function build(el, o) {
+  const ruler = o.ruler !== false;
+  const off = ruler ? 1 : 0;
+  el.style.gridTemplateColumns = (ruler ? "var(--gut) " : "") + COLS.map((w) => w + "px").join(" ");
+  const rows = o.rows || 12;
+  const frag = document.createDocumentFragment();
+
+  if (ruler) {
+    frag.appendChild(mk("corner", "", { r: 1, c: 1 }));
+    LETTERS.forEach((L, i) =>
+      frag.appendChild(mk("ch" + (o.hiCol === i ? " hi" : "") + (o.dragCol === i ? " drag" : ""), L,
+        { r: 1, c: i + 2 })));
+    for (let r = 0; r < rows; r++)
+      frag.appendChild(mk("rh" + (o.hiRow === r ? " hi" : ""), String(r + 1), { r: r + 2, c: 1 }));
+  }
+  if (o.empty !== false) {
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < COLS.length; c++)
+        frag.appendChild(mk("e", "", { r: r + 1 + off, c: c + 1 + off }));
+  }
+  el.appendChild(frag);
+
+  /* 內容後放 → 疊在空白格之上 */
+  (o.cells || []).forEach((x) => {
+    const d = mk(x.cls, "", { r: x.r + off, c: x.c + off, span: x.span, rspan: x.rspan });
+    d.innerHTML = x.html;
+    el.appendChild(d);
+  });
+}
+
+const REQ = '<span class="req">*</span>';
+const HLP = '<span class="hlp">?</span>';
+
+/* 畫面一:設計模式 */
+build(document.getElementById("ss1"), {
+  hiCol: 0, hiRow: 2, dragCol: 1, rows: 12,
+  cells: [
+    { r: 1, c: 1, span: 4, cls: "desc", html: "採購基本資訊" },
+    { r: 2, c: 1, cls: "k", html: "單號" },
+    { r: 2, c: 2, cls: "v n", html: '<span class="t ex">AUTO-000001</span>' },
+    { r: 2, c: 3, cls: "k", html: "批號" + HLP },
+    { r: 2, c: 4, cls: "v n", html: '<span class="t ex">4710085120697</span>' },
+    { r: 3, c: 1, cls: "k sel", html: REQ + "供應商" },
+    { r: 3, c: 2, cls: "v sel", html: '<span class="cur"></span>' },
+    { r: 3, c: 3, cls: "k", html: "交期" },
+    { r: 3, c: 4, cls: "v n", html: '<span class="t ex">2026-08-02</span>' },
+    { r: 4, c: 1, cls: "k", html: "金額" },
+    { r: 4, c: 2, cls: "v n", html: '<span class="t ex">128,400.00</span>' },
+    { r: 4, c: 3, cls: "k", html: "狀態" },
+    { r: 4, c: 4, cls: "v", html: '<span class="chip wn">待簽核</span>' },
+    { r: 5, c: 1, span: 4, cls: "desc plain", html: "以下為明細 —— 由水平排列的標頭形成子表" },
+    { r: 6, c: 1, cls: "sk", html: "品項" },
+    { r: 6, c: 2, cls: "sk", html: "數量" },
+    { r: 6, c: 3, cls: "sk", html: "單價" },
+    { r: 6, c: 4, cls: "sk", html: "小計" },
+    { r: 7, c: 1, cls: "sv", html: "範例文字" },
+    { r: 7, c: 2, cls: "sv n", html: "12" },
+    { r: 7, c: 3, cls: "sv n", html: "1,200.00" },
+    { r: 7, c: 4, cls: "sv n", html: "（計算值）" },
+    { r: 8, c: 1, cls: "sv", html: "" },
+    { r: 8, c: 2, cls: "sv n", html: "" },
+    { r: 8, c: 3, cls: "sv n", html: "" },
+    { r: 8, c: 4, cls: "sv n", html: "" },
+    { r: 9, c: 1, cls: "k", html: REQ + "備註" },
+    { r: 9, c: 2, span: 3, cls: "v", html: '<span class="t ex">範例的多行說明文字，用來看清楚欄位的寬度與換行。</span>' },
+  ],
+});
+
+/* 畫面二:填單 —— 同一組 COLS,無標尺、無空白格線 */
+build(document.getElementById("ss2"), {
+  ruler: false, empty: false, rows: 9,
+  cells: [
+    { r: 1, c: 1, span: 4, cls: "desc", html: "採購基本資訊" },
+    { r: 2, c: 1, cls: "k", html: "單號" },
+    { r: 2, c: 2, cls: "v n", html: '<span class="in ro">儲存後自動產生</span>' },
+    { r: 2, c: 3, cls: "k", html: "批號" + HLP },
+    { r: 2, c: 4, cls: "v n", html: '<span class="in">4710085120697</span>' },
+    { r: 3, c: 1, cls: "k", html: REQ + "供應商" },
+    { r: 3, c: 2, cls: "v", html: '<span class="in focus">大安食品原料<span class="cur"></span></span>' },
+    { r: 3, c: 3, cls: "k", html: "交期" },
+    { r: 3, c: 4, cls: "v n", html: '<span class="in">2026-08-15</span>' },
+    { r: 4, c: 1, cls: "k", html: "金額" },
+    { r: 4, c: 2, cls: "v n", html: '<span class="in">128,400.00</span>' },
+    { r: 4, c: 3, cls: "k", html: "狀態" },
+    { r: 4, c: 4, cls: "v", html: '<span class="in"><span class="chip wn">待簽核</span></span>' },
+    { r: 5, c: 1, span: 4, cls: "desc plain", html: "以下為明細" },
+    { r: 6, c: 1, cls: "sk", html: "品項" },
+    { r: 6, c: 2, cls: "sk", html: "數量" },
+    { r: 6, c: 3, cls: "sk", html: "單價" },
+    { r: 6, c: 4, cls: "sk", html: "小計" },
+    { r: 7, c: 1, cls: "sv", html: '<span style="color:var(--ink)">冷凍雞胸肉</span>' },
+    { r: 7, c: 2, cls: "sv n", html: '<span style="color:var(--ink)">12</span>' },
+    { r: 7, c: 3, cls: "sv n", html: '<span style="color:var(--ink)">1,200.00</span>' },
+    { r: 7, c: 4, cls: "sv n", html: '<span style="color:var(--ink)">14,400.00</span>' },
+    { r: 8, c: 1, rspan: 2, cls: "k", html: REQ + "備註" },
+    { r: 8, c: 2, span: 3, rspan: 2, cls: "v", html: '<span class="in ph" style="align-items:flex-start;padding-top:7px">請說明採購事由與規格</span>' },
+  ],
+});
+
+/* 畫面三:就地新增 */
+build(document.getElementById("ss3"), {
+  hiCol: 0, hiRow: 4, rows: 11,
+  cells: [
+    { r: 1, c: 1, span: 4, cls: "desc", html: "採購基本資訊" },
+    { r: 2, c: 1, cls: "k dirty", html: "單號" },
+    { r: 2, c: 2, cls: "v n", html: '<span class="t ex">AUTO-000001</span>' },
+    { r: 2, c: 3, cls: "k", html: "批號" },
+    { r: 2, c: 4, cls: "v n", html: '<span class="t ex">4710085120697</span>' },
+    { r: 3, c: 1, cls: "k", html: REQ + "供應商" },
+    { r: 3, c: 2, cls: "v", html: '<span class="t ex">範例文字</span>' },
+    { r: 3, c: 3, cls: "k dirty", html: "交期" },
+    { r: 3, c: 4, cls: "v n", html: '<span class="t ex">2026-08-02</span>' },
+    { r: 5, c: 1, cls: "k sel", html: '運費<span class="cur"></span>' },
+    { r: 5, c: 2, cls: "v", html: '<span class="t" style="color:var(--ink4)">單行文字</span>' },
+  ],
+});
+</script>
 
 </div>
 </body>
