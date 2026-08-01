@@ -292,8 +292,15 @@ export function CollectionView({
         )}
       </div>
       <div className="flex h-8 shrink-0 items-center gap-3 border-t border-line bg-card px-4 text-[12px] text-ink-3">
+        {/* 🔴 尚有未載入的頁時,**不得**只寫「N 筆」。
+            `records` 是已載入頁的合計,不是總數 —— 使用者看到「50 筆」會直接理解成
+            這張表就 50 筆記錄,而那是把分頁大小當成事實陳述。
+            docs/14 把筆數列為信任訊號;**錯的信任訊號比沒有更糟**。
+            (docs/28 §5-bis V5:Metabase 同一處寫 `Showing first 2,000 rows`,
+             走的是誠實截斷而非另跑一次 COUNT —— 大表上 COUNT 的代價不值得。) */}
         <span className="font-mono">
-          {records.length} 筆{selectedIds.length > 0 ? ` · 已選 ${selectedIds.length}` : ""}
+          {recordsQuery.hasNextPage ? `已載入 ${records.length} 筆` : `${records.length} 筆`}
+          {selectedIds.length > 0 ? ` · 已選 ${selectedIds.length}` : ""}
         </span>
         {selectedIds.length > 0 ? (
           <button
