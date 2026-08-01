@@ -3,23 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weyver · 表單記錄 v2(嚴謹企業級)</title>
+<title>Weyver · 表單記錄 v3(同步出貨 token + docs/28 採用項)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#E8EAED;--card:#FFFFFF;--head:#F2F4F6;--label:#EEF1F4;--field:#F7F8FA;
-  --ink:#14181D;--ink2:#3E4854;--ink3:#6B7684;--ink4:#98A2AE;
-  --line:#C9CFD6;--line2:#DDE1E6;--cell:#D5DAE0;
-  --primary:#1E4E79;--primary-d:#173D5F;--primary-t:#E7EEF5;      /* 主題主色(預設深藍;可切換,見 [data-theme]) */
-  --link:#0B5CAB;
-  --fx:#0B6B5D;--fx-bg:#E9F3F0;--rel:#5B3FA8;
-  --ok:#1A7A43;--ok-t:#E8F2EB;--wn:#9A5B00;--wn-t:#F7EFDF;--er:#B3261E;--er-t:#F7E9E8;--nt:#4A5560;--nt-t:#ECEEF0;
+  /* ═══════════════════════════════════════════════════════════════
+     🔴 兩層制(承 docs/28 §1.1,Metabase 原始碼逐字:
+     「Base colors ... should never change and never be used outside this file」)
+
+     · BASE  = 只在本區塊出現,元件一律不得直接用
+     · 語意   = 元件唯一可用的層;改主題只需換 BASE
+     ══════════════════════════════════════════════════════════════ */
+
+  /* ── BASE(唯一可調的來源值)────────────────────────────── */
+  --base-brand:#22568a;          /* 深藍(預設主題)*/
+  --base-ink:#16191f;            /* 中性最深 */
+
+  /* ── 語意:主色階由 BASE 推導(docs/28 §1.2)──────────────
+     白牌客戶只換 --base-brand 一個值,深色/淡底/hover 全部跟著對。
+     取代原本三個主題各自硬寫三個值的做法。 */
+  --primary:var(--base-brand);
+  --primary-d:color-mix(in srgb, var(--base-brand), #000 22%);
+  --primary-t:color-mix(in srgb, var(--base-brand), #fff 90%);
+
+  /* ── 結構中性(與出貨的 packages/ui/src/styles/tokens.css 同步)── */
+  --bg:#f6f7f9;--card:#ffffff;--head:#f1f3f5;--label:#f4f6f8;--field:#fafbfc;
+  --ink:var(--base-ink);--ink2:#3d4753;--ink3:#606c7b;--ink4:#9aa4b1;
+  --line:#e3e6ea;--line2:#eef0f3;--cell:#e7eaee;--line-input:#8d8d8d;
+
+  /* ── 圖示色**明文對齊**文字色(docs/28 §1.3;Metabase 逐字 `// Matches text-primary`)
+     少了這條,圖示比旁邊的字深一階這種不一致沒有人說得出理由。 */
+  --icon:var(--ink);--icon2:var(--ink2);--icon3:var(--ink3);
+
+  --link:#0b5cab;
+  --fx:#0b6b5d;--fx-bg:#e9f3f0;--rel:#5b3fa8;
+  --ok:#1a7a43;--ok-t:#e8f2eb;--wn:#9a5b00;--wn-t:#f7efdf;--er:#b3261e;--er-t:#f7e9e8;--nt:#4a5560;--nt-t:#eceef0;
+
+  /* 圓角上限 6px(docs/14);靜態一律無陰影,深度靠框線 */
+  --r-xs:3px;--r-sm:4px;--r-md:6px;
 }
-/* ═ 三配色主題(docs/14 v2.1 定案:同一系統,語意 token 換值)═ */
-[data-theme="teal"]{--primary:#0C5F73;--primary-d:#094A5A;--primary-t:#E6F0F3;}
-[data-theme="graphite"]{--primary:#313131;--primary-d:#1F1F1F;--primary-t:#ECECEA;}
+/* ═ 三配色主題:只換 BASE,其餘自動推導 ═ */
+[data-theme="teal"]{--base-brand:#0c5f73;}
+[data-theme="graphite"]{--base-brand:#333739;}
+/* ═ anchor bar(SAP Fiori 硬規則:section 一律直接反映在導覽列;#110 已落地)═ */
+.anch{display:flex;gap:0;padding:0 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;}
+.anch a{padding:8px 12px;font-size:12.5px;color:var(--ink2);text-decoration:none;border-bottom:2px solid transparent;}
+.anch a.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
+.anch a:hover:not(.on){background:var(--head);}
+
+/* ═ footer toolbar(Fiori:Save/Post 在 footer;**只在編輯中出現**)═ */
+.foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0;
+  padding:8px 20px;background:var(--card);border-top:1px solid var(--line);}
+.foot .hint{margin-right:auto;font-size:11.5px;color:var(--ink3);}
+.foot button{height:28px;padding:0 14px;font-size:12.5px;border:1px solid var(--line-input);border-radius:var(--r-sm);background:var(--card);color:var(--ink);}
+.foot button.pri{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+
 /* 主題切換器(展示用) */
 .themes{display:flex;align-items:center;gap:4px;margin-right:10px;}
 .themes span{font-size:10px;color:var(--ink4);margin-right:2px;}
@@ -168,9 +208,14 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;text-dec
   <!-- topbar -->
   <div class="top">
     <div class="brand"><div class="mk">W</div><div class="bd">Weyver<small>織雲</small></div></div>
-    <nav class="tabs"><a class="on">採購</a><a>銷售</a><a>庫存</a><a>生產現場</a><a>品保 ISO</a><a>財會</a><a>報表</a></nav>
+    <!-- 🔴 導覽為 **Ragic-native**(使用者自建的表單組織),不是 ERP 式模組選單。
+         docs/24 §反面教材逐字:「將 ERP / MES / ISO 做成各自的頂層模組 tab / 分立系統入口
+         —— 等同讓使用者又在多系統間切換,直接違背『不想切多系統』之核心痛點」。
+         ⚠️ 本稿在 v2 期間頂欄一直是「採購 / 銷貨 / 庫存 / 生產 MES / 品保 ISO / 財會」,
+         正是那個反面教材;出貨的 app 反而是對的(工作區 / 我的表單 / 設定)。此處改回對齊。 -->
+    <nav class="tabs"><a class="on">工作區</a><a>我的表單</a><a>設定</a></nav>
     <div class="rt">
-      <div class="themes"><span>配色</span><button class="on" data-t="" style="background:#1E4E79" title="深藍"></button><button data-t="teal" style="background:#0C5F73" title="深海青"></button><button data-t="graphite" style="background:#313131" title="石墨"></button></div>
+      <div class="themes"><span>配色</span><button class="on" data-t="" style="background:#22568a" title="深藍"></button><button data-t="teal" style="background:#0C5F73" title="深海青"></button><button data-t="graphite" style="background:#333739" title="石墨"></button></div>
       <div class="gs"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>搜尋 表單 · 記錄 · 欄位<kbd>⌘K</kbd></div>
       <span class="uid"><b>鮮勇食品</b> · 陳美玲</span>
     </div>
@@ -197,7 +242,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;text-dec
     <!-- 主:表單記錄 -->
     <div class="main">
       <div class="toolbar">
-        <span class="crumb">採購 › <b>採購單</b></span>
+        <span class="crumb">工作區 › 採購作業 › <b>採購單</b></span>
         <button class="tb pri">核准並過帳</button>
         <button class="tb">儲存</button>
         <button class="tb">新增</button>
@@ -206,6 +251,11 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;text-dec
         <span class="sp"></span>
         <div class="nav-rec"><button>‹</button><span class="pos">第 1 / 248 筆</span><button>›</button></div>
       </div>
+
+      <nav class="anch">
+        <a href="#" class="on">摘要</a><a href="#">基本資料</a><a href="#">明細</a>
+        <a href="#">簽核</a><a href="#">過帳</a><a href="#">系統資訊</a>
+      </nav>
 
       <div class="scroll"><div class="doc">
         <div class="doc-head">
@@ -292,6 +342,14 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;text-dec
         </div>
       </div></div>
 
+      <!-- footer toolbar:**只在編輯中出現**(常駐一條空工具列只吃垂直空間)。
+           Fiori 官方分工:Edit/Delete/Copy 在 header,Save/Post/Accept/Reject 在 footer。 -->
+      <div class="foot">
+        <span class="hint">編輯中 · 未儲存的變更會在離開前提醒</span>
+        <button>取消</button>
+        <button class="pri">儲存</button>
+      </div>
+
       <!-- 底部狀態列 -->
       <div class="statusbar">
         <span><span class="dot" style="display:inline-block;margin-right:5px"></span>已連線 · 即時同步</span>
@@ -299,7 +357,7 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;text-dec
         <span>租戶 <b>hsienyung</b></span>
         <span class="sp"></span>
         <span>權限:採購 — 完整</span>
-        <span>Weyver <b>R1</b></span>
+        <span>Weyver</span>
       </div>
     </div>
   </div>
