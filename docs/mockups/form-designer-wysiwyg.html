@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Weyver — 表單設計器 UP-3c 高保真 mockup</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════
+   UP-3c 高保真 mockup —— review 用,尚未進 prod。
+   OQ-FDW 全採建議:1=A 示例值依型別生成 · 2=A 設計/填單共用渲染 ·
+   3=B 就地新增延到 Enter · 4=C 型別固定順序 · 5=A 表單級歸表單設定 · 6=A 另立。
+
+   🔴 本檔自我約束(前兩次 review 抓到我違反自己的規則):
+   · 間距只用 4 / 8 / 12 / 16 / 24
+   · 不用 opacity 造文字階(用 ink / ink-2 / ink-3)
+   · 圖示一律 Lucide 真路徑,不自繪
+   · 字級只用 12 / 13 / 14 / 16 / 20 / 24,行高照表
+   · 殼的互動項不畫框,吃 hover/active 階;只有文字輸入保留框
+   · 動效只動 opacity / transform,且有 reduced-motion
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --s1:#fcfdfe;--s2:#f6f8fa;--s3:#eef1f5;--s4:#e4e9ef;--s6:#e6eaf0;--s7:#d3dae3;--s8:#bcc6d2;
+  --ink:#0f1720;--ink2:#3a4553;--ink3:#5c6876;--ink4:#9aa6b4;
+  --cell:#dfe4ea;--line:#e6eaf0;
+  --base:#22568a;--pri:var(--base);
+  --pri-d:color-mix(in srgb,var(--base),black 20%);
+  --pri-t:color-mix(in srgb,var(--base),white 91%);
+  --ok:#0f7a4a;--ok-t:#e8f5ee;--ok-l:#bde3cd;
+  --wn:#8a5a09;--wn-t:#fbf2e3;--wn-l:#ecd7ac;
+  --er:#b02a26;--er-t:#fbebea;--er-l:#eecac8;
+  --r1:4px;--r2:6px;--r3:9px;
+  --fast:110ms cubic-bezier(0,0,.38,.9);
+  --hair:0 0 0 1px var(--line);
+  --ovl:0 0 0 1px var(--line),0 12px 28px -10px rgb(15 23 32 / .18),0 2px 6px rgb(15 23 32 / .05);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--s3);color:var(--ink);padding:24px;
+  font-family:Inter,'Noto Sans TC',system-ui,sans-serif;font-size:14px;line-height:20px;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1460px;margin:0 auto}
+.mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
+.lede h1{font-size:24px;font-weight:600;letter-spacing:-.026em;line-height:32px}
+.lede p{color:var(--ink3);margin-top:4px;max-width:82ch;font-size:14px}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
+.tags b{font-size:12px;font-weight:500;line-height:16px;color:var(--ink2);background:var(--s1);
+  border-radius:var(--r1);padding:4px 8px}
+.cap{max-width:1460px;margin:8px auto 24px;font-size:13px;line-height:18px;color:var(--ink3)}
+.cap b{color:var(--ink)}
+
+/* ── app ── */
+.app{height:660px;display:flex;background:var(--s2);border-radius:10px;overflow:hidden;
+  margin-top:16px;box-shadow:var(--hair),0 12px 32px -12px rgb(15 23 32 / .10)}
+.rail{width:52px;flex:0 0 52px;background:var(--s3);display:flex;flex-direction:column;
+  align-items:center;padding:12px 0;gap:4px}
+.rail .mk{width:28px;height:28px;border-radius:7px;background:var(--ink);color:var(--s1);
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;
+  letter-spacing:-.04em;margin-bottom:12px}
+.rail a{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink3);transition:background var(--fast),color var(--fast)}
+.rail a:hover{background:var(--s4);color:var(--ink)}
+.rail a.on{background:var(--s4);color:var(--ink)}
+.rail .sp{flex:1}
+.side{width:208px;flex:0 0 208px;background:var(--s2);padding:12px 8px;overflow:auto}
+.side .hd{display:flex;align-items:center;padding:0 8px 8px;gap:8px}
+.side .hd b{font-size:13px;font-weight:600;line-height:18px}
+.side .hd .add{margin-left:auto;width:24px;height:24px;border-radius:var(--r1);border:0;background:none;
+  color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:default;
+  transition:background var(--fast)}
+.side .hd .add:hover{background:var(--s3);color:var(--ink)}
+.side a{display:flex;align-items:center;gap:8px;height:30px;padding:0 8px;border-radius:var(--r1);
+  font-size:13px;color:var(--ink);text-decoration:none;transition:background var(--fast)}
+.side a:hover{background:var(--s3)}
+.side a.on{background:var(--s4);font-weight:500}
+.side a i{font-style:normal;margin-left:auto;font-size:12px;color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace}
+.side .sub{padding-left:24px}
+
+/* 唯一一條 header */
+.main{flex:1;min-width:0;background:var(--s1);border-radius:9px 0 0 9px;
+  box-shadow:-1px 0 0 var(--line);display:flex;flex-direction:column}
+.top{height:48px;flex:0 0 48px;display:flex;align-items:center;gap:12px;padding:0 16px}
+.top h2{font-size:16px;font-weight:600;letter-spacing:-.014em;line-height:22px}
+.top .m{font-size:12px;line-height:16px;color:var(--ink3)}
+.top .sp{flex:1}
+.seg{display:inline-flex;background:var(--s3);border-radius:var(--r1);padding:2px;gap:1px}
+.seg b{font-size:13px;font-weight:400;line-height:18px;color:var(--ink3);padding:3px 10px;
+  border-radius:3px;cursor:default;transition:background var(--fast),color var(--fast)}
+.seg b.on{background:var(--s1);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgb(15 23 32 / .06)}
+.btn{height:30px;padding:0 12px;border:0;border-radius:var(--r1);font:inherit;font-size:13px;
+  font-weight:500;line-height:18px;display:inline-flex;align-items:center;gap:6px;cursor:default;
+  transition:background var(--fast)}
+.btn.pri{background:var(--pri);color:#fff}
+.btn.pri:hover{background:var(--pri-d)}
+.btn.gho{background:transparent;color:var(--ink2);font-weight:400}
+.btn.gho:hover{background:var(--s3)}
+.ico-btn{width:30px;height:30px;border-radius:var(--r1);border:0;background:none;color:var(--ink3);
+  display:inline-flex;align-items:center;justify-content:center;cursor:default;transition:background var(--fast)}
+.ico-btn:hover{background:var(--s3);color:var(--ink)}
+
+.body{flex:1;min-height:0;display:flex}
+.canvas{flex:1;min-width:0;overflow:auto;padding:24px}
+
+/* ── 單據語言:設計 = 填單 ── */
+.sheet{max-width:760px;margin:0 auto}
+.sheet .ttl{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:26px}
+.sheet .sub{font-size:12px;line-height:16px;color:var(--ink3);margin-top:4px;
+  font-family:'IBM Plex Mono',monospace}
+.secbar{margin-top:24px;background:var(--pri);color:#fff;font-size:12px;font-weight:600;
+  line-height:16px;letter-spacing:.06em;padding:6px 12px;border-radius:var(--r2) var(--r2) 0 0;
+  display:flex;align-items:center;gap:8px}
+.secbar .h{margin-left:auto;display:flex;gap:4px;opacity:0}
+.secbar:hover .h{opacity:1}
+table.doc{width:100%;border-collapse:collapse;font-size:13px;line-height:18px}
+table.doc th,table.doc td{border:1px solid var(--cell);padding:8px 12px;text-align:left;vertical-align:middle}
+table.doc th{background:var(--s3);color:var(--ink2);font-weight:500;width:112px;font-size:12px}
+table.doc td{color:var(--ink)}
+/* 🔴 示例值:OQ-FDW-1=A 依型別生成。ink-3 + label 淡底 = 看得出不是真值 */
+table.doc td.ex{color:var(--ink3);background:repeating-linear-gradient(-45deg,
+  var(--s1),var(--s1) 6px,var(--s2) 6px,var(--s2) 12px)}
+table.doc td.n{font-family:'IBM Plex Mono',monospace;text-align:right}
+/* 🔴 設計模式的選取是**一個欄位**(label 格 + 值格),不是一整列 ——
+   同一列可能有兩個不同欄位(th|td|th|td 四欄版面),染整列會讓使用者
+   以為選到了兩個欄位。hover 同理。 */
+table.doc th.sel{background:var(--pri-t);color:var(--pri-d);font-weight:600}
+table.doc th.sel,table.doc td.sel{border-color:var(--pri);box-shadow:inset 0 0 0 1px var(--pri)}
+table.doc th.hov{background:var(--s4)}
+.ghost{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;
+  height:34px;border:1px dashed var(--s8);border-radius:var(--r1);color:var(--ink3);font-size:13px;
+  transition:background var(--fast),color var(--fast),border-color var(--fast)}
+.ghost:hover{background:var(--s2);color:var(--ink2);border-color:var(--ink4)}
+.ghost.editing{border-style:solid;border-color:var(--pri);background:var(--s1);justify-content:flex-start;
+  padding:0 8px;gap:8px}
+.ghost.editing .nm{font-size:13px;color:var(--ink);border-right:1px solid var(--cell);padding-right:10px}
+.ghost.editing .cur{display:inline-block;width:1px;height:15px;background:var(--pri);
+  animation:bl 1s step-end infinite;vertical-align:-2px}
+@keyframes bl{50%{opacity:0}}
+.ghost.editing .hint{margin-left:auto;font-size:12px;color:var(--ink3)}
+.kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s3);border-radius:3px;
+  padding:2px 5px;color:var(--ink2)}
+
+/* ── 型別 popover(OQ-FDW-4=C 固定分組固定順序) ── */
+.pop{position:absolute;width:236px;background:var(--s1);border-radius:var(--r3);padding:6px;
+  box-shadow:var(--ovl);z-index:20}
+.pop .srch{height:30px;border:1px solid var(--s7);border-radius:var(--r1);padding:0 8px;
+  font-size:13px;color:var(--ink3);display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pop .g{font-size:11px;font-weight:600;line-height:16px;letter-spacing:.06em;color:var(--ink3);
+  padding:8px 8px 4px;text-transform:uppercase}
+.pop i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:30px;
+  padding:0 8px;border-radius:var(--r1);color:var(--ink);transition:background var(--fast)}
+.pop i:hover{background:var(--s3)}
+.pop i.on{background:var(--s4);font-weight:500}
+.pop i .ck{margin-left:auto;color:var(--pri)}
+
+/* ── 抽屜(OQ-FDW-5=A 表單級不在此) ── */
+.drw{width:280px;flex:0 0 280px;background:var(--s1);box-shadow:1px 0 0 var(--line) inset;
+  padding:16px;overflow:auto}
+.drw .h{display:flex;align-items:center;gap:8px;padding-bottom:12px}
+.drw .h b{font-size:13px;font-weight:600;line-height:18px}
+.drw .h .t{font-size:12px;line-height:16px;color:var(--ink3)}
+.drw .h .x{margin-left:auto}
+.acc{padding:12px 0;box-shadow:inset 0 1px 0 var(--line)}
+.acc > h4{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;line-height:18px;
+  color:var(--ink2);cursor:default}
+.acc > h4 .ch{margin-left:auto;color:var(--ink4)}
+.fld{margin-top:12px}
+.fld label{display:block;font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:4px}
+.inp{width:100%;height:30px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
+  background:var(--s1);font:inherit;font-size:13px;line-height:18px;color:var(--ink)}
+.sel{width:100%;height:30px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
+  background:var(--s1);font-size:13px;color:var(--ink);display:flex;align-items:center;
+  justify-content:space-between;gap:8px}
+.two{display:flex;gap:8px}
+.sw{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink)}
+.sw .t{width:28px;height:16px;border-radius:999px;background:var(--pri);position:relative;flex:0 0 28px}
+.sw .t::after{content:"";position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;
+  background:#fff}
+.sw.off .t{background:var(--s7)} .sw.off .t::after{right:auto;left:2px}
+
+.foot{height:28px;flex:0 0 28px;display:flex;align-items:center;gap:16px;padding:0 16px;
+  font-size:12px;line-height:16px;color:var(--ink3)}
+.foot .dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.chip{display:inline-block;border-radius:3px;border:1px solid;padding:1px 7px;font-size:12px;
+  font-weight:500;line-height:16px}
+.chip.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-l)}
+.rel{position:relative}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.mtab{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+.mtab th,.mtab td{border:1px solid var(--cell);padding:8px 12px;text-align:left;vertical-align:top}
+.mtab th{background:var(--s3);font-size:12px;font-weight:500;color:var(--ink2)}
+.mtab td.k{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink3);white-space:nowrap}
+.ok{color:var(--ok);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="lede">
+  <h1>表單設計器 — UP-3c 高保真 mockup</h1>
+  <p><b>設計檢視就是表單本身。</b>補完 <code>form-designer-2d</code> 已裁定但只實作一半的
+     D1「2D 格線畫布 = 填單畫面本身」。OQ-FDW-1..6 全採建議。<b>此稿供 review,尚未進 prod。</b></p>
+  <div class="tags">
+    <b>1=A 示例值依型別生成</b><b>2=A 設計/填單共用渲染</b><b>3=B 新增延到 Enter</b>
+    <b>4=C 型別固定順序</b><b>5=A 表單級歸表單設定</b><b>6=A 另立</b>
+  </div>
+</div>
+
+<!-- ═══ 畫面一:預設狀態(選中一個欄位) ═══ -->
+<div class="app">
+  <nav class="rail">
+    <div class="mk">W</div>
+    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+    <a class="on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg></a>
+    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4"/></svg></a>
+    <div class="sp"></div>
+    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></a>
+  </nav>
+
+  <nav class="side">
+    <div class="hd"><b>我的表單</b>
+      <button class="add" aria-label="新增表單"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div>
+    <a>採購單<i>24</i></a>
+    <a class="sub">採購明細<i>子表</i></a>
+    <a>供應商評鑑<i>8</i></a>
+    <a class="on">影像處理驗證<i>2</i></a>
+    <a>進貨驗收單<i>61</i></a>
+  </nav>
+
+  <div class="main">
+    <!-- 🔴 唯一一條 header。表單設定(含表單級條件式格式/動作/列印)收在單一選單 -->
+    <div class="top">
+      <h2>影像處理驗證</h2><span class="m mono">v1 · 3 欄</span>
+      <span class="sp"></span>
+      <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
+      <button class="btn gho"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>加子表</button>
+      <button class="ico-btn" aria-label="表單設定"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.5 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 8"/></svg></button>
+      <button class="btn pri">儲存版面</button>
+    </div>
+
+    <div class="body">
+      <div class="canvas">
+        <div class="sheet">
+          <div class="ttl">影像處理驗證單</div>
+          <div class="sub">PO-2026-0184 · 建立 2026/07/31 09:12 · 版本 v1</div>
+
+          <div class="secbar">基本資料
+            <span class="h"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></span></div>
+          <table class="doc">
+            <tr><th class="sel">品名</th><td class="ex sel">範例文字</td><th class="hov">批號</th><td class="ex mono">BN-0000-A</td></tr>
+            <tr><th>供應商</th><td class="ex">範例文字</td><th>單據日期</th><td class="ex mono">2026-08-01</td></tr>
+            <tr><th>金額</th><td class="ex n">128,400.00</td><th>狀態</th><td class="ex"><span class="chip wn">待簽核</span></td></tr>
+          </table>
+
+          <div class="secbar">現場照片</div>
+          <table class="doc">
+            <tr><th>影像</th><td class="ex" colspan="3">範例圖片.jpg</td></tr>
+            <tr><th>檢驗人</th><td class="ex">範例文字</td><th>檢驗時間</th><td class="ex mono">2026-08-01 09:12</td></tr>
+          </table>
+
+          <div class="ghost">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            新增欄位</div>
+        </div>
+      </div>
+
+      <!-- 🔴 唯一一欄輔助面板。屬性歸屬到「那一格」 -->
+      <aside class="drw">
+        <div class="h">
+          <div><b>品名</b><div class="t">單行文字 · 第 1 列</div></div>
+          <button class="ico-btn x" aria-label="關閉"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+
+        <div class="acc">
+          <h4>基本<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></h4>
+          <div class="fld"><label>欄位名稱</label><input class="inp" value="品名"></div>
+          <div class="fld"><label>型別</label>
+            <div class="sel">單行文字<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+          <div class="fld two">
+            <div style="flex:1"><label>欄寬</label><div class="sel">2 格<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+            <div style="flex:1"><label>說明文字</label><input class="inp" placeholder="選填"></div>
+          </div>
+          <div class="fld"><span class="sw"><span class="t"></span>必填</span></div>
+          <div class="fld"><span class="sw off"><span class="t"></span>唯讀</span></div>
+        </div>
+        <div class="acc"><h4>驗證<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+        <div class="acc"><h4>條件式格式<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+        <div class="acc"><h4>列印<span class="ch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+      </aside>
+    </div>
+
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 22:51:19</span>
+      <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
+  </div>
+</div>
+<div class="cap"><b>畫面一 · 預設。</b>對照現況:5 欄 3 帶 → <b>3 區 1 帶</b>。
+  畫布是<b>真正的欄位表</b>(與填單同一組 <code>FormSection</code>/<code>FieldGrid</code>),
+  示例值以斜紋淡底 + <code>ink-3</code> 標示為非真值 —— 一眼看得出欄寬與換行,不必切到填單才發現版面問題。
+  「加子表」升到與「新增欄位」同層(task #154);表單級設定(動作/簽核、列印、表單級條件式格式)
+  收在齒輪單一入口(OQ-FDW-5=A)。</div>
+
+<!-- ═══ 畫面二:就地新增(OQ-FDW-3=B 延到 Enter) ═══ -->
+<div class="app">
+  <nav class="rail">
+    <div class="mk">W</div>
+    <a><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+    <a class="on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg></a>
+    <div class="sp"></div>
+  </nav>
+  <nav class="side">
+    <div class="hd"><b>我的表單</b></div>
+    <a>採購單<i>24</i></a><a class="sub">採購明細<i>子表</i></a>
+    <a>供應商評鑑<i>8</i></a><a class="on">影像處理驗證<i>2</i></a>
+  </nav>
+  <div class="main">
+    <div class="top">
+      <h2>影像處理驗證</h2><span class="m mono">v1 · 3 欄</span><span class="sp"></span>
+      <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
+      <button class="btn gho">加子表</button><button class="btn pri">儲存版面</button>
+    </div>
+    <div class="body">
+      <div class="canvas rel">
+        <div class="sheet">
+          <div class="ttl">影像處理驗證單</div>
+          <div class="sub">PO-2026-0184 · 版本 v1</div>
+          <div class="secbar">基本資料</div>
+          <table class="doc">
+            <tr><th>品名</th><td class="ex">範例文字</td><th>批號</th><td class="ex mono">BN-0000-A</td></tr>
+            <tr><th>供應商</th><td class="ex">範例文字</td><th>單據日期</th><td class="ex mono">2026-08-01</td></tr>
+          </table>
+          <!-- ghost row 進入編輯:名稱可打字,型別 popover 就在它身上 -->
+          <div class="ghost editing">
+            <span class="nm">運費<span class="cur"></span></span>
+            <span style="font-size:13px;color:var(--ink3)">單行文字</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            <span class="hint"><span class="kbd">Enter</span> 建立 · <span class="kbd">Esc</span> 取消</span>
+          </div>
+
+          <!-- 型別 popover:固定分組固定順序(OQ-FDW-4=C) -->
+          <div class="pop" style="top:236px;left:214px">
+            <div class="srch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>搜尋型別…</div>
+            <div class="g">文字</div>
+            <i class="on">單行文字<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></i>
+            <i>多行文字</i>
+            <div class="g">數值</div>
+            <i>數值</i><i>金額</i><i>百分比</i>
+            <div class="g">日期</div>
+            <i>日期</i><i>日期時間</i>
+          </div>
+        </div>
+      </div>
+      <aside class="drw">
+        <div class="h"><div><b>尚未選取欄位</b><div class="t">點畫布上任一格以編輯</div></div></div>
+      </aside>
+    </div>
+    <div class="foot"><span class="dot"></span>已連線<span class="mono">更新 22:51:19</span>
+      <span style="margin-left:auto" class="mono">鮮勇食品</span></div>
+  </div>
+</div>
+<div class="cap"><b>畫面二 · 就地新增。</b>點表尾 ghost row → <b>就地出現一格</b>,游標落在欄名可直接打字,
+  型別 popover 掛在該格上(固定分組固定順序,位置穩定可養成肌肉記憶)。
+  🔴 <b>按 <code>Enter</code> 才真的建欄</b>(OQ-FDW-3=B)—— 沿用即時 DDL 會讓手滑點一下就在真表產生欄位,
+  而結構性 DDL 不入 undo。<code>Esc</code> 取消。這是對 <code>OQ-FD2-2</code> 的局部例外,已記錄在 M0。</div>
+
+<div style="max-width:1460px;margin:24px auto 0">
+  <h3 style="font-size:16px;font-weight:600;letter-spacing:-.014em">量測對照(1440px)</h3>
+  <table class="mtab">
+    <tr><th style="width:180px">指標</th><th style="width:150px">現況</th><th style="width:150px">本稿</th><th>依據</th></tr>
+    <tr><td>水平 header 帶</td><td class="k">3 條 · 133px</td><td class="k ok">1 條 · 48px</td><td>docs/29 S5 ≤1</td></tr>
+    <tr><td>直向欄(軌除外)</td><td class="k">4(123/228/227/178)</td><td class="k ok">2(清單 + 抽屜)</td><td>docs/29 S3 輔助面板 ≤1</td></tr>
+    <tr><td>主體佔內容區</td><td class="k">約 21%</td><td class="k ok">約 70%</td><td>docs/29 S4 ≥60%</td></tr>
+    <tr><td>設計 vs 填單</td><td class="k">卡片 vs 欄位表</td><td class="k ok">同一組元件</td><td>form-designer-2d D1</td></tr>
+    <tr><td>字體</td><td class="k">IBM Plex</td><td class="k ok">Inter + Noto Sans TC</td><td>品牌板明訂四階</td></tr>
+  </table>
+  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:12px">
+  ⚠️ <b>此稿的自我約束</b>(前兩輪 review 抓到我違反自己寫的規則,故列出來讓你可以驗):
+  間距只用 4/8/12/16/24 · 不用 <code>opacity</code> 造文字階 · 圖示全 Lucide 真路徑不自繪 ·
+  字級只用 12/13/14/16/20/24 且行高照表 · 殼的互動項不畫框(只有文字輸入保留框) ·
+  動效只動 <code>opacity</code>/<code>transform</code> 且有 <code>prefers-reduced-motion</code>。</p>
+</div>
+
+</div>
+</body>
+</html>
