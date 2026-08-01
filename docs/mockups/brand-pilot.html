@@ -375,6 +375,43 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .chip3.nt{color:var(--nt);background:var(--nt-t);border-color:var(--nt-line)}
 .mo{height:34px;border-radius:4px;background:var(--head);position:relative;overflow:hidden}
 .mo i{position:absolute;left:0;top:0;bottom:0;width:34px;background:var(--primary);border-radius:4px}
+
+/* ── 訊息與浮層 ────────────────────────────────── */
+.al{display:flex;gap:10px;padding:10px 12px;border-radius:6px;font-size:13px;align-items:flex-start}
+.al .ic{flex:0 0 16px;margin-top:1px}
+.al .bd{min-width:0} .al .bd b{display:block;font-weight:600;margin-bottom:2px}
+.al .bd p{color:inherit;opacity:.86;line-height:1.55}
+.al .x{margin-left:auto;flex:0 0 16px;opacity:.5}
+.al.info{background:var(--primary-t);color:var(--primary-d)}
+.al.ok{background:var(--ok-t);color:var(--ok)}
+.al.wn{background:var(--wn-t);color:var(--wn)}
+.al.er{background:var(--er-t);color:var(--er)}
+.al.bar{border-radius:0;box-shadow:inset 0 -1px 0 rgba(15,23,32,.06)}
+.toast{display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:6px;
+  background:var(--ink);color:var(--card);font-size:13px;
+  box-shadow:0 12px 28px -10px rgba(15,23,32,.34),0 2px 6px rgba(15,23,32,.12)}
+.toast .u{margin-left:8px;color:#8fb6e0;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.dlg{width:420px;border-radius:9px;background:var(--card);overflow:hidden;
+  box-shadow:0 0 0 1px var(--line),0 24px 48px -16px rgba(15,23,32,.28),0 4px 10px rgba(15,23,32,.08)}
+.dlg .h{padding:16px 18px 0}
+.dlg .h b{font-size:15px;font-weight:600;letter-spacing:-.012em;display:block}
+.dlg .h p{font-size:13px;color:var(--ink3);margin-top:6px;line-height:1.6}
+.dlg .ft{display:flex;gap:8px;justify-content:flex-end;padding:16px 18px}
+.dlg .obj{margin:12px 18px 0;padding:8px 10px;border-radius:4px;background:var(--head);
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+.drw{width:300px;border-radius:9px 0 0 9px;background:var(--card);padding:16px;
+  box-shadow:0 0 0 1px var(--line),-14px 0 32px -14px rgba(15,23,32,.22)}
+.pop{width:216px;border-radius:6px;background:var(--card);padding:6px;
+  box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18)}
+.pop i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:30px;
+  padding:0 8px;border-radius:4px}
+.pop i:hover{background:var(--hover)}
+.pop i.dg{color:var(--er)} .pop i.dg:hover{background:var(--er-t)}
+.tip{display:inline-block;background:var(--ink);color:var(--card);font-size:12px;
+  padding:4px 8px;border-radius:4px}
+.layers{display:grid;grid-template-columns:88px 1fr;font-size:12.5px}
+.layers dt{padding:6px 0;font-family:'IBM Plex Mono',monospace;color:var(--ink3);box-shadow:inset 0 1px 0 var(--s6)}
+.layers dd{padding:6px 0;box-shadow:inset 0 1px 0 var(--s6)}
 </style>
 </head>
 <body>
@@ -1213,8 +1250,118 @@ Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
 工藝投資的優先序在此,而非深層設定頁。</div>
 </div></div>
 
+<!-- 訊息與浮層 -->
+<div class="sec"><div class="sec-h"><span class="n">19</span>訊息與浮層<span class="r">Alert · Toast · 彈窗 · 抽屜 · Popover · Tooltip</span></div><div class="sec-b">
+<div class="why"><b>總則</b>這一類元件的差別<b>不在長相,在「會不會消失」與「打不打斷」</b>。
+選錯的代價是使用者<b>沒看到必須看到的訊息</b>,或被不必要的彈窗打斷。先看職責分工表,再看各自的樣式。</div>
+
+<table class="ds-tbl">
+  <tr><th style="width:96px">元件</th><th style="width:84px">會消失?</th><th style="width:84px">打斷?</th><th>用於</th><th style="width:230px">🔴 硬規則</th></tr>
+  <tr><td><b>Alert</b></td><td>否(可關)</td><td>否</td><td>與某個位置綁定的狀態:表單錯誤、額度將滿、系統維護</td>
+      <td><b>錯誤一律用 Alert,不用 Toast</b> —— Toast 會在讀完前消失</td></tr>
+  <tr><td><b>Toast</b></td><td>是(4s)</td><td>否</td><td>剛做完的動作之確認:已儲存、已複製</td>
+      <td>只放<b>成功/中性</b>;必須<b>附 Undo</b> 才值得存在</td></tr>
+  <tr><td><b>彈窗 Dialog</b></td><td>否</td><td><b>是</b></td><td>不可逆的破壞性確認、必須先完成的短流程</td>
+      <td><b>只給不可逆的</b>;可還原的一律不彈(見下)</td></tr>
+  <tr><td><b>抽屜 Drawer</b></td><td>否</td><td>半</td><td>需要看著主體改的設定(欄位設定 / 篩選)</td>
+      <td>不遮蔽主體;<b>不做成常駐欄</b>(§docs/29 S3)</td></tr>
+  <tr><td><b>Popover</b></td><td>是(點外關)</td><td>否</td><td>就地的次要動作與選項</td><td>≤ 7 項;超過改用抽屜</td></tr>
+  <tr><td><b>Tooltip</b></td><td>是</td><td>否</td><td><b>只補充圖示鈕的名稱</b></td>
+      <td>🔴 <b>不得承載必要資訊</b> —— 觸控與鍵盤使用者看不到</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">Alert —— 四個語意 × 兩種放置</div>
+<div class="ds-grid" style="max-width:660px">
+  <div class="al er"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg><div class="bd"><b>3 個必填欄位未填</b><p>品名、批號、單據日期。儲存前請補齊。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+  <div class="al wn"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><div class="bd"><b>此表單有 2 個欄位被鎖定</b><p>鎖定欄位由管理員設定,填單時不可修改。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+  <div class="al ok"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><div class="bd"><b>已匯入 212 筆</b><p>其中 3 筆與既有記錄重複,已略過。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+  <div class="al info"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="bd"><b>系統將於 08-03 02:00 維護</b><p>預計 30 分鐘,期間無法過帳。</p></div><svg class="x" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+</div>
+<div class="desc" style="margin-top:8px">
+<b>放置</b>|<b>頁內 Alert</b>(上圖,圓角 6px)貼在它所描述的區塊上方;
+<b>全域橫幅</b>(方角、貼齊視窗寬)只給影響整個租戶的事(維護、額度、系統降級)。<br>
+<b>結構</b>|標題說<b>發生什麼</b>、內文說<b>怎麼辦</b>。只有標題沒有下一步的 Alert 等於沒有用。<br>
+<b>圖示</b>|Lucide,與語意色同色;<b>色 + 圖示 + 文字三重編碼</b>,不得只靠底色(§13)。</div>
+
+<div class="grp-t" style="margin-top:20px">Toast —— 只給成功,且必須附 Undo</div>
+<div class="ds-row">
+  <span class="toast"><svg class="ic" style="flex:0 0 16px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>已刪除「採購單_4081」<span class="u">復原</span></span>
+  <span class="toast">已複製單號<span class="u">復原</span></span>
+</div>
+<div class="desc" style="margin-top:8px">
+🔴 <b>沒有 Undo 的 Toast 不要做</b> —— 它只是把「已完成」講一次就消失,使用者從畫面本身就看得到結果。
+Toast 的價值在於<b>提供反悔的窗口</b>。<br>
+停留 <b>4 秒</b>;hover 或 focus 時<b>暫停計時</b>(否則正要點 Undo 就消失了)。
+同時最多 <b>1 則</b>,新訊息取代舊的 —— 堆疊的 toast 沒有人讀。<br>
+<b>絕不放錯誤</b>:錯誤需要被讀完、常需要動作,而 toast 兩者都不保證。</div>
+
+<div class="grp-t" style="margin-top:20px">彈窗 Dialog —— 🔴 先問「這個操作可不可以還原」</div>
+<div class="why" style="border-left-color:var(--er)"><b>NN/g 逐字</b>|確認框只用在
+「<span class="mono">before committing to actions with serious consequences — such as destroying users' work or costing large amounts of money</span>」;
+且「<span class="mono">do not use confirmation dialogs for routine actions. Like in Aesop's fable, if you cry wolf too many times, people will stop paying attention.</span>」<br>
+更重要的一句:「<span class="mono">go to great lengths to provide undo</span>」—— <b>能還原就不要問</b>。<br><br>
+<b>對 Weyver 的具體含義</b>|我方<b>已經有</b>回收桶(H-2)與傳票沖轉(不可變 + 反向分錄)。
+因此:<b>刪表單 / 刪記錄 → 進回收桶 → 不彈確認,改用 Toast + 復原</b>;
+<b>過帳 → 可沖轉 → 不彈確認</b>。<br>
+<b>真正該彈的只有不可逆的</b>:清空回收桶、永久刪除租戶資料、變更欄位型別造成資料截斷、撤銷已核發的 API 金鑰。</div>
+<div class="ds-row" style="align-items:flex-start;gap:18px;margin-top:12px">
+  <div class="dlg">
+    <div class="h"><b>永久刪除回收桶內的 42 筆記錄?</b>
+      <p>這些記錄將<b>無法復原</b>,包含其附件與簽核紀錄。此操作會寫入稽核日誌。</p></div>
+    <div class="obj">採購單_4081 · 進貨驗收單_21345 · 其他 40 筆</div>
+    <div class="ft"><button class="b2 sec">保留這些記錄</button><button class="b2" style="background:var(--er);color:#fff">永久刪除 42 筆</button></div>
+  </div>
+  <div style="flex:1;min-width:260px">
+    <div class="desc"><b>按鈕標籤 —— NN/g 逐字</b>:「<span class="mono">provide response options that summarize what will happen for each possible response … use buttons labeled Delete file and Keep file</span>」。<br>
+    🔴 <b>兩顆都要描述結果</b>,不是「確定 / 取消」。上圖用的是<b>永久刪除 42 筆</b> / <b>保留這些記錄</b> ——
+    使用者不必回頭讀標題就知道按下去會怎樣。<br><br>
+    <b>其餘規則</b><br>
+    · <b>寬度依內容</b>:確認 420 / 表單 560 / 複雜 720。不做「一律 600」。<br>
+    · <b>focus 進場落在安全的那顆</b>(保留),不落在破壞性那顆。<br>
+    · <b>Esc 與點背景 = 取消</b>(安全方向)。但<b>表單有未儲存變更時,關閉要再問一次</b>。<br>
+    · <b>破壞性按鈕才用實心紅</b> —— 這是 §06 Danger 不做實心紅底的<b>唯一例外</b>:
+      此處紅色承載的是「這一步不可逆」,不是一般的危險動作。<br>
+    · 焦點鎖在對話框內(focus trap),關閉後<b>還原到觸發它的元素</b>。</div>
+  </div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">抽屜 · Popover · Tooltip</div>
+<div class="ds-row" style="align-items:flex-start;gap:16px">
+  <div class="drw">
+    <div style="display:flex;font-size:13.5px;font-weight:600">欄位設定<span style="margin-left:auto;color:var(--ink3);font-weight:400">×</span></div>
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:13px">欄位名稱</div>
+    <div class="sel" style="width:100%;margin-top:4px">品名<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:13px">型別</div>
+    <div class="sel" style="width:100%;margin-top:4px">單行文字<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  </div>
+  <div class="pop">
+    <i>複製單號</i><i>複製連結</i><i>匯出這一筆</i>
+    <i class="dg">刪除記錄</i>
+  </div>
+  <div style="padding-top:6px"><span class="tip">復原 (⌘Z)</span>
+    <div class="desc" style="margin-top:10px;max-width:280px">Tooltip <b>只寫控件名稱 + 快捷鍵</b>。
+    🔴 任何「只有 hover 才看得到」的資訊都等於不存在 —— 觸控與鍵盤使用者拿不到(§13)。</div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">層級順序(z 軸)—— 避免互相蓋住</div>
+<dl class="layers">
+  <dt>1000</dt><dd>Toast —— 最上層,因為它會自己消失且不接受操作,壓住任何東西都只是暫時的</dd>
+  <dt>900</dt><dd>Dialog(含 backdrop)—— 打斷式,出現時其餘不可操作</dd>
+  <dt>800</dt><dd>Drawer —— 半打斷,主體仍可見</dd>
+  <dt>700</dt><dd>Popover / Select 選單 / Tooltip</dd>
+  <dt>10</dt><dd>Sticky 表頭 · 工具列 · 狀態列</dd>
+</dl>
+<div class="desc" style="margin-top:8px"><b>動效</b>|進場一律 <span class="mono">moderate-01 150ms</span>,
+只動 <span class="mono">opacity</span> + <span class="mono">transform</span>(Dialog:scale .98→1;Drawer:translateX;Toast:translateY)。
+<span class="mono">prefers-reduced-motion</span> 時<b>只留 opacity</b>,不做位移(§12)。<br>
+<b>a11y</b>|Dialog 用 <span class="mono">role="dialog" aria-modal="true"</span> + focus trap;
+Alert 用 <span class="mono">role="status"</span>(非緊急)或 <span class="mono">role="alert"</span>(需立即知悉);
+Toast 用 <span class="mono">aria-live="polite"</span> —— 錯誤不放 Toast 的理由之一也在此:
+<span class="mono">polite</span> 不會插播,而錯誤需要插播。</div>
+</div></div>
+
 <!-- 決策狀態 -->
-<div class="sec"><div class="sec-h"><span class="n">19</span>決策狀態<span class="r">品牌板判定 5 項 · 已裁定 2 項 · 修正 2 項 · 無待決</span></div><div class="sec-b">
+<div class="sec"><div class="sec-h"><span class="n">20</span>決策狀態<span class="r">品牌板判定 5 項 · 已裁定 2 項 · 修正 2 項 · 無待決</span></div><div class="sec-b">
 <table style="width:100%;border-collapse:collapse;font-size:13px">
   <tr style="background:var(--head)"><th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px">項目</th>
     <th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px;width:110px">狀態</th>
