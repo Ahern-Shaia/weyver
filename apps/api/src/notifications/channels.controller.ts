@@ -9,6 +9,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common"
+import { Throttle } from "@nestjs/throttler"
 import { z } from "zod"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
@@ -80,7 +81,13 @@ export class ChannelsController {
     })
   }
 
-  /* 測試發送。成功即記錄 `verifiedAt` —— 沒測過的通道不該被當成可用。 */
+  /* 測試發送。成功即記錄 `verifiedAt` —— 沒測過的通道不該被當成可用。
+
+     🔴 **專屬限流**。這支端點會讓伺服器對第三方發出請求,吃全域的 300/分
+     等於提供一個每分鐘 300 發的放大器(雖然 allow-list 把目標限縮在官方網域,
+     打的仍是租戶自己的 webhook,對方一樣會限流我方 IP)。
+     測試發送是管理者偶爾按一次的動作,10 次/分綽綽有餘。 */
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post(":channel/test")
   async test(
     @Tenant() tenant: TenantContext,

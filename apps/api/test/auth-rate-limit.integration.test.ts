@@ -3,7 +3,11 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
-import { MAX_CONSECUTIVE_FAILURES } from "../src/auth/login-throttle.js"
+import {
+  LOCKOUT_MAX_SECONDS,
+  MAX_CONSECUTIVE_FAILURES,
+  lockoutSeconds,
+} from "../src/auth/login-throttle.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
@@ -139,5 +143,29 @@ describe("🔴 逐帳號節流(63B-4 §3.2.2)", () => {
       }),
     )
     expect(other.status).not.toBe(429)
+  })
+})
+
+/* 🔴 鎖定時間**指數遞增**。OWASP Authentication Cheat Sheet 明文點名固定時長
+   會被反過來用:「care must be taken to prevent it from being used to cause a
+   denial of service by locking out other users' accounts.」
+   它給的替代做法即為「exponential lockout… starts as a very short period
+   (e.g., one second), but doubles」。 */
+describe("🔴 指數退避(避免鎖定本身變成 DoS 工具)", () => {
+  it("🔴 未達門檻不鎖", () => {
+    expect(lockoutSeconds(MAX_CONSECUTIVE_FAILURES - 1)).toBe(0)
+  })
+
+  it("🔴 剛達門檻只鎖 1 秒 —— 隨手騷擾對受害者幾乎無感", () => {
+    expect(lockoutSeconds(MAX_CONSECUTIVE_FAILURES)).toBe(1)
+  })
+
+  it("持續失敗即倍增,壓垮嘗試速率", () => {
+    expect(lockoutSeconds(MAX_CONSECUTIVE_FAILURES + 1)).toBe(2)
+    expect(lockoutSeconds(MAX_CONSECUTIVE_FAILURES + 4)).toBe(16)
+  })
+
+  it("🔴 有上限,不會無限增長成事實上的永久封鎖", () => {
+    expect(lockoutSeconds(MAX_CONSECUTIVE_FAILURES + 100)).toBe(LOCKOUT_MAX_SECONDS)
   })
 })

@@ -5,7 +5,7 @@ import { organization, twoFactor } from "better-auth/plugins"
 import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
 import { PEER_IP_HEADER, recordAuthEvent, recordFromContext } from "./auth-events.js"
 import { claimInitialCredential, clearInitialCredential } from "./initial-credential.js"
-import { LOCKOUT_MINUTES, isAccountLocked } from "./login-throttle.js"
+import { isAccountLocked } from "./login-throttle.js"
 import { blockedPasswordMessage, checkPassword } from "./password-blocklist.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
 import type { Pool } from "pg"
@@ -194,7 +194,8 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
           if (typeof email === "string" && (await isAccountLocked(pool, email))) {
             throw new APIError("TOO_MANY_REQUESTS", {
               code: "ACCOUNT_TEMPORARILY_LOCKED",
-              message: `連續登入失敗過多,請 ${String(LOCKOUT_MINUTES)} 分鐘後再試`,
+              /* 不回報還要等多久 —— 那等於告訴攻擊者退避演算法的當前狀態 */
+              message: "連續登入失敗過多,請稍候再試",
             })
           }
         }
