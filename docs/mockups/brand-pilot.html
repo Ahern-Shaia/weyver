@@ -2,328 +2,414 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>Weyver 織雲 — 方向 B「工作台」設計語言試片</title>
+<title>Weyver 織雲 — 品牌與介面設計系統(單一來源)</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ══════════════════════════════════════════════════════════════
-   方向 B「工作台」設計語言試片 —— 討論用,不是產品碼。
+/* ══════════════════════════════════════════════════════════════════════
+   合併三份為一:
+   · Weyver-Brand-Board(用戶提供的標誌與品牌設計)—— **權威來源**
+   · brand-identity.html(舊品牌識別稿)—— 內容併入,舊色值 SUPERSEDED
+   · brand-pilot.html(方向 B 介面語言試片)—— 併入並改為服從品牌板
 
-   B 的骨架已於 2026-08-01 落地(token 12 階 + 殼轉中性)。
-   本檔往下延伸**風格層**:排版數值、狀態色重調、元件語彙、品牌載體。
-   每一節都標「已定 / 待決」,待決處給選項讓你挑。
-   ══════════════════════════════════════════════════════════════ */
-
+   品牌板的四色以 OKLCH 定義;本檔保留 OKLCH 原值,並附 Chromium 實測 hex
+   與對比實測 —— 因為其中一項不合規(見 §2.3),必須明講。
+   ══════════════════════════════════════════════════════════════════════ */
 :root{
-  /* 12 階冷中性(已落地) */
+  /* ── 品牌四色(品牌板原值,OKLCH)─────────────────── */
+  --ink:      oklch(24%  .02  260);   /* #1a2029 */
+  --thread:   oklch(58%  .15  240);   /* #0083c9 —— 標誌用 */
+  --neutral:  oklch(60%  .01  260);   /* #7d8086 */
+  --paper:    oklch(97%  .004 260);   /* #f3f5f8 */
+  /* 🔴 動作色:由織藍**推導**而來(見 §2.3 對比實測)。標誌維持 58%。 */
+  --act:      oklch(52%  .15  240);   /* #0070b5 白字 5.27 / 紙底 4.83 */
+  --act-d:    oklch(45%  .15  240);
+  --act-t:    oklch(96%  .02  240);
+
+  /* ── 介面 12 階冷中性(hue 260,與品牌板同調)──────── */
   --s1:#fcfdfe; --s2:#f6f8fa; --s3:#eef1f5; --s4:#e4e9ef; --s5:#d8dfe8;
   --s6:#e6eaf0; --s7:#d3dae3; --s8:#bcc6d2; --s11:#5c6876; --s12:#0f1720;
-  --ink2:#3a4553; --disabled:#9aa6b4;
-  --brand:#22568a; --brand-d:#1b456e; --brand-t:#ebf0f4;
-  /* 狀態色 —— ⚠️ 這一組是本檔的提案,尚未落地 */
+  --ink2:#3a4553; --dis:#9aa6b4;
   --ok:#0f7a4a; --ok-t:#e8f5ee; --ok-l:#bde3cd;
   --wn:#8a5a09; --wn-t:#fbf2e3; --wn-l:#ecd7ac;
   --er:#b02a26; --er-t:#fbebea; --er-l:#eecac8;
-  --info:#1f5f9e; --info-t:#eaf1f8;
   --r-ctl:4px; --r-box:6px; --r-ovl:9px;
   --hair:0 0 0 1px var(--s6);
   --lift:0 0 0 1px var(--s6), 0 1px 2px rgba(15,23,32,.04);
   --ovl:0 0 0 1px var(--s6), 0 12px 28px -10px rgba(15,23,32,.18), 0 2px 6px rgba(15,23,32,.05);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--s3);color:var(--s12);padding:32px 24px 80px;
+body{background:var(--s3);color:var(--s12);padding:34px 24px 90px;
   font-family:Inter,'Noto Sans TC',system-ui,sans-serif;font-size:14px;line-height:1.5;
-  -webkit-font-smoothing:antialiased;font-feature-settings:"cv05" 1}
+  -webkit-font-smoothing:antialiased}
 .wrap{max-width:1180px;margin:0 auto}
 .mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
-
-h1{font-size:26px;font-weight:600;letter-spacing:-.026em}
-.sub{color:var(--s11);margin-top:6px;max-width:78ch}
+h1{font-size:28px;font-weight:700;letter-spacing:-.03em}
+.sub{color:var(--s11);margin-top:8px;max-width:80ch}
 section{background:var(--s1);border-radius:10px;padding:26px 28px;margin-top:20px;box-shadow:var(--lift)}
-section > h2{font-size:18px;font-weight:600;letter-spacing:-.018em;display:flex;
-  align-items:center;gap:10px}
+section>h2{font-size:18px;font-weight:600;letter-spacing:-.018em;display:flex;align-items:center;gap:10px}
 .badge{font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:3px;
-  background:var(--ok-t);color:var(--ok)}
+  background:var(--act-t);color:var(--act-d)}
+.badge.a{background:var(--ok-t);color:var(--ok)}
 .badge.q{background:var(--wn-t);color:var(--wn)}
-section > .why{color:var(--s11);font-size:13.5px;margin-top:6px;max-width:80ch}
-h3{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--s11);margin:26px 0 12px}
-.q{margin-top:20px;padding:14px 16px;border-radius:var(--r-box);background:var(--wn-t);
+.badge.x{background:var(--er-t);color:var(--er)}
+section>.why{color:var(--s11);font-size:13.5px;margin-top:6px;max-width:82ch}
+h3{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--s11);
+  margin:26px 0 12px}
+.q{margin-top:18px;padding:14px 16px;border-radius:var(--r-box);background:var(--wn-t);
   font-size:13.5px;color:#6b4707}
 .q b{color:#4a3105}
-
-/* ── 排版試片 ── */
-.spec{display:grid;grid-template-columns:150px 1fr;row-gap:2px;align-items:baseline}
-.spec dt{font-size:11.5px;color:var(--s11);font-family:'IBM Plex Mono',monospace;padding:10px 0}
-.spec dd{padding:10px 0;box-shadow:inset 0 1px 0 var(--s6)}
-.spec dt{box-shadow:inset 0 1px 0 var(--s6)}
-.t24{font-size:24px;font-weight:600;letter-spacing:-.026em}
-.t20{font-size:20px;font-weight:600;letter-spacing:-.02em}
-.t16{font-size:16px;font-weight:600;letter-spacing:-.014em}
-.t14{font-size:14px;font-weight:400}
-.t14m{font-size:14px;font-weight:500}
-.t13{font-size:13px;font-weight:400;color:var(--ink2)}
-.t12{font-size:12px;font-weight:500;color:var(--s11)}
-.num{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1;font-size:14px}
-
-/* ── 色階 ── */
+.alert{margin-top:18px;padding:14px 16px;border-radius:var(--r-box);background:var(--er-t);
+  font-size:13.5px;color:#7d1f1c}
+.alert b{color:#5c1614}
+blockquote{margin:12px 0;padding:12px 16px;background:var(--s2);border-radius:var(--r-box);
+  font-size:13.5px;color:var(--ink2);line-height:1.65}
+/* 標誌 */
+.marks{display:flex;align-items:flex-end;gap:34px;flex-wrap:wrap}
+.mk-item{text-align:center}
+.mk-item .cap{font-size:11.5px;color:var(--s11);margin-top:8px;font-family:'IBM Plex Mono',monospace}
+.lockup{display:flex;align-items:center;gap:14px}
+.lockup .nm b{font-family:Inter;font-size:30px;font-weight:800;letter-spacing:-.035em;display:block;
+  line-height:1}
+.lockup .nm i{font-style:normal;font-family:'Noto Sans TC';font-weight:900;font-size:14px;
+  letter-spacing:.34em;color:var(--s11);display:block;margin-top:6px}
+.onink{background:var(--ink);padding:26px 30px;border-radius:var(--r-box)}
+.onink .nm b{color:var(--paper)} .onink .nm i{color:#8b95a3}
+/* 色票 */
+.brandc{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.brandc .c{border-radius:var(--r-box);overflow:hidden;box-shadow:var(--hair)}
+.brandc .c .sw{height:76px}
+.brandc .c .m{padding:9px 11px;background:var(--s1)}
+.brandc .c .m b{font-size:13px;font-weight:600;display:block}
+.brandc .c .m span{font-size:11px;color:var(--s11);font-family:'IBM Plex Mono',monospace;
+  display:block;margin-top:3px;line-height:1.5}
 .scale{display:grid;grid-template-columns:repeat(10,1fr);gap:6px}
-.sw{border-radius:var(--r-ctl);overflow:hidden;box-shadow:var(--hair)}
-.sw .c{height:46px}
-.sw .l{padding:5px 6px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--s11);
+.sw2{border-radius:var(--r-ctl);overflow:hidden;box-shadow:var(--hair)}
+.sw2 .c{height:42px}
+.sw2 .l{padding:5px 6px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--s11);
   background:var(--s1);line-height:1.35}
-.sw .l b{display:block;color:var(--s12);font-weight:600}
-.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.stat .b{border-radius:var(--r-box);padding:12px 13px;box-shadow:var(--hair)}
-.stat .b .t{font-size:13px;font-weight:600}
-.stat .b .m{font-size:11.5px;color:var(--s11);margin-top:3px;font-family:'IBM Plex Mono',monospace}
-
-/* ── 元件 ── */
+.sw2 .l b{display:block;color:var(--s12);font-weight:600}
+table.cmp{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+table.cmp th,table.cmp td{text-align:left;padding:7px 10px;box-shadow:inset 0 -1px 0 var(--s6)}
+table.cmp th{font-size:11.5px;color:var(--s11);font-weight:500}
+table.cmp td.n{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
+.pass{color:var(--ok);font-weight:600} .fail{color:var(--er);font-weight:600}
+/* 字體 */
+.spec{display:grid;grid-template-columns:158px 1fr;align-items:baseline}
+.spec dt{font-size:11.5px;color:var(--s11);font-family:'IBM Plex Mono',monospace;padding:10px 0;
+  box-shadow:inset 0 1px 0 var(--s6)}
+.spec dd{padding:10px 0;box-shadow:inset 0 1px 0 var(--s6)}
+/* 元件 */
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .btn{height:30px;padding:0 13px;border:0;border-radius:var(--r-ctl);font:inherit;font-size:13px;
   font-weight:500;cursor:default;display:inline-flex;align-items:center;gap:6px;
-  transition:background .12s ease-out,box-shadow .12s ease-out}
-.btn.pri{background:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(34,86,138,.22)}
-.btn.pri:hover{background:var(--brand-d)}
-.btn.sec{background:var(--s3);color:var(--s12)}
-.btn.sec:hover{background:var(--s4)}
-.btn.gho{background:transparent;color:var(--ink2);font-weight:450}
-.btn.gho:hover{background:var(--s3)}
-.btn.dng{background:transparent;color:var(--er);font-weight:450}
-.btn.dng:hover{background:var(--er-t)}
-.btn.dis{background:var(--s3);color:var(--disabled)}
+  transition:background .12s ease-out}
+.btn.pri{background:var(--act);color:#fff}
+.btn.pri:hover{background:var(--act-d)}
+.btn.sec{background:var(--s3);color:var(--s12)} .btn.sec:hover{background:var(--s4)}
+.btn.gho{background:transparent;color:var(--ink2);font-weight:450} .btn.gho:hover{background:var(--s3)}
+.btn.dng{background:transparent;color:var(--er);font-weight:450} .btn.dng:hover{background:var(--er-t)}
 .inp{height:30px;padding:0 9px;border-radius:var(--r-ctl);border:1px solid var(--s7);
-  background:var(--s1);font:inherit;font-size:13px;color:var(--s12);min-width:170px}
-.inp:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+  background:var(--s1);font:inherit;font-size:13px;color:var(--s12);min-width:180px}
 .seg{display:inline-flex;background:var(--s3);border-radius:var(--r-ctl);padding:2px;gap:1px}
-.seg b{font-size:12.5px;font-weight:450;color:var(--s11);padding:4px 11px;border-radius:3px;cursor:default}
+.seg b{font-size:12.5px;font-weight:450;color:var(--s11);padding:4px 11px;border-radius:3px}
 .seg b.on{background:var(--s1);color:var(--s12);font-weight:500;box-shadow:0 1px 2px rgba(15,23,32,.06)}
 .chip{display:inline-block;font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:999px}
-.chip.ok{background:var(--ok-t);color:var(--ok)}
-.chip.wn{background:var(--wn-t);color:var(--wn)}
-.chip.er{background:var(--er-t);color:var(--er)}
-.chip.nt{background:var(--s3);color:var(--s11)}
 .chip.sq{border-radius:3px;border:1px solid}
-.chip.sq.ok{border-color:var(--ok-l)} .chip.sq.wn{border-color:var(--wn-l)} .chip.sq.er{border-color:var(--er-l)}
-/* 清單:殼語言,無框,靠狀態階 */
+.chip.ok{background:var(--ok-t);color:var(--ok)} .chip.sq.ok{border-color:var(--ok-l)}
+.chip.wn{background:var(--wn-t);color:var(--wn)} .chip.sq.wn{border-color:var(--wn-l)}
+.chip.er{background:var(--er-t);color:var(--er)} .chip.sq.er{border-color:var(--er-l)}
+.chip.nt{background:var(--s3);color:var(--s11)} .chip.sq.nt{border-color:var(--s7)}
 .lst{border-radius:var(--r-box);overflow:hidden;box-shadow:var(--hair)}
-.lst .it{display:flex;align-items:center;gap:12px;padding:9px 13px;font-size:13.5px;
-  background:var(--s1);transition:background .12s ease-out}
-.lst .it + .it{box-shadow:inset 0 1px 0 var(--s6)}
+.lst .it{display:flex;align-items:center;gap:12px;padding:9px 13px;font-size:13.5px;background:var(--s1)}
+.lst .it+.it{box-shadow:inset 0 1px 0 var(--s6)}
 .lst .it:hover{background:var(--s3)}
 .lst .it.on{background:var(--s4);font-weight:500}
 .lst .it .r{margin-left:auto;font-size:11.5px;color:var(--s11);font-family:'IBM Plex Mono',monospace}
-/* 單據:全框線欄位表 */
 .doc{border-radius:var(--r-box);overflow:hidden;box-shadow:var(--hair)}
-.doc .bar{background:var(--brand);color:#fff;font-size:11.5px;font-weight:600;letter-spacing:.06em;
-  padding:6px 12px}
+.doc .bar{background:var(--act);color:#fff;font-size:11.5px;font-weight:600;letter-spacing:.06em;padding:6px 12px}
 .doc table{width:100%;border-collapse:collapse;font-size:13px}
 .doc th,.doc td{border:1px solid #dfe4ea;padding:7px 11px;text-align:left}
 .doc th{background:var(--s3);color:var(--ink2);font-weight:500;width:96px;font-size:12.5px}
 .doc td.n{font-family:'IBM Plex Mono',monospace;text-align:right;font-feature-settings:"tnum" 1}
-/* 空狀態 */
-.empty{border-radius:var(--r-box);padding:46px 24px;text-align:center;background:var(--s2)}
-.empty .mk{width:34px;height:34px;border-radius:8px;background:var(--s12);color:var(--s1);
-  display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;
-  letter-spacing:-.04em}
+/* 應用 */
+.print{background:#fff;padding:24px 28px;border-radius:var(--r-box);box-shadow:var(--hair)}
+.print .top{display:flex;align-items:flex-start;gap:13px;padding-bottom:13px;border-bottom:2px solid var(--ink)}
+.print .co b{font-size:15px;font-weight:600;letter-spacing:-.012em;display:block}
+.print .co i{font-style:normal;font-size:11.5px;color:var(--s11)}
+.print .ti{margin-left:auto;text-align:right}
+.print .ti b{font-size:18px;font-weight:700;letter-spacing:.06em;display:block}
+.print .ti i{font-style:normal;font-size:11.5px;color:var(--s11);font-family:'IBM Plex Mono',monospace}
+.print .meta{display:flex;gap:24px;padding-top:10px;font-size:11.5px;color:var(--s11);
+  font-family:'IBM Plex Mono',monospace}
+.empty{border-radius:var(--r-box);padding:44px 24px;text-align:center;background:var(--s2)}
 .empty h4{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:14px}
 .empty p{font-size:13.5px;color:var(--s11);margin-top:5px}
-.empty .act{margin-top:16px;display:flex;gap:8px;justify-content:center}
-/* 浮層 */
-.ovl{width:340px;border-radius:var(--r-ovl);background:var(--s1);padding:16px;box-shadow:var(--ovl)}
-.ovl .h{display:flex;font-size:13.5px;font-weight:600;letter-spacing:-.008em}
-.ovl .h span{margin-left:auto;color:var(--s11);font-weight:400}
-.ovl label{display:block;font-size:11.5px;color:var(--s11);margin:13px 0 4px}
-/* 列印抬頭 */
-.print{background:#fff;padding:26px 30px;border-radius:var(--r-box);box-shadow:var(--hair)}
-.print .top{display:flex;align-items:flex-start;gap:14px;padding-bottom:14px;
-  border-bottom:2px solid var(--s12)}
-.print .mk{width:32px;height:32px;border-radius:6px;background:var(--s12);color:#fff;
-  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;letter-spacing:-.04em}
-.print .co b{font-size:15px;font-weight:600;letter-spacing:-.012em;display:block}
-.print .co i{font-style:normal;font-size:11.5px;color:var(--s11);letter-spacing:.02em}
-.print .ti{margin-left:auto;text-align:right}
-.print .ti b{font-family:'Noto Serif TC',serif;font-size:19px;font-weight:600;display:block;letter-spacing:.04em}
-.print .ti i{font-style:normal;font-size:11.5px;color:var(--s11);font-family:'IBM Plex Mono',monospace}
-.print .meta{display:flex;gap:26px;padding:11px 0 0;font-size:11.5px;color:var(--s11);
-  font-family:'IBM Plex Mono',monospace}
-/* 登入 */
-.login{display:flex;height:300px;border-radius:var(--r-box);overflow:hidden;box-shadow:var(--hair)}
-.login .l{flex:1;background:var(--s12);color:var(--s1);padding:30px 32px;display:flex;
-  flex-direction:column}
-.login .l .mk{width:32px;height:32px;border-radius:7px;background:var(--s1);color:var(--s12);
-  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;letter-spacing:-.04em}
-.login .l h4{margin-top:auto;font-size:22px;font-weight:600;letter-spacing:-.024em;line-height:1.3}
-.login .l p{font-size:13px;color:#8f9aa8;margin-top:8px;max-width:34ch}
-.login .r{flex:1.1;background:var(--s1);padding:30px 32px;display:flex;flex-direction:column;
-  justify-content:center;gap:4px}
-.login .r .t{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-bottom:12px}
-.login .r label{font-size:11.5px;color:var(--s11);margin-top:10px}
+.login{display:flex;height:296px;border-radius:var(--r-box);overflow:hidden;box-shadow:var(--hair)}
+.login .l{flex:1;background:var(--ink);color:var(--paper);padding:28px 30px;display:flex;flex-direction:column}
+.login .l h4{margin-top:auto;font-size:21px;font-weight:600;letter-spacing:-.024em;line-height:1.35}
+.login .l p{font-size:13px;color:#8b95a3;margin-top:8px;max-width:32ch}
+.login .r{flex:1.1;background:var(--s1);padding:28px 30px;display:flex;flex-direction:column;justify-content:center}
+.login .r .t{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-bottom:10px}
+.login .r label{font-size:11.5px;color:var(--s11);margin-top:10px;display:block}
 .login .r .inp{width:100%}
+.dec{display:grid;grid-template-columns:74px 1fr;row-gap:0;font-size:13.5px}
+.dec dt{padding:9px 0;font-weight:600;box-shadow:inset 0 1px 0 var(--s6)}
+.dec dd{padding:9px 0;color:var(--ink2);box-shadow:inset 0 1px 0 var(--s6)}
 </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="wm" viewBox="0 0 120 120">
+  <rect x="10" y="20" width="42" height="16" fill="var(--ink)"></rect>
+  <rect x="68" y="20" width="42" height="16" fill="var(--ink)"></rect>
+  <rect x="10" y="52" width="10" height="16" fill="var(--ink)"></rect>
+  <rect x="36" y="52" width="48" height="16" fill="var(--ink)"></rect>
+  <rect x="100" y="52" width="10" height="16" fill="var(--ink)"></rect>
+  <rect x="10" y="84" width="42" height="16" fill="var(--ink)"></rect>
+  <rect x="68" y="84" width="42" height="16" fill="var(--ink)"></rect>
+  <rect x="20" y="10" width="16" height="10" fill="var(--thread)"></rect>
+  <rect x="20" y="36" width="16" height="48" fill="var(--thread)"></rect>
+  <rect x="20" y="100" width="16" height="10" fill="var(--thread)"></rect>
+  <rect x="52" y="10" width="16" height="42" fill="var(--thread)"></rect>
+  <rect x="52" y="68" width="16" height="42" fill="var(--thread)"></rect>
+  <rect x="84" y="10" width="16" height="10" fill="var(--thread)"></rect>
+  <rect x="84" y="36" width="16" height="48" fill="var(--thread)"></rect>
+  <rect x="84" y="100" width="16" height="10" fill="var(--thread)"></rect>
+</symbol>
+<symbol id="wm-mono" viewBox="0 0 120 120">
+  <rect x="10" y="20" width="42" height="16"/><rect x="68" y="20" width="42" height="16"/>
+  <rect x="10" y="52" width="10" height="16"/><rect x="36" y="52" width="48" height="16"/>
+  <rect x="100" y="52" width="10" height="16"/><rect x="10" y="84" width="42" height="16"/>
+  <rect x="68" y="84" width="42" height="16"/>
+  <rect x="20" y="10" width="16" height="10" opacity=".55"/><rect x="20" y="36" width="16" height="48" opacity=".55"/>
+  <rect x="20" y="100" width="16" height="10" opacity=".55"/><rect x="52" y="10" width="16" height="42" opacity=".55"/>
+  <rect x="52" y="68" width="16" height="42" opacity=".55"/><rect x="84" y="10" width="16" height="10" opacity=".55"/>
+  <rect x="84" y="36" width="16" height="48" opacity=".55"/><rect x="84" y="100" width="16" height="10" opacity=".55"/>
+</symbol>
+</defs></svg>
+
 <div class="wrap">
 
-<h1>方向 B「工作台」— 設計語言試片</h1>
-<p class="sub">骨架(12 階色 + 殼轉中性)已落地。這份往下談<b>風格層</b>:排版的實際數值、狀態色在冷中性上是否要重調、
-  元件語彙、以及 docs/29 點名但一個都還沒做的<b>四個品牌載體</b>。每節標「已定 / 待決」,待決處我給了選項。</p>
+<div class="lockup" style="margin-bottom:12px">
+  <svg viewBox="0 0 120 120" width="52" height="52"><use href="#wm"/></svg>
+  <div class="nm"><b>Weyver</b><i>織雲</i></div>
+</div>
+<h1>品牌與介面設計系統</h1>
+<p class="sub">三份合併為一:<b>Weyver-Brand-Board</b>(標誌與品牌設計,<b>權威來源</b>)、
+  <b>brand-identity</b>(舊品牌識別稿,舊色值已 SUPERSEDED)、
+  <b>brand-pilot</b>(方向 B 介面語言)。品牌板判掉了先前的多數待決項;
+  但其中一項<b>不符 WCAG</b>,已在 §2.3 提出可行解 —— 那是唯一需要你回的重點。</p>
 
-<!-- ═══════ 排版 ═══════ -->
+<!-- ═══════════ 1 標誌 ═══════════ -->
 <section>
-  <h2>1 · 排版<span class="badge q">待決</span></h2>
-  <p class="why">量測依據:Linear 48px→−1.056px、Vercel 56px→−3.36px、Attio 48px→−0.72px ——
-    <b>大字負字距是普世的</b>。下表是提案的實際數值(愈大愈緊),以及中英混排、數字對齊的樣子。</p>
-  <dl class="spec">
-    <dt>24 / 600 / −.026em</dt><dd><span class="t24">影像處理驗證單 Inspection</span></dd>
-    <dt>20 / 600 / −.020em</dt><dd><span class="t20">待我簽核 Pending approval</span></dd>
-    <dt>16 / 600 / −.014em</dt><dd><span class="t16">基本資料 Basic information</span></dd>
-    <dt>14 / 500 / 0</dt><dd><span class="t14m">不鏽鋼管件 SUS304</span></dd>
-    <dt>14 / 400 / 0</dt><dd><span class="t14">同一個工作區、同一套權限與稽核,切換像切分頁。</span></dd>
-    <dt>13 / 400 / 0</dt><dd><span class="t13">表格儲存格 / 密集列表 —— 這一階承載大部分資料</span></dd>
-    <dt>12 / 500 / +.02em</dt><dd><span class="t12">欄位標籤 · 表頭 · 狀態章</span></dd>
-    <dt>Mono / tnum</dt><dd><span class="num">PO-2026-0184 · 128,400.00 · 2026-07-31 09:12 · BN-0731-A</span></dd>
+  <h2>1 · 標誌<span class="badge a">品牌板定義</span></h2>
+  <blockquote>符號以經緯交織的幾何結構呈現「多股線頭收斂成一體」——橫向色塊代表原本分散的系統，縱向色塊代表 Weyver 的織理，兩者以嚴謹的網格互鎖，<b>不使用雲朵、漸層等字面裝飾</b>。「織」與「雲」的隱喻只存在於命名與敘事，<b>產品介面的品牌感應完全來自結構本身的嚴謹與秩序</b>。</blockquote>
+  <p class="why">🔴 這段話直接支撐了 <code>docs/29 §4</code> 的結論:品牌**不是**靠側欄底色。
+    先前把整條導覽軌做成主色深底是錯的,已於 2026-08-01 撤回。</p>
+
+  <h3>符號 · 組合 · 反白</h3>
+  <div class="marks">
+    <div class="mk-item"><svg viewBox="0 0 120 120" width="96" height="96"><use href="#wm"/></svg>
+      <div class="cap">符號</div></div>
+    <div class="mk-item"><div class="lockup">
+      <svg viewBox="0 0 120 120" width="44" height="44"><use href="#wm"/></svg>
+      <div class="nm"><b>Weyver</b><i>織雲</i></div></div>
+      <div class="cap">水平鎖定</div></div>
+    <div class="mk-item"><div class="onink"><div class="lockup">
+      <svg viewBox="0 0 120 120" width="40" height="40" style="--ink:var(--paper)"><use href="#wm"/></svg>
+      <div class="nm"><b>Weyver</b><i>織雲</i></div></div></div>
+      <div class="cap">深底反白</div></div>
+    <div class="mk-item"><svg viewBox="0 0 120 120" width="44" height="44" fill="var(--ink)"><use href="#wm-mono"/></svg>
+      <div class="cap">單色 / 蓋印</div></div>
+  </div>
+
+  <h3>尺寸與淨空</h3>
+  <div class="marks" style="align-items:center;gap:26px">
+    <div class="mk-item"><svg viewBox="0 0 120 120" width="16" height="16"><use href="#wm"/></svg>
+      <div class="cap">16px 數位最小</div></div>
+    <div class="mk-item"><svg viewBox="0 0 120 120" width="24" height="24"><use href="#wm"/></svg>
+      <div class="cap">24px</div></div>
+    <div class="mk-item"><svg viewBox="0 0 120 120" width="32" height="32"><use href="#wm"/></svg>
+      <div class="cap">32px</div></div>
+  </div>
+  <dl class="dec" style="margin-top:16px">
+    <dt>構成</dt><dd>橫向 7 個色塊、縱向 8 個色塊,以 3×3 網格互鎖交織 —— 象徵多源系統收斂為單一結構</dd>
+    <dt>淨空</dt><dd>= 符號寬度的 <b>1/3</b></dd>
+    <dt>最小</dt><dd>數位 <b>16px</b> · 印刷 <b>8mm</b></dd>
+    <dt>禁止</dt><dd>雲朵、漸層、旋轉、變形、加陰影、改變經緯比例</dd>
   </dl>
-  <div class="q"><b>待決 T1|字體家族。</b>現行 IBM Plex Sans + IBM Plex Sans TC(當初選它是為了避開「Inter = AI 預設」)。
-    但實測的三個參照 Linear / Vercel / Attio <b>全部是 Inter 或其衍生</b>,而 Inter 沒有 CJK,勢必要配 Noto Sans TC ——
-    等於放棄「同源設計」換取拉丁字的現代感。<br>
-    ① 維持 IBM Plex 全家(同源、與 IBM 撞聲音) ② 改 Inter + Noto Sans TC(現代、但混家族)
-    ③ 拉丁 Inter / 中文維持 IBM Plex Sans TC(折衷)。<b>本檔目前用 ②</b>。</div>
-  <div class="q"><b>待決 T2|大字要不要用襯線。</b>方向 A 的襯線抬頭是三案中唯一有「字體聲音」的東西。
-    B 可以只在<b>單據標題與列印抬頭</b>用襯線(見第 5 節),日常介面全無襯線 ——
-    這樣品牌聲音出現在「這是一份正式文件」的時刻,而不是在工具列上。</div>
 </section>
 
-<!-- ═══════ 色彩 ═══════ -->
+<!-- ═══════════ 2 色彩 ═══════════ -->
 <section>
-  <h2>2 · 色彩<span class="badge">骨架已定</span><span class="badge q">狀態色待決</span></h2>
-  <p class="why">12 階冷中性已落地(Radix 語意)。<b>但狀態色還是 v3 的舊值</b> ——
-    它們是在偏暖的中性上調的,放到冷中性裡會偏髒。下面是重調提案。</p>
+  <h2>2 · 色彩<span class="badge a">品牌板定義</span><span class="badge x">§2.3 有一項不合規</span></h2>
 
-  <h3>中性 12 階(已落地)</h3>
+  <h3>2.1 品牌四色(OKLCH 為原值,hex 為 Chromium 實測)</h3>
+  <div class="brandc">
+    <div class="c"><div class="sw" style="background:var(--ink)"></div>
+      <div class="m"><b>Ink 墨</b><span>oklch(24% .02 260)<br>#1a2029</span></div></div>
+    <div class="c"><div class="sw" style="background:var(--thread)"></div>
+      <div class="m"><b>Thread Blue 織藍</b><span>oklch(58% .15 240)<br>#0083c9</span></div></div>
+    <div class="c"><div class="sw" style="background:var(--neutral)"></div>
+      <div class="m"><b>Neutral 中灰</b><span>oklch(60% .01 260)<br>#7d8086</span></div></div>
+    <div class="c"><div class="sw" style="background:var(--paper)"></div>
+      <div class="m"><b>Paper 底色</b><span>oklch(97% .004 260)<br>#f3f5f8</span></div></div>
+  </div>
+  <p class="why" style="margin-top:10px">品牌板用 <b>OKLCH</b> 定義是對的 —— 色相 260 / 240 是<b>冷調</b>,
+    與介面已落地的 12 階冷中性(hue 260)同調,兩者天然相容。本檔一律保留 OKLCH 原值,hex 僅供對照。</p>
+
+  <h3>2.2 介面中性 12 階(已落地,Radix 語意)</h3>
   <div class="scale">
-    <div class="sw"><div class="c" style="background:#fcfdfe"></div><div class="l"><b>1</b>內容面</div></div>
-    <div class="sw"><div class="c" style="background:#f6f8fa"></div><div class="l"><b>2</b>應用底</div></div>
-    <div class="sw"><div class="c" style="background:#eef1f5"></div><div class="l"><b>3</b>hover</div></div>
-    <div class="sw"><div class="c" style="background:#e4e9ef"></div><div class="l"><b>4</b>active</div></div>
-    <div class="sw"><div class="c" style="background:#d8dfe8"></div><div class="l"><b>5</b>強 active</div></div>
-    <div class="sw"><div class="c" style="background:#e6eaf0"></div><div class="l"><b>6</b>次分隔</div></div>
-    <div class="sw"><div class="c" style="background:#d3dae3"></div><div class="l"><b>7</b>框線</div></div>
-    <div class="sw"><div class="c" style="background:#bcc6d2"></div><div class="l"><b>8</b>hover 框</div></div>
-    <div class="sw"><div class="c" style="background:#5c6876"></div><div class="l"><b>11</b>次文</div></div>
-    <div class="sw"><div class="c" style="background:#0f1720"></div><div class="l"><b>12</b>主文</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s1)"></div><div class="l"><b>1</b>內容面</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s2)"></div><div class="l"><b>2</b>應用底</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s3)"></div><div class="l"><b>3</b>hover</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s4)"></div><div class="l"><b>4</b>active</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s5)"></div><div class="l"><b>5</b>強 active</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s6)"></div><div class="l"><b>6</b>次分隔</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s7)"></div><div class="l"><b>7</b>框線</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s8)"></div><div class="l"><b>8</b>hover 框</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s11)"></div><div class="l"><b>11</b>次文</div></div>
+    <div class="sw2"><div class="c" style="background:var(--s12)"></div><div class="l"><b>12</b>主文</div></div>
   </div>
 
-  <h3>狀態色重調提案(冷中性版)</h3>
-  <div class="stat">
-    <div class="b" style="background:var(--ok-t)"><div class="t" style="color:var(--ok)">已核准 / 合格</div><div class="m">#0f7a4a on #e8f5ee</div></div>
-    <div class="b" style="background:var(--wn-t)"><div class="t" style="color:var(--wn)">待簽核 / 待處理</div><div class="m">#8a5a09 on #fbf2e3</div></div>
-    <div class="b" style="background:var(--er-t)"><div class="t" style="color:var(--er)">退回 / 異常</div><div class="m">#b02a26 on #fbebea</div></div>
-    <div class="b" style="background:var(--s3)"><div class="t" style="color:var(--s11)">草稿 / 中性</div><div class="m">#5c6876 on #eef1f5</div></div>
-  </div>
-
-  <div class="q"><b>待決 C1|狀態章的形狀。</b>docs/14 原本規定「帶框方形章、禁 pill」,
-    但實測 Linear / Vercel / Attio <b>三家都用 pill</b>,那條禁令沒有外部支持。兩種都在下面第 3 節排出來給你比。</div>
-  <div class="q"><b>待決 C2|主色飽和度。</b>目前深藍 <span class="mono">#22568a</span> 偏低飽和;
-    方向 B 的試片原本用的是 <span class="mono">#2563eb</span>(明顯更亮更飽和)。
-    主色現在只出現在主要動作與選取,<b>面積小 → 可以更飽和而不吵</b>。
-    但這動到 docs/26 的對外品牌色,需要你拍板。</div>
-</section>
-
-<!-- ═══════ 元件 ═══════ -->
-<section>
-  <h2>3 · 元件語彙<span class="badge q">待決</span></h2>
-  <p class="why">「精品 vs 廉價」實際上住在這裡。原則:<b>殼的互動項不畫框</b>,靠狀態階;
-    只有空的文字輸入保留框(WCAG 1.4.11)。深度只有兩級 —— hairline(常態)與真陰影(浮層)。</p>
-
-  <h3>按鈕</h3>
-  <div class="row">
+  <h3>2.3 🔴 織藍的對比實測 —— 標誌可以,但按鈕與連結不合規</h3>
+  <table class="cmp">
+    <tr><th>用途</th><th>色</th><th>對比</th><th>門檻</th><th>結果</th></tr>
+    <tr><td>標誌(圖形)</td><td class="n">#0083c9 / 紙底</td><td class="n">3.78</td><td class="n">3.0(1.4.11 非文字)</td><td class="pass">通過</td></tr>
+    <tr><td>主按鈕白字</td><td class="n">白 / #0083c9</td><td class="n">4.13</td><td class="n">4.5(1.4.3 內文)</td><td class="fail">不足</td></tr>
+    <tr><td>連結文字</td><td class="n">#0083c9 / 紙底</td><td class="n">3.78</td><td class="n">4.5</td><td class="fail">不足</td></tr>
+    <tr><td><b>動作色(建議)</b></td><td class="n">白 / oklch(52% .15 240) = #0070b5</td><td class="n">5.27</td><td class="n">4.5</td><td class="pass">通過</td></tr>
+    <tr><td><b>動作色於紙底</b></td><td class="n">#0070b5 / 紙底</td><td class="n">4.83</td><td class="n">4.5</td><td class="pass">通過</td></tr>
+  </table>
+  <div class="alert"><b>建議解 —— 不改品牌色,只加一個推導階。</b>
+    織藍 <span class="mono">oklch(58% .15 240)</span> 維持為<b>標誌與品牌真值</b>(圖形只需 3:1,通過);
+    介面的<b>動作色</b>(主按鈕 / 連結 / 選取)由它推導到 <span class="mono">oklch(52% .15 240)</span>,
+    兩個方向都過 AA。這與既有的 <code>--base-brand → 推導</code> 架構完全一致,不需要新機制。<br>
+    ⚠️ 若你希望按鈕就是要用 58% 的織藍,替代方案是<b>只在 ≥18px 或 14px 粗體</b>的按鈕上使用
+    (AA Large 門檻 3:1),但那會限制按鈕字級,我不建議。</div>
+  <div class="row" style="margin-top:14px">
+    <span style="font-size:11.5px;color:var(--s11);width:84px">58% 織藍</span>
+    <button class="btn" style="background:var(--thread);color:#fff">儲存版面</button>
+    <span class="mono" style="font-size:11.5px;color:var(--er)">4.13 ✗</span>
+    <span style="width:24px"></span>
+    <span style="font-size:11.5px;color:var(--s11);width:84px">52% 動作色</span>
     <button class="btn pri">儲存版面</button>
-    <button class="btn sec">匯入 Excel</button>
-    <button class="btn gho">取消</button>
-    <button class="btn dng">刪除表單</button>
-    <button class="btn dis">儲存中…</button>
+    <span class="mono" style="font-size:11.5px;color:var(--ok)">5.27 ✓</span>
   </div>
 
-  <h3>輸入 · 分段 · 狀態章</h3>
+  <h3>2.4 狀態色(介面用,品牌板未定義)</h3>
   <div class="row">
-    <input class="inp" value="不鏽鋼管件 SUS304">
-    <input class="inp" placeholder="搜尋表單…">
-    <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
-  </div>
-  <div class="row" style="margin-top:12px">
-    <span style="font-size:11.5px;color:var(--s11);width:74px">pill</span>
     <span class="chip ok">合格</span><span class="chip wn">待簽核</span>
     <span class="chip er">退回</span><span class="chip nt">草稿</span>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <span style="font-size:11.5px;color:var(--s11);width:74px">方形帶框</span>
+    <span style="width:20px"></span>
     <span class="chip sq ok">合格</span><span class="chip sq wn">待簽核</span>
-    <span class="chip sq er">退回</span><span class="chip sq nt" style="border-color:var(--s7)">草稿</span>
+    <span class="chip sq er">退回</span><span class="chip sq nt">草稿</span>
+  </div>
+  <div class="q"><b>待決 C1|狀態章形狀(唯一還沒被品牌板判掉的)。</b>
+    左為 pill、右為方形帶框。實測 Linear / Vercel / Attio <b>三家都用 pill</b>;
+    但品牌板逐字寫「<b>結構本身的嚴謹與秩序</b>」與「嚴謹的網格互鎖」——
+    方形與標誌的幾何語言同源。<b>我傾向方形帶框</b>,理由是與符號同一套語言,
+    而 pill 只是外部慣例。</div>
+</section>
+
+<!-- ═══════════ 3 字體 ═══════════ -->
+<section>
+  <h2>3 · 字體<span class="badge a">品牌板定義</span></h2>
+  <blockquote>內文與介面統一使用 <b>Inter(英數)＋ Noto Sans TC(中文)</b>，僅用 <b>Regular / Medium / Semibold / Bold 四階</b>，維持嚴謹一致的結構感。<br>
+    品牌名稱用 Inter Extrabold;「織雲」用 Noto Sans TC Black。</blockquote>
+  <p class="why">🔴 這一段<b>直接判掉了兩個先前的待決項</b>:<br>
+    · <b>T1 字體家族</b> → 定案 <b>Inter + Noto Sans TC</b>。現行 prod 是 IBM Plex 全家,<b>需替換</b>。<br>
+    · <b>T2 襯線</b> → <b>否決</b>。品牌板明訂四階無襯線;我先前提議「單據標題與列印抬頭用襯線」與此衝突,<b>撤回</b>。
+    單據的莊重感改由<b>字重 + 字距 + 結構</b>達成(見 §5 列印抬頭)。</p>
+  <dl class="spec">
+    <dt>Extrabold 800</dt><dd><span style="font-size:26px;font-weight:800;letter-spacing:-.032em">Weyver</span></dd>
+    <dt>TC Black 900</dt><dd><span style="font-family:'Noto Sans TC';font-weight:900;font-size:19px;letter-spacing:.3em">織雲</span></dd>
+    <dt>24 / 600 / −.026em</dt><dd><span style="font-size:24px;font-weight:600;letter-spacing:-.026em">影像處理驗證單 Inspection</span></dd>
+    <dt>20 / 600 / −.020em</dt><dd><span style="font-size:20px;font-weight:600;letter-spacing:-.02em">待我簽核 Pending approval</span></dd>
+    <dt>16 / 600 / −.014em</dt><dd><span style="font-size:16px;font-weight:600;letter-spacing:-.014em">基本資料 Basic information</span></dd>
+    <dt>14 / 500</dt><dd><span style="font-size:14px;font-weight:500">不鏽鋼管件 SUS304</span></dd>
+    <dt>14 / 400</dt><dd><span style="font-size:14px">同一個工作區、同一套權限與稽核,切換像切分頁。</span></dd>
+    <dt>13 / 400</dt><dd><span style="font-size:13px;color:var(--ink2)">表格儲存格 / 密集列表 —— 承載大部分資料</span></dd>
+    <dt>12 / 500</dt><dd><span style="font-size:12px;font-weight:500;color:var(--s11)">欄位標籤 · 表頭 · 狀態章</span></dd>
+    <dt>Mono / tnum</dt><dd><span class="mono" style="font-size:13.5px">PO-2026-0184 · 128,400.00 · 2026-07-31 · BN-0731-A</span></dd>
+  </dl>
+  <p class="why" style="margin-top:12px">大字負字距的依據是實測:Linear 48px→−1.056px、Vercel 56px→−3.36px、Attio 48px→−0.72px。
+    等寬字維持 IBM Plex Mono(品牌板未指定;它與 Inter 的 x-height 相容,且已在庫內)。</p>
+</section>
+
+<!-- ═══════════ 4 品牌敘事 ═══════════ -->
+<section>
+  <h2>4 · 敘事與隱喻邊界<span class="badge a">品牌板定義</span></h2>
+  <blockquote>三套 ERP、五份 Excel、十個表單——都是線頭。<br>Weyver 是把它們織成一體、看得見全貌的織者。</blockquote>
+  <p class="why"><b>隱喻邊界(硬規則)</b>|「織」與「雲」<b>只存在於命名與敘事</b>。
+    介面中不得出現雲朵、織布、絲線等字面圖形,也不得用漸層去暗示「雲」。
+    介面的品牌感來自<b>結構的嚴謹與秩序</b> —— 即欄位表的網格、留白的節奏、狀態的一致。</p>
+</section>
+
+<!-- ═══════════ 5 介面語言 ═══════════ -->
+<section>
+  <h2>5 · 介面設計語言(方向 B「工作台」)<span class="badge">骨架已落地</span></h2>
+  <p class="why">兩套語言分離(docs/14 §0.5):<b>單據靠框線</b>(對應紙本、逐格核對),
+    <b>殼靠面</b>(底色階差 + 留白)。殼的互動項<b>不畫框</b>,吃 hover=s3 / active=s4;
+    只有空的文字輸入保留框(WCAG 1.4.11)。深度只有兩級:hairline(常態)、真陰影(浮層)。</p>
+
+  <h3>元件</h3>
+  <div class="row">
+    <button class="btn pri">儲存版面</button><button class="btn sec">匯入 Excel</button>
+    <button class="btn gho">取消</button><button class="btn dng">刪除表單</button>
+    <input class="inp" value="不鏽鋼管件 SUS304">
+    <span class="seg"><b class="on">設計</b><b>填單</b><b>網格</b><b>資料</b></span>
   </div>
 
-  <h3>清單(殼語言:無框,靠狀態階)</h3>
+  <h3>清單(殼語言:無框)</h3>
   <div class="lst">
     <div class="it">採購單<span class="r">24 筆 · 07/31</span></div>
     <div class="it on">影像處理驗證<span class="r">2 筆 · 08/01</span></div>
     <div class="it">進貨驗收單<span class="r">61 筆 · 07/29</span></div>
   </div>
 
-  <h3>浮層(唯一使用真陰影的地方)</h3>
-  <div class="ovl">
-    <div class="h">欄位設定<span>×</span></div>
-    <label>欄位名稱</label><input class="inp" style="width:100%" value="品名">
-    <label>型別</label><input class="inp" style="width:100%" value="單行文字">
-  </div>
-</section>
-
-<!-- ═══════ 單據語言 ═══════ -->
-<section>
-  <h2>4 · 單據語言(與殼分離)<span class="badge">已定</span></h2>
-  <p class="why">docs/14 §0.5:<b>單據靠框線,殼靠面</b>。這是本專案唯一保留「全框線」的地方 ——
-    它對應紙本、對應會計逐格核對,是我方的視覺簽名。放在冷中性色裡的樣子:</p>
+  <h3>單據(全框線 —— 唯一保留框線之處,即品牌板說的「結構的嚴謹」)</h3>
   <div class="doc">
     <div class="bar">基本資料</div>
     <table>
       <tr><th>品名</th><td>不鏽鋼管件 SUS304</td><th>批號</th><td class="mono">BN-0731-A</td></tr>
       <tr><th>供應商</th><td>鑫豐農產</td><th>單據日期</th><td class="mono">2026-07-31</td></tr>
-      <tr><th>金額</th><td class="n">128,400.00</td><th>狀態</th><td><span class="chip wn">待簽核</span></td></tr>
+      <tr><th>金額</th><td class="n">128,400.00</td><th>狀態</th><td><span class="chip sq wn">待簽核</span></td></tr>
     </table>
   </div>
 </section>
 
-<!-- ═══════ 品牌載體 ═══════ -->
+<!-- ═══════════ 6 應用 ═══════════ -->
 <section>
-  <h2>5 · 品牌載體(docs/29 §4 點名,一個都還沒做)<span class="badge q">全新提案</span></h2>
-  <p class="why">品牌不靠側欄底色。docs/29 定的四個載體是<b>標誌用法 / 標題排版 / 空狀態 / 列印抬頭</b>。
-    下面是前三個的提案 —— 共同的手勢是:<b>深色實方塊記號</b>在淺色介面裡是唯一的深色實體,
-    再配一個窄字距的字標。</p>
+  <h2>6 · 應用</h2>
 
-  <h3>列印抬頭 —— 品牌被外部看見的唯一時刻</h3>
+  <h3>列印抬頭 —— 品牌被外部看見的唯一時刻(符號在此出現)</h3>
   <div class="print">
     <div class="top">
-      <div class="mk">W</div>
+      <svg viewBox="0 0 120 120" width="30" height="30"><use href="#wm"/></svg>
       <div class="co"><b>鮮勇食品股份有限公司</b><i>統一編號 12345678 · 台南市安平區</i></div>
       <div class="ti"><b>影像處理驗證單</b><i>PO-2026-0184</i></div>
     </div>
     <div class="meta"><span>列印 2026-08-01 21:30</span><span>版本 v1</span><span>經手 王品管</span><span>第 1 / 1 頁</span></div>
   </div>
-  <p class="why" style="margin-top:8px">單據標題用<b>襯線</b>(Noto Serif TC)+ 寬字距 —— 這是待決 T2 的具體樣子:
-    襯線只在「這是一份正式文件」時出現。左上是客戶的抬頭,右上是單別 ——
-    Weyver 的記號小而確定,不搶客戶的版面。</p>
+  <p class="why" style="margin-top:8px">單據標題用 <b>Bold + 寬字距</b>(非襯線,遵品牌板四階)。
+    客戶抬頭在左、單別在右;Weyver 的符號小而確定,<b>不搶客戶的版面</b>。</p>
 
-  <h3>空狀態 —— 使用者最常看到、也最少人做好的畫面</h3>
+  <h3>空狀態</h3>
   <div class="empty">
-    <div class="mk">W</div>
+    <svg viewBox="0 0 120 120" width="34" height="34"><use href="#wm"/></svg>
     <h4>還沒有表單</h4>
     <p>從設計器建立第一張,或把既有的 Excel 直接匯進來。</p>
-    <div class="act"><button class="btn pri">新增表單</button><button class="btn sec">匯入 Excel</button></div>
+    <div class="row" style="justify-content:center;margin-top:16px">
+      <button class="btn pri">新增表單</button><button class="btn sec">匯入 Excel</button></div>
   </div>
 
-  <h3>登入 —— 首次接觸,投資窗口(docs/14 §0.3:50ms 形成印象)</h3>
+  <h3>登入 —— 首次接觸(docs/14 §0.3:50ms 形成印象)</h3>
   <div class="login">
     <div class="l">
-      <div class="mk">W</div>
+      <svg viewBox="0 0 120 120" width="34" height="34" style="--ink:var(--paper)"><use href="#wm"/></svg>
       <h4>把散落的線頭<br>織成同一朵雲</h4>
       <p>採購、財會、生產、品保 —— 同一個工作區、同一套權限與稽核。</p>
     </div>
@@ -335,18 +421,25 @@ h3{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
       <button class="btn pri" style="margin-top:16px;height:34px;justify-content:center">登入</button>
     </div>
   </div>
+  <p class="why" style="margin-top:8px">🔴 <b>產品介面內不放符號</b> —— 品牌板逐字:
+    「產品介面(不含符號)— 品牌感僅來自結構與留白」。符號只出現在
+    <b>登入 / 空狀態 / 列印 / 對外物料</b>,日常工作畫面不出現。</p>
 </section>
 
+<!-- ═══════════ 7 決策狀態 ═══════════ -->
 <section>
-  <h2>6 · 要你回的四件事</h2>
-  <p class="why" style="margin-top:10px">
-    <b>T1 字體家族</b>|IBM Plex 全家 / Inter + Noto Sans TC / 拉丁 Inter + 中文 Plex TC<br>
-    <b>T2 襯線</b>|只用在單據標題與列印抬頭(如第 5 節),還是完全不用<br>
-    <b>C1 狀態章</b>|pill(三家參照都用)還是維持方形帶框<br>
-    <b>C2 主色飽和度</b>|維持 #22568a,還是提到 #2563eb 這一級(面積小,可以更亮)
-  </p>
-  <p class="why" style="margin-top:14px">回完這四項,風格層就定了,再往 prod 掃 —— 剩下的是機械工:
-    拆掉 65 個帶框按鈕、字級套上去、輔助面板改浮層。</p>
+  <h2>7 · 決策狀態</h2>
+  <table class="cmp">
+    <tr><th>項目</th><th>狀態</th><th>結論</th></tr>
+    <tr><td>T1 字體家族</td><td class="pass">品牌板判定</td><td>Inter + Noto Sans TC 四階。<b>prod 現為 IBM Plex,需替換</b></td></tr>
+    <tr><td>T2 襯線</td><td class="pass">品牌板判定</td><td><b>否決</b>。我先前的襯線提議已撤回,單據莊重感改由字重與結構達成</td></tr>
+    <tr><td>C2 主色</td><td class="pass">品牌板判定</td><td>織藍 oklch(58% .15 240)。原 #22568a SUPERSEDED</td></tr>
+    <tr><td>導覽軌深色底</td><td class="pass">品牌板判定</td><td><b>否決</b>(「品牌感僅來自結構與留白」)。已於 08-01 撤回</td></tr>
+    <tr><td>🔴 動作色推導</td><td class="fail">待你確認</td><td>織藍白字僅 4.13 &lt; AA 4.5。建議動作色推導至 52%(見 §2.3)</td></tr>
+    <tr><td>C1 狀態章形狀</td><td class="fail">待你決定</td><td>pill(外部慣例)vs 方形帶框(與符號同語言)。<b>我傾向方形</b></td></tr>
+  </table>
+  <p class="why" style="margin-top:14px">兩項回完,設計系統就完整了。接著是把它掃進 prod:
+    換字體家族、換主色到織藍推導階、拆掉 65 個帶框按鈕、輔助面板改浮層。</p>
 </section>
 
 </div>
