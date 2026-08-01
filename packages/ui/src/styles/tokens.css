@@ -67,6 +67,19 @@
   --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%); /* 選取列 / 主色極淡底 */
 
   /* ── 功能色(跨主題共用)───────────────────────────────── */
+  /* ── 導覽軌(chrome 帶品牌)────────────────────────────────────────
+     🔴 2026-08-01|導覽軌由白底改為主色深底。
+
+     判準沿用 §0.2:**顏色有沒有在傳遞資訊**。這裡傳遞的是「你在 Weyver」——
+     產品識別。原本整個 app 是白底細框,與任何一套內部後台無法區分。
+
+     四個值全部由 `--base-brand` 推導,所以三主題與白牌客戶換色時導覽軌自動跟上;
+     若改成手寫,白牌客戶會得到「自己的品牌色 + 別人的導覽軌顏色」。 */
+  --color-nav: color-mix(in srgb, var(--base-brand), black 34%);
+  --color-nav-ink-2: color-mix(in srgb, var(--base-brand), white 70%);
+  --color-nav-hover: color-mix(in srgb, var(--base-brand), black 20%);
+  --color-nav-active: color-mix(in srgb, var(--base-brand), black 6%);
+
   --color-link: #1160b4;
   --color-fx: #0b6b5d; /* 公式 / 計算 */
   --color-fx-bg: #e8f4f1;
@@ -176,6 +189,10 @@
   --color-primary: var(--base-brand);
   --color-primary-d: color-mix(in srgb, var(--base-brand), black 20%);
   --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%);
+  --color-nav: color-mix(in srgb, var(--base-brand), black 34%);
+  --color-nav-ink-2: color-mix(in srgb, var(--base-brand), white 70%);
+  --color-nav-hover: color-mix(in srgb, var(--base-brand), black 20%);
+  --color-nav-active: color-mix(in srgb, var(--base-brand), black 6%);
 }
 
 /* ── reduced-motion:採 Cloudscape「全部歸零」式(R1·UX-1 OQ-10=A 維持現況)。

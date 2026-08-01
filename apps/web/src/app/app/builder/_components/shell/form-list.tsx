@@ -32,7 +32,7 @@ export function FormListRail({
   return (
     <div className="flex w-[228px] shrink-0 flex-col border-r border-line bg-card">
       <div className="flex items-center gap-1.5 border-b border-line px-3 py-2">
-        <span className="text-[12px] font-semibold text-ink-2">我的表單</span>
+        <span className="text-[14px] font-semibold text-ink">我的表單</span>
         <button
           type="button"
           onClick={onImport}
@@ -51,13 +51,13 @@ export function FormListRail({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {forms.isLoading ? (
-          <div className="p-3 text-[12px] text-ink-3">載入中…</div>
+          <div className="p-3 text-[14px] text-ink-3">載入中…</div>
         ) : forms.isError ? (
           <div className="p-3 text-[13px] text-er">
             無法連線引擎:{describeEngineError(forms.error)}
           </div>
         ) : (forms.data?.length ?? 0) === 0 ? (
-          <div className="p-3 text-[12px] text-ink-3">尚無表單。點「+ 新增」建立第一張。</div>
+          <div className="p-3 text-[14px] text-ink-3">尚無表單。點「+ 新增」建立第一張。</div>
         ) : (
           <ul>
             {forms.data?.map((form) => {
@@ -68,7 +68,7 @@ export function FormListRail({
                     type="button"
                     onClick={() => onSelect(form.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 border-b border-cell px-3 py-2 text-left text-[12px]",
+                      "flex w-full items-center gap-2 border-b border-cell px-3 py-2 text-left text-[13px]",
                       active ? "bg-primary-t font-medium text-ink" : "text-ink-2 hover:bg-head",
                     )}
                   >

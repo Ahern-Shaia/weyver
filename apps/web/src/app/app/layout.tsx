@@ -65,16 +65,17 @@ function NavItem({
 }): ReactNode {
   const base =
     "flex items-center rounded-sm transition-colors duration-fast-01 ease-productive-exit"
+  /* 導覽軌為主色深底(§0.4 chrome 帶品牌),故此處吃 nav 系列 token 而非 ink 系列。 */
   const tone = active
-    ? "bg-primary-t text-primary font-medium"
-    : "text-ink-2 hover:bg-head hover:text-ink"
+    ? "bg-nav-active font-medium text-white"
+    : "text-nav-ink-2 hover:bg-nav-hover hover:text-white"
   return (
     <Link
       href={href}
       /* 收合態才需要 tooltip;展開態文字已在,重複的 title 只會製造噪音 */
       {...(collapsed ? { title: label } : {})}
       aria-label={label}
-      className={`${base} ${tone} ${collapsed ? "size-9 justify-center" : "h-[30px] gap-2.5 px-2 text-[13px]"}`}
+      className={`${base} ${tone} ${collapsed ? "size-9 justify-center" : "h-8 gap-2.5 px-2.5 text-[14px]"}`}
     >
       <Icon size={17} strokeWidth={1.9} className="shrink-0" />
       {collapsed ? null : <span className="truncate">{label}</span>}
@@ -108,8 +109,8 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
         }}
         {...(collapsed ? { title: "配色主題" } : {})}
         aria-label="配色主題"
-        className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
-          collapsed ? "size-9 justify-center" : "h-[30px] w-full gap-2.5 px-2 text-[13px]"
+        className={`flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
+          collapsed ? "size-9 justify-center" : "h-8 w-full gap-2.5 px-2.5 text-[14px]"
         }`}
       >
         <Palette size={17} strokeWidth={1.9} className="shrink-0" />
@@ -248,23 +249,28 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
           aria-label="主導覽"
           /* overflow-y-auto:WCAG 1.4.12 —— 使用者加大行高/字距時導覽項會變高,
              沒有自己的捲動就會被 app-shell 的 overflow-hidden 裁掉而搆不到 */
-          className={`flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-card py-2.5 ${
-            collapsed ? "w-14 items-center px-0" : "w-[172px] px-2"
+          className={`flex shrink-0 flex-col gap-0.5 overflow-y-auto bg-nav py-3 ${
+            collapsed ? "w-14 items-center px-0" : "w-[180px] px-2.5"
           }`}
         >
           <Link
             href="/app"
             {...(collapsed ? { title: "Weyver 織雲 — 回工作區" } : {})}
             aria-label="Weyver 織雲 — 回工作區"
-            className={`mb-2 flex items-center rounded-sm ${collapsed ? "justify-center" : "gap-2 px-0.5"}`}
+            className={`mb-4 flex items-center rounded-sm ${collapsed ? "justify-center" : "gap-2.5 px-0.5"}`}
           >
-            <span className="flex size-[30px] shrink-0 items-center justify-center rounded-md bg-primary text-[14px] font-bold text-white">
+            {/* 深底上的品牌記號改為**反相**(白方塊 + 主色 W)——
+                主色方塊放在主色底上會消失,而品牌記號正是不該消失的那一個元素。 */}
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-white text-[16px] font-bold text-primary">
               W
             </span>
             {/* 產品名而非租戶名 —— 租戶身分歸狀態列(docs/14 §3.1);
                 兩處都顯示是冗餘,且會讓「這是哪家公司」出現兩個真實來源。 */}
             {collapsed ? null : (
-              <span className="truncate text-[13px] font-semibold text-ink">Weyver</span>
+              <span className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate text-[16px] font-semibold text-white">Weyver</span>
+                <span className="truncate text-[12px] text-nav-ink-2">織雲</span>
+              </span>
             )}
           </Link>
 
@@ -281,8 +287,8 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
                 onClick={() => void onLogout()}
                 {...(collapsed ? { title: `登出(${session.user.email})` } : {})}
                 aria-label="登出"
-                className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-er-t hover:text-er ${
-                  collapsed ? "size-9 justify-center" : "h-[30px] gap-2.5 px-2 text-[13px]"
+                className={`flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
+                  collapsed ? "size-9 justify-center" : "h-8 gap-2.5 px-2.5 text-[14px]"
                 }`}
               >
                 <LogOut size={17} strokeWidth={1.9} className="shrink-0" />
@@ -302,8 +308,8 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
               title={collapsed ? "展開導覽" : "收合導覽"}
               aria-label={collapsed ? "展開導覽" : "收合導覽"}
               aria-expanded={!collapsed}
-              className={`mt-0.5 flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
-                collapsed ? "size-9 justify-center" : "h-[28px] gap-2.5 px-2 text-[12px]"
+              className={`mt-0.5 flex items-center rounded-sm text-nav-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-nav-hover hover:text-white ${
+                collapsed ? "size-9 justify-center" : "h-7 gap-2.5 px-2.5 text-[12px]"
               }`}
             >
               {collapsed ? (
@@ -318,7 +324,7 @@ export default function AppLayout({ children }: { children: ReactNode }): ReactN
 
             {process.env.NODE_ENV !== "production" ? (
               <span
-                className={`font-mono text-[12px] text-ink-3 ${collapsed ? "text-center" : "px-2"}`}
+                className={`font-mono text-[12px] text-nav-ink-2 ${collapsed ? "text-center" : "px-2.5"}`}
               >
                 dev
               </span>

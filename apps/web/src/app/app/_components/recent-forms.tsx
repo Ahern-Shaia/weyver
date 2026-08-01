@@ -34,9 +34,9 @@ export function RecentForms(): ReactNode {
   if (visible.length === 0) return null
 
   return (
-    <section className="mt-6">
-      <div className="mb-2 flex items-baseline gap-2">
-        <h3 className="flex items-center gap-1.5 text-[12px] font-semibold text-ink-2">
+    <section className="mt-8">
+      <div className="mb-3 flex items-baseline gap-2">
+        <h3 className="flex items-center gap-1.5 text-[16px] font-semibold text-ink">
           <Clock size={14} strokeWidth={1.9} className="text-ink-3" />
           最近使用
         </h3>
@@ -46,12 +46,12 @@ export function RecentForms(): ReactNode {
           <Link
             key={f.id}
             href={`/app/forms/${f.id}`}
-            className={`flex items-center gap-2.5 px-3 py-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t ${
+            className={`flex items-center gap-2.5 px-3.5 py-2.5 transition-colors duration-fast-01 ease-productive-exit hover:bg-primary-t ${
               i === 0 ? "" : "border-t border-line-2"
             }`}
           >
             <Table2 size={14} strokeWidth={1.9} className="shrink-0 text-ink-3" />
-            <span className="truncate text-[13px] text-link">{f.name}</span>
+            <span className="truncate text-[14px] text-link">{f.name}</span>
           </Link>
         ))}
       </div>

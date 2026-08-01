@@ -53,7 +53,7 @@ export function FieldPalette({
 
       {term !== "" ? (
         matches.length === 0 ? (
-          <div className="px-1.5 py-2 text-[12px] text-ink-3">找不到「{q.trim()}」</div>
+          <div className="px-1.5 py-2 text-[13px] text-ink-3">找不到「{q.trim()}」</div>
         ) : (
           <PaletteGroup types={matches} onPick={onPick} disabled={disabled} />
         )
@@ -102,7 +102,7 @@ function PaletteGroup({
             disabled={disabled}
             onClick={() => onPick(type)}
             className={cn(
-              "group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[12px] text-ink-2 transition-colors duration-fast-01 ease-productive-exit",
+              "group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] text-ink-2 transition-colors duration-fast-01 ease-productive-exit",
               disabled
                 ? "cursor-not-allowed opacity-45"
                 : "cursor-pointer hover:bg-primary-t hover:text-primary",
