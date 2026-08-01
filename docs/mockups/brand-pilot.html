@@ -19,10 +19,10 @@
   --brand-neutral:oklch(60% .01 260);  /* Neutral 中灰 #7d8086 */
   --paper:oklch(97% .004 260);         /* Paper 底色  #f3f5f8 */
   /* 動作色:由織藍推導。織藍白字僅 4.13 < AA 4.5(見 §03),故介面動作用 52%。 */
-  --base-brand:oklch(52% .15 240);
+  --base-brand:#22568a;
   --primary:var(--base-brand);
-  --primary-d:oklch(45% .15 240);
-  --primary-t:oklch(96% .02 240);
+  --primary-d:color-mix(in srgb,#22568a,black 20%);
+  --primary-t:color-mix(in srgb,#22568a,white 91%);
 
   /* 介面 12 階冷中性(hue 260,與品牌板同調;Radix 語意)*/
   --bg:#f6f8fa; --card:#fcfdfe; --head:#eef1f5; --label:#eef1f5;
@@ -36,9 +36,9 @@
   --er:#b02a26;--er-line:#eecac8;--er-t:#fbebea;
   --nt:#4a5560;--nt-line:#d6dbe0;--nt-t:#eef0f2;
 }
-[data-theme="navy"]{--base-brand:oklch(52% .15 240);}
-[data-theme="teal"]{--base-brand:oklch(52% .11 200);}
-[data-theme="graphite"]{--base-brand:oklch(38% .01 260);}
+[data-theme="navy"]{--base-brand:#22568a;}
+[data-theme="teal"]{--base-brand:#0c5f73;}
+[data-theme="graphite"]{--base-brand:#333739;}
 /* 🔴 推導必須在掛 data-theme 的元素上「再宣告一次」。
    `--primary:var(--base-brand)` 寫在 :root,於 :root 就代換完畢,子元素只繼承算好的顏色 ——
    在子元素改 BASE 不會重算。少了這條,下面三張主題卡會全部顯示成當前主題的顏色
@@ -490,28 +490,41 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 <div class="desc" style="margin-top:6px">⚠️ 只有四階,<b>沒有第五階可讀灰</b> —— AA 之下白底放不下(最淺約 #767676 = 4.54:1,而 ink-3 已 4.68)。
 資訊性文字一律用 ink-3,層級改靠<b>字重 / 字級 / 位置</b>。</div>
 
-<div class="grp-t" style="margin-top:20px">③ Primary 動作色 <span style="color:var(--ok);font-size:11px">(定案)</span></div>
-<div class="why" style="border-left-color:var(--ok)"><b>裁定</b>織藍 <span class="mono">oklch(58% .15 240)</span> 維持為<b>標誌與品牌真值</b>
-(圖形門檻 3:1,實測 3.78 通過);介面<b>動作色</b>推導至 <span class="mono">oklch(52% .15 240)</span> ——
-白字 <b>5.27</b>、紙底 <b>4.83</b>,兩向皆過 AA。與既有 <span class="mono">--base-brand → 推導</span> 架構一致。</div>
+<div class="grp-t" style="margin-top:20px">③ Primary —— 🔴 <b>標誌色 ≠ 介面主色</b>(兩個色,兩個職責)</div>
+<div class="why" style="border-left-color:var(--ok)"><b>裁定(2026-08-01)</b>
+Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
+· <b>織藍 Thread Blue</b> <span class="mono">oklch(58% .15 240)</span> —— <b>標誌色</b>。
+  只出現在符號、登入、列印抬頭、對外物料。它是<b>圖形</b>,門檻 3:1(實測 4.05,通過)。<br>
+· <b>深藍 navy</b> <span class="mono">#22568a</span> —— <b>介面主色</b>(預設主題)。
+  承載按鈕白字、連結、選取、focus,門檻 4.5(實測 <b>7.59 / 7.45</b>,遠超)。<br>
+這不是妥協,是<b>正確的架構</b>:品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」——
+產品介面本來就不該把標誌色當主色刷滿。深藍是 ERP 品類的母語,傳達企業可信;
+織藍是品牌在<b>對外露出</b>時的識別。</div>
 <table class="ds-tbl">
-  <tr><th style="width:110px">token</th><th style="width:150px">值</th><th style="width:130px">用途</th><th>對比</th></tr>
-  <tr><td class="k">(標誌 only)</td><td class="k">oklch(58% .15 240)</td><td>符號 · 品牌真值</td><td>紙底 3.78 <b style="color:var(--ok)">✓ 3:1</b> / 白字 4.13 <b style="color:var(--er)">✗ 4.5</b></td></tr>
-  <tr><td class="k">primary</td><td class="k">oklch(52% .15 240)</td><td>主按鈕 · 連結 · focus</td><td>白字 <b style="color:var(--ok)">5.27 ✓</b> · 紙底 <b style="color:var(--ok)">4.83 ✓</b></td></tr>
-  <tr><td class="k">primary-d</td><td class="k">oklch(45% .15 240)</td><td>hover / 按下</td><td>白字 ≥ 7:1</td></tr>
-  <tr><td class="k">primary-t</td><td class="k">oklch(96% .02 240)</td><td>選取列 · 極淡底</td><td>承載 primary 文字 ≥ 4.5</td></tr>
+  <tr><th style="width:130px">色</th><th style="width:150px">值</th><th style="width:150px">用途</th><th>對比門檻與實測</th></tr>
+  <tr><td><b>織藍(標誌)</b></td><td class="k">oklch(58% .15 240)<br>#0083c9</td><td>符號 · 登入 · 列印抬頭 · 對外物料</td>
+      <td>圖形 3:1 → <b style="color:var(--ok)">4.05 ✓</b>。<b style="color:var(--er)">不得承載文字</b>(白字僅 4.13)</td></tr>
+  <tr><td><b>primary</b></td><td class="k">#22568a(navy 預設)</td><td>主按鈕 · 連結 · 選取 · focus ring</td>
+      <td>白字 <b style="color:var(--ok)">7.59 ✓</b> · 於內容面 <b style="color:var(--ok)">7.45 ✓</b></td></tr>
+  <tr><td><b>primary-d</b></td><td class="k">#1b456e(black 20% 推導)</td><td>hover / 按下</td><td>白字 <b style="color:var(--ok)">9.89 ✓</b></td></tr>
+  <tr><td><b>primary-t</b></td><td class="k">#ebf0f4(white 91% 推導)</td><td>選取列 · 極淡底</td><td>承載 primary 文字 <b style="color:var(--ok)">6.62 ✓</b></td></tr>
 </table>
 <div class="ds-row" style="margin-top:10px">
-  <span class="ds-lbl">織藍 58%</span>
-  <span class="b2" style="background:var(--thread);color:#fff">儲存版面</span>
-  <span class="mono" style="font-size:11px;color:var(--er)">白字 4.13 ✗ 僅供標誌</span>
-  <span style="width:20px"></span>
-  <span class="ds-lbl">動作 52%</span>
+  <span class="ds-lbl">織藍</span>
+  <svg viewBox="0 0 120 120" width="26" height="26"><use href="#wm"/></svg>
+  <span class="mono" style="font-size:11px;color:var(--ink3)">標誌 ✓</span>
+  <span class="b2" style="background:var(--thread);color:#fff">按鈕</span>
+  <span class="mono" style="font-size:11px;color:var(--er)">白字 4.13 ✗ 不可</span>
+  <span style="width:18px"></span>
+  <span class="ds-lbl">介面主色</span>
   <span class="b2 pri">儲存版面</span>
-  <span class="mono" style="font-size:11px;color:var(--ok)">5.27 ✓</span>
+  <span class="mono" style="font-size:11px;color:var(--ok)">7.59 ✓</span>
 </div>
-<div class="desc" style="margin-top:8px"><b>用量鐵則</b>|主色只出現在<b>主要動作 · 選取 · focus ring · 連結</b>。
-不做整條側欄、不做大面積色塊 —— 品牌板逐字「產品介面的品牌感應完全來自結構本身的嚴謹與秩序」。</div>
+<div class="desc" style="margin-top:8px"><b>用量鐵則</b>|介面主色只出現在<b>主要動作 · 選取 · focus ring · 連結</b>。
+不做整條側欄、不做大面積色塊。<br>
+⚠️ <b>先前「動作色推導至 oklch(52%)」的裁定改為<b>縮限適用</b></b> ——
+那是為了「若織藍要承載文字」而推導的;既然介面主色是 navy,產品端<b>用不到</b>。
+該規則保留給<b>對外物料</b>(行銷站連結等)真的需要用織藍寫字時使用。</div>
 
 <div class="grp-t" style="margin-top:20px">④ Semantic 語意色 —— 每個語意三值(字 / 框 / 底)</div>
 <table class="ds-tbl">
@@ -539,20 +552,26 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
   <div class="b"><div class="c" style="background:#0f1720"></div><div class="t"><b>12</b>主文</div></div>
 </div>
 
-<div class="grp-t" style="margin-top:20px">三配色主題(只換 BASE,其餘推導)</div>
+<div class="grp-t" style="margin-top:20px">三配色主題(只換 BASE,深階與淡底由 <span class="mono">color-mix</span> 推導)</div>
 <div class="themes-row">
-  <div class="theme-card"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設</span></div>
+  <div class="theme-card"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設 / 對外建議</span></div>
     <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
-    <div class="meta"><b class="mono">oklch(52% .15 240)</b> · 織藍推導,對外預設</div></div>
-  <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">備選</span></div>
+    <div class="meta"><b class="mono">#1b456e ← #22568a → #ebf0f4</b> · 品類母語、企業可信</div></div>
+  <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">織雲故事色</span></div>
     <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
-    <div class="meta"><b class="mono">oklch(52% .11 200)</b> · 情境備選</div></div>
+    <div class="meta"><b class="mono">#0a4c5c ← #0c5f73 → #e9f1f2</b> · 雲/水意象、競品差異化</div></div>
   <div class="theme-card" data-theme="graphite"><div class="th" style="background:var(--primary)">石墨 graphite<span class="df">中性</span></div>
     <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
-    <div class="meta"><b class="mono">oklch(38% .01 260)</b> · 讓資料最跳</div></div>
+    <div class="meta"><b class="mono">#292c2e ← #333739 → #ededed</b> · 工業中性、讓資料最跳</div></div>
 </div>
-<div class="desc" style="margin-top:8px">三個主題<b>只覆寫一個 BASE</b>,深色階與淡底由 <span class="mono">color-mix</span> 推導 ——
-白牌客戶只需提供一個品牌色。⚠️ 推導值由 <span class="mono">contrast.test.ts</span> 實算把關;
+<table class="ds-tbl">
+  <tr><th style="width:110px">主題</th><th style="width:96px">BASE</th><th>白字 / base</th><th>base / 內容面</th><th>白字 / 深階</th><th>base / 淡底</th></tr>
+  <tr><td>深藍 navy</td><td class="k">#22568a</td><td class="k">7.59 ✓</td><td class="k">7.45 ✓</td><td class="k">9.89 ✓</td><td class="k">6.62 ✓</td></tr>
+  <tr><td>深海青 teal</td><td class="k">#0c5f73</td><td class="k">7.24 ✓</td><td class="k">7.11 ✓</td><td class="k">9.54 ✓</td><td class="k">6.32 ✓</td></tr>
+  <tr><td>石墨 graphite</td><td class="k">#333739</td><td class="k">12.03 ✓</td><td class="k">11.81 ✓</td><td class="k">14.06 ✓</td><td class="k">10.27 ✓</td></tr>
+</table>
+<div class="desc" style="margin-top:8px">三個主題<b>只覆寫一個 BASE</b>,深階(<span class="mono">black 20%</span>)與淡底(<span class="mono">white 91%</span>)由 color-mix 推導 ——
+白牌客戶只需提供一個品牌色。⚠️ 推導值由 <span class="mono">contrast.test.ts</span> 實算把關(它看得懂 color-mix);
 換 base 若某色相對比不足,CI 會紅,屆時退回手調並記錄為例外。</div>
 
 <div class="grp-t" style="margin-top:20px">功能色(跨主題共用)</div>
@@ -1202,10 +1221,10 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     <th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px">結論</th></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">字體家族</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">Inter + Noto Sans TC 四階。<b>prod 現為 IBM Plex,需替換</b></td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">襯線</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>否決</b>。我先前提議的「單據標題用襯線」已撤回</td></tr>
-  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">主色</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">織藍 oklch(58% .15 240)。原 #22568a SUPERSEDED</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">主色架構</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>兩個藍,兩個職責</b>:織藍 oklch(58% .15 240) = 標誌色(圖形);navy #22568a = 介面主色(承載文字)。三配色主題不變</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">標誌</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">經緯交織符號。原「W 方塊」作廢</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">導覽軌深色底</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>否決</b>(「品牌感僅來自結構與留白」)。已於 08-01 撤回</td></tr>
-  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">動作色推導</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">採用建議:織藍 58% 維持標誌真值;介面動作色 <span class="mono">oklch(52% .15 240)</span>(白字 5.27 / 紙底 4.83)。詳 §03 ③</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">動作色推導</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">🔴 <b>已再修正</b>:介面主色回到 <b>navy #22568a</b>(白字 7.59 / 內容面 7.45,遠超 AA)—— 品類母語、企業可信。織藍為<b>標誌色</b>不承載文字。oklch(52%) 推導縮限給對外物料。詳 §03 ③</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">狀態章形狀</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">採用建議:<b>方形帶框</b>(3px 方角 + 字/框/底三值)。Pill 解禁但<b>限用於計數與標籤</b>,不得承載語意。詳 §06</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">載入門檻</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已更正 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">先前寫的「&lt;200ms 不顯示指示」是憑印象,錯。Nielsen 逐字門檻為 <b>1 秒</b>;&gt;10 秒須給預估完成。詳 §06</td></tr>
   <tr><td style="padding:7px 10px;border:1px solid var(--cell)">Select / Loading 合規</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已修 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">六條違規:自繪 chevron → Lucide、9/28px → 4/8 尺度、選單寬 = 觸發器寬、shimmer → opacity、margin → transform、<b>補上 0 個實作的 reduced-motion</b></td></tr>
