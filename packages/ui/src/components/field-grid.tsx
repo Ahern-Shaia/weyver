@@ -39,6 +39,32 @@ export function FieldGrid({ items, columns = 2, className }: FieldGridProps): Re
   )
 }
 
+/* 🔴 R1·UP-3c M1|把「一個欄位＝label 格 + 值格」抽成可共用原件。
+
+   Ragic 官方逐字:「**一個欄位會佔兩格儲存格的空間,左邊是欄位名稱(也稱為欄位標頭),
+   右邊是欄位值**」—— 這一對就是表單的最小單位。
+
+   ⚠️ **共用的是「格子」不是「容器」**。OQ-FDW-2=A 原文寫「完全共用 FieldGrid」,
+   實作時發現兩者**排版模型不同**:填單是流式(items 依序),設計畫布是 12 欄座標
+   定位(row/col/span)。硬套會弄壞座標系統。故共用降到**格子層** ——
+   視覺語言不會漂移(那是「設計即所見」的價值所在),各自保有排版模型。
+   此為對 OQ-FDW-2 的實作層修正,已記錄於 M0。 */
+export function FieldCellPair({
+  item,
+  borderB = true,
+  borderR = true,
+  flush = false,
+}: {
+  readonly item: FieldItem
+  readonly borderB?: boolean
+  readonly borderR?: boolean
+  /* flush:值格不留內距,交給裡面的輸入元件自己撐滿(填單用)。
+     不 flush 時值格自帶內距(檢視用),否則文字會貼著框線。 */
+  readonly flush?: boolean
+}): ReactElement {
+  return <Cells item={item} borderB={borderB ? "border-b" : ""} isRowEnd={!borderR} flush={flush} />
+}
+
 function FieldCells({
   item,
   columns,
@@ -54,12 +80,27 @@ function FieldCells({
   const lastRowStart = total - (total % perRow || perRow)
   const isLastRow = index >= lastRowStart
   const isRowEnd = (index + 1) % perRow === 0 || index === total - 1
-  const borderB = isLastRow ? "" : "border-b"
+  return (
+    <Cells item={item} borderB={isLastRow ? "" : "border-b"} isRowEnd={isRowEnd} flush={false} />
+  )
+}
+
+function Cells({
+  item,
+  borderB,
+  isRowEnd,
+  flush,
+}: {
+  readonly item: FieldItem
+  readonly borderB: string
+  readonly isRowEnd: boolean
+  readonly flush: boolean
+}): ReactElement {
   return (
     <>
       <div
         className={cn(
-          "flex min-h-[32px] items-center justify-end gap-[3px] border-r border-cell bg-label px-2.5 py-[5px] text-right text-[12px] text-ink-2",
+          "flex min-h-[32px] min-w-0 items-center justify-end gap-[3px] border-cell border-r bg-label px-2.5 py-[5px] text-right text-[12px] text-ink-2",
           borderB,
         )}
       >
@@ -73,7 +114,9 @@ function FieldCells({
       </div>
       <div
         className={cn(
-          "flex min-h-[32px] items-center gap-1.5 border-cell bg-card px-2.5 py-[5px] text-[13px]",
+          /* min-w-0:grid 項目預設 min-width:auto,不加就撐破格子 —— 長文字會溢出到隔壁欄 */
+          "flex min-h-[32px] min-w-0 items-center gap-1.5 border-cell bg-card text-[13px]",
+          flush ? "" : "px-2.5 py-[5px]",
           borderB,
           isRowEnd ? "" : "border-r",
           item.mono && "font-mono tabular-nums",

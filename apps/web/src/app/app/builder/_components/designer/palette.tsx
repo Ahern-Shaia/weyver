@@ -1,5 +1,6 @@
 "use client"
 
+import { fieldTypeIcon } from "@/lib/engine/field-icons"
 import { ADVANCED_TYPES, BUILDABLE_TYPES, fieldTypeMeta } from "@/lib/engine/field-types"
 import type { CellValueType } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
@@ -95,6 +96,7 @@ function PaletteGroup({
     <div className="flex flex-col gap-0.5">
       {types.map((type) => {
         const meta = fieldTypeMeta(type)
+        const Icon = fieldTypeIcon(type)
         return (
           <button
             key={type}
@@ -108,8 +110,8 @@ function PaletteGroup({
                 : "cursor-pointer hover:bg-primary-t hover:text-primary",
             )}
           >
-            <span className="inline-flex size-6 items-center justify-center rounded-md bg-label font-mono text-[12px] font-semibold text-ink-3 transition-colors duration-fast-01 ease-productive-exit group-hover:bg-primary group-hover:text-white">
-              {meta.mark}
+            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-label text-ink-3 transition-colors duration-fast-01 ease-productive-exit group-hover:bg-primary group-hover:text-white">
+              <Icon size={13} aria-hidden />
             </span>
             {meta.label}
           </button>

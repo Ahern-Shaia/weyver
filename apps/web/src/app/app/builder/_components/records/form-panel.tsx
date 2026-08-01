@@ -3,14 +3,14 @@
 import { describeEngineError } from "@/lib/engine/client"
 import { isStubType } from "@/lib/engine/field-types"
 import { type FormulaFieldSpec, computeFormulaPreview } from "@/lib/engine/formula-preview"
-import { useCreateRecord, useForm, useForms, useSaveWithLines } from "@/lib/engine/hooks"
+import { useCreateRecord, useForm, useForms, useLayout, useSaveWithLines } from "@/lib/engine/hooks"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { toText } from "@weyver/formula"
 import { Button } from "@weyver/ui/button"
-import { cn } from "@weyver/ui/lib/utils"
 import { Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { FieldInput } from "@/components/form/field-input"
+import { HeaderFields } from "./header-fields"
 import { useGridKeyboard } from "@/components/form/use-grid-keyboard"
 import { toSubmitValue } from "@/components/form/value"
 
@@ -42,6 +42,8 @@ let lineSeq = 0
 
 export function RecordFormPanel({ formId }: { formId: number }) {
   const formQuery = useForm(formId)
+  /* 填單吃設計器排的版面(UP-3c M1);沒有版面時 effectiveLayout 會給預設半寬順排 */
+  const layoutQuery = useLayout(formId)
   const formsQuery = useForms()
   const createRecord = useCreateRecord(formId)
   const saveWithLines = useSaveWithLines(formId)
@@ -178,23 +180,23 @@ export function RecordFormPanel({ formId }: { formId: number }) {
           </div>
         ) : null}
 
-        <section className="overflow-hidden rounded-md border border-line bg-card">
+        <section className="w-fit max-w-full overflow-x-auto rounded-md border border-line bg-card">
           <header className="flex items-center gap-2 border-b border-line bg-head px-3.5 py-2 text-[12px] font-semibold text-ink-2">
             <span className="size-1.5 rounded-full bg-primary" />
             填寫
           </header>
-          <div className="grid grid-cols-[136px_1fr]">
-            {form.fields.map((field, index) => (
-              <FieldRow key={field.id} field={field} isLast={index === form.fields.length - 1}>
-                <FieldInput
-                  field={field}
-                  formId={formId}
-                  value={field.type === "formula" ? headerPreview[field.name] : values[field.name]}
-                  onChange={(v) => set(field.name, v)}
-                />
-              </FieldRow>
-            ))}
-          </div>
+          <HeaderFields
+            fields={form.fields}
+            layout={layoutQuery.data?.layout ?? null}
+            renderInput={(field) => (
+              <FieldInput
+                field={field}
+                formId={formId}
+                value={field.type === "formula" ? headerPreview[field.name] : values[field.name]}
+                onChange={(v) => set(field.name, v)}
+              />
+            )}
+          />
         </section>
 
         {hasChild ? (
@@ -284,37 +286,5 @@ export function RecordFormPanel({ formId }: { formId: number }) {
         ) : null}
       </div>
     </div>
-  )
-}
-
-function FieldRow({
-  field,
-  isLast,
-  children,
-}: {
-  field: FieldDto
-  isLast: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <>
-      <div
-        className={cn(
-          "flex min-h-[34px] items-center justify-end gap-1 border-r border-cell bg-label px-2.5 text-right text-[12px] text-ink-2",
-          !isLast && "border-b",
-        )}
-      >
-        {field.required ? <span className="font-semibold text-er">*</span> : null}
-        {field.name}
-      </div>
-      <div
-        className={cn(
-          "flex min-h-[34px] items-center px-2.5 py-1",
-          !isLast && "border-b border-line-2",
-        )}
-      >
-        {children}
-      </div>
-    </>
   )
 }

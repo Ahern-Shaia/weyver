@@ -10,7 +10,7 @@ test("2D 設計器:畫布 + 欄位設定 + 草稿 undo + 儲存版面", async ({
   await expect(page.getByRole("button", { name: "儲存版面" })).toBeDisabled()
 
   // 點欄位卡(供應商=單行文字)→ 設定面板
-  await page.locator('div[role="button"]:has-text("單行文字")').first().click()
+  await page.locator('div[role="button"]:has-text("供應商")').first().click()
   await expect(page.getByRole("textbox", { name: "提示文字(placeholder)" })).toBeVisible()
 
   // 設 placeholder → dirty(儲存版面 + 復原 啟用)
@@ -23,7 +23,7 @@ test("2D 設計器:畫布 + 欄位設定 + 草稿 undo + 儲存版面", async ({
   await expect(page.getByRole("button", { name: "儲存版面" })).toBeDisabled()
 
   // 重設 placeholder(唯一值,避免與既存 layout 同值 → 非 dirty)+ 儲存 → PUT layout 成功
-  await page.locator('div[role="button"]:has-text("單行文字")').first().click()
+  await page.locator('div[role="button"]:has-text("供應商")').first().click()
   await page
     .getByRole("textbox", { name: "提示文字(placeholder)" })
     .fill(`供應商_${Date.now().toString().slice(-5)}`)

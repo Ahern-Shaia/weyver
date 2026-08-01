@@ -1,7 +1,13 @@
 "use client"
 
+import { ActionsDesigner } from "@/app/app/builder/_components/designer/actions"
+import { ConditionalFormatPanel } from "@/app/app/builder/_components/designer/conditional-format"
+import {
+  FieldSettingsPanel,
+  StaticSettingsPanel,
+} from "@/app/app/builder/_components/designer/field-settings"
+import { PrintSettingsPanel } from "@/app/app/builder/_components/output/print-settings"
 import { describeEngineError } from "@/lib/engine/client"
-import { fieldTypeMeta } from "@/lib/engine/field-types"
 import {
   formKeys,
   useDropField,
@@ -10,6 +16,15 @@ import {
   usePutLayout,
   useRecords,
 } from "@/lib/engine/hooks"
+import { fieldTypeIcon } from "@/lib/engine/field-icons"
+import {
+  cellPosition,
+  effectiveLayout,
+  FORM_COL_W,
+  FORM_DEFAULT_SPAN,
+  FORM_ROW_H,
+} from "@/lib/engine/form-geometry"
+import { sampleIsMono, sampleValue } from "@/lib/engine/sample-value"
 import type {
   FieldDto,
   FieldLayout,
@@ -21,14 +36,15 @@ import type {
 import {
   DndContext,
   type DragEndEvent,
-  KeyboardSensor,
   type KeyboardCoordinateGetter,
+  KeyboardSensor,
   PointerSensor,
   useDraggable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
+import { FieldCellPair } from "@weyver/ui/field-grid"
 import {
   GripVertical,
   Image as ImageIcon,
@@ -42,21 +58,18 @@ import {
   Zap,
 } from "lucide-react"
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ActionsDesigner } from "@/app/app/builder/_components/designer/actions"
-import { ConditionalFormatPanel } from "@/app/app/builder/_components/designer/conditional-format"
-import {
-  FieldSettingsPanel,
-  StaticSettingsPanel,
-} from "@/app/app/builder/_components/designer/field-settings"
-import { PrintSettingsPanel } from "@/app/app/builder/_components/output/print-settings"
 
 /* R1·UP-3 M2+M3 2D 格線畫布(OQ-FD2-7=A)。layout metadata → CSS grid;dnd-kit 拖曳重定位;
    欄位設定 / 靜態元素(文字·圖片)/ 分段 皆 layout 草稿;「儲存版面」PUT(純 metadata,零 DDL)。 */
 
-const COL_W = 52
-const ROW_H = 60
-const DEFAULT_SPAN = 6
-const EMPTY_LAYOUT: Layout = { grid: { cols: 12 }, fields: {}, statics: [], sections: [] }
+/* 節距 / 有效版面推導共用 @/lib/engine/form-geometry —— 填單畫面吃同一份,兩邊不會漂移。
+
+   ⚠️ 順帶修掉一個潛伏 bug:改動前 COL_W 52 + gap 8(實際節距 60),
+   拖曳位移卻用 `delta.x / COL_W`(52)換算 —— 拖一格 round(60/52)=1 剛好對,
+   拖五格 round(300/52)=6 就錯位。gap 歸零後節距與換算是同一個數,不會再分岔。 */
+const COL_W = FORM_COL_W
+const ROW_H = FORM_ROW_H
+const DEFAULT_SPAN = FORM_DEFAULT_SPAN
 
 /* 方向鍵一次移動一格(而非 dnd-kit 預設的固定像素)—— 格線上「一格」才是使用者的心智單位。 */
 /* 🔴 重疊偵測(#109)。原本 onDragEnd 只 clamp col 邊界,兩個欄位可以疊在一起 ——
@@ -111,19 +124,6 @@ const gridCoordinateGetter: KeyboardCoordinateGetter = (event, { currentCoordina
 }
 
 type Selected = { type: "field"; id: string } | { type: "static"; id: string } | null
-
-function effectiveLayout(fields: readonly FieldDto[], layout: Layout | null): Layout {
-  const base = layout ?? EMPTY_LAYOUT
-  const map: Record<string, FieldLayout> = { ...base.fields }
-  let maxRow = Object.values(map).reduce((m, f) => Math.max(m, f.row), -1)
-  for (const f of fields) {
-    if (map[String(f.id)] === undefined) {
-      maxRow += 1
-      map[String(f.id)] = { row: maxRow, col: 0, colSpan: DEFAULT_SPAN }
-    }
-  }
-  return { ...base, fields: map }
-}
 
 function nextStaticId(statics: readonly StaticElement[]): string {
   const nums = statics.map((s) => Number(s.id.replace(/\D/g, "")) || 0)
@@ -431,9 +431,13 @@ export function DesignCanvas({
                     display: "grid",
                     gridTemplateColumns: `repeat(${cols}, ${COL_W}px)`,
                     gridAutoRows: `${ROW_H}px`,
-                    gap: "8px",
-                    width: cols * (COL_W + 8),
-                    minHeight: (maxRow + 2) * (ROW_H + 8),
+                    gap: 0,
+                    width: cols * COL_W,
+                    minHeight: Math.max(maxRow + 3, 12) * ROW_H,
+                    /* 空白座標要看得見才知道能放哪 —— Ragic 設計模式同樣露出試算表的空格子 */
+                    backgroundImage:
+                      "linear-gradient(to right, var(--color-cell) 1px, transparent 1px), linear-gradient(to bottom, var(--color-cell) 1px, transparent 1px)",
+                    backgroundSize: `${String(COL_W)}px ${String(ROW_H)}px`,
                   }}
                 >
                   {form.fields.map((f) => {
@@ -555,8 +559,7 @@ function FieldCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `f:${field.id}`,
   })
-  const span = layout.colSpan ?? DEFAULT_SPAN
-  const meta = fieldTypeMeta(field.type)
+  const TypeIcon = fieldTypeIcon(field.type)
   return (
     // biome-ignore lint/a11y/useSemanticElements: 卡片內含 grip/刪除子 button,根不可為 button(巢狀);用 role
     <div
@@ -568,49 +571,69 @@ function FieldCard({
         if (e.key === "Enter" || e.key === " ") onSelect()
       }}
       style={{
-        gridColumn: `${layout.col + 1} / span ${span}`,
-        gridRow: layout.row + 1,
+        ...cellPosition(layout),
         transform: CSS.Translate.toString(transform),
         zIndex: isDragging ? 20 : undefined,
         opacity: layout.hidden ? 0.55 : 1,
       }}
-      className={`group flex cursor-pointer overflow-hidden rounded-sm border bg-card text-left ${
-        selected
-          ? "border-primary ring-1 ring-primary"
-          : isDragging
-            ? "border-primary shadow-lg"
-            : "border-line"
-      }`}
+      /* 🔴 R1·UP-3c M1|由「欄位卡片」改為**真正的欄位列**(label 格 + 值格)。
+
+         form-designer-2d 的 D1 裁定逐字是「2D 格線畫布 = 填單畫面本身」,
+         但先前只實作了前半:座標系統做了(12 欄 CSS grid),視覺對齊沒做 ——
+         畫布顯示的是欄名 + 型別名的卡片,使用者**看不到填起來長什麼樣**,
+         得切到「填單」頁籤才知道。本次補完後半。
+
+         選取態不畫外框而用主色淡底 + 左緣 —— 外框會與欄位表自己的格線疊成雙線。 */
+      /* 🔴 欄位格的欄寬必須與填單完全一致 —— 拖曳把手若佔掉一個實體欄,
+         設計時值格從 132px 開始、填單從 112px 開始,「設計即所見」就差了 20px。
+         故把手改為**疊在標籤格左緣的浮層**,不佔版面寬度。
+
+         選取態用 ring-inset:畫在框內不外擴 —— 格子彼此相貼,外擴的 ring 會蓋到鄰格。
+         負 margin 讓相鄰格的 1px 框線互相疊合,不會變成 2px 雙線。 */
+      className={`group -mr-px -mb-px relative grid cursor-pointer grid-cols-[112px_1fr] border border-cell text-left ${
+        selected ? "z-10 ring-1 ring-primary ring-inset" : ""
+      } ${isDragging ? "z-20 opacity-80 shadow-md" : ""}`}
     >
+      <FieldCellPair
+        borderB={false}
+        borderR={false}
+        item={{
+          label: field.name,
+          required: field.required,
+          help: layout.help !== undefined && layout.help !== "",
+          mono: sampleIsMono(field.type),
+          /* 型別圖示放**值格**不放標籤格:型別約束的是值不是標籤,
+             且標籤格保持乾淨的表單標籤外觀 —— 設計畫面與填單畫面的差別只有這一個圖示。 */
+          value: (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <TypeIcon size={12} className="shrink-0 text-ink-3" aria-hidden />
+              <span className="truncate text-ink-3" title="設計模式的示例值,填單時換成真實資料">
+                {layout.placeholder !== undefined && layout.placeholder !== ""
+                  ? layout.placeholder
+                  : sampleValue(field)}
+              </span>
+            </span>
+          ),
+          note: layout.hidden ? "隱藏" : undefined,
+        }}
+      />
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 bg-head text-ink-2 hover:text-primary active:cursor-grabbing"
+        className="-translate-y-1/2 absolute top-1/2 left-0 flex h-full w-4 cursor-grab items-center justify-center bg-label text-ink-3 opacity-0 hover:text-primary focus-visible:opacity-100 active:cursor-grabbing group-hover:opacity-100"
         aria-label={`拖曳 ${field.name}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical size={13} />
+        <GripVertical size={11} />
       </button>
-      <span className="flex min-w-0 flex-1 flex-col justify-center px-2.5 py-1">
-        <span className="flex items-center gap-1 truncate text-[12px] font-medium text-ink">
-          {field.required ? <span className="text-er">*</span> : null}
-          <span className="truncate">{field.name}</span>
-          {layout.hidden ? <span className="text-[12px] text-ink-3">（隱藏）</span> : null}
-        </span>
-        <span className="truncate font-mono text-[12px] text-ink-3">
-          {meta.label}
-          {layout.placeholder ? ` · ${layout.placeholder}` : ""}
-          {layout.defaultValue ? " · 預設" : ""}
-        </span>
-      </span>
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation()
           onDrop()
         }}
-        className="flex w-6 shrink-0 items-center justify-center text-ink-3 opacity-0 hover:text-er group-hover:opacity-100"
+        className="-translate-y-1/2 absolute top-1/2 right-1 flex size-5 items-center justify-center rounded-xs bg-card text-ink-3 opacity-0 hover:text-er focus-visible:opacity-100 group-hover:opacity-100"
         aria-label={`下架 ${field.name}`}
         title="下架欄位（即時,不可復原）"
       >
@@ -649,19 +672,20 @@ function StaticCard({
         transform: CSS.Translate.toString(transform),
         zIndex: isDragging ? 20 : undefined,
       }}
-      className={`group flex cursor-pointer overflow-hidden rounded-sm border border-dashed bg-surface text-left ${
-        selected ? "border-primary ring-1 ring-primary" : "border-line"
+      /* 虛線框是它與「欄位格」的唯一區別 —— 靜態元素不是資料,不該長得像可填的格子 */
+      className={`group -mr-px -mb-px flex cursor-pointer overflow-hidden border border-dashed bg-surface text-left ${
+        selected ? "z-10 border-primary ring-1 ring-inset ring-primary" : "border-line"
       }`}
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="flex w-6 shrink-0 cursor-grab items-center justify-center border-r border-line-2 text-ink-3 hover:text-primary"
+        className="flex w-5 shrink-0 cursor-grab items-center justify-center border-line-2 border-r text-ink-3 hover:text-primary"
         aria-label={`拖曳元素 ${element.id}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical size={13} />
+        <GripVertical size={11} />
       </button>
       <span className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-[12px] text-ink-2">
         {element.kind === "text" ? (

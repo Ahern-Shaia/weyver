@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 import { authenticator } from "otplib"
 import { actUntil } from "./hydration"
+import { registerOrg } from "./register"
 
 /* F-4 MFA 固化(承 MCP 走通):註冊 → 帳號設定啟用 TOTP(otplib 由畫面 secret 產碼)
    → 已啟用 → 登出 → 登入密碼步後導二步 → 輸入 TOTP → 進工作區。
@@ -18,13 +19,12 @@ test("MFA:啟用 TOTP → 登出 → 登入需二步 → 驗證進工作區", as
   const password = "s3cret-passw0rd"
 
   // 註冊公司
-  await page.goto("/register")
-  await page.getByRole("textbox", { name: "公司名稱" }).fill(orgName)
-  await page.getByRole("textbox", { name: "您的姓名" }).fill("安全員")
-  await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼(至少 15 碼)" }).fill(password)
-  await page.getByRole("button", { name: "建立並進入" }).click()
-  await expect(page).toHaveURL(/\/app\/builder/)
+  await registerOrg(page, {
+    orgName: orgName,
+    name: "安全員",
+    email: email,
+    password: password,
+  })
 
   // 啟用 2FA:密碼 → enable → 讀畫面 secret 產碼 → verifyTotp
   await page.goto("/app/settings/security")
@@ -135,12 +135,14 @@ test("MFA:啟用 TOTP → 登出 → 登入需二步 → 驗證進工作區", as
    留著不關的話,後面每一條「新註冊但還沒啟用 2FA」的測試都會被導到啟用頁,
    看起來像是別的功能壞了。實測已經踩過一次。 */
 test.afterEach(async ({ request }) => {
-  await request
-    .patch("/api/engine/settings/tenant", {
-      headers: { "x-dev-tenant": "1", "x-dev-actor": "1" },
-      data: { requireMfa: false },
-    })
-    .catch(() => null)
+  /* ⚠️ 原本是 `.catch(() => null)` —— 清理失敗會被靜默吞掉,而症狀會出現在**別條測試**上
+     (notifications 在整套跑時無故變紅)。清理失敗要當場喊,不要留給下一條去死。
+     路徑走 web 端的 rewrite(`/api/engine/*` → api 的 `/api/*`),不是直接打 api。 */
+  const res = await request.patch("/api/engine/settings/tenant", {
+    headers: { "x-dev-tenant": "1", "x-dev-actor": "1" },
+    data: { requireMfa: false },
+  })
+  expect(res.ok(), `強制 2FA 沒關掉會讓後續每條測試被導去啟用頁:${String(res.status())}`).toBe(true)
 })
 
 test("🔴 強制 2FA:自己沒開不准開;開了之後未啟用者被擋,但仍走得到啟用頁", async ({ page }) => {
@@ -148,13 +150,12 @@ test("🔴 強制 2FA:自己沒開不准開;開了之後未啟用者被擋,但�
   const email = `policy_${suffix}@weyver.test`
   const password = "s3cret-passw0rd"
 
-  await page.goto("/register")
-  await page.getByRole("textbox", { name: "公司名稱" }).fill(`政策廠_${suffix}`)
-  await page.getByRole("textbox", { name: "您的姓名" }).fill("管理員")
-  await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼(至少 15 碼)" }).fill(password)
-  await page.getByRole("button", { name: "建立並進入" }).click()
-  await expect(page).toHaveURL(/\/app\/builder/)
+  await registerOrg(page, {
+    orgName: `政策廠_${suffix}`,
+    name: "管理員",
+    email: email,
+    password: password,
+  })
 
   /* 1) 🔴 自己還沒啟用就想要求全公司 → 必須被擋。
         否則第一個被自己鎖在門外的就是管理員,而他是唯一能關掉開關的人。 */

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { registerOrg } from "./register"
 
 /* R1·A-1 M3|帳號安全頁。
 
@@ -17,13 +18,12 @@ test("🔴 帳號安全:標出目前這台 → 撤銷副作用先講 → 登入�
   const email = `sec_${suffix}@weyver.test`
   const password = "s3cret-passw0rd"
 
-  await page.goto("/register")
-  await page.getByRole("textbox", { name: "公司名稱" }).fill(`安全廠_${suffix}`)
-  await page.getByRole("textbox", { name: "您的姓名" }).fill("安全員")
-  await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼(至少 15 碼)" }).fill(password)
-  await page.getByRole("button", { name: "建立並進入" }).click()
-  await expect(page).toHaveURL(/\/app\/builder/)
+  await registerOrg(page, {
+    orgName: `安全廠_${suffix}`,
+    name: "安全員",
+    email: email,
+    password: password,
+  })
 
   /* 另一個 context = 另一台裝置。沒有它就只有一台在線,
      「登出其他所有裝置」按鈕**本來就該是關的**(這是正確行為,不是缺陷)。 */

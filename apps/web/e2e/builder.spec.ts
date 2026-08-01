@@ -47,9 +47,9 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
     count += 1
     await expect(page.getByText(new RegExp(`· ${String(count)} 欄`))).toBeVisible()
   }
-  await addField("№ 自動編號", "單號")
-  await addField("A 單行文字", "供應商", true)
-  await addField("$ 金額", "金額")
+  await addField("自動編號", "單號")
+  await addField("單行文字", "供應商", true)
+  await addField("金額", "金額")
 
   // 3) 填單:autoNumber 唯讀由後端產號
   await page.getByRole("tab", { name: "填單" }).click()
@@ -72,8 +72,8 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
   await page.getByRole("button", { name: "建立並開始設計" }).click()
   await expect(page.getByRole("heading", { name: childName })).toBeVisible()
   count = 0 // 子表是另一張新表,欄數從 0 起算
-  await addField("A 單行文字", "品項")
-  await addField("# 數值", "數量")
+  await addField("單行文字", "品項")
+  await addField("數值", "數量")
 
   // 6) 回父表單 → 填單 → 明細編輯器可加行並隨 header 一起存
   await page.getByRole("button", { name: new RegExp(formName) }).click()

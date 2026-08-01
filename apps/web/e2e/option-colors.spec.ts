@@ -71,7 +71,7 @@ test("記錄頁:章體恆含文字(色盲 / 黑白列印下資訊不失,FMEA C2)
 test("設計器:逐項選項編輯器 + 新增自動配色", async ({ page, request }) => {
   const formId = await seedColoredForm(request)
   await page.goto(`/app/builder?form=${formId}`)
-  await page.getByRole("button", { name: "▾ 單選" }).click()
+  await page.getByRole("button", { name: "單選", exact: true }).click()
 
   await expect(page.getByText("選項與顏色")).toBeVisible({ timeout: 30_000 })
   const colorSelects = page.locator('select[aria-label*="顏色"]')

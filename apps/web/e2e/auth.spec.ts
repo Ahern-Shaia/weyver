@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { registerOrg } from "./register"
 
 /* F-2 M5 固化(承 MCP 走通):註冊公司工作區 → 進受保護區(頂帶顯示公司 + 帳號)
    → 登出回登入頁 → 登入回工作區、active org 正確解析。
@@ -14,12 +15,12 @@ test("認證流程:註冊公司 → 進工作區 → 登出 → 登入", async (
   const password = "s3cret-passw0rd"
 
   // 1) 註冊:建帳號 + 建公司 org(後端 afterCreateOrganization hook 建 tenant + 連結)+ 設 active
-  await page.goto("/register")
-  await page.getByRole("textbox", { name: "公司名稱" }).fill(orgName)
-  await page.getByRole("textbox", { name: "您的姓名" }).fill("測試員")
-  await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
-  await page.getByRole("textbox", { name: "密碼(至少 15 碼)" }).fill(password)
-  await page.getByRole("button", { name: "建立並進入" }).click()
+  await registerOrg(page, {
+    orgName: orgName,
+    name: "測試員",
+    email: email,
+    password: password,
+  })
 
   // 進入受保護工作區;頂欄顯示公司名(email 收進登出鈕 tooltip,不佔版面)
   await expect(page).toHaveURL(/\/app\/builder/)

@@ -16,8 +16,19 @@ import { SignatureInput } from "@/components/form/signature-input"
 /* metadata(cellValueType)→ 輸入元件 map(A4)。值以「原始編輯字串 / 陣列 / 布林」保存於
    填單 state;送出前由 toSubmitValue(field-value.ts)轉成後端型別。 */
 
+/* 🔴 R1·UP-3c M1|**格子就是輸入框**,不再是格子裡浮一個框。
+
+   改動前三種寬度並存:`<Input>` 不帶 className → 內建 `size` 撐出 ~250px、
+   帶 `baseInputClass` 的原生 input → w-full、textarea → w-full。同一張表單三種欄寬,
+   這正是「排版錯位」的來源。
+
+   欄寬改由設計器的 colSpan 決定(form-geometry),輸入本身一律填滿格子、不自帶框線
+   —— 與 B-3「拆互動項框線,改吃狀態階」同一條規則:邊界由格子畫,狀態由 focus 畫。
+   focus 用 inset ring 不用外框,外擴的框會蓋到相鄰格子。 */
+/* focus-within 同時涵蓋「自己被 focus 的原生 input」與「內層 input 被 focus 的 <Input> 包裝」,
+   一條規則兩種用法都對,不必分兩個 class。 */
 const baseInputClass =
-  "h-[27px] w-full rounded-xs border border-line bg-card px-2 text-[12px] text-ink"
+  "min-h-[30px] w-full rounded-none border-0 bg-transparent px-2.5 text-[13px] text-ink outline-none focus-within:bg-primary-t focus-within:ring-1 focus-within:ring-primary focus-within:ring-inset"
 
 export function FieldInput({
   field,
@@ -85,6 +96,7 @@ export function FieldInput({
       return (
         <div className="flex flex-col gap-1.5">
           <Input
+            className={baseInputClass}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
             placeholder="條碼內容值"
@@ -100,7 +112,8 @@ export function FieldInput({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
-          className={cn(baseInputClass, "h-auto py-1.5")}
+          /* resize-y:橫向拉會撐破格線,縱向可拉是使用者真的需要的 */
+          className={cn(baseInputClass, "h-auto resize-y py-1.5")}
         />
       )
 
@@ -111,6 +124,7 @@ export function FieldInput({
       const inputMode = field.type === "money" ? "decimal" : "numeric"
       return (
         <Input
+          className={baseInputClass}
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           inputMode={inputMode}
@@ -212,6 +226,7 @@ export function FieldInput({
       return (
         <div className={sym === null ? "" : "flex flex-col gap-1.5"}>
           <Input
+            className={baseInputClass}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
           />

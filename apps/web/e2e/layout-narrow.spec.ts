@@ -23,7 +23,7 @@ for (const width of WIDTHS) {
     await expect(page.getByText("版面設計")).toBeVisible({ timeout: 30_000 })
 
     // 開啟右側欄位設定面板 —— 沒開的話最容易壞的那個組合根本不會出現
-    await page.locator('div[role="button"]:has-text("單行文字")').first().click()
+    await page.locator('div[role="button"]:has-text("供應商")').first().click()
     await expect(page.getByRole("textbox", { name: "提示文字(placeholder)" })).toBeVisible()
 
     const m = await page.evaluate(() => {

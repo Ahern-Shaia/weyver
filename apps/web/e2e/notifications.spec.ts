@@ -70,7 +70,9 @@ test("通知內容不含欄位值(欄位級權限使「過濾收件人」失效)
   await seedPendingApproval(request)
 
   await page.goto("/app")
-  await page.getByRole("button", { name: "通知", exact: true }).click()
+  /* ⚠️ 用前綴不用 exact:鈴鐺有未讀時可及名稱是「通知(N 則未讀)」(這是刻意的,
+     見 notification-bell)。寫成 exact 只有在剛好零未讀時才會過 —— 單獨跑綠、整套跑紅。 */
+  await page.getByRole("button", { name: /^通知/ }).click()
   const panel = page.locator(".shadow-overlay")
   await expect(panel).toBeVisible()
   // 首欄是「金額」值 77000 —— 標題不得帶出
