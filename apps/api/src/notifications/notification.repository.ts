@@ -33,7 +33,14 @@ export interface PrefRow {
 
 export interface NewNotification {
   readonly tenantId: number
-  readonly recipientActorId: number
+  /* 🔴 與 `broadcastChannel` **恰有其一**(DB CHECK 執法)。
+     個人通知有收件人;群組廣播沒有 —— 它送往一個頻道,不是一個人。 */
+  readonly recipientActorId: number | null
+  /* 🔴 **不可為 optional**:drizzle 的多列 insert 以**第一列**決定欄位集合,
+     若個人列沒有這個鍵而廣播列有,後續列的值會整組位移
+     (實測症狀是 `null value in column "event"`,完全看不出真因)。
+     一律帶上、個人列填 null,讓所有列同形。 */
+  readonly broadcastChannel: string | null
   readonly event: string
   readonly formId: number | null
   readonly recordId: number | null
@@ -42,6 +49,9 @@ export interface NewNotification {
   /* 通道**逐人決定**(每個使用者的通道偏好不同),不是整批共用 */
   readonly channels: readonly string[]
 }
+
+const keyOf = (actorId: number | null, broadcast: string | null, event: string): string =>
+  `${actorId === null ? `ch:${broadcast ?? ""}` : String(actorId)}:${event}`
 
 @Injectable()
 export class NotificationRepository {
@@ -60,22 +70,29 @@ export class NotificationRepository {
         tenantId: notifications.tenantId,
         event: notifications.event,
         recipientActorId: notifications.recipientActorId,
+        broadcastChannel: notifications.broadcastChannel,
       })
-    const channelsOf = new Map(rows.map((r) => [`${r.recipientActorId}:${r.event}`, r.channels]))
+    /* 🔴 key 必須含廣播通道。原本只有 `收件人:事件` —— 廣播列的收件人皆為 null,
+       同一事件送往兩個通道會**撞在同一個 key 上**,其中一個的通道設定被覆蓋。 */
+    const channelsOf = new Map(
+      rows.map((r) => [keyOf(r.recipientActorId, r.broadcastChannel ?? null, r.event), r.channels]),
+    )
     /* email 之派送時刻依事件分流:簽核類立即,一般資料異動等去抖動視窗
        (OQ-NT-8:一筆記錄連續編輯 10 次不該是 10 封信)。
        時刻以 **DB 的 now()** 計算,不用應用時鐘(見 emailDelayMinutes 註解)。 */
     const deliveries = inserted.flatMap((n) =>
-      (channelsOf.get(`${n.recipientActorId}:${n.event}`) ?? ["inapp"]).map((channel) => ({
-        tenantId: n.tenantId,
-        notificationId: n.id,
-        channel,
-        ...(channel === "email"
-          ? {
-              nextAttemptAt: sql`now() + make_interval(mins => ${emailDelayMinutes(n.event)})`,
-            }
-          : {}),
-      })),
+      (channelsOf.get(keyOf(n.recipientActorId, n.broadcastChannel, n.event)) ?? ["inapp"]).map(
+        (channel) => ({
+          tenantId: n.tenantId,
+          notificationId: n.id,
+          channel,
+          ...(channel === "email"
+            ? {
+                nextAttemptAt: sql`now() + make_interval(mins => ${emailDelayMinutes(n.event)})`,
+              }
+            : {}),
+        }),
+      ),
     )
     if (deliveries.length > 0) await this.db.insert(notificationDeliveries).values(deliveries)
     return inserted.length

@@ -33,6 +33,8 @@ export interface ChannelStatus {
   readonly secretFingerprint: string | null
   readonly verifiedAt: Date | null
   readonly enabled: boolean
+  /* 管理者勾選要廣播哪些事件。空 = 連上了但不廣播 */
+  readonly broadcastEvents: readonly string[]
   readonly updatedAt: Date | null
 }
 
@@ -67,6 +69,7 @@ export class ChannelConfigService {
         secretFingerprint: row?.secretFingerprint ?? null,
         verifiedAt: row?.verifiedAt ?? null,
         enabled: row?.enabled ?? false,
+        broadcastEvents: row?.broadcastEvents ?? [],
         updatedAt: row?.updatedAt ?? null,
       }
     })
@@ -81,6 +84,7 @@ export class ChannelConfigService {
       readonly secret?: string | undefined
       readonly clearSecret?: boolean
       readonly enabled?: boolean
+      readonly broadcastEvents?: readonly string[]
     },
   ): Promise<ChannelStatus> {
     const spec = CHANNELS[input.channel]
@@ -123,6 +127,7 @@ export class ChannelConfigService {
           : (sealed?.fingerprint ?? prev?.secretFingerprint ?? null),
       verifiedAt: secretChanged ? null : (prev?.verifiedAt ?? null),
       enabled: input.enabled ?? prev?.enabled ?? false,
+      broadcastEvents: [...(input.broadcastEvents ?? prev?.broadcastEvents ?? [])],
       updatedAt: new Date(),
       updatedByActorId: actorId,
     }

@@ -18,6 +18,7 @@ import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
 import { CHANNEL_IDS, type ChannelId, isChannelId } from "./channel-registry.js"
+import { NOTIFICATION_EVENTS } from "./notification-specs.js"
 import { type ChannelStatus, ChannelConfigService } from "./channel-config.service.js"
 import { ChannelSenderService, type SendResult } from "./channel-sender.service.js"
 
@@ -29,6 +30,9 @@ import { ChannelSenderService, type SendResult } from "./channel-sender.service.
    回應**永不含憑證**(OQ-SC-7=A,Grafana `secureJsonFields` 語意):
    只回 `secretSet` 布林與指紋。 */
 
+/* 可廣播的事件。**與個人通知的事件清單同源**,不另外維護一份 */
+const BROADCAST_EVENT_CODES = Object.values(NOTIFICATION_EVENTS) as [string, ...string[]]
+
 const saveSchema = z.object({
   /* 非機密設定;值一律轉字串,避免 jsonb 裡混入型別不一致的髒資料 */
   config: z.record(z.string(), z.string().max(500)).default({}),
@@ -37,6 +41,8 @@ const saveSchema = z.object({
   secret: z.string().min(1).max(2000).optional(),
   clearSecret: z.boolean().optional(),
   enabled: z.boolean().optional(),
+  /* 值域限已知事件碼 —— 未知字串進了 DB 只會變成永遠不會觸發的死設定 */
+  broadcastEvents: z.array(z.enum(BROADCAST_EVENT_CODES)).max(20).optional(),
 })
 
 @Controller("api/notification-channels")
@@ -70,6 +76,7 @@ export class ChannelsController {
       ...(body.secret === undefined ? {} : { secret: body.secret }),
       ...(body.clearSecret === undefined ? {} : { clearSecret: body.clearSecret }),
       ...(body.enabled === undefined ? {} : { enabled: body.enabled }),
+      ...(body.broadcastEvents === undefined ? {} : { broadcastEvents: body.broadcastEvents }),
     })
   }
 

@@ -1,4 +1,6 @@
 import { Global, Module } from "@nestjs/common"
+import { ChannelConfigService } from "./channel-config.service.js"
+import { ChannelSenderService } from "./channel-sender.service.js"
 import { EmailChannel } from "./email.channel.js"
 import { NotificationDispatcher } from "./notification-dispatcher.service.js"
 import { NotificationsController } from "./notifications.controller.js"
@@ -14,7 +16,22 @@ import { NotificationService } from "./notification.service.js"
 @Global()
 @Module({
   controllers: [NotificationsController],
-  providers: [NotificationRepository, NotificationService, EmailChannel, NotificationDispatcher],
-  exports: [NotificationService, NotificationRepository, NotificationDispatcher],
+  providers: [
+    NotificationRepository,
+    NotificationService,
+    EmailChannel,
+    NotificationDispatcher,
+    /* 通道**發送**屬於通知核心(dispatcher 要用);通道**設定 API** 另在
+       ChannelsModule —— 那一支需要 AuthzModule,不能放進 @Global 模組。 */
+    ChannelConfigService,
+    ChannelSenderService,
+  ],
+  exports: [
+    NotificationService,
+    NotificationRepository,
+    NotificationDispatcher,
+    ChannelConfigService,
+    ChannelSenderService,
+  ],
 })
 export class NotificationsModule {}

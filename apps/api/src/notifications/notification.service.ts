@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common"
-import { and, eq, inArray, isNull } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
-import { formDefs, roleMembers, users } from "../db/schema.js"
+import { formDefs, notificationChannels, roleMembers, users } from "../db/schema.js"
 import {
   DEFAULT_LEVEL,
   bypassesMasterSwitch,
@@ -95,6 +95,7 @@ export class NotificationService {
       rows.push({
         tenantId: input.tenantId,
         recipientActorId: actorId,
+        broadcastChannel: null,
         event: input.event,
         formId: input.formId,
         recordId: input.recordId,
@@ -106,7 +107,50 @@ export class NotificationService {
             : ["inapp", ...(chosen.includes("email") ? ["email"] : [])],
       })
     }
+
+    rows.push(...(await this.broadcastRows(input, title)))
     return this.repo.createMany(rows)
+  }
+
+  /* 🔴 租戶級事件廣播(M5)。**一個事件一則,不是每人一則** ——
+     它送往一個頻道,而頻道只有一個。若照個人通知的形狀逐收件人產生,
+     10 個同事就會讓公司 Slack 收到 10 則一模一樣的訊息。
+
+     設定在租戶通道(管理者),不在個人通知設定:群組沒有訂閱者,
+     使用者也無法「替群組訂閱」(notifications.md §4.6)。
+
+     ⚠️ 內容沿用 `safeTitle` 產生的標題,**不含任何欄位值**。對群組這條由偏好
+     升級為**不可協商**:群組成員可能對該表單毫無存取權,帶值等於把資料推送給
+     系統從未驗證過的人。 */
+  private async broadcastRows(input: EmitInput, title: string): Promise<NewNotification[]> {
+    const channels = await this.db
+      .select({
+        channel: notificationChannels.channel,
+        events: notificationChannels.broadcastEvents,
+      })
+      .from(notificationChannels)
+      .where(
+        and(
+          eq(notificationChannels.tenantId, input.tenantId),
+          eq(notificationChannels.enabled, true),
+          isNotNull(notificationChannels.secretSealed),
+        ),
+      )
+
+    return channels
+      .filter((c) => c.events.includes(input.event))
+      .map((c) => ({
+        tenantId: input.tenantId,
+        recipientActorId: null,
+        broadcastChannel: c.channel,
+        event: input.event,
+        formId: input.formId,
+        recordId: input.recordId,
+        title,
+        actorId: input.actorId,
+        /* 廣播只走該通道本身;站內鈴鐺是個人的東西,群組沒有鈴鐺 */
+        channels: [c.channel],
+      }))
   }
 
   /* 收件人解析。**未停用檢查**:離職者不該繼續收通知(FMEA N7)。

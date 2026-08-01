@@ -85,6 +85,8 @@ export const notificationChannels = pgTable(
     tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
     channel: text("channel").notNull(),
     config: jsonb("config").notNull().default({}),
+    /* 管理者勾選要廣播哪些事件。空 = 連上了但不廣播(仍可測試發送)。 */
+    broadcastEvents: text("broadcast_events").array().notNull().default(sql`ARRAY[]::text[]`),
     secretSealed: text("secret_sealed"),
     secretFingerprint: text("secret_fingerprint"),
     /* 沒測試成功過就不該被當成可用 —— UI 據此顯示「尚未驗證」 */
@@ -700,9 +702,14 @@ export const notifications = pgTable(
     /* 收件人。**多型的另一半(channelTarget / 群組廣播)於 LINE 模組再加**,
        屆時本欄轉為 nullable + 加 target 欄;現在先不預留空欄位(YAGNI),
        但 §4.6 已載明模型方向,加欄為純加法。 */
-    recipientActorId: bigint("recipient_actor_id", { mode: "number" })
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    /* 🔴 **兩者恰有其一**(DB CHECK 執法):
+       個人通知有 recipientActorId;群組廣播有 broadcastChannel、沒有收件使用者。
+       群組沒有訂閱者也沒有權限模型可依靠(notifications.md §4.6)—— 這正是
+       「廣播內容不得含欄位值」由偏好升級為不可協商的理由。 */
+    recipientActorId: bigint("recipient_actor_id", { mode: "number" }).references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    broadcastChannel: text("broadcast_channel"),
     /* 事件碼:approval.pending / approval.approved / approval.rejected /
        approval.overdue / record.created / record.updated */
     event: text("event").notNull(),

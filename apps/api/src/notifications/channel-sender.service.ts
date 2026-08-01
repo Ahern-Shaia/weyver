@@ -36,10 +36,29 @@ export class ChannelSenderService {
 
   async sendTest(tenantId: number, channel: ChannelId): Promise<SendResult> {
     const spec = CHANNELS[channel]
+    const named = await this.tenantDb.withTenant(tenantId, (tx) =>
+      tx.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tenantId)).limit(1),
+    )
+    const tenantName = named[0]?.name ?? "Weyver"
+    const result = await this.send(
+      tenantId,
+      channel,
+      `Weyver 織雲測試訊息|${tenantName}|若你看得到這則訊息,表示 ${spec.label} 已連接成功。`,
+    )
+    /* 測試成功才記 verifiedAt —— 實際投遞不動它(那是「當初驗過」的意思,
+       不該被日常投遞覆寫成「最近一次送出時間」)。 */
+    if (result.ok) await this.configs.markVerified(tenantId, channel)
+    return result
+  }
+
+  /* 🔴 實際送出。測試發送與事件廣播共用這一條 ——
+     兩份實作會讓 allow-list 與禁轉址這兩道防線在其中一份悄悄消失。 */
+  async send(tenantId: number, channel: ChannelId, text: string): Promise<SendResult> {
+    const spec = CHANNELS[channel]
     if (channel === "smtp") {
       throw new BadRequestException({
         code: "CHANNEL_TEST_UNSUPPORTED",
-        message: "SMTP 的測試發送尚未提供,請先於通知設定中以站內信驗證",
+        message: "SMTP 不走此路徑(非 HTTPS,由 EmailChannel 負責)",
       })
     }
 
@@ -51,14 +70,8 @@ export class ChannelSenderService {
       })
     }
 
-    const named = await this.tenantDb.withTenant(tenantId, (tx) =>
-      tx.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tenantId)).limit(1),
-    )
-    const tenantName = named[0]?.name ?? "Weyver"
-
     const status = (await this.configs.list(tenantId)).find((s) => s.channel === channel)
     const config = status?.config ?? {}
-    const text = `Weyver 織雲測試訊息|${tenantName}|若你看得到這則訊息,表示 ${spec.label} 已連接成功。`
 
     const target = this.targetFor(channel, secret, config, text)
 
@@ -74,7 +87,6 @@ export class ChannelSenderService {
     try {
       const res = await postJsonSafely(target.url, JSON.stringify(target.body), target.headers)
       if (res.status >= 200 && res.status < 300) {
-        await this.configs.markVerified(tenantId, channel)
         return { ok: true, detail: `已送出(HTTP ${String(res.status)})` }
       }
       /* 3xx 視為失敗:`https.request` 不跟隨轉址,而「先回公網 302 再跳內網」

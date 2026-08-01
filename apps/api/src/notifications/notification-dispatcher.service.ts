@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger } from "@nestjs/common"
 import { Cron, CronExpression } from "@nestjs/schedule"
 import type { Knex } from "knex"
 import { DDL_KNEX } from "../db/db.module.js"
+import { CHANNEL_IDS, isChannelId } from "./channel-registry.js"
+import { ChannelSenderService } from "./channel-sender.service.js"
 import { EmailChannel } from "./email.channel.js"
 import { isApprovalEvent } from "./notification-specs.js"
 
@@ -23,6 +25,19 @@ const COALESCE_IDLE_MINUTES = 3
 const BATCH = 100
 const MAX_ATTEMPTS = 5
 const DISPATCH_LOCK_KEY = 909_003
+/* 廣播另用一把鎖:它與 email 是兩條獨立的投遞路徑,共用一把鎖會讓
+   其中一條卡住時另一條也停擺。 */
+const BROADCAST_LOCK_KEY = 909_004
+const BROADCAST_CHANNELS = CHANNEL_IDS.filter((c) => c !== "smtp")
+
+interface BroadcastRow {
+  readonly id: number
+  readonly tenant_id: number
+  readonly channel: string
+  readonly attempts: number
+  readonly event: string
+  readonly title: string
+}
 
 interface DueRow {
   id: number
@@ -44,6 +59,7 @@ export class NotificationDispatcher {
   constructor(
     @Inject(DDL_KNEX) private readonly knex: Knex,
     @Inject(EmailChannel) private readonly email: EmailChannel,
+    @Inject(ChannelSenderService) private readonly sender: ChannelSenderService,
   ) {}
 
   /* 🔴 具名不只是為了可讀(F-9 §4.1)。`SchedulerOrchestrator` 對未命名的 cron 用
@@ -55,6 +71,9 @@ export class NotificationDispatcher {
     try {
       const n = await this.run()
       if (n > 0) this.logger.log(`dispatched ${n} email deliveries`)
+      /* 廣播獨立於 email:上面掛了不該連帶讓廣播停擺,反之亦然 */
+      const b = await this.runBroadcasts()
+      if (b > 0) this.logger.log(`dispatched ${b} channel broadcasts`)
     } catch (error) {
       // 非關鍵路徑:失敗只告警
       this.logger.error(`dispatch failed: ${error instanceof Error ? error.message : error}`)
@@ -101,6 +120,63 @@ export class NotificationDispatcher {
       }
       return sent
     })
+  }
+
+  /* 🔴 租戶級事件廣播的投遞(M5)。**與 email 分開一個迴圈**,因為三件事都不同:
+     沒有收件人(不必查 users / 抑制清單)· 不做去抖動合併(群組看的是事件流,
+     把「3 分鐘內的 5 則」合成一則反而失去時序)· 失敗語意不同(對方服務掛了,
+     不是這個位址不能收)。硬塞進同一個迴圈只會讓兩邊都變難讀。 */
+  async runBroadcasts(): Promise<number> {
+    return this.knex.transaction(async (trx) => {
+      const locked = await trx.raw<{ rows: { locked: boolean }[] }>(
+        "SELECT pg_try_advisory_xact_lock(?) AS locked",
+        [BROADCAST_LOCK_KEY],
+      )
+      if (locked.rows[0]?.locked !== true) return 0
+
+      const due = await trx.raw<{ rows: BroadcastRow[] }>(
+        `SELECT d.id, d.tenant_id, d.channel, d.attempts, n.event, n.title
+           FROM notification_delivery d
+           JOIN notification n ON n.id = d.notification_id
+          WHERE d.channel = ANY(?)
+            AND d.status = 'pending'
+            AND d.next_attempt_at <= now()
+          ORDER BY d.id
+          LIMIT ?
+            FOR UPDATE OF d SKIP LOCKED`,
+        [BROADCAST_CHANNELS, BATCH],
+      )
+
+      let sent = 0
+      for (const row of due.rows) {
+        /* ⚠️ 內容只有標題與事件 —— `title` 由 `safeTitle` 產生,**不含欄位值**。
+           對群組這條是不可協商的:成員可能對該表單毫無存取權。 */
+        const text = `${row.title} ${eventText(row.event)}`
+        const result = await this.sendBroadcast(row.tenant_id, row.channel, text)
+        if (result.ok) {
+          await this.finish(trx, [row.id], "sent")
+          sent += 1
+        } else {
+          await this.retryOrFail(trx, row.id, row.attempts, result.detail)
+        }
+      }
+      return sent
+    })
+  }
+
+  private async sendBroadcast(
+    tenantId: number,
+    channel: string,
+    text: string,
+  ): Promise<{ ok: boolean; detail: string }> {
+    if (!isChannelId(channel)) return { ok: false, detail: `未知的通道 ${channel}` }
+    try {
+      return await this.sender.send(tenantId, channel, text)
+    } catch (error) {
+      /* 通道被移除憑證 / 設定不全時 sender 會拋 —— 這是**設定問題不是暫時性失敗**,
+         但仍走重試路徑:管理者補上設定後,下一輪就會送出去。 */
+      return { ok: false, detail: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   private async sendGroup(trx: Knex, rows: readonly DueRow[]): Promise<number> {
@@ -179,6 +255,30 @@ export class NotificationDispatcher {
         next_attempt_at: trx.raw(`now() + interval '${backoffMin} minutes'`),
       })
     return 0
+  }
+
+  /* 廣播的重試:與 email 同一套指數退避與上限,但沒有 suppression 的概念
+     (對方是一個頻道,不是一個會硬退的信箱)。 */
+  private async retryOrFail(
+    trx: Knex,
+    id: number,
+    prevAttempts: number,
+    detail: string,
+  ): Promise<void> {
+    const attempts = prevAttempts + 1
+    if (attempts >= MAX_ATTEMPTS) {
+      await this.finish(trx, [id], "failed", `重試 ${String(attempts)} 次仍失敗:${detail}`)
+      return
+    }
+    const backoffMin = 2 ** attempts
+    await trx
+      .table("notification_delivery")
+      .where("id", id)
+      .update({
+        attempts,
+        last_error: detail,
+        next_attempt_at: trx.raw(`now() + interval '${String(backoffMin)} minutes'`),
+      })
   }
 
   private async finish(

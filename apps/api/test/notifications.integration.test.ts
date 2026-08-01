@@ -432,3 +432,97 @@ describe("H-1 M3 Email 派工", () => {
     expect(rows.rows.map((r) => r.channel)).toEqual(["inapp"])
   })
 })
+
+/* 🔴 M5|租戶級事件廣播。`notifications.md` §4.6 已裁定群組與個人是**兩種功能**:
+   群組沒有訂閱者、沒有可依靠的權限模型,設定在租戶而非個人。
+   本組釘住四條會出事的性質。 */
+describe("🔴 租戶級事件廣播", () => {
+  async function connectSlack(events: string[], enabled = true): Promise<void> {
+    await pool.query(
+      `INSERT INTO notification_channel
+         (tenant_id, channel, config, secret_sealed, enabled, broadcast_events)
+       VALUES ($1, 'slack', '{}'::jsonb, 'v1.1.fake', $2, $3::text[])
+       ON CONFLICT (tenant_id, channel) DO UPDATE
+         SET enabled = EXCLUDED.enabled, broadcast_events = EXCLUDED.broadcast_events`,
+      [tenantA, enabled, events],
+    )
+  }
+
+  const broadcasts = async (): Promise<{ channel: string; title: string }[]> =>
+    (
+      await pool.query<{ channel: string; title: string }>(
+        `SELECT broadcast_channel AS channel, title FROM notification
+          WHERE tenant_id = $1 AND broadcast_channel IS NOT NULL ORDER BY id`,
+        [tenantA],
+      )
+    ).rows
+
+  it("🔴 一個事件只產生**一則**廣播 —— 不是每個收件人一則", async () => {
+    await pool.query("DELETE FROM notification WHERE broadcast_channel IS NOT NULL")
+    await connectSlack([NOTIFICATION_EVENTS.recordCreated])
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.recordCreated,
+      formId,
+      recordId,
+      actorId: submitter,
+    })
+    /* 個人通知會有好幾則(每個候選人一則);廣播只該有一則。
+       照個人的形狀寫的話,10 個同事就讓公司 Slack 收到 10 則一樣的訊息。 */
+    expect(await broadcasts()).toHaveLength(1)
+  })
+
+  it("🔴 廣播內容不得含欄位值(對群組是不可協商的)", async () => {
+    const rows = await broadcasts()
+    /* 群組成員可能對該表單毫無存取權 —— 帶值等於把資料推送給系統從未驗證過的人。
+       標題由 safeTitle 產生,只有表單名與記錄編號。 */
+    /* 標題只該是「表單名 #記錄編號」——「採購申請單 #1」這種形狀。
+       任何欄位值(金額 / 身分證號 / 客戶名)都不該出現。 */
+    expect(rows[0]?.title ?? "").toMatch(/^.+ #\d+$/)
+    expect(rows[0]?.title ?? "").toContain("採購申請單")
+  })
+
+  it("未勾選的事件不廣播", async () => {
+    await pool.query("DELETE FROM notification WHERE broadcast_channel IS NOT NULL")
+    await connectSlack([NOTIFICATION_EVENTS.approvalPending])
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.recordCreated,
+      formId,
+      recordId,
+      actorId: submitter,
+    })
+    expect(await broadcasts()).toHaveLength(0)
+  })
+
+  it("🔴 通道停用即不廣播 —— 停用必須真的停得掉", async () => {
+    await pool.query("DELETE FROM notification WHERE broadcast_channel IS NOT NULL")
+    await connectSlack([NOTIFICATION_EVENTS.recordCreated], false)
+    await notify.emitOrThrow({
+      tenantId: tenantA,
+      event: NOTIFICATION_EVENTS.recordCreated,
+      formId,
+      recordId,
+      actorId: submitter,
+    })
+    expect(await broadcasts()).toHaveLength(0)
+  })
+
+  /* 🔴 DB 層把「兩者恰有其一」釘死 —— 不讓程式碼的疏漏產生沒有收件人也沒有
+     通道的孤兒列(那種列永遠不會被投遞,也不會有人發現)。 */
+  it("🔴 收件人與廣播通道不得同時存在或同時缺席", async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO notification (tenant_id, event, title) VALUES ($1, 'record.created', 'x')`,
+        [tenantA],
+      ),
+    ).rejects.toThrow(/notification_recipient_xor_broadcast/)
+    await expect(
+      pool.query(
+        `INSERT INTO notification (tenant_id, recipient_actor_id, broadcast_channel, event, title)
+         VALUES ($1, $2, 'slack', 'record.created', 'x')`,
+        [tenantA, approver],
+      ),
+    ).rejects.toThrow(/notification_recipient_xor_broadcast/)
+  })
+})
