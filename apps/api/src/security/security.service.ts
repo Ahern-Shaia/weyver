@@ -34,12 +34,17 @@ export interface DeviceSession {
   readonly id: string
   readonly ipAddress: string | null
   readonly userAgent: string | null
+  /* UA 的可讀敘述。**在這裡算完再送出去**,而不是讓前端自己再解析一次 ——
+     兩份 UA 解析必然會分岔,而分岔的那一天沒有人會發現。 */
+  readonly device: string
   readonly lastActiveAt: Date
   readonly createdAt: Date
   readonly current: boolean
 }
 
 export type AuthEvent =
+  /* 建立帳號本身就是安全事件,也讓這頁從第一天就有內容可看 */
+  | "account.create"
   | "login.success"
   | "login.failure"
   | "logout"
@@ -89,6 +94,7 @@ export class SecurityService {
         id: row.id,
         ipAddress: row.ipAddress,
         userAgent: row.userAgent,
+        device: describeUserAgent(row.userAgent),
         lastActiveAt: row.updatedAt,
         createdAt: row.createdAt,
         /* 標出「目前這台」—— 否則使用者不敢按登出,怕把自己踢掉 */

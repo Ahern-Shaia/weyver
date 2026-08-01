@@ -28,9 +28,9 @@ export class SecurityController {
     @Tenant() tenant: TenantContext,
     @Req() request: FastifyRequest,
   ): Promise<DeviceSession[]> {
-    const authUserId = await this.identity.getAuthUserIdByActor(tenant.actorId)
-    if (authUserId === null) return []
-    return this.security.listSessions(authUserId, await this.currentToken(request))
+    const me = await this.whoami(tenant, request)
+    if (me.authUserId === null) return []
+    return this.security.listSessions(me.authUserId, me.token)
   }
 
   @Post("sessions/revoke-others")
@@ -38,10 +38,10 @@ export class SecurityController {
     @Tenant() tenant: TenantContext,
     @Req() request: FastifyRequest,
   ): Promise<{ sessions: number; apiKeys: number }> {
-    const authUserId = await this.identity.getAuthUserIdByActor(tenant.actorId)
+    const me = await this.whoami(tenant, request)
+    const authUserId = me.authUserId
     if (authUserId === null) return { sessions: 0, apiKeys: 0 }
-    const token = await this.currentToken(request)
-    const result = await this.security.revokeOtherSessions(authUserId, token)
+    const result = await this.security.revokeOtherSessions(authUserId, me.token)
     await this.security.record({
       event: "session.revoke_others",
       authUserId,
@@ -55,18 +55,34 @@ export class SecurityController {
   }
 
   @Get("audit")
-  async audit(@Tenant() tenant: TenantContext): Promise<AuthAuditRow[]> {
-    const authUserId = await this.identity.getAuthUserIdByActor(tenant.actorId)
-    if (authUserId === null) return []
-    return this.security.listAudit(authUserId)
+  async audit(
+    @Tenant() tenant: TenantContext,
+    @Req() request: FastifyRequest,
+  ): Promise<AuthAuditRow[]> {
+    const me = await this.whoami(tenant, request)
+    if (me.authUserId === null) return []
+    return this.security.listAudit(me.authUserId)
   }
 
-  /* dev 路徑沒有 session(刻意不觸 session,OQ-AUTH-7)→ null,
-     此時「目前這台」無從標示,revoke 也就等同全撤。 */
-  private async currentToken(request: FastifyRequest): Promise<string | null> {
+  /* 🔴 「我是誰」**以當下的 session 為準**,而不是由租戶的 actor 反推。
+
+     這一頁問的是「**這個登入的人**有哪些裝置」,session 就是那個問題的直接答案;
+     繞經 actor 反查等於多一層可能對不上的對映。dev 尤其明顯:租戶由
+     `x-dev-tenant` 決定、**刻意不觸 session**(OQ-AUTH-7),於是 actor 與實際登入者
+     可以是兩個人 —— 清單就會整片空白(實測如此)。
+
+     沒有 session 時(純 dev header 路徑)才退回 actor 對映,讓 dev 仍看得到東西。
+     兩條路都不接受呼叫端指定使用者。 */
+  private async whoami(
+    tenant: TenantContext,
+    request: FastifyRequest,
+  ): Promise<{ authUserId: string | null; token: string | null }> {
     const session = await this.auth.api
       .getSession({ headers: fromNodeHeaders(request.headers) })
       .catch(() => null)
-    return session?.session.token ?? null
+    if (session !== null) {
+      return { authUserId: session.user.id, token: session.session.token }
+    }
+    return { authUserId: await this.identity.getAuthUserIdByActor(tenant.actorId), token: null }
   }
 }

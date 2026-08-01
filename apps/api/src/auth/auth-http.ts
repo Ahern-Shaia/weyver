@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify"
+import { PEER_IP_HEADER } from "./auth-events.js"
 import type { Auth } from "./auth.js"
 
 /* 把 Better Auth 的 web-standard handler 掛到 Fastify(login/logout/register/org 端點於 /api/auth/*)。
@@ -15,6 +16,11 @@ export function mountAuthHandler(fastify: FastifyInstance, auth: Auth): void {
         if (typeof value === "string") headers.set(key, value)
         else if (Array.isArray(value)) for (const item of value) headers.append(key, item)
       }
+
+      /* 🔴 稽核用的來源 IP:以 Fastify 的 socket peer **覆寫**任何同名的 client 值。
+         必須在複製完 client headers 之後 set —— 否則攻擊者送一個
+         `x-weyver-peer-ip` 就能自己決定稽核紀錄裡的來源。 */
+      headers.set(PEER_IP_HEADER, request.ip)
 
       const hasBody = request.body !== undefined && request.body !== null
       const webRequest = new Request(url.toString(), {

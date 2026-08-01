@@ -28,6 +28,7 @@ let appPool: pg.Pool
 let db: DrizzleDb
 let security: SecurityService
 let tenantA = 0
+let auth: ReturnType<typeof createAuth>
 const AUTH_ID = "auth-sec-user"
 
 beforeAll(async () => {
@@ -36,7 +37,7 @@ beforeAll(async () => {
   await runMigrations(pool)
   /* Better Auth 自管 schema(user / session / account / organization / member)
      由它自己的 migration 建立,不在我們的 drizzle migration 裡 —— 承 mfa 測試同法。 */
-  const auth = createAuth(pool, "test-secret-0123456789abcdef")
+  auth = createAuth(pool, "test-secret-0123456789abcdef")
   const baMigrations = await getMigrations(auth.options)
   await baMigrations.runMigrations()
   db = createDrizzle(pool)
@@ -184,5 +185,61 @@ describe("🔴 app 車道的權限邊界", () => {
 
   it("🔴 app 車道不得刪除稽核 —— 清理只能由保留期 job 執行", async () => {
     await expect(appPool.query("DELETE FROM auth_audit")).rejects.toThrow(/permission denied/)
+  })
+})
+
+/* 🔴 認證事件是否**真的**被記下來 —— 前面那些測試只證明「寫得進去」,
+   不證明 Better Auth 的 hook 有把事件送過來。這一組走真實登入流程。
+
+   同時,它是 `ctx.context.returned` 的警報器:那個欄位**不在 better-auth 1.6.23
+   的公開型別裡**(只在 runtime 由 dispatch 設定),升版若移除,
+   「登入失敗要記得到」這條會轉紅。 */
+describe("🔴 認證事件記錄(走真實登入流程)", () => {
+  const email = "audit-flow@weyver.test"
+  const password = "s3cret-passw0rd"
+
+  const auditOf = async (ev: string, who: string | null) =>
+    (
+      await pool.query<{ n: number; detail: unknown }>(
+        `SELECT count(*)::int AS n, min(detail::text) AS detail FROM auth_audit
+          WHERE event = $1 AND auth_user_id IS NOT DISTINCT FROM $2`,
+        [ev, who],
+      )
+    ).rows[0]
+
+  it("登入成功 → 記 login.success", async () => {
+    await auth.api.signUpEmail({ body: { email, name: "稽核流程", password } })
+    const user = await pool.query<{ id: string }>(`SELECT id FROM "user" WHERE email = $1`, [email])
+    const uid = user.rows[0]?.id ?? ""
+    expect(uid).not.toBe("")
+
+    await auth.api.signInEmail({ body: { email, password } })
+    expect((await auditOf("login.success", uid))?.n).toBeGreaterThan(0)
+  })
+
+  it("🔴 密碼錯誤 → 記 login.failure,而且**掛在被試的那個帳號上**", async () => {
+    const user = await pool.query<{ id: string }>(`SELECT id FROM "user" WHERE email = $1`, [email])
+    const uid = user.rows[0]?.id ?? ""
+    await auth.api
+      .signInEmail({ body: { email, password: "definitely-wrong-pw" } })
+      .catch(() => null)
+
+    /* 掛得到人,使用者才看得到「有人在試我的帳號」。掛不到人 = 這頁沒有意義。 */
+    expect((await auditOf("login.failure", uid))?.n).toBeGreaterThan(0)
+  })
+
+  it("🔴 帳號不存在 → 仍記錄,但**不存對方輸入的 email**(攻擊者可控的自由文字)", async () => {
+    await auth.api
+      .signInEmail({ body: { email: "ghost@weyver.test", password: "definitely-wrong-pw" } })
+      .catch(() => null)
+
+    const row = await auditOf("login.failure", null)
+    expect(row?.n).toBeGreaterThan(0)
+    expect(String(row?.detail)).toContain("unknown_account")
+
+    const leaked = await pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM auth_audit WHERE detail::text LIKE '%ghost@weyver.test%'`,
+    )
+    expect(leaked.rows[0]?.n).toBe(0)
   })
 })

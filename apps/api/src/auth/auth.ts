@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { organization, twoFactor } from "better-auth/plugins"
 import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
+import { PEER_IP_HEADER, recordAuthEvent, recordFromContext } from "./auth-events.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
 import type { Pool } from "pg"
 
@@ -89,6 +90,20 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
           verify(data.hash, data.password),
       },
     },
+    /* 🔴 來源 IP 一律取自 `mountAuthHandler` 覆寫過的 peer header,不採預設的
+       `x-forwarded-for`。這個設定同時決定**兩件事**:
+
+       (a) **限流的分桶依據**。better-auth 1.6.23 的 `getIp()` 在未設 `trustedProxies`
+           時,對單一值的 `x-forwarded-for` **照收**(見 core `utils/ip.mjs`)。
+           於是「5 次/分」變成「每個偽造 IP 5 次/分」= 無上限。
+           實測:輪換假 IP 打 12 次登入,修正前 **0 次**被擋。
+       (b) **session 的 `ipAddress` 欄**,也就是「登入中的裝置」顯示的內容 ——
+           否則那一欄顯示的是攻擊者自己填的字串。
+
+       ⚠️ 正式部署在 LB / Cloud Run 之後時,Fastify 的 peer 會是 proxy,
+       全體使用者將落入同一個桶。屆時須設定 Fastify `trustProxy` 的信任範圍
+       (而非改回直接相信 client 的 `x-forwarded-for`)。 */
+    advanced: { ipAddress: { ipAddressHeaders: [PEER_IP_HEADER] } },
     // 暴力防護集中在認證「寫」端點;高頻「讀」(session 輪詢)放寬,否則正常使用即被 429
     rateLimit: {
       enabled: true,
@@ -157,19 +172,36 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
              全部在 after 做,因為 verify-totp 執行時使用者尚在 challenge 狀態、
              before hook 拿不到身分(詳見 totp-replay.ts 檔頭)。 */
       after: createAuthMiddleware(async (ctx) => {
-        if (ctx.path !== "/two-factor/verify-totp") return undefined
-        const session = ctx.context.newSession
-        const userId = session?.user?.id
-        if (typeof userId !== "string") return undefined
-        if (await claimTotpStep(pool, userId, Date.now())) return undefined
+        /* 🔴 IP 取自 `mountAuthHandler` 覆寫的 peer header,**不是** client 送的
+           `x-forwarded-for` —— 後者可任意偽造,在稽核紀錄裡就是讓攻擊者自己填來源。 */
+        const ip = ctx.headers?.get(PEER_IP_HEADER) ?? null
+        const ua = ctx.headers?.get("user-agent") ?? null
 
-        /* 此 time step 已被成功驗證過 → 重放。撤銷剛發出的 session 再拒絕。 */
-        const token = session?.session?.token
-        if (typeof token === "string") await revokeSessionByToken(pool, token)
-        throw new APIError("UNAUTHORIZED", {
-          code: "TOTP_CODE_ALREADY_USED",
-          message: "此驗證碼已使用過,請等待下一組",
-        })
+        if (ctx.path === "/two-factor/verify-totp") {
+          const session = ctx.context.newSession
+          const userId = session?.user?.id
+          if (typeof userId === "string" && !(await claimTotpStep(pool, userId, Date.now()))) {
+            /* 此 time step 已被成功驗證過 → 重放。撤銷剛發出的 session 再拒絕。 */
+            const token = session?.session?.token
+            if (typeof token === "string") await revokeSessionByToken(pool, token)
+            /* 這是「有人拿到了一組用過的碼」——最該留下痕跡的事件之一。
+               在此處記,是因為拋出後就走不到下面的通用記錄了。 */
+            await recordAuthEvent(pool, {
+              event: "login.failure",
+              authUserId: userId,
+              ipAddress: ip,
+              userAgent: ua,
+              detail: { reason: "totp_replay" },
+            })
+            throw new APIError("UNAUTHORIZED", {
+              code: "TOTP_CODE_ALREADY_USED",
+              message: "此驗證碼已使用過,請等待下一組",
+            })
+          }
+        }
+
+        await recordFromContext(pool, ctx, ip, ua)
+        return undefined
       }),
     },
     plugins: [
