@@ -5,7 +5,15 @@ const DATABASE_URL =
   process.env.DATABASE_URL ?? "postgres://weyver:weyver_dev@127.0.0.1:5433/weyver"
 
 /* e2e 前置:migration(冪等)+ 確保存在 tenant 1(dev guard 預設租戶;fresh DB 首插即 id 1)。
-   前提:PG 已啟(docker compose up -d postgres)。 */
+   前提:PG 已啟(docker compose up -d postgres)。
+
+   ⚠️ **註冊 / 登入端點限流 5 次/分,而整套 e2e 共用同一個來源 IP**
+   (`x-weyver-peer-ip`,見 apps/api auth.ts)。目前 3 支 spec 會註冊公司
+   (auth / mfa / security),加上各自的登入正好在額度內。
+   **再加一支「會註冊或登入」的 spec 就會撞 429**,而畫面上只會顯示
+   「Too many requests」——看起來像功能壞掉,其實是限流。
+   屆時的正解是讓新 spec **重用既有帳號**(Playwright 的 storageState),
+   而不是把 production 的限流調鬆。 */
 export default async function globalSetup(): Promise<void> {
   execSync("pnpm --filter @weyver/api db:migrate", {
     stdio: "inherit",

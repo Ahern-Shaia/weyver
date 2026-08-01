@@ -34,7 +34,7 @@ test("MFA:啟用 TOTP → 登出 → 登入需二步 → 驗證進工作區", as
   await expect(page.getByText("已啟用")).toBeVisible()
 
   // 登出 → 登入 → 密碼步後導二步
-  await page.getByRole("button", { name: "登出" }).click()
+  await page.getByRole("button", { name: "登出", exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
   await page.getByRole("textbox", { name: "電子郵件" }).fill(email)
   await page.getByRole("textbox", { name: "密碼" }).fill(password)

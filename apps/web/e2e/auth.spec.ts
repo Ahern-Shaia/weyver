@@ -26,7 +26,7 @@ test("認證流程:註冊公司 → 進工作區 → 登出 → 登入", async (
   await expect(page.getByText(orgName)).toBeVisible()
 
   // 2) 登出 → 回登入頁
-  await page.getByRole("button", { name: "登出" }).click()
+  await page.getByRole("button", { name: "登出", exact: true }).click()
   await expect(page).toHaveURL(/\/login/)
 
   // 3) 登入 → 回工作區;新 session 之 active org 由登入流程設回 → 頂帶顯示公司名

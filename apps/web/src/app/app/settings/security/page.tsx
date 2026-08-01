@@ -1,183 +1,22 @@
-"use client"
+import { AuthLog } from "./_components/auth-log"
+import { DeviceList } from "./_components/device-list"
+import { TwoFactor } from "./_components/two-factor"
 
-import { Button } from "@weyver/ui/button"
-import { Input } from "@weyver/ui/input"
-import { QRCodeSVG } from "qrcode.react"
-import { type FormEvent, useState } from "react"
-import { twoFactor, useSession } from "@/lib/auth/client"
-import { totpErrorMessage } from "@/lib/auth/totp-error"
-
-type Enroll = { readonly totpURI: string; readonly backupCodes: readonly string[] }
-
-function manualSecret(totpURI: string): string {
-  try {
-    return new URL(totpURI).searchParams.get("secret") ?? ""
-  } catch {
-    return ""
-  }
-}
+/* R1·A-1 M3|帳號安全。三個區塊由上而下依「使用者最可能要做的事」排:
+   先看有沒有可疑裝置 → 加強防護(2FA)→ 回溯發生過什麼。 */
 
 export default function SecurityPage(): React.ReactNode {
-  const { data: session, refetch } = useSession()
-  const enabled = Boolean(
-    (session?.user as { twoFactorEnabled?: boolean } | undefined)?.twoFactorEnabled,
-  )
-
-  const [password, setPassword] = useState("")
-  const [enroll, setEnroll] = useState<Enroll | null>(null)
-  const [code, setCode] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  const startEnable = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    setBusy(true)
-    setError(null)
-    const res = await twoFactor.enable({ password })
-    setBusy(false)
-    if (res.error || !res.data) {
-      setError("密碼錯誤或啟用失敗")
-      return
-    }
-    setEnroll({ totpURI: res.data.totpURI, backupCodes: res.data.backupCodes })
-    setPassword("")
-  }
-
-  const confirmEnable = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    setBusy(true)
-    setError(null)
-    const res = await twoFactor.verifyTotp({ code })
-    setBusy(false)
-    if (res.error) {
-      setError(totpErrorMessage(res.error))
-      return
-    }
-    setEnroll(null)
-    setCode("")
-    refetch()
-  }
-
-  const disable = async (event: FormEvent): Promise<void> => {
-    event.preventDefault()
-    setBusy(true)
-    setError(null)
-    const res = await twoFactor.disable({ password })
-    setBusy(false)
-    if (res.error) {
-      setError("密碼錯誤或停用失敗")
-      return
-    }
-    setPassword("")
-    refetch()
-  }
-
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-4 px-6 py-8">
+    <main className="mx-auto flex max-w-2xl flex-col gap-7 px-6 py-8">
       <div>
-        <h1 className="text-[16px] font-semibold text-ink">二步驟驗證</h1>
+        <h1 className="text-[16px] font-semibold text-ink">帳號安全</h1>
         <p className="mt-1 text-[12px] text-ink-3">
-          登入時除密碼外,再輸入 authenticator app(Google Authenticator / 1Password /
-          Authy)產生的一次性碼,大幅降低帳號被盜風險。
+          管理登入中的裝置、二步驟驗證,並查看自己帳號的認證活動紀錄。
         </p>
       </div>
-
-      <div className="rounded-sm border border-line bg-card p-4">
-        <div className="mb-3 flex items-center gap-2 text-[12px]">
-          <span className="text-ink-2">目前狀態</span>
-          <span
-            className={
-              enabled
-                ? "rounded-xs border border-ok-line bg-ok-t px-1.5 py-0.5 text-ok"
-                : "rounded-xs border border-line bg-head px-1.5 py-0.5 text-ink-2"
-            }
-          >
-            {enabled ? "已啟用" : "未啟用"}
-          </span>
-        </div>
-
-        {/* 未啟用 + 尚未開始:輸入密碼開始 */}
-        {!enabled && !enroll ? (
-          <form onSubmit={startEnable} className="flex flex-col gap-2">
-            <span className="text-[12px] font-medium text-ink-2">輸入目前密碼以啟用</span>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-            />
-            {error ? <p className="text-[13px] text-er">{error}</p> : null}
-            <Button type="submit" variant="primary" disabled={busy} className="mt-1 w-fit">
-              {busy ? "處理中…" : "啟用二步驟驗證"}
-            </Button>
-          </form>
-        ) : null}
-
-        {/* enroll 中:掃 QR + 輸入碼確認 + 顯示備用碼 */}
-        {enroll ? (
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="mb-2 text-[12px] text-ink-2">1. 用 authenticator app 掃描 QR:</p>
-              <div className="inline-block rounded-sm border border-line bg-white p-2">
-                <QRCodeSVG value={enroll.totpURI} size={140} />
-              </div>
-              <p className="mt-1 text-[12px] text-ink-3">
-                無法掃描?手動輸入代碼:
-                <span data-testid="totp-secret" className="font-mono text-ink-2">
-                  {manualSecret(enroll.totpURI)}
-                </span>
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-[12px] text-ink-2">
-                2. 妥善保存備用碼(遺失手機時救援,每組只能用一次):
-              </p>
-              <div className="grid grid-cols-2 gap-1 rounded-sm border border-line bg-head p-2 font-mono text-[12px] text-ink-2">
-                {enroll.backupCodes.map((c) => (
-                  <span key={c}>{c}</span>
-                ))}
-              </div>
-            </div>
-            <form onSubmit={confirmEnable} className="flex flex-col gap-2">
-              <span className="text-[12px] text-ink-2">3. 輸入 app 顯示的 6 碼完成啟用:</span>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="123456"
-                className="w-40"
-              />
-              {error ? <p className="text-[13px] text-er">{error}</p> : null}
-              <Button type="submit" variant="primary" disabled={busy} className="w-fit">
-                {busy ? "驗證中…" : "完成啟用"}
-              </Button>
-            </form>
-          </div>
-        ) : null}
-
-        {/* 已啟用:輸入密碼停用 */}
-        {enabled ? (
-          <form onSubmit={disable} className="flex flex-col gap-2">
-            <span className="text-[12px] font-medium text-ink-2">輸入目前密碼以停用</span>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-            />
-            {error ? <p className="text-[13px] text-er">{error}</p> : null}
-            <Button type="submit" variant="danger" disabled={busy} className="mt-1 w-fit">
-              {busy ? "處理中…" : "停用二步驟驗證"}
-            </Button>
-          </form>
-        ) : null}
-      </div>
+      <DeviceList />
+      <TwoFactor />
+      <AuthLog />
     </main>
   )
 }
