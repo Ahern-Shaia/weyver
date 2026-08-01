@@ -150,12 +150,32 @@
 }
 
 /* ── 三配色主題(主色家族;結構/狀態/功能色跨主題共用)──── */
+/* 🔴 每個主題只換 BASE。navy 亦明文列出 —— 見下方 `[data-theme]` 規則的理由。 */
+[data-theme="navy"] {
+  --base-brand: #22568a;
+}
 [data-theme="teal"] {
-  /* 只換 BASE,其餘自動推導 */
   --base-brand: #0c5f73;
 }
 [data-theme="graphite"] {
   --base-brand: #333739;
+}
+
+/* 🔴 推導必須在**掛 data-theme 的元素上重新宣告一次**,不能只寫在 `@theme`(= `:root`)。
+
+   CSS 自訂屬性的 `var()` 是在**宣告它的元素**上就完成代換的:`--color-primary: var(--base-brand)`
+   寫在 `:root`,於 `:root` 就算成一個固定顏色,子元素只是繼承那個算好的值。
+   因此在子元素上改 `--base-brand` **不會**讓它重算 —— 主題色塊(每顆色塊掛一個 data-theme
+   來預覽該主題)會全部顯示成當前主題的顏色。
+
+   這是本次改推導時**實際造成的回歸**:三顆色塊量出來同色,而單元測試全綠
+   (測試讀的是 CSS 檔的文字,看不出代換時機)。瀏覽器量色才抓得到。
+
+   白牌承諾不受影響:要換色仍然只需給一個 `--base-brand`。 */
+[data-theme] {
+  --color-primary: var(--base-brand);
+  --color-primary-d: color-mix(in srgb, var(--base-brand), black 20%);
+  --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%);
 }
 
 /* ── reduced-motion:採 Cloudscape「全部歸零」式(R1·UX-1 OQ-10=A 維持現況)。

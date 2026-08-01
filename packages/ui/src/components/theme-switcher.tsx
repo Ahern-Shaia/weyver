@@ -44,8 +44,11 @@ export function ThemeSwitcher({ className }: { readonly className?: string }): R
           aria-checked={theme === item.id}
           title={item.label}
           onClick={() => setTheme(item.id)}
-          /* navy 是預設主題(:root),無 data-theme 屬性 */
-          {...(item.id === "navy" ? {} : { "data-theme": item.id })}
+          /* 🔴 每顆色塊都要掛 data-theme —— 包含 navy。
+             navy 曾被當成「預設主題,不必掛」,結果切到深海青時**三顆色塊全變深海青**
+             (它們吃 `bg-primary`,沒有自己的主題範圍就跟著 root 走)。
+             tokens.css 因此明文列出 `[data-theme="navy"]`。 */
+          data-theme={item.id}
           className={cn(
             "size-4 rounded-xs border border-line bg-primary",
             theme === item.id && "outline-2 outline-offset-1 outline-primary",
