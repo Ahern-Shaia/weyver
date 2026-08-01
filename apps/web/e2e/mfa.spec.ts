@@ -28,11 +28,25 @@ test("MFA:啟用 TOTP → 登出 → 登入需二步 → 驗證進工作區", as
   await page.getByPlaceholder("••••••••").fill(password)
   await page.getByRole("button", { name: "啟用二步驟驗證" }).click()
 
+  /* 🔴 備用碼是**單向雜湊**儲存且只顯示這一次 —— 弄丟就永久拿不回來,
+     而弄丟手機正是它存在的理由。GitHub / Google 都提供下載/複製/列印
+     並要求確認已保存;缺了那道確認,使用者會一路點過去,
+     在手機掉了那天才發現自己沒存。 */
+  await expect(page.getByRole("button", { name: "下載為 .txt" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "複製全部" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "完成啟用" })).toBeDisabled()
+  await page.getByRole("checkbox").check()
+  await expect(page.getByRole("button", { name: "完成啟用" })).toBeEnabled()
+
   const secret = ((await page.getByTestId("totp-secret").textContent()) ?? "").trim()
   expect(secret.length).toBeGreaterThan(0)
   await page.getByPlaceholder("123456").fill(authenticator.generate(secret))
   await page.getByRole("button", { name: "完成啟用" }).click()
   await expect(page.getByText("已啟用")).toBeVisible()
+
+  /* 🔴 沒有重生就只剩「停用再啟用」一條路,而那中間有一段**完全沒有第二因子**
+     的空窗 —— 為了換一組碼而暫時降低安全等級,本末倒置。 */
+  await expect(page.getByRole("button", { name: "重新產生備用碼" })).toBeVisible()
 
   // 登出 → 登入 → 密碼步後導二步
   await page.getByRole("button", { name: "登出", exact: true }).click()

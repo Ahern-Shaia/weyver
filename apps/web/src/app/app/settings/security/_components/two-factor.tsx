@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react"
 import { type FormEvent, useState } from "react"
 import { twoFactor, useSession } from "@/lib/auth/client"
 import { totpErrorMessage } from "@/lib/auth/totp-error"
+import { BackupCodes } from "./backup-codes"
 
 type Enroll = { readonly totpURI: string; readonly backupCodes: readonly string[] }
 
@@ -28,6 +29,26 @@ export function TwoFactor(): React.ReactNode {
   const [code, setCode] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  /* 已啟用者重新產生的結果 —— 與 enroll 共用同一個顯示元件 */
+  const [fresh, setFresh] = useState<readonly string[] | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
+
+  /* 🔴 沒有重生就只剩「停用再啟用」一條路,而那中間有一段**完全沒有第二因子**
+     的空窗 —— 為了換一組碼而暫時降低安全等級,本末倒置。 */
+  const regenerate = async (): Promise<void> => {
+    const pw = window.prompt("為了重新產生備用碼,請再次輸入密碼")
+    if (pw === null || pw === "") return
+    setRegenerating(true)
+    setError(null)
+    const res = await twoFactor.generateBackupCodes({ password: pw })
+    setRegenerating(false)
+    if (res.error || !res.data) {
+      setError("密碼錯誤或產生失敗")
+      return
+    }
+    setFresh(res.data.backupCodes)
+  }
 
   const startEnable = async (event: FormEvent): Promise<void> => {
     event.preventDefault()
@@ -135,11 +156,19 @@ export function TwoFactor(): React.ReactNode {
               <p className="mb-1 text-[12px] text-ink-2">
                 2. 妥善保存備用碼(遺失手機時救援,每組只能用一次):
               </p>
-              <div className="grid grid-cols-2 gap-1 rounded-sm border border-line bg-head p-2 font-mono text-[12px] text-ink-2">
-                {enroll.backupCodes.map((c) => (
-                  <span key={c}>{c}</span>
-                ))}
-              </div>
+              <BackupCodes codes={enroll.backupCodes} />
+              {/* 🔴 **確認已保存才讓流程往下走**(GitHub / Google 同做法)。
+                  備用碼是雜湊儲存且只顯示這一次 —— 直接放行等於讓人一路點過去,
+                  然後在手機掉了那天才發現自己沒存。 */}
+              <label className="mt-2 flex items-center gap-2 text-[12px] text-ink-2">
+                <input
+                  type="checkbox"
+                  checked={saved}
+                  onChange={(e) => setSaved(e.target.checked)}
+                  className="accent-primary"
+                />
+                我已妥善保存這組備用碼(之後無法再次查看)
+              </label>
             </div>
             <form onSubmit={confirmEnable} className="flex flex-col gap-2">
               <span className="text-[12px] text-ink-2">3. 輸入 app 顯示的 6 碼完成啟用:</span>
@@ -153,14 +182,38 @@ export function TwoFactor(): React.ReactNode {
                 className="w-40"
               />
               {error ? <p className="text-[13px] text-er">{error}</p> : null}
-              <Button type="submit" variant="primary" disabled={busy} className="w-fit">
+              <Button type="submit" variant="primary" disabled={busy || !saved} className="w-fit">
                 {busy ? "驗證中…" : "完成啟用"}
               </Button>
             </form>
           </div>
         ) : null}
 
-        {/* 已啟用:輸入密碼停用 */}
+        {/* 已啟用:備用碼管理 + 輸入密碼停用 */}
+        {enabled ? (
+          <div className="mb-4 flex flex-col gap-2 border-b border-line pb-4">
+            <span className="text-[12px] font-medium text-ink-2">備用碼</span>
+            {fresh === null ? (
+              <>
+                <p className="text-[12px] text-ink-3">
+                  備用碼以單向雜湊儲存,啟用當下顯示後即無法再查看。
+                  用剩不多或懷疑外洩時,可重新產生一組。
+                </p>
+                <Button onClick={() => void regenerate()} disabled={regenerating} className="w-fit">
+                  {regenerating ? "產生中…" : "重新產生備用碼"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-[12px] text-ink-2">
+                  新的備用碼已產生,<b>舊的已全部失效</b>。這組同樣只顯示這一次。
+                </p>
+                <BackupCodes codes={fresh} />
+              </>
+            )}
+          </div>
+        ) : null}
+
         {enabled ? (
           <form onSubmit={disable} className="flex flex-col gap-2">
             <span className="text-[12px] font-medium text-ink-2">輸入目前密碼以停用</span>
