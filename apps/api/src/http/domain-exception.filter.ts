@@ -33,7 +33,7 @@ import {
   UnknownFieldError,
   VersionConflictError,
 } from "../form-engine/errors.js"
-import { SsrfBlockedError } from "../integrations/ssrf-guard.js"
+import { SsrfBlockedError } from "./ssrf-guard.js"
 import { IdentifierError } from "../form-engine/identifiers.js"
 
 interface ErrorEnvelope {

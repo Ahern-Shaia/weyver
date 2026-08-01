@@ -264,7 +264,10 @@ describe("zip bomb", () => {
   it("正常 Office 檔案的壓縮比不誤判", () => {
     const zip = buildZip([
       { name: "[Content_Types].xml", data: Buffer.from(CONTENT_TYPES_PLAIN) },
-      { name: "word/document.xml", data: Buffer.from("<w:document>" + "x".repeat(2000) + "</w:document>") },
+      {
+        name: "word/document.xml",
+        data: Buffer.from("<w:document>" + "x".repeat(2000) + "</w:document>"),
+      },
     ])
     expect(inspectZipBomb(zip).ok).toBe(true)
     expect(inspectOoxml(zip).ok).toBe(true)

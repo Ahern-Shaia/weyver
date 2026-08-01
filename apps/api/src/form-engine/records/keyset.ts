@@ -74,8 +74,7 @@ function after(
   if (value === null) {
     /* last 是 NULL:NULLS LAST 之下它已排在最尾,後面只可能是同為 NULL 的列 */
     void builder.where((g: Knex.QueryBuilder) => {
-      const isNull =
-        expr === undefined ? g.whereNull(key.column) : g.whereRaw(`${expr} is null`)
+      const isNull = expr === undefined ? g.whereNull(key.column) : g.whereRaw(`${expr} is null`)
       void isNull.andWhere((t: Knex.QueryBuilder) => {
         after(t, keys, values, idColumn, id, index + 1)
       })

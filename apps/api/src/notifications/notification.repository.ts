@@ -98,9 +98,7 @@ export class NotificationRepository {
         createdAt: notifications.createdAt,
       })
       .from(notifications)
-      .where(
-        and(eq(notifications.tenantId, tenantId), eq(notifications.recipientActorId, actorId)),
-      )
+      .where(and(eq(notifications.tenantId, tenantId), eq(notifications.recipientActorId, actorId)))
       .orderBy(desc(notifications.createdAt))
       .limit(limit)
   }

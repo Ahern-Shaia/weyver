@@ -177,7 +177,9 @@ export class TrashController {
     const entry = await this.trash.getEntry(tenant.tenantId, entryId)
     if (entry === null) throw new NotFoundException({ code: "NOT_FOUND", message: "trash entry" })
     const required = entry.resourceType === "record" ? "edit" : "design"
-    if (entry.formId === null ? !permissions.isAdmin : !permissions.hasAction(entry.formId, required)) {
+    if (
+      entry.formId === null ? !permissions.isAdmin : !permissions.hasAction(entry.formId, required)
+    ) {
       /* 無權者一律 404 而非 403 —— 403 等於承認「這個 id 存在」 */
       throw new NotFoundException({ code: "NOT_FOUND", message: "trash entry" })
     }

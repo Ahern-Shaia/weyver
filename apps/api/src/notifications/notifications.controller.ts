@@ -4,11 +4,7 @@ import { TenantGuard } from "../auth/tenant.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import {
-  LEVEL_VALUES,
-  type NotificationLevel,
-  NOTIFICATION_EVENTS,
-} from "./notification-specs.js"
+import { LEVEL_VALUES, type NotificationLevel, NOTIFICATION_EVENTS } from "./notification-specs.js"
 import { NotificationRepository } from "./notification.repository.js"
 import { NotificationService } from "./notification.service.js"
 
@@ -25,8 +21,14 @@ const eventCodes = Object.values(NOTIFICATION_EVENTS)
 const prefSchema = z.object({
   scope: z.enum(["tenant", "category", "form"]),
   scopeId: z.number().int().positive().nullable(),
-  level: z.number().int().refine((v) => LEVEL_VALUES.includes(v), { message: "未知的通知層級" }),
-  customEvents: z.array(z.enum(eventCodes as [string, ...string[]])).max(20).nullable(),
+  level: z
+    .number()
+    .int()
+    .refine((v) => LEVEL_VALUES.includes(v), { message: "未知的通知層級" }),
+  customEvents: z
+    .array(z.enum(eventCodes as [string, ...string[]]))
+    .max(20)
+    .nullable(),
 })
 
 const settingsSchema = z.object({

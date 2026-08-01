@@ -73,7 +73,9 @@ export class EventFanoutService {
       let deliveries = 0
       for (const event of events) {
         deliveries += await this.fanOut(event)
-        await this.knex("event_outbox").where({ id: event.id }).update({ fanned_out_at: this.knex.fn.now() })
+        await this.knex("event_outbox")
+          .where({ id: event.id })
+          .update({ fanned_out_at: this.knex.fn.now() })
       }
       return { processed: events.length, deliveries, skipped: false }
     } finally {

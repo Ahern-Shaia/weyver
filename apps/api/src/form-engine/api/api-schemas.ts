@@ -118,7 +118,6 @@ export function toFormDto(loaded: FormWithFields): FormDto {
   }
 }
 
-
 /* F-1 分組統計請求。query 與列表同一個 schema —— 母體必須一致,否則小計與列表對不上。 */
 export const groupStatsBodySchema = z.object({
   query: z.unknown(),

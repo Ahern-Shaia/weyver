@@ -232,7 +232,10 @@ export class OptionService {
       throw new FieldNotFoundError(fieldId)
     }
     return {
-      field: { options: field.options as Record<string, unknown>, cellValueType: field.cellValueType },
+      field: {
+        options: field.options as Record<string, unknown>,
+        cellValueType: field.cellValueType,
+      },
       table: physicalTableName(formId),
       column: physicalColumnName(fieldId),
       multi: field.cellValueType === "multiSelect",

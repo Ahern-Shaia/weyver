@@ -11,7 +11,7 @@ export const importPlanSchema = z.object({
   /* 比對鍵。1–3 欄複合鍵(對齊 Airtable API 上限)。insert_only 不需要。 */
   matchFields: z.array(z.string().min(1).max(100)).max(3).default([]),
   /* 正規化(OQ-IMP-7)。trim 與大小寫對齊 Airtable;
-     **NFKC 全形→半形業界全無**,但台灣客戶的舊 Excel 混用全半形是常態。 */
+   **NFKC 全形→半形業界全無**,但台灣客戶的舊 Excel 混用全半形是常態。 */
   caseSensitive: z.boolean().default(false),
   trim: z.boolean().default(true),
   normalize: z.enum(["none", "nfkc"]).default("nfkc"),

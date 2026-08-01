@@ -442,14 +442,20 @@ export class RecordService {
 
      **once frozen, stays frozen**:ON CONFLICT DO NOTHING。
      重複凍結會用「現在的主檔值」蓋掉「定案當下的值」,正好是本機制要防的事。 */
-  async freezeComputed(tenantId: number, formId: number, recordId: number, reason: string): Promise<void> {
+  async freezeComputed(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    reason: string,
+  ): Promise<void> {
     const resolved = await this.resolveForm(tenantId, formId)
     const computedFields = resolved.fields.filter((f) => f.type === "lookup" || f.type === "rollup")
     if (computedFields.length === 0) return
 
     const record = await this.getRecord(tenantId, formId, recordId)
     const frozen: RecordValues = {}
-    for (const field of computedFields) frozen[field.row.name] = record.values[field.row.name] ?? null
+    for (const field of computedFields)
+      frozen[field.row.name] = record.values[field.row.name] ?? null
 
     await this.inTenantTx(tenantId, (trx) =>
       trx.raw(
@@ -541,7 +547,9 @@ export class RecordService {
         const rows = (await builder.limit(q.limit + 1)) as Record<string, unknown>[]
         const truncated = rows.length > q.limit
         return {
-          records: (truncated ? rows.slice(0, q.limit) : rows).map((r) => this.toRecord(resolved, r)),
+          records: (truncated ? rows.slice(0, q.limit) : rows).map((r) =>
+            this.toRecord(resolved, r),
+          ),
           truncated,
         }
       },
@@ -556,7 +564,10 @@ export class RecordService {
       actorId ?? undefined,
     )
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
-    return { records: this.maskRead(resolved, formId, computed, policy), truncated: result.truncated }
+    return {
+      records: this.maskRead(resolved, formId, computed, policy),
+      truncated: result.truncated,
+    }
   }
 
   /* filter + 快速搜尋的共用述詞(列表 / 分組統計同源)。 */
@@ -676,7 +687,12 @@ export class RecordService {
           for (const [i, a] of aggregates.entries()) {
             agg[`${a.fn}:${a.field}`] = r[`a${String(i)}`] ?? null
           }
-          return { keys: keys.slice(0, Math.max(depth, 1)), depth: Math.max(depth, 1), count: Number(r.n), aggregates: agg }
+          return {
+            keys: keys.slice(0, Math.max(depth, 1)),
+            depth: Math.max(depth, 1),
+            count: Number(r.n),
+            aggregates: agg,
+          }
         })
         const truncated = out.length > MAX_GROUPS
         return { groups: truncated ? out.slice(0, MAX_GROUPS) : out, truncated }
@@ -740,7 +756,13 @@ export class RecordService {
       tenantId,
       async (trx) => {
         let inner = this.baseQuery(trx, tenantId, resolved).clearSelect().clearOrder()
-        inner = this.applyQueryPredicates(inner, resolved, formId, { ...q, sort: [], limit: 1 } as unknown as ListQuery, policy)
+        inner = this.applyQueryPredicates(
+          inner,
+          resolved,
+          formId,
+          { ...q, sort: [], limit: 1 } as unknown as ListQuery,
+          policy,
+        )
         /* 🔴 §0.3 陷阱 1:breakout 若是**表達式**(本專案的日期分組正是 date_trunc),
            在 GROUPING SETS 與 GROUPING() 中各自出現時 planner 視為不同運算式而拒絕 query。
            故先在內層 subquery **物化成具名欄** d0..dN 再聚合。 */
@@ -925,7 +947,15 @@ export class RecordService {
     const withDefaults = await this.applyDefaults(resolved, values, actorId)
     this.assertWritable(resolved, formId, withDefaults, policy)
     const record = await this.inTenantTx(tenantId, async (trx) => {
-      const created = await this.insertOne(trx, tenantId, resolved, withDefaults, actorId, null, null)
+      const created = await this.insertOne(
+        trx,
+        tenantId,
+        resolved,
+        withDefaults,
+        actorId,
+        null,
+        null,
+      )
       /* 🔴 事件與資料**同一 tx**(G-1 M1)。分開寫就會回到 `record.created`
          宣告了卻從沒發射過的老問題 —— 只是這次是「有時候發射」,更難查。 */
       await this.events?.emitInTx(trx, {
@@ -1091,79 +1121,79 @@ export class RecordService {
     const result = await this.inTenantTx(
       tenantId,
       async (trx) => {
-      let builder = this.baseQuery(trx, tenantId, resolved)
-      /* 🔴 filter / 快速搜尋抽為共用述詞 —— **列表與分組統計必須用同一份**,
+        let builder = this.baseQuery(trx, tenantId, resolved)
+        /* 🔴 filter / 快速搜尋抽為共用述詞 —— **列表與分組統計必須用同一份**,
          否則小計的母體與列表看到的不是同一批,數字對不上且錯得安靜(F-1 §4.2)。 */
-      builder = this.applyQueryPredicates(builder, resolved, formId, query, policy)
-      const sortKeys: SortKey[] = []
-      /* 🔴 F-1:分組鍵**前置**於使用者排序鍵(§4.1)。
+        builder = this.applyQueryPredicates(builder, resolved, formId, query, policy)
+        const sortKeys: SortKey[] = []
+        /* 🔴 F-1:分組鍵**前置**於使用者排序鍵(§4.1)。
          分組不是聚合查詢,是排序的變形 —— ORDER BY g1,g2,g3, <排序鍵>, id,
          cursor 一併涵蓋 group key,故「第 2 頁」是扁平序列的下一段、不會跨組錯位。
          這正是 AG Grid 的 paginateChildRows 語意;改用 offset 等於放棄 #95 修好的複合 cursor。 */
-      for (const group of query.groupBy ?? []) {
-        const field = resolved.byName.get(group.field)
-        if (field === undefined) throw new UnknownFieldError(group.field)
-        /* 隱藏欄不得分組 —— **group header 的值本身即是資料**,比小計更早洩漏(FMEA G2) */
-        this.assertReadable(resolved, formId, group.field, policy)
-        const expr = this.groupExpression(field, group)
-        builder = builder.orderByRaw(
-          `${expr} ${group.dir === "desc" ? "desc" : "asc"} nulls last`,
-        )
-        sortKeys.push({ column: field.column, dir: group.dir, raw: expr })
-      }
-      for (const sort of query.sort) {
-        const field = resolved.byName.get(sort.field)
-        if (field === undefined) throw new UnknownFieldError(sort.field)
-        /* 隱藏欄不得作為排序鍵 —— 否則可由列序推出大小關係 */
-        this.assertReadable(resolved, formId, sort.field, policy)
-        // 空值一律沉底(PG DESC 預設 NULLS FIRST,對使用者不直覺)
-        builder = builder.orderBy(field.column, sort.dir, "last")
-        sortKeys.push({ column: field.column, dir: sort.dir })
-      }
-      /* 折疊的群組:從查詢排除(而非前端隱藏)。否則折疊後仍吃掉 page size,
-         使用者會看到「明明折疊了卻出現空白頁」(承 Teable collapsedGroupIds)。 */
-      const collapsed = query.collapsed ?? []
-      if (collapsed.length > 0 && (query.groupBy ?? []).length > 0) {
-        const groups = query.groupBy ?? []
-        for (const combo of collapsed) {
-          builder = builder.whereNot((g: Knex.QueryBuilder) => {
-            combo.forEach((value, i) => {
-              const gb = groups[i]
-              if (gb === undefined) return
-              const field = resolved.byName.get(gb.field)
-              if (field === undefined) return
-              const expr = this.groupExpression(field, gb)
-              if (value === GROUP_EMPTY) g.whereRaw(`${expr} is null`)
-              else g.whereRaw(`${expr} = ?`, [value])
-            })
-          })
+        for (const group of query.groupBy ?? []) {
+          const field = resolved.byName.get(group.field)
+          if (field === undefined) throw new UnknownFieldError(group.field)
+          /* 隱藏欄不得分組 —— **group header 的值本身即是資料**,比小計更早洩漏(FMEA G2) */
+          this.assertReadable(resolved, formId, group.field, policy)
+          const expr = this.groupExpression(field, group)
+          builder = builder.orderByRaw(
+            `${expr} ${group.dir === "desc" ? "desc" : "asc"} nulls last`,
+          )
+          sortKeys.push({ column: field.column, dir: group.dir, raw: expr })
         }
-      }
-
-      const idColumn = `${resolved.table}.id`
-      builder = builder.orderBy(idColumn, "asc")
-
-      /* 🔴 續頁條件必須與排序鍵一致(#95)。原本恆為 `id > cursor`,
-         排序欄非 id 時會整頁跳過 —— 且使用者看不出少了東西。 */
-      if (query.cursor !== undefined) {
-        const decoded = decodeCursor(query.cursor)
-        if (decoded !== null) builder = applyKeyset(builder, sortKeys, decoded, idColumn)
-      }
-      const rows = (await builder.limit(query.limit + 1)) as Record<string, unknown>[]
-
-      const hasMore = rows.length > query.limit
-      const page = hasMore ? rows.slice(0, query.limit) : rows
-      const records = page.map((row) => this.toRecord(resolved, row))
-      const lastRow = page[page.length - 1]
-      const last = records[records.length - 1]
-      const nextCursor =
-        hasMore && last !== undefined && lastRow !== undefined
-          ? encodeCursor({
-              v: sortKeys.map((k) => lastRow[k.column.split(".").pop() ?? k.column] ?? null),
-              id: last.id,
+        for (const sort of query.sort) {
+          const field = resolved.byName.get(sort.field)
+          if (field === undefined) throw new UnknownFieldError(sort.field)
+          /* 隱藏欄不得作為排序鍵 —— 否則可由列序推出大小關係 */
+          this.assertReadable(resolved, formId, sort.field, policy)
+          // 空值一律沉底(PG DESC 預設 NULLS FIRST,對使用者不直覺)
+          builder = builder.orderBy(field.column, sort.dir, "last")
+          sortKeys.push({ column: field.column, dir: sort.dir })
+        }
+        /* 折疊的群組:從查詢排除(而非前端隱藏)。否則折疊後仍吃掉 page size,
+         使用者會看到「明明折疊了卻出現空白頁」(承 Teable collapsedGroupIds)。 */
+        const collapsed = query.collapsed ?? []
+        if (collapsed.length > 0 && (query.groupBy ?? []).length > 0) {
+          const groups = query.groupBy ?? []
+          for (const combo of collapsed) {
+            builder = builder.whereNot((g: Knex.QueryBuilder) => {
+              combo.forEach((value, i) => {
+                const gb = groups[i]
+                if (gb === undefined) return
+                const field = resolved.byName.get(gb.field)
+                if (field === undefined) return
+                const expr = this.groupExpression(field, gb)
+                if (value === GROUP_EMPTY) g.whereRaw(`${expr} is null`)
+                else g.whereRaw(`${expr} = ?`, [value])
+              })
             })
-          : null
-      return { records, nextCursor }
+          }
+        }
+
+        const idColumn = `${resolved.table}.id`
+        builder = builder.orderBy(idColumn, "asc")
+
+        /* 🔴 續頁條件必須與排序鍵一致(#95)。原本恆為 `id > cursor`,
+         排序欄非 id 時會整頁跳過 —— 且使用者看不出少了東西。 */
+        if (query.cursor !== undefined) {
+          const decoded = decodeCursor(query.cursor)
+          if (decoded !== null) builder = applyKeyset(builder, sortKeys, decoded, idColumn)
+        }
+        const rows = (await builder.limit(query.limit + 1)) as Record<string, unknown>[]
+
+        const hasMore = rows.length > query.limit
+        const page = hasMore ? rows.slice(0, query.limit) : rows
+        const records = page.map((row) => this.toRecord(resolved, row))
+        const lastRow = page[page.length - 1]
+        const last = records[records.length - 1]
+        const nextCursor =
+          hasMore && last !== undefined && lastRow !== undefined
+            ? encodeCursor({
+                v: sortKeys.map((k) => lastRow[k.column.split(".").pop() ?? k.column] ?? null),
+                id: last.id,
+              })
+            : null
+        return { records, nextCursor }
       },
       /* 🔴 E-1:view 受 own 限制時,DB 端的 RESTRICTIVE policy 會把別人的記錄濾掉。
          這裡只是把身分與範圍講清楚 —— 就算這行漏了,policy 仍是 fail-closed。 */
@@ -1336,9 +1366,7 @@ export class RecordService {
           formId,
           recordId,
           fields: toIndexable(resolved.fields),
-          values: Object.fromEntries(
-            resolved.fields.map((f) => [f.row.name, restored[f.column]]),
-          ),
+          values: Object.fromEntries(resolved.fields.map((f) => [f.row.name, restored[f.column]])),
         })
       }
       return { ok: true as const }
@@ -1758,8 +1786,7 @@ export class RecordService {
        欄位被清空時 assignees 也要跟著清,否則權限會留在被移除的人身上。 */
     const grantFields = resolved.fields.filter(
       (f) =>
-        f.type === "member" &&
-        (f.row.options as { grantsAccess?: boolean }).grantsAccess === true,
+        f.type === "member" && (f.row.options as { grantsAccess?: boolean }).grantsAccess === true,
     )
     if (grantFields.length > 0) {
       const ids = grantFields

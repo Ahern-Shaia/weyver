@@ -1,6 +1,8 @@
 import { z } from "zod"
 
 /* dev/test 專用佔位 secret(非真實密鑰;production 一律 fail-fast 要求由 Infisical 注入 —— AGENTS 🔒-6) */
+const DEV_ONLY_SECRET_KEK = "dev-only-secret-kek-do-not-use-in-production-0123456789"
+
 const DEV_ONLY_AUTH_SECRET = "dev-only-insecure-better-auth-secret-change-me"
 
 /* 唯一允許讀 process.env 的地方(AGENTS Config 鐵則);開機 schema 驗證 fail-fast */
@@ -63,16 +65,32 @@ export const envSchema = z
     STORAGE_MAX_FILE_MB: z.coerce.number().int().min(1).max(200).default(20),
     // 每租戶總量配額 MB(0 = 不限)
     STORAGE_TENANT_QUOTA_MB: z.coerce.number().int().min(0).default(2048),
+    /* 🔴 A-1 M4|第三方憑證加密的 KEK(信封加密的外層金鑰,見 crypto/secret-box.ts)。
+
+       **與 BETTER_AUTH_SECRET 分開**:NIST SP 800-57 Part 1 §5.2 的金鑰用途分離原則 ——
+       一把金鑰只做一件事,否則其中一個用途外洩就同時毀掉另一個。
+       prod 必填(見 superRefine);dev/test 回退佔位值,否則本機起不來。 */
+    WEYVER_SECRET_KEK: z.string().min(32).optional(),
+    // KEK 版本識別;輪替時遞增,舊資料靠 sealed 字串裡的 kekId 判斷該用哪一把
+    WEYVER_SECRET_KEK_ID: z.string().default("1"),
   })
   .superRefine((env, ctx) => {
-    const prodSecurity =
-      env.NODE_ENV === "production" || env.WEYVER_ENFORCE_PROD_SECURITY === "1"
+    const prodSecurity = env.NODE_ENV === "production" || env.WEYVER_ENFORCE_PROD_SECURITY === "1"
     if (prodSecurity && !env.BETTER_AUTH_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["BETTER_AUTH_SECRET"],
         message:
           "BETTER_AUTH_SECRET is required in production (min 32 chars; inject via Infisical)",
+      })
+    }
+    /* 🔴 沒有 KEK 就沒有加密。prod 若回退到佔位值,等於**全租戶的第三方憑證
+       共用一把寫在原始碼裡的金鑰** —— 而且不會有任何錯誤訊息。 */
+    if (prodSecurity && !env.WEYVER_SECRET_KEK) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["WEYVER_SECRET_KEK"],
+        message: "WEYVER_SECRET_KEK is required in production (min 32 chars; inject via Infisical)",
       })
     }
     /* 🔴 app 車道未設時會回落到 DATABASE_URL(migration 特權角色)→ RLS 不執法。
@@ -116,6 +134,7 @@ export const envSchema = z
     ...env,
     APP_DATABASE_URL: env.APP_DATABASE_URL ?? env.DATABASE_URL,
     BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET ?? DEV_ONLY_AUTH_SECRET,
+    WEYVER_SECRET_KEK: env.WEYVER_SECRET_KEK ?? DEV_ONLY_SECRET_KEK,
   }))
 
 export type Env = z.infer<typeof envSchema>

@@ -164,8 +164,6 @@ export class DdlService {
     await this.audit(tenantId, formId, "alterFieldType", { fieldId, from, to: newType }, "", "ok")
   }
 
-
-
   /* 轉換前把整欄原值複製到側表。到期日與匯入撤銷一致(30 天)。 */
   private async snapshotColumn(
     tenantId: number,
@@ -211,8 +209,7 @@ export class DdlService {
        改用反向 cast:先把現值盡量轉回原型別,快照再覆蓋它有的那些列。
        不在快照裡的列(轉換後新增)因此保有自己的值。 */
     const { fields: current } = await this.readyForm(tenantId, formId)
-    const nowType = (current.find((f) => f.id === fieldId)?.cellValueType ??
-      from) as CellValueType
+    const nowType = (current.find((f) => f.id === fieldId)?.cellValueType ?? from) as CellValueType
 
     const restored = await this.knex.transaction(async (trx) => {
       await this.acquireDdlLock(trx, formId)
@@ -417,7 +414,13 @@ export class DdlService {
                 count(*) FILTER (WHERE ${q} IS NOT NULL AND (${cast.sql}) IS NOT NULL
                                    AND (${cast.sql})::text <> ${q}::text)::int AS altered
            FROM ${DATA_SCHEMA}.?? WHERE tenant_id = ? AND deleted_at IS NULL`,
-        [...cast.bindings, ...cast.bindings, ...cast.bindings, table, tenantId] as Knex.RawBinding[],
+        [
+          ...cast.bindings,
+          ...cast.bindings,
+          ...cast.bindings,
+          table,
+          tenantId,
+        ] as Knex.RawBinding[],
       )) as { rows: { total: number; nulled: number; altered: number }[] }
       const row = res.rows[0] ?? { total: 0, nulled: 0, altered: 0 }
 

@@ -100,9 +100,7 @@ export function parseSheet(buffer: Buffer, wanted?: string): ParsedSheet {
      以左上角的值填滿整個範圍 = 使用者看到的內容,並回報數量讓 UI 說清楚做了什麼。 */
   const mergedCells = fillMerges(matrix, sheet["!merges"])
   const headerIndex = detectHeaderRow(matrix)
-  const columns = normalizeColumnNames(
-    (matrix[headerIndex] ?? []).map((c) => String(c ?? "")),
-  )
+  const columns = normalizeColumnNames((matrix[headerIndex] ?? []).map((c) => String(c ?? "")))
 
   const dataRows = matrix
     .slice(headerIndex + 1)

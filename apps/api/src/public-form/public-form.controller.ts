@@ -66,10 +66,7 @@ export class PublicFormController {
     if (body.company_website !== undefined && body.company_website !== "") {
       return { ok: true, reference: syntheticReference() }
     }
-    if (
-      body.renderedAt !== undefined &&
-      Date.now() - body.renderedAt < MIN_FILL_SECONDS * 1000
-    ) {
+    if (body.renderedAt !== undefined && Date.now() - body.renderedAt < MIN_FILL_SECONDS * 1000) {
       throw new PublicFormConfigError("送出得太快了,請確認填寫內容後再試一次")
     }
 

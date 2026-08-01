@@ -77,7 +77,10 @@ export function castExpression(
     if (from === "checkbox") {
       /* 字面值固定為 true/false 並記錄於此 —— 若跟隨語系,同一批資料
          會因伺服器語系而產出不同字串,日後再轉回 checkbox 就對不上。 */
-      return { sql: `CASE WHEN ${col} THEN 'true' WHEN ${col} IS NULL THEN NULL ELSE 'false' END`, bindings: [] }
+      return {
+        sql: `CASE WHEN ${col} THEN 'true' WHEN ${col} IS NULL THEN NULL ELSE 'false' END`,
+        bindings: [],
+      }
     }
     if (from === "date" || from === "dateTime") {
       return { sql: `to_char(${col}, 'YYYY-MM-DD')`, bindings: [] }
@@ -122,11 +125,7 @@ export function castExpression(
 
 /* 建一次性的 try_cast 函式:轉不動回 NULL,但**只吞資料類錯誤**。
    建在 pg_temp 以免數百萬個函式殘留(Baserow 的作法,這點值得抄)。 */
-export function tryCastFunctionSql(
-  name: string,
-  pgType: string,
-  inner: string,
-): string {
+export function tryCastFunctionSql(name: string, pgType: string, inner: string): string {
   return `CREATE OR REPLACE FUNCTION pg_temp.${name}(v text) RETURNS ${pgType} AS $$
 BEGIN
   BEGIN

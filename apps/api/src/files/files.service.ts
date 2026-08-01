@@ -225,7 +225,8 @@ export class FilesService implements OnModuleInit {
     if (detected.mime === "text/csv" && hasSpreadsheetFormula(body)) {
       throw new UnsupportedMediaTypeException({
         code: "CSV_FORMULA_REJECTED",
-        message: "CSV 內含以 = + - @ 開頭的儲存格,可能在試算表軟體中被當成公式執行,故不接受。請改用 Excel(.xlsx)格式上傳。",
+        message:
+          "CSV 內含以 = + - @ 開頭的儲存格,可能在試算表軟體中被當成公式執行,故不接受。請改用 Excel(.xlsx)格式上傳。",
       })
     }
     // 欄型再收斂(R1·UP-4b):影像欄只收影像
@@ -466,10 +467,7 @@ export class FilesService implements OnModuleInit {
   /* 🔴 取用檔案內容的**唯一**入口。與 `requireFile` 分開命名,是為了讓
      「要拿內容」與「只要 metadata」在呼叫端就看得出差別 ——
      刪除感染檔是合理的(走 `requireFile`),下載它不是。 */
-  private async requireReadableFile(
-    tenant: TenantContext,
-    key: string,
-  ): Promise<FileObjectRow> {
+  private async requireReadableFile(tenant: TenantContext, key: string): Promise<FileObjectRow> {
     const row = await this.requireFile(tenant, key)
     this.assertScanned(row)
     return row

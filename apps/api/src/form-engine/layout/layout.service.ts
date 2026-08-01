@@ -24,12 +24,7 @@ export class LayoutService {
     for (const key of Object.keys(layout.fields)) {
       if (!validIds.has(key)) throw new UnknownFieldError(`layout field id ${key}`)
     }
-    const version = await this.metadata.setLayout(
-      tenantId,
-      formId,
-      layout,
-      layout.expectedVersion,
-    )
+    const version = await this.metadata.setLayout(tenantId, formId, layout, layout.expectedVersion)
     return { ...layout, version }
   }
 }

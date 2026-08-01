@@ -133,19 +133,19 @@ export class MetadataService {
   ): Promise<FieldDefRow> {
     const rows = await this.tenantDb.withTenant(tenantId, (tx) =>
       tx
-      .insert(fieldDefs)
-      .values({
-        formId,
-        tenantId,
-        name: spec.name,
-        cellValueType: spec.type,
-        dbFieldType: FIELD_TYPE_REGISTRY[spec.type].dbFieldType,
-        options: normalizedOptions(spec.type, spec.options),
-        required: spec.required,
-        isUnique: spec.unique,
-        position,
-      })
-      .returning(),
+        .insert(fieldDefs)
+        .values({
+          formId,
+          tenantId,
+          name: spec.name,
+          cellValueType: spec.type,
+          dbFieldType: FIELD_TYPE_REGISTRY[spec.type].dbFieldType,
+          options: normalizedOptions(spec.type, spec.options),
+          required: spec.required,
+          isUnique: spec.unique,
+          position,
+        })
+        .returning(),
     )
     const row = rows[0]
     if (row === undefined) throw new Error("insert field_def returned no row")
@@ -308,7 +308,8 @@ export class MetadataService {
             ),
         )
         const found = current[0]
-        if (found !== undefined) throw new LayoutVersionConflictError(expectedVersion, found.version)
+        if (found !== undefined)
+          throw new LayoutVersionConflictError(expectedVersion, found.version)
       }
       throw new FormNotFoundError(formId)
     }

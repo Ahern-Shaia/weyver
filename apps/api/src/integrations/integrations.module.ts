@@ -16,7 +16,19 @@ import { WebhookService } from "./webhook.service.js"
 @Module({
   imports: [AuthzModule],
   controllers: [IntegrationsController],
-  providers: [EventService, EventFanoutService, WebhookService, WebhookDeliveryService, ApiKeyService],
-  exports: [EventService, EventFanoutService, WebhookService, WebhookDeliveryService, ApiKeyService],
+  providers: [
+    EventService,
+    EventFanoutService,
+    WebhookService,
+    WebhookDeliveryService,
+    ApiKeyService,
+  ],
+  exports: [
+    EventService,
+    EventFanoutService,
+    WebhookService,
+    WebhookDeliveryService,
+    ApiKeyService,
+  ],
 })
 export class IntegrationsModule {}

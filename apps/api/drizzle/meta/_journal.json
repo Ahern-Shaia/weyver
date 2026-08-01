@@ -295,6 +295,13 @@
       "when": 1785500004000,
       "tag": "0041_auth_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1785586404000,
+      "tag": "0042_notification_channels",
+      "breakpoints": true
     }
   ]
 }

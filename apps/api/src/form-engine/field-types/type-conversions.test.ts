@@ -55,7 +55,9 @@ describe("🔴 四態分類(#105)", () => {
 
 describe("🔴 轉換運算式:dry-run 與執行共用(#105)", () => {
   it("singleSelect → multiSelect 包成陣列,NULL 保持 NULL", () => {
-    expect(castExpression("singleSelect", "multiSelect", quoteColumn("f1"), {}).sql).toContain('ARRAY["f1"]')
+    expect(castExpression("singleSelect", "multiSelect", quoteColumn("f1"), {}).sql).toContain(
+      'ARRAY["f1"]',
+    )
   })
 
   it("multiSelect → singleSelect 取第一個(Baserow 先例,非整批拒絕)", () => {

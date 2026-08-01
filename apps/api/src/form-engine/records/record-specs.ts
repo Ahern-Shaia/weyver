@@ -52,7 +52,7 @@ export const listQuerySchema = z.object({
   // R1·UP-2 快速搜尋:對 textual 欄 ILIKE OR 串接(record.service 白名單解析物理欄)
   q: z.string().max(200).optional(),
   /* F-1:分組鍵前置於 sort 之前(≤3 層)。cursor 一併涵蓋,故續頁不會跨組錯位。
-     **optional 而非 default([])** —— 既有內部呼叫端(匯入 / 反向關聯 / 子表)不必改。 */
+   **optional 而非 default([])** —— 既有內部呼叫端(匯入 / 反向關聯 / 子表)不必改。 */
   groupBy: z.array(groupBySchema).max(3).optional(),
   /* 折疊的群組鍵值組合。**必須傳到後端** —— 否則折疊只是前端隱藏卻照吃 page size,
      使用者會看到「明明折疊了卻出現空白頁」(承 Teable collapsedGroupIds 語意)。 */

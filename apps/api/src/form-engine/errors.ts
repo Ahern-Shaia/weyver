@@ -177,7 +177,9 @@ export class LayoutVersionConflictError extends DomainError {
     readonly expected: number,
     readonly current: number,
   ) {
-    super(`版面已被其他人修改(你的版本 ${String(expected)},目前 ${String(current)}),請重新載入後再存`)
+    super(
+      `版面已被其他人修改(你的版本 ${String(expected)},目前 ${String(current)}),請重新載入後再存`,
+    )
   }
 }
 

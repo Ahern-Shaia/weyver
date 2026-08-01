@@ -31,7 +31,6 @@ import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
     },
     ImageProcessor,
   ],
-  exports: [
-    ScanService, STORAGE_DRIVER, ImageProcessor],
+  exports: [ScanService, STORAGE_DRIVER, ImageProcessor],
 })
 export class StorageModule {}

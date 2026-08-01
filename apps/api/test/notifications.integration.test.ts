@@ -382,13 +382,21 @@ describe("H-1 M3 Email 派工", () => {
       "UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'",
     )
     await dispatcher.run()
-    const rows = await pool.query<{ last_error: string | null }>(
-      `SELECT d.last_error FROM notification_delivery d
+
+    /* 🔴 斷言**不變量本身**,不是「隨便一列」。
+       原本是 `LIMIT 1` 卻**沒有 ORDER BY** —— 回哪一列由執行計畫決定,
+       整套跑與單獨跑因此可能落在不同列(實測:單獨綠、整套紅)。
+       抑制的語意是「這個位址一封都不會寄出去」,所以該檢查的是:
+       沒有任何一封寄成功,且確實有列被標為已抑制。 */
+    const rows = await pool.query<{ status: string; last_error: string | null }>(
+      `SELECT d.status, d.last_error FROM notification_delivery d
          JOIN notification n ON n.id=d.notification_id
-        WHERE d.channel='email' AND n.recipient_actor_id=$1 LIMIT 1`,
+        WHERE d.channel='email' AND n.recipient_actor_id=$1`,
       [approver],
     )
-    expect(rows.rows[0]?.last_error ?? "").toContain("已抑制")
+    expect(rows.rows.length).toBeGreaterThan(0)
+    expect(rows.rows.some((r) => (r.last_error ?? "").includes("已抑制"))).toBe(true)
+    expect(rows.rows.every((r) => r.status !== "sent")).toBe(true)
     await pool.query("DELETE FROM email_suppression WHERE email=$1", [email])
   })
 

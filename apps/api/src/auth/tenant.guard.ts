@@ -62,13 +62,10 @@ export class TenantGuard implements CanActivate {
        prod 路徑的身分由 AuthGuard 帶上(`request.authUserId`),不重複查 session;
        dev 路徑沒有那一步,但**登入流程是真的**、cookie 也在 → 回頭查一次。
        兩邊都沒有身分時就沒有「這個人」可問,略過。 */
-    const authUserId =
-      request.authUserId ??
-      (
-        await this.auth.api
-          .getSession({ headers: fromNodeHeaders(request.headers) })
-          .catch(() => null)
-      )?.user.id
+    /* ⚠️ dev 回退查 session 是**每請求一次 DB 往返**。加上判斷之前,整套 e2e
+       明顯變慢(不同 spec 每輪隨機逾時)。沒有 session cookie 就不可能有 session,
+       先看 header 再決定要不要查 —— dev 的絕大多數請求根本沒帶 cookie。 */
+    const authUserId = request.authUserId ?? (await this.sessionUserId(request))
     if (authUserId !== undefined && (await mustChangePassword(this.pool, authUserId))) {
       throw new ForbiddenException({
         code: "PASSWORD_CHANGE_REQUIRED",
@@ -88,5 +85,14 @@ export class TenantGuard implements CanActivate {
       })
     }
     return true
+  }
+
+  private async sessionUserId(request: RequestWithTenant): Promise<string | undefined> {
+    const cookie = request.headers.cookie
+    if (typeof cookie !== "string" || !cookie.includes("session_token")) return undefined
+    const session = await this.auth.api
+      .getSession({ headers: fromNodeHeaders(request.headers) })
+      .catch(() => null)
+    return session?.user.id
   }
 }

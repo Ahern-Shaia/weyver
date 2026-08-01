@@ -52,7 +52,7 @@ export function isApprovalEvent(event: string): boolean {
 }
 
 /* 逾期為總開關之唯一例外(裁定 ④:流程無限期卡住的風險高於使用者意願)。
-   **設定頁必須明白告知** —— 靜默的例外會讓使用者以為設定壞了。 */
+ **設定頁必須明白告知** —— 靜默的例外會讓使用者以為設定壞了。 */
 export function bypassesMasterSwitch(event: string): boolean {
   return event === NOTIFICATION_EVENTS.approvalOverdue
 }

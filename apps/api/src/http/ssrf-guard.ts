@@ -58,7 +58,12 @@ const V4_BLOCKED: readonly (readonly [string, number])[] = [
 
 function v4ToInt(ip: string): number {
   const parts = ip.split(".").map(Number)
-  return ((parts[0] ?? 0) << 24) >>> 0 | ((parts[1] ?? 0) << 16) | ((parts[2] ?? 0) << 8) | (parts[3] ?? 0)
+  return (
+    (((parts[0] ?? 0) << 24) >>> 0) |
+    ((parts[1] ?? 0) << 16) |
+    ((parts[2] ?? 0) << 8) |
+    (parts[3] ?? 0)
+  )
 }
 
 function inV4Cidr(ip: string, base: string, bits: number): boolean {
@@ -141,7 +146,7 @@ export interface SafeTarget {
 }
 
 /* WHATWG URL 解析(OWASP:禁用 regex 判 URL)+ scheme 白名單 + 解析後全 IP 檢查。
-   **回傳已驗證的那個 IP**,呼叫端必須把它 pin 進 dispatcher。 */
+ **回傳已驗證的那個 IP**,呼叫端必須把它 pin 進 dispatcher。 */
 export async function resolveSafeTarget(rawUrl: string): Promise<SafeTarget> {
   let url: URL
   try {

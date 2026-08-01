@@ -2,12 +2,7 @@ import crypto from "node:crypto"
 import { Inject, Injectable } from "@nestjs/common"
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb, TenantDb } from "../db/db.module.js"
-import {
-  fieldDefs,
-  formulaDefs,
-  publicFormShares,
-  publicSubmissions,
-} from "../db/schema.js"
+import { fieldDefs, formulaDefs, publicFormShares, publicSubmissions } from "../db/schema.js"
 import { DomainError } from "../form-engine/errors.js"
 
 /* G-2|公開表單。把一張內部表單開放給**未登入者**填寫。 */
@@ -229,7 +224,9 @@ export class PublicFormService {
     const shares = await this.privileged
       .select()
       .from(publicFormShares)
-      .where(and(eq(publicFormShares.tokenHash, hashToken(token)), isNull(publicFormShares.deletedAt)))
+      .where(
+        and(eq(publicFormShares.tokenHash, hashToken(token)), isNull(publicFormShares.deletedAt)),
+      )
       .limit(1)
     const share = shares[0]
     /* 查無 token 與已關閉一律走同一種對外訊息,不區分 —— 區分等於讓人可以

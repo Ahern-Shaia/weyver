@@ -305,7 +305,8 @@ export class FormsController {
     const multipart = request as unknown as {
       isMultipart: () => boolean
       file: (opts?: { limits?: { fileSize?: number } }) => Promise<
-        { filename: string; file: { truncated: boolean }; toBuffer: () => Promise<Buffer> } | undefined
+        | { filename: string; file: { truncated: boolean }; toBuffer: () => Promise<Buffer> }
+        | undefined
       >
     }
     if (!multipart.isMultipart()) {

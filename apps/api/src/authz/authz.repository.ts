@@ -199,9 +199,7 @@ export class AuthzRepository {
   /* 🔴 租戶內的人員清單(#96)。**帶名字** —— member 欄的選人器與預覽器都要用,
      只有 id 的清單使用者根本無從選起(這正是 member 欄一直做不出前端的原因)。
      以 role_members 為範圍:租戶邊界由它界定(users 是跨租戶系統表)。 */
-  async listTenantActors(
-    tenantId: number,
-  ): Promise<{ id: number; name: string; email: string }[]> {
+  async listTenantActors(tenantId: number): Promise<{ id: number; name: string; email: string }[]> {
     const rows = await this.db
       .selectDistinct({ id: users.id, name: users.name, email: users.email })
       .from(roleMembers)

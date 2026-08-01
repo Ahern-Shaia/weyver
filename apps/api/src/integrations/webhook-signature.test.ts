@@ -14,7 +14,9 @@ describe("Standard Webhooks 簽章", () => {
   it("簽出來的可被同一把秘鑰驗過", () => {
     const secret = generateSecret()
     const header = signPayload({ messageId: ID, timestamp: TS, body: BODY, secret })
-    expect(verifySignature({ messageId: ID, timestamp: TS, body: BODY, secret, header, nowSeconds: TS })).toBe(true)
+    expect(
+      verifySignature({ messageId: ID, timestamp: TS, body: BODY, secret, header, nowSeconds: TS }),
+    ).toBe(true)
   })
 
   it.each([
@@ -37,7 +39,12 @@ describe("Standard Webhooks 簽章", () => {
   })
 
   it("換一把秘鑰驗不過", () => {
-    const header = signPayload({ messageId: ID, timestamp: TS, body: BODY, secret: generateSecret() })
+    const header = signPayload({
+      messageId: ID,
+      timestamp: TS,
+      body: BODY,
+      secret: generateSecret(),
+    })
     const verified = verifySignature({
       messageId: ID,
       timestamp: TS,
@@ -56,8 +63,26 @@ describe("Standard Webhooks 簽章", () => {
     const header = signPayload({ messageId: ID, timestamp: TS, body: BODY, secret })
     const justInside = TS + SIGNATURE_TOLERANCE_SECONDS - 1
     const justOutside = TS + SIGNATURE_TOLERANCE_SECONDS + 1
-    expect(verifySignature({ messageId: ID, timestamp: TS, body: BODY, secret, header, nowSeconds: justInside })).toBe(true)
-    expect(verifySignature({ messageId: ID, timestamp: TS, body: BODY, secret, header, nowSeconds: justOutside })).toBe(false)
+    expect(
+      verifySignature({
+        messageId: ID,
+        timestamp: TS,
+        body: BODY,
+        secret,
+        header,
+        nowSeconds: justInside,
+      }),
+    ).toBe(true)
+    expect(
+      verifySignature({
+        messageId: ID,
+        timestamp: TS,
+        body: BODY,
+        secret,
+        header,
+        nowSeconds: justOutside,
+      }),
+    ).toBe(false)
   })
 
   /* 🔴 零停機輪替:輪替後同一 header 帶兩個簽章,
@@ -74,7 +99,16 @@ describe("Standard Webhooks 簽章", () => {
     })
     expect(header.split(" ")).toHaveLength(2)
     for (const secret of [newSecret, oldSecret]) {
-      expect(verifySignature({ messageId: ID, timestamp: TS, body: BODY, secret, header, nowSeconds: TS })).toBe(true)
+      expect(
+        verifySignature({
+          messageId: ID,
+          timestamp: TS,
+          body: BODY,
+          secret,
+          header,
+          nowSeconds: TS,
+        }),
+      ).toBe(true)
     }
   })
 

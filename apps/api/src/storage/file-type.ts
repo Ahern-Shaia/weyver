@@ -81,9 +81,9 @@ const FORMULA_LEAD = /^[\s\uFEFF]*[=+\-@\t\r]/
 export function hasSpreadsheetFormula(buf: Buffer): boolean {
   /* 只看前 64KB —— 攻擊要生效必須在使用者會看到的前幾列 */
   const head = buf.subarray(0, 65_536).toString("utf8")
-  return head.split(/\r?\n/).some((line) =>
-    line.split(",").some((cell) => FORMULA_LEAD.test(cell.replace(/^"/, ""))),
-  )
+  return head
+    .split(/\r?\n/)
+    .some((line) => line.split(",").some((cell) => FORMULA_LEAD.test(cell.replace(/^"/, ""))))
 }
 
 /* 🔴 顯示用檔名淨化。

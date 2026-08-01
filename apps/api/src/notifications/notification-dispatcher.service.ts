@@ -46,7 +46,7 @@ export class NotificationDispatcher {
     @Inject(EmailChannel) private readonly email: EmailChannel,
   ) {}
 
-    /* 🔴 具名不只是為了可讀(F-9 §4.1)。`SchedulerOrchestrator` 對未命名的 cron 用
+  /* 🔴 具名不只是為了可讀(F-9 §4.1)。`SchedulerOrchestrator` 對未命名的 cron 用
      `crypto.randomUUID()` 當 key —— **永遠不會撞名**,所以 `ScheduleModule` 若被重複註冊,
      同一個 job 會靜默註冊多份、每次到點跑多次。具名之後第二次註冊即撞名,
      `SchedulerRegistry.addCronJob` 直接拋 DUPLICATE_SCHEDULER → **開機失敗而非靜默重複**。 */

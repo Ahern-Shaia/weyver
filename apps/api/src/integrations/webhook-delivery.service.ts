@@ -1,6 +1,4 @@
 import crypto from "node:crypto"
-import type https from "node:https"
-import { request as httpsRequest } from "node:https"
 import { Inject, Injectable, Logger } from "@nestjs/common"
 import { Cron, CronExpression } from "@nestjs/schedule"
 import type { Knex } from "knex"
@@ -10,7 +8,8 @@ import {
   assertSafeHeaders,
   pinnedAgent,
   resolveSafeTarget,
-} from "./ssrf-guard.js"
+} from "../http/ssrf-guard.js"
+import { postJsonToTarget } from "../http/safe-post.js"
 import { signPayload } from "./webhook-signature.js"
 
 /* G-1 M3|Webhook 投遞。
@@ -27,7 +26,6 @@ const BACKOFF_MINUTES = [0, 5 / 60, 5, 30, 120, 300, 600, 600, 1440, 1440] as co
 const MAX_ATTEMPTS = BACKOFF_MINUTES.length
 const BATCH_LIMIT = 50
 const REQUEST_TIMEOUT_MS = 10_000
-const RESPONSE_SNIPPET_BYTES = 2048
 const DELIVERY_LOCK_KEY = 909_003
 
 /* Svix 的**雙條件**停用:單看連續失敗次數會讓消費端一次短暫維護就被停用。 */
@@ -115,7 +113,7 @@ export class WebhookDeliveryService {
       const target = await resolveSafeTarget(row.url)
       const agent = pinnedAgent(target, REQUEST_TIMEOUT_MS)
       try {
-        const res = await postJson(target.url, agent, body, {
+        const res = await postJsonToTarget(target.url, agent, body, {
           ...headers,
           "webhook-id": row.message_id,
           "webhook-timestamp": String(timestamp),
@@ -153,7 +151,9 @@ export class WebhookDeliveryService {
       }
     }
 
-    await (outcome.ok ? this.markSent(row, outcome.code, outcome.snippet) : this.markFailed(row, outcome))
+    await (outcome.ok
+      ? this.markSent(row, outcome.code, outcome.snippet)
+      : this.markFailed(row, outcome))
   }
 
   private async markSent(row: DueRow, code: number | null, snippet: string | null): Promise<void> {
@@ -210,7 +210,10 @@ export class WebhookDeliveryService {
       const state = updated[0]
       if (state === undefined || state.first_failure_at === null) return
       const hoursFailing = (Date.now() - new Date(state.first_failure_at).getTime()) / 3_600_000
-      if (state.consecutive_failures >= DISABLE_AFTER_FAILURES && hoursFailing >= DISABLE_AFTER_HOURS) {
+      if (
+        state.consecutive_failures >= DISABLE_AFTER_FAILURES &&
+        hoursFailing >= DISABLE_AFTER_HOURS
+      ) {
         await trx("webhook_endpoint")
           .where({ id: row.endpoint_id })
           .update({
@@ -226,43 +229,6 @@ export class WebhookDeliveryService {
 /* `https.request` 的 promise 包裝。刻意不用全域 fetch:fetch 走 Node 內建 undici,
    而 undici 的 dispatcher 型別與內建 undici-types 版本不一致,且 fetch 需要額外
    `redirect:"error"` 才不跟隨轉址 —— `https.request` 預設就不跟隨,少一個要記得設的開關。 */
-async function postJson(
-  url: URL,
-  agent: https.Agent,
-  body: string,
-  headers: Readonly<Record<string, string>>,
-): Promise<{ status: number; body: string | null }> {
-  return new Promise((resolve, reject) => {
-    const req = httpsRequest(
-      {
-        protocol: url.protocol,
-        host: url.hostname,
-        port: url.port === "" ? 443 : Number(url.port),
-        path: `${url.pathname}${url.search}`,
-        method: "POST",
-        agent,
-        headers: { ...headers, "content-length": Buffer.byteLength(body) },
-        timeout: REQUEST_TIMEOUT_MS,
-      },
-      (res) => {
-        let chunks = ""
-        res.setEncoding("utf8")
-        res.on("data", (c: string) => {
-          // 只留前段:回應可能很大,而我們只是要讓使用者看得出哪裡不對
-          if (chunks.length < RESPONSE_SNIPPET_BYTES) chunks += c
-        })
-        res.on("end", () => {
-          resolve({ status: res.statusCode ?? 0, body: chunks.slice(0, RESPONSE_SNIPPET_BYTES) })
-        })
-      },
-    )
-    req.on("timeout", () => {
-      req.destroy(new Error(`逾時(${String(REQUEST_TIMEOUT_MS)}ms)`))
-    })
-    req.on("error", reject)
-    req.end(body)
-  })
-}
 
 /* 對外的 webhook-id。重送時**沿用**同一個 —— 消費端靠它去重(GitHub 同做法)。 */
 export function newMessageId(): string {

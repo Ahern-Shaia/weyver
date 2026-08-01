@@ -53,33 +53,34 @@ const SAFE_REWRITE: Readonly<Partial<Record<CellValueType, readonly CellValueTyp
 }
 
 /* 有資料會被清空**或被改變**。兩者嚴重度不同,dry-run 分開計數。 */
-const LOSSY: Readonly<Partial<Record<CellValueType, readonly (readonly [CellValueType, string])[]>>> =
-  {
-    multiSelect: [["singleSelect", "每筆只會保留第一個選項,其餘丟棄"]],
-    text: [
-      ["number", "無法解析為數字的值會被清空"],
-      ["money", "無法解析為金額的值會被清空;需指定幣別"],
-      ["percent", "無法解析為數字的值會被清空"],
-      ["date", "不符指定日期格式的值會被清空"],
-      ["dateTime", "不符指定日期時間格式的值會被清空"],
-      ["checkbox", "無法辨識為真/假的值會被清空"],
-      ["singleSelect", "未被選為選項的值會被清空"],
-    ],
-    longText: [
-      /* 物理型別相同、資料不動,但 text 的長度上限較小 → 超長內容會變成
+const LOSSY: Readonly<
+  Partial<Record<CellValueType, readonly (readonly [CellValueType, string])[]>>
+> = {
+  multiSelect: [["singleSelect", "每筆只會保留第一個選項,其餘丟棄"]],
+  text: [
+    ["number", "無法解析為數字的值會被清空"],
+    ["money", "無法解析為金額的值會被清空;需指定幣別"],
+    ["percent", "無法解析為數字的值會被清空"],
+    ["date", "不符指定日期格式的值會被清空"],
+    ["dateTime", "不符指定日期時間格式的值會被清空"],
+    ["checkbox", "無法辨識為真/假的值會被清空"],
+    ["singleSelect", "未被選為選項的值會被清空"],
+  ],
+  longText: [
+    /* 物理型別相同、資料不動,但 text 的長度上限較小 → 超長內容會變成
          「存得住但下次編輯過不了驗證」的值。不是清空,但使用者必須知道。 */
-      ["text", "超過長度上限的內容仍保留,但該筆下次編輯時需先縮短"],
-      ["number", "無法解析為數字的值會被清空"],
-      ["date", "不符指定日期格式的值會被清空"],
-    ],
-    number: [
-      ["money", "小數位可能被四捨五入;需指定幣別"],
-      ["percent", "小數位可能被四捨五入"],
-      ["rating", "超出評分上限的值會被夾到上限"],
-    ],
-    money: [["number", "小數位可能被四捨五入"]],
-    dateTime: [["date", "時間部分會被丟棄"]],
-  }
+    ["text", "超過長度上限的內容仍保留,但該筆下次編輯時需先縮短"],
+    ["number", "無法解析為數字的值會被清空"],
+    ["date", "不符指定日期格式的值會被清空"],
+  ],
+  number: [
+    ["money", "小數位可能被四捨五入;需指定幣別"],
+    ["percent", "小數位可能被四捨五入"],
+    ["rating", "超出評分上限的值會被夾到上限"],
+  ],
+  money: [["number", "小數位可能被四捨五入"]],
+  dateTime: [["date", "時間部分會被丟棄"]],
+}
 
 /* 明確拒絕。**理由必須是「保留下來也無意義」而非「懶得做」** ——
    Ragic 的可逆體驗是對標基準,forbidden 越多越像退步。

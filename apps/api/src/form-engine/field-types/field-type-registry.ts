@@ -236,7 +236,10 @@ const choicesSchema = rawChoicesShape
    於 R1·UP-4c 收緊 colors 為 enum 時發現並修正)。 */
 const choicesOnlySchema = z
   .object({
-    choices: z.array(z.object({ name: z.string().min(1).max(100) }).loose()).min(1).max(200),
+    choices: z
+      .array(z.object({ name: z.string().min(1).max(100) }).loose())
+      .min(1)
+      .max(200),
   })
   .loose()
 
@@ -548,8 +551,7 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
       })
       .strict(),
     /* snapshot 模式要有物理欄才存得住值;live 維持虛擬欄(無欄、讀時算)。 */
-    buildColumn: (t, col, options) =>
-      isSnapshotLookup(options) ? void t.text(col) : undefined,
+    buildColumn: (t, col, options) => (isSnapshotLookup(options) ? void t.text(col) : undefined),
     valueSchema: () => z.never(),
     filterOperators: [],
     systemManaged: true,

@@ -178,9 +178,10 @@ function readEntryText(buf: Buffer, wanted: string): string | null {
   const derived = eocd - centralSize
   let offset =
     derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG ? derived : buf.readUInt32LE(eocd + 16)
-  const prefix = derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG
-    ? derived - buf.readUInt32LE(eocd + 16)
-    : 0
+  const prefix =
+    derived >= 0 && buf.readUInt32LE(derived) === CEN_SIG
+      ? derived - buf.readUInt32LE(eocd + 16)
+      : 0
 
   for (let i = 0; i < count; i += 1) {
     if (offset + 46 > buf.length || buf.readUInt32LE(offset) !== CEN_SIG) return null

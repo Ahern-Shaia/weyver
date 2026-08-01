@@ -31,12 +31,7 @@ describe("後端解析活頁簿(#106 M3)", () => {
 
   it("**標題不在第一列時仍找得到** —— 舊 Excel 前幾列常是公司抬頭", () => {
     const buf = book({
-      Sheet1: [
-        ["鮮勇食品股份有限公司"],
-        [],
-        ["品項", "數量"],
-        ["雞胸肉", "10"],
-      ],
+      Sheet1: [["鮮勇食品股份有限公司"], [], ["品項", "數量"], ["雞胸肉", "10"]],
     })
     const parsed = parseSheet(buf)
     expect(parsed.columns).toEqual(["品項", "數量"])
@@ -46,12 +41,7 @@ describe("後端解析活頁簿(#106 M3)", () => {
 
   it("空白列不混進資料;重複欄名自動加序號", () => {
     const buf = book({
-      Sheet1: [
-        ["品項", "品項"],
-        ["甲", "乙"],
-        [],
-        ["丙", "丁"],
-      ],
+      Sheet1: [["品項", "品項"], ["甲", "乙"], [], ["丙", "丁"]],
     })
     const parsed = parseSheet(buf)
     expect(parsed.columns).toEqual(["品項", "品項_2"])
@@ -74,7 +64,10 @@ describe("後端解析活頁簿(#106 M3)", () => {
 
 describe("對映建議:只做完全相符(#106)", () => {
   it("欄名完全相符(去空白、不分大小寫)才配對", () => {
-    const out = suggestMapping(["客戶編號", " 客戶名稱 ", "Email"], ["客戶編號", "客戶名稱", "email"])
+    const out = suggestMapping(
+      ["客戶編號", " 客戶名稱 ", "Email"],
+      ["客戶編號", "客戶名稱", "email"],
+    )
     expect(out).toEqual({ 客戶編號: "客戶編號", " 客戶名稱 ": "客戶名稱", Email: "email" })
   })
 
@@ -112,7 +105,6 @@ describe("🔴 預設工作表(瀏覽器實走時發現,#106)", () => {
     expect(parseSheet(buf, "說明").sheetName).toBe("說明")
   })
 })
-
 
 /* 🔴 合併儲存格(#106):值只在左上角,其餘是空的 → 直接匯入會靜默產生空白欄位。
    舊 Excel 的單頭欄(訂單編號跨多列明細)幾乎必然是合併的。 */

@@ -20,7 +20,7 @@ export interface SendResult {
 }
 
 /* SMTP 增強狀態碼:5.x.x = 永久;4.x.x = 暫時。
-   **依狀態碼分類,不解析人類可讀文字** —— 各家措辭不同,只有碼是標準化的。 */
+ **依狀態碼分類,不解析人類可讀文字** —— 各家措辭不同,只有碼是標準化的。 */
 function classify(error: unknown): { permanent: boolean; detail: string } {
   const e = error as { responseCode?: number; code?: string; message?: string }
   const detail = e.message ?? String(error)

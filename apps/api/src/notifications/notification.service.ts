@@ -8,7 +8,11 @@ import {
   levelAllows,
   safeTitle,
 } from "./notification-specs.js"
-import { type NewNotification, NotificationRepository, type PrefRow } from "./notification.repository.js"
+import {
+  type NewNotification,
+  NotificationRepository,
+  type PrefRow,
+} from "./notification.repository.js"
 
 /* H-1 M1|通知核心。
 
@@ -96,7 +100,10 @@ export class NotificationService {
         recordId: input.recordId,
         title,
         actorId: input.actorId,
-        channels: chosen === undefined ? ["inapp", "email"] : ["inapp", ...(chosen.includes("email") ? ["email"] : [])],
+        channels:
+          chosen === undefined
+            ? ["inapp", "email"]
+            : ["inapp", ...(chosen.includes("email") ? ["email"] : [])],
       })
     }
     return this.repo.createMany(rows)

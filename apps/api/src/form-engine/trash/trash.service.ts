@@ -182,7 +182,7 @@ export class TrashService {
   }
 
   /* 🔴 還原前 dry-run。partial unique(`… WHERE deleted_at IS NULL`)讓「同名重建後再還原」
-     **必然**撞 23505 —— 不先驗就是把一個 500 丟給使用者。三類阻擋見 docs §4.2。 */
+   **必然**撞 23505 —— 不先驗就是把一個 500 丟給使用者。三類阻擋見 docs §4.2。 */
   async planRestore(tenantId: number, entryId: number): Promise<RestorePlan | null> {
     const entry = await this.getEntry(tenantId, entryId)
     if (entry === null) return null
@@ -240,7 +240,8 @@ export class TrashService {
     probe?: (formId: number, recordId: number) => Promise<RestoreBlocker[]>,
   ): Promise<{ ok: true } | { ok: false; blockers: readonly RestoreBlocker[] }> {
     const plan = await this.planRestore(tenantId, entryId)
-    if (plan === null) return { ok: false, blockers: [{ kind: "parentDeleted", message: "找不到這筆回收項目。" }] }
+    if (plan === null)
+      return { ok: false, blockers: [{ kind: "parentDeleted", message: "找不到這筆回收項目。" }] }
 
     const entry = await this.getEntry(tenantId, entryId)
     if (entry === null) return { ok: false, blockers: plan.blockers }
@@ -266,9 +267,7 @@ export class TrashService {
           await tx
             .update(fieldDefs)
             .set({ deletedAt: null })
-            .where(
-              and(eq(fieldDefs.tenantId, tenantId), inArray(fieldDefs.id, entry.relatedIds)),
-            )
+            .where(and(eq(fieldDefs.tenantId, tenantId), inArray(fieldDefs.id, entry.relatedIds)))
         }
       } else if (entry.resourceType === "field") {
         await tx
@@ -361,7 +360,9 @@ export class TrashService {
   /* purge job 用:找出逾期的 entry(跨租戶 → 特權車道,維運作業)。 */
   async expiredEntries(
     limit: number,
-  ): Promise<readonly { id: number; tenantId: number; resourceType: string; resourceId: number }[]> {
+  ): Promise<
+    readonly { id: number; tenantId: number; resourceType: string; resourceId: number }[]
+  > {
     return this.privileged
       .select({
         id: trashEntries.id,

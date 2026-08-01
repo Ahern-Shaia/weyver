@@ -3,7 +3,7 @@ import { Inject, Injectable } from "@nestjs/common"
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { TenantDb } from "../db/db.module.js"
 import { webhookDeliveries, webhookEndpoints } from "../db/schema.js"
-import { resolveSafeTarget } from "./ssrf-guard.js"
+import { resolveSafeTarget } from "../http/ssrf-guard.js"
 import { generateSecret } from "./webhook-signature.js"
 import { newMessageId } from "./webhook-delivery.service.js"
 
@@ -122,7 +122,12 @@ export class WebhookService {
         .update(webhookEndpoints)
         .set(
           enabled
-            ? { disabledAt: null, disabledReason: null, consecutiveFailures: 0, firstFailureAt: null }
+            ? {
+                disabledAt: null,
+                disabledReason: null,
+                consecutiveFailures: 0,
+                firstFailureAt: null,
+              }
             : { disabledAt: new Date(), disabledReason: "使用者手動停用" },
         )
         .where(and(eq(webhookEndpoints.tenantId, tenantId), eq(webhookEndpoints.id, endpointId))),
@@ -170,9 +175,7 @@ export class WebhookService {
       tx
         .update(webhookDeliveries)
         .set({ status: "pending", attempts: 0, nextAttemptAt: new Date(), lastError: null })
-        .where(
-          and(eq(webhookDeliveries.tenantId, tenantId), eq(webhookDeliveries.id, deliveryId)),
-        ),
+        .where(and(eq(webhookDeliveries.tenantId, tenantId), eq(webhookDeliveries.id, deliveryId))),
     )
   }
 

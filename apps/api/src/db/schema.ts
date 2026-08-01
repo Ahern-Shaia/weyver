@@ -13,6 +13,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core"
@@ -69,6 +70,32 @@ export const tenants = pgTable("tenants", {
    ⚠️ `displayTimezone` 只影響**畫面上時間戳怎麼寫出來**;
    業務日界線是 `tenants.timezone`(autoNumber 日期段靠它),**個人不可覆寫**。
    兩者混用會讓報表的「今天」隨看的人而變。 */
+/* 🔴 R1·A-1 M4|租戶自行連接的通知通道(OQ-SC-6=A 應用層信封加密)。
+
+   `config` 放**非機密**部分(SMTP host / 頻道 ID…),`secretSealed` 放信封加密後的字串。
+   分開的理由:非機密要能顯示與查詢,機密則**永不回顯**
+   —— Grafana 的 `secureJsonFields` 只回布林旗標,本專案照抄該語意。
+
+   ⚠️ `secretSealed` 絕不可進 log / 錯誤訊息 / 回應 DTO(OWASP Logging 禁記清單
+   逐字含「Access tokens」「Authentication passwords」)。 */
+export const notificationChannels = pgTable(
+  "notification_channel",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    channel: text("channel").notNull(),
+    config: jsonb("config").notNull().default({}),
+    secretSealed: text("secret_sealed"),
+    secretFingerprint: text("secret_fingerprint"),
+    /* 沒測試成功過就不該被當成可用 —— UI 據此顯示「尚未驗證」 */
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    enabled: boolean("enabled").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedByActorId: bigint("updated_by_actor_id", { mode: "number" }),
+  },
+  (t) => [unique("notification_channel_unique").on(t.tenantId, t.channel)],
+)
+
 export const userPrefs = pgTable(
   "user_pref",
   {
