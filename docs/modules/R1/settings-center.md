@@ -325,7 +325,8 @@ UI 採 **Grafana `secureJsonFields` 模式** —— 只回「已設定 / 最後�
 | M2 | 使用者管理 + 邀請(若 OQ-1=A) | **跨租戶隔離 e2e**:B 租戶邀不到 A 的表 |
 | M3 ✅ | 帳號安全(裝置清單 / 強制登出 / 認證稽核 / 密碼政策)| 見 §4.1 |
 | M4 ✅ | 通道連接(加密儲存 + 測試發送)| 見 §4.2 |
-| M5 | FMEA + docs 回填 | — |
+| M5 ✅ | 通道投遞接進 dispatcher(租戶級事件廣播)| 見 §4.3 |
+| M6 | FMEA + docs 回填 | — |
 
 ### 4.1 M3 實作結果(2026-08-01)
 
@@ -354,7 +355,21 @@ UI 採 **Grafana `secureJsonFields` 模式** —— 只回「已設定 / 最後�
 
 **M4 期間順帶修掉**|`ssrf-guard` 位置錯置(早已被 `http/` 匯入)· 對外 POST 的兩份實作(「禁轉址」來自 `https.request` 的**預設值**,複製時最容易無聲失去)· 抑制清單測試的 `LIMIT 1` 無 `ORDER BY`(單獨綠整套紅)· dev 每請求多一次 session 查詢。
 
-**殘留**|(a) SMTP 的測試發送(非 HTTPS,需另走 EmailChannel);(b) 通道投遞尚未接進 `NotificationDispatcher` —— 目前只有連接與驗證,**實際用該通道送出通知是下一步**;(c) 憑證變更的稽核事件(目前只記 `updated_by_actor_id` 與指紋,未寫入稽核表);(d) KEK 輪替的 CLI(`rewrapSecret` 已實作並測試,尚無操作入口)。
+### 4.3 M5 實作結果(2026-08-01)|租戶級事件廣播
+
+M4 的通道連上了卻不會真的送出通知,本批接通。**廣播不是「多一個通道」而是另一種功能**(`notifications.md` §4.6 已裁定),三個後果都落進實作:
+
+| 裁定 | 實作 |
+|---|---|
+| 群組沒有訂閱者 → 設定屬管理者 | 事件勾選在**租戶通道設定**,不在個人通知設定 |
+| 一個頻道只有一個 | **一個事件一則**,不是每收件人一則(10 個同事否則會讓公司 Slack 收到 10 則相同訊息)|
+| 群組沒有權限模型可依靠 | 內容**不含欄位值**,由偏好升為不可協商;此句同時寫在勾選 UI 旁 |
+
+模型|`notification.recipient_actor_id` 轉 nullable + `broadcast_channel`,DB CHECK 保證**兩者恰有其一**(不讓永遠不會被投遞、也不會有人發現的孤兒列存在)。schema 註解早已載明此為純加法方向。
+
+**🔴 踩到一個 drizzle 陷阱**|多列 insert 以**第一列**決定欄位集合 —— 個人列沒有 `broadcastChannel` 鍵而廣播列有,後續列值整組位移,症狀是 `null value in column "event"`,從錯誤訊息完全看不出真因。故該欄不可為 optional,所有列一律同形。
+
+**殘留**|(a) SMTP 的測試發送(非 HTTPS,需另走 EmailChannel);(b) ~~通道投遞~~ **已於 M5 完成**;(c) 憑證變更的稽核事件(目前只記 `updated_by_actor_id` 與指紋,未寫入稽核表);(d) KEK 輪替的 CLI(`rewrapSecret` 已實作並測試,尚無操作入口)。
 
 ## 5. FMEA(草案,M5 補完)
 
