@@ -299,6 +299,74 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 .editor-doc .doc-meta{font-family:'IBM Plex Mono';font-size:9.5px;color:var(--ink4);border-top:1px solid var(--cell);margin-top:8px;padding-top:5px;}
 
 .cap-note{position:fixed;left:14px;bottom:10px;font-size:11px;color:var(--ink4);background:rgba(255,255,255,.9);border:1px solid var(--line);padding:4px 9px;border-radius:3px;}
+
+/* ── 設計系統補充(2026-08-01)──────────────────────── */
+.ds-grid{display:grid;gap:8px}
+.ds-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ds-lbl{font-size:11px;color:var(--ink3);width:78px;flex:0 0 78px;font-family:'IBM Plex Mono',monospace}
+.ds-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.ds-tbl th,.ds-tbl td{border:1px solid var(--cell);padding:6px 9px;text-align:left;vertical-align:middle}
+.ds-tbl th{background:var(--head);font-weight:500;font-size:11.5px;color:var(--ink2)}
+.ds-tbl td.k{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.ds-sw{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.ds-sw .b{border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.ds-sw .b .c{height:40px}
+.ds-sw .b .t{padding:5px 6px;background:var(--card);font-size:10.5px;line-height:1.4;
+  font-family:'IBM Plex Mono',monospace;color:var(--ink3)}
+.ds-sw .b .t b{display:block;color:var(--ink);font-weight:600;font-family:Inter}
+/* Button */
+.b2{height:30px;padding:0 13px;border:0;border-radius:4px;font:inherit;font-size:13px;font-weight:500;
+  display:inline-flex;align-items:center;gap:6px;cursor:default;
+  transition:background 120ms cubic-bezier(0,0,.38,.9),box-shadow 120ms cubic-bezier(0,0,.38,.9)}
+.b2.pri{background:var(--primary);color:#fff} .b2.pri.hv{background:var(--primary-d)}
+.b2.pri.fo{outline:2px solid var(--primary);outline-offset:2px}
+.b2.sec{background:var(--head);color:var(--ink)} .b2.sec.hv{background:var(--active)}
+.b2.gho{background:transparent;color:var(--ink2);font-weight:450} .b2.gho.hv{background:var(--hover)}
+.b2.dng{background:transparent;color:var(--er);font-weight:450} .b2.dng.hv{background:var(--er-t)}
+.b2.dis{background:var(--head);color:var(--ink4)}
+.b2.sm{height:26px;padding:0 10px;font-size:12px} .b2.lg{height:36px;padding:0 17px;font-size:14px}
+/* Select */
+.sel{height:30px;min-width:172px;padding:0 28px 0 9px;border:1px solid var(--cell);border-radius:4px;
+  background:var(--card);font:inherit;font-size:13px;color:var(--ink);display:inline-flex;
+  align-items:center;position:relative}
+.sel::after{content:"";position:absolute;right:10px;width:7px;height:7px;border-right:1.4px solid var(--ink3);
+  border-bottom:1.4px solid var(--ink3);transform:translateY(-2px) rotate(45deg)}
+.sel.fo{border-color:transparent;outline:2px solid var(--primary);outline-offset:-1px}
+.sel.dis{background:var(--head);color:var(--ink4)}
+.selm{width:196px;border-radius:6px;background:var(--card);padding:4px;
+  box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.05)}
+.selm i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;padding:6px 8px;border-radius:4px}
+.selm i.on{background:var(--active);font-weight:500}
+.selm i:hover{background:var(--hover)}
+.selm i .ck{margin-left:auto;color:var(--primary);font-weight:700}
+/* Loading */
+.skl{background:linear-gradient(90deg,var(--head) 25%,var(--line2) 37%,var(--head) 63%);
+  background-size:400% 100%;animation:sk 1.4s ease-in-out infinite;border-radius:3px}
+@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--primary);
+  border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.prog{height:2px;background:var(--line2);border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;width:38%;background:var(--primary);animation:pg 1.4s ease-in-out infinite}
+@keyframes pg{0%{margin-left:-38%}100%{margin-left:100%}}
+/* 燈號 / Pill / 狀態章 */
+.lamp{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
+.lamp .d{width:7px;height:7px;border-radius:50%;flex:0 0 7px}
+.lamp .d.ok{background:var(--ok)} .lamp .d.wn{background:var(--wn)}
+.lamp .d.er{background:var(--er)} .lamp .d.nt{background:var(--ink4)}
+.lamp .d.pulse{animation:pl 1.6s ease-in-out infinite}
+@keyframes pl{0%,100%{opacity:1}50%{opacity:.35}}
+.pill2{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;
+  font-size:11.5px;font-weight:500;background:var(--head);color:var(--ink2)}
+.pill2.num{font-family:'IBM Plex Mono',monospace;padding:1px 7px}
+.pill2.rm::after{content:"×";color:var(--ink4);font-weight:400}
+.chip3{display:inline-block;border-radius:3px;border:1px solid;padding:1px 7px;font-size:12px;font-weight:500}
+.chip3.ok{color:var(--ok);background:var(--ok-t);border-color:var(--ok-line)}
+.chip3.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-line)}
+.chip3.er{color:var(--er);background:var(--er-t);border-color:var(--er-line)}
+.chip3.nt{color:var(--nt);background:var(--nt-t);border-color:var(--nt-line)}
+.mo{height:34px;border-radius:4px;background:var(--head);position:relative;overflow:hidden}
+.mo i{position:absolute;left:0;top:0;bottom:0;width:34px;background:var(--primary);border-radius:4px}
 </style>
 </head>
 <body>
@@ -378,8 +446,11 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 </div></div>
 
 <!-- 色彩 -->
-<div class="sec"><div class="sec-h"><span class="n">03</span>色彩<span class="r">品牌四色(OKLCH)· 介面 12 階冷中性 · 動作色由織藍推導</span></div><div class="sec-b">
-<div class="why"><b>🔴 2026-08-01 取代</b>品牌板以 <b>OKLCH</b> 定義四色為權威;色相 260 / 240 屬冷調,與介面 12 階冷中性同調。此前的 <span class="mono">#22568a / #0C5F73 / #313131</span> 全部 SUPERSEDED。</div>
+<div class="sec"><div class="sec-h"><span class="n">03</span>色彩<span class="r">四層:Surface / Ink / Primary / Semantic · 品牌四色為 OKLCH 權威</span></div><div class="sec-b">
+<div class="why"><b>🔴 2026-08-01 取代</b>品牌板以 <b>OKLCH</b> 定義四色為權威(色相 260 / 240 冷調);
+此前 <span class="mono">#22568a / #0C5F73 / #313131</span> 全部 SUPERSEDED。
+介面色彩分<b>四層</b>,每層各有職責,元件只能用語意層、不得直接用色階。</div>
+
 <div class="grp-t">品牌四色(hex 為 Chromium 實測,僅供對照)</div>
 <div class="sw-row">
   <div class="sw"><div class="c" style="background:var(--brand-ink)"></div><div class="m"><div class="nm">Ink 墨</div><div class="hx">oklch(24% .02 260)</div></div></div>
@@ -387,48 +458,103 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
   <div class="sw"><div class="c" style="background:var(--brand-neutral)"></div><div class="m"><div class="nm">Neutral 中灰</div><div class="hx">oklch(60% .01 260)</div></div></div>
   <div class="sw"><div class="c" style="background:var(--paper)"></div><div class="m"><div class="nm">Paper 底色</div><div class="hx">oklch(97% .004 260)</div></div></div>
 </div>
-<div class="why" style="margin-top:14px;border-left-color:var(--er)"><b>🔴 織藍不足以承載文字 —— 實測</b>
-標誌(圖形,門檻 3:1)白底上 <b>3.78 通過</b>;但<b>主按鈕白字僅 4.13</b>、<b>連結文字 3.78</b>,兩者門檻皆 4.5,<b>不合 AA</b>。<br>
-<b>解法(不動品牌色)</b>|織藍 58% 維持為<b>標誌與品牌真值</b>;介面<b>動作色</b>推導至 <span class="mono">oklch(52% .15 240)</span> —— 白字 <b>5.27</b>、紙底 <b>4.83</b>,兩向皆過。與既有 <span class="mono">--base-brand → 推導</span> 架構一致,不需新機制。</div>
-<div class="grp-t" style="margin-top:16px">動作色對照</div>
-<div class="fn-row">
-  <span>織藍 58%(標誌)<b style="display:inline-block;background:var(--thread);color:#fff;padding:3px 12px;border-radius:4px;margin-left:6px">白字 4.13 ✗</b></span>
-  <span>動作色 52%<b style="display:inline-block;background:var(--primary);color:#fff;padding:3px 12px;border-radius:4px;margin-left:6px">白字 5.27 ✓</b></span>
+
+<div class="grp-t" style="margin-top:20px">① Surface 層級 —— 深度靠<b>面</b>不靠框</div>
+<div class="ds-sw">
+  <div class="b"><div class="c" style="background:var(--bg)"></div><div class="t"><b>surface</b>s2 · 應用底</div></div>
+  <div class="b"><div class="c" style="background:var(--card)"></div><div class="t"><b>card</b>s1 · 內容面(最亮)</div></div>
+  <div class="b"><div class="c" style="background:var(--head)"></div><div class="t"><b>head</b>s3 · 表頭/次底</div></div>
+  <div class="b"><div class="c" style="background:var(--hover)"></div><div class="t"><b>hover</b>s3 · 互動 hover</div></div>
+  <div class="b"><div class="c" style="background:var(--active)"></div><div class="t"><b>active</b>s4 · 選中</div></div>
+  <div class="b"><div class="c" style="background:var(--line)"></div><div class="t"><b>line</b>s6 · 跨功能邊界</div></div>
 </div>
-<div class="grp-t" style="margin-top:18px">介面 12 階冷中性(Radix 語意;已落地於 tokens.css v4)</div>
-      <div class="why"><b>理由</b>單一語意 token 系統只換主色值,同一套元件即可支援白牌與客戶偏好而不分叉程式碼;深藍為對外預設(製造 / 食品業信任色,且與 Ragic 品牌藍區隔),深海青、石墨為情境備選。</div>
-      <div class="why" style="border-left-color:var(--primary)"><b>2026-08-01 改法</b>每個主題<b>只給一個 BASE</b>,深色階(hover / 按下)與淡底(選取列)由 <span class="mono">color-mix</span> 推導 —— 下面三張卡的兩個外側色塊<b>沒有人手工配過</b>,是瀏覽器算出來的。白牌客戶因此只需提供一個品牌色,不必配三個值,也不會出現「換完色之後 hover 態看不見」。三個主題的推導結果均通過 CI 對比檢查(白字 / 深色階 ≥4.5:1)。</div>
-      <div class="grp-t">主色 · 三配色主題(外側兩色為推導值)</div>
-      <div class="themes-row">
-        <div class="theme-card" data-theme="navy"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設 / 對外建議</span></div><div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div><div class="meta"><b class="mono">#1b456e ← <span style="color:var(--ink)">#22568a</span> → #ebf0f4</b> · 品類母語、企業可信</div></div>
-        <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">織雲故事色</span></div><div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div><div class="meta"><b class="mono">#0a4c5c ← <span style="color:var(--ink)">#0c5f73</span> → #e9f1f2</b> · 雲/水意象、競品差異化</div></div>
-        <div class="theme-card" data-theme="graphite"><div class="th" style="background:var(--primary)">石墨 graphite<span class="df">中性</span></div><div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div><div class="meta"><b class="mono">#292c2e ← <span style="color:var(--ink)">#333739</span> → #ededed</b> · 工業中性、讓資料最跳</div></div>
-      </div>
+<div class="desc" style="margin-top:8px">🔴 <b>內容面比應用底更亮</b>(s1 &gt; s2)—— 卡片是「浮起來」的,靠明度差不靠框線。
+<b>hover / active 是色階的一部分</b>,不是就地挑一個底色;先前沒有這兩階,全庫每個 hover 各寫各的。</div>
 
-      <div class="grp-t">中性 · 結構(深度靠框線,禁陰影)<span style="font-weight:400;color:var(--ink3)"> —— 已對齊 shipped tokens.css v3.0:整體較 v2.1 更淺,框線降為 hairline</span></div>
-      <div class="sw-row">
-        <div class="sw"><div class="c" style="background:var(--ink)"></div><div class="m"><div class="nm">ink</div><div class="hx">#16191f</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--ink2)"></div><div class="m"><div class="nm">ink-2</div><div class="hx">#3d4753</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--ink3)"></div><div class="m"><div class="nm">ink-3</div><div class="hx">#606c7b</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--line)"></div><div class="m"><div class="nm">line</div><div class="hx">#e3e6ea</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--cell)"></div><div class="m"><div class="nm">cell</div><div class="hx">#e7eaee</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--label)"></div><div class="m"><div class="nm">label</div><div class="hx">#f4f6f8</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--head)"></div><div class="m"><div class="nm">head</div><div class="hx">#f1f3f5</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--bg)"></div><div class="m"><div class="nm">surface</div><div class="hx">#f6f7f9</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--card)"></div><div class="m"><div class="nm">card</div><div class="hx">#ffffff</div></div></div>
-        <div class="sw"><div class="c" style="background:var(--ink4)"></div><div class="m"><div class="nm">ink-disabled</div><div class="hx">#9aa4b1</div></div></div>
-      </div>
+<div class="grp-t" style="margin-top:20px">② Ink 文字 —— 四階,層級靠字重與位置補足</div>
+<table class="ds-tbl">
+  <tr><th style="width:110px">token</th><th style="width:96px">值</th><th style="width:110px">用途</th><th>對比(於 s1–s4 四種底)</th></tr>
+  <tr><td class="k">ink</td><td class="k">s12 #0f1720</td><td>主文 · 資料值</td><td>≥ 14:1</td></tr>
+  <tr><td class="k">ink-2</td><td class="k">#3a4553</td><td>次文 · 標籤</td><td>≥ 8:1</td></tr>
+  <tr><td class="k">ink-3</td><td class="k">s11 #5c6876</td><td>輔助 · 說明 · 時間戳</td><td>≥ 4.5:1(CI 逐底把關)</td></tr>
+  <tr><td class="k">ink-disabled</td><td class="k">#9aa6b4</td><td><b>僅停用元件內</b>(WCAG 1.4.3 incidental)</td><td>不適用</td></tr>
+</table>
+<div class="desc" style="margin-top:6px">⚠️ 只有四階,<b>沒有第五階可讀灰</b> —— AA 之下白底放不下(最淺約 #767676 = 4.54:1,而 ink-3 已 4.68)。
+資訊性文字一律用 ink-3,層級改靠<b>字重 / 字級 / 位置</b>。</div>
 
-      <div class="grp-t">狀態 · 帶框方形章(顏色 + 文字雙編碼)</div>
-      <div class="chips">
-        <span class="chip ok">已核准</span><span class="chip wn">待審核</span><span class="chip er">退回 / 異常</span><span class="chip nt">已收貨 / 中性</span>
-      </div>
-      <div class="grp-t" style="margin-top:14px">功能色(跨主題共用)</div>
-      <div class="fn-row"><span>連結 <b style="color:var(--link)">#1160b4</b></span><span>公式 fx <b style="color:var(--fx)">#0b6b5d</b></span><span>關聯 <b style="color:var(--rel)">#5b3fa8</b></span></div>
-    </div></div>
+<div class="grp-t" style="margin-top:20px">③ Primary 動作色 <span style="color:var(--ok);font-size:11px">(定案)</span></div>
+<div class="why" style="border-left-color:var(--ok)"><b>裁定</b>織藍 <span class="mono">oklch(58% .15 240)</span> 維持為<b>標誌與品牌真值</b>
+(圖形門檻 3:1,實測 3.78 通過);介面<b>動作色</b>推導至 <span class="mono">oklch(52% .15 240)</span> ——
+白字 <b>5.27</b>、紙底 <b>4.83</b>,兩向皆過 AA。與既有 <span class="mono">--base-brand → 推導</span> 架構一致。</div>
+<table class="ds-tbl">
+  <tr><th style="width:110px">token</th><th style="width:150px">值</th><th style="width:130px">用途</th><th>對比</th></tr>
+  <tr><td class="k">(標誌 only)</td><td class="k">oklch(58% .15 240)</td><td>符號 · 品牌真值</td><td>紙底 3.78 <b style="color:var(--ok)">✓ 3:1</b> / 白字 4.13 <b style="color:var(--er)">✗ 4.5</b></td></tr>
+  <tr><td class="k">primary</td><td class="k">oklch(52% .15 240)</td><td>主按鈕 · 連結 · focus</td><td>白字 <b style="color:var(--ok)">5.27 ✓</b> · 紙底 <b style="color:var(--ok)">4.83 ✓</b></td></tr>
+  <tr><td class="k">primary-d</td><td class="k">oklch(45% .15 240)</td><td>hover / 按下</td><td>白字 ≥ 7:1</td></tr>
+  <tr><td class="k">primary-t</td><td class="k">oklch(96% .02 240)</td><td>選取列 · 極淡底</td><td>承載 primary 文字 ≥ 4.5</td></tr>
+</table>
+<div class="ds-row" style="margin-top:10px">
+  <span class="ds-lbl">織藍 58%</span>
+  <span class="b2" style="background:var(--thread);color:#fff">儲存版面</span>
+  <span class="mono" style="font-size:11px;color:var(--er)">白字 4.13 ✗ 僅供標誌</span>
+  <span style="width:20px"></span>
+  <span class="ds-lbl">動作 52%</span>
+  <span class="b2 pri">儲存版面</span>
+  <span class="mono" style="font-size:11px;color:var(--ok)">5.27 ✓</span>
+</div>
+<div class="desc" style="margin-top:8px"><b>用量鐵則</b>|主色只出現在<b>主要動作 · 選取 · focus ring · 連結</b>。
+不做整條側欄、不做大面積色塊 —— 品牌板逐字「產品介面的品牌感應完全來自結構本身的嚴謹與秩序」。</div>
 
-    <!-- 字型 -->
-    <div class="sec"><div class="sec-h"><span class="n">04</span>字型<span class="r">Inter(英數)+ Noto Sans TC(中文)· 四階 · 數字 Mono + tabular</span></div><div class="sec-b">
+<div class="grp-t" style="margin-top:20px">④ Semantic 語意色 —— 每個語意三值(字 / 框 / 底)</div>
+<table class="ds-tbl">
+  <tr><th style="width:92px">語意</th><th style="width:88px">字</th><th style="width:88px">框</th><th style="width:88px">底</th><th style="width:120px">樣式</th><th>用於</th></tr>
+  <tr><td><b>ok 成功</b></td><td class="k">#0f7a4a</td><td class="k">#bde3cd</td><td class="k">#e8f5ee</td><td><span class="chip3 ok">已核准</span></td><td>已核准 · 合格 · 已過帳</td></tr>
+  <tr><td><b>warn 注意</b></td><td class="k">#8a5a09</td><td class="k">#ecd7ac</td><td class="k">#fbf2e3</td><td><span class="chip3 wn">待簽核</span></td><td>待簽核 · 待處理 · 即將到期</td></tr>
+  <tr><td><b>error 異常</b></td><td class="k">#b02a26</td><td class="k">#eecac8</td><td class="k">#fbebea</td><td><span class="chip3 er">退回</span></td><td>退回 · 異常 · 失敗</td></tr>
+  <tr><td><b>neutral 中性</b></td><td class="k">#4a5560</td><td class="k">#d6dbe0</td><td class="k">#eef0f2</td><td><span class="chip3 nt">草稿</span></td><td>草稿 · 已結案 · 無狀態</td></tr>
+</table>
+<div class="desc" style="margin-top:6px">🔴 <b>語意色只承載語意,不做裝飾</b>。類別編碼(選項顏色)另有 c1–c8 一組,
+刻意<b>避開綠 / 琥珀 / 紅</b>三色相以免與狀態混淆。所有狀態一律<b>色 + 文字雙編碼</b> ——
+色盲與黑白列印下資訊不得遺失。</div>
+
+<div class="grp-t" style="margin-top:20px">介面 12 階冷中性(已落地於 tokens.css v4;Radix 語意)</div>
+<div class="ds-sw" style="grid-template-columns:repeat(10,1fr)">
+  <div class="b"><div class="c" style="background:#fcfdfe"></div><div class="t"><b>1</b>內容面</div></div>
+  <div class="b"><div class="c" style="background:#f6f8fa"></div><div class="t"><b>2</b>應用底</div></div>
+  <div class="b"><div class="c" style="background:#eef1f5"></div><div class="t"><b>3</b>元件/hover</div></div>
+  <div class="b"><div class="c" style="background:#e4e9ef"></div><div class="t"><b>4</b>active</div></div>
+  <div class="b"><div class="c" style="background:#d8dfe8"></div><div class="t"><b>5</b>強 active</div></div>
+  <div class="b"><div class="c" style="background:#e6eaf0"></div><div class="t"><b>6</b>次分隔</div></div>
+  <div class="b"><div class="c" style="background:#d3dae3"></div><div class="t"><b>7</b>框線</div></div>
+  <div class="b"><div class="c" style="background:#bcc6d2"></div><div class="t"><b>8</b>hover 框</div></div>
+  <div class="b"><div class="c" style="background:#5c6876"></div><div class="t"><b>11</b>次文</div></div>
+  <div class="b"><div class="c" style="background:#0f1720"></div><div class="t"><b>12</b>主文</div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">三配色主題(只換 BASE,其餘推導)</div>
+<div class="themes-row">
+  <div class="theme-card"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">oklch(52% .15 240)</b> · 織藍推導,對外預設</div></div>
+  <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">備選</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">oklch(52% .11 200)</b> · 情境備選</div></div>
+  <div class="theme-card" data-theme="graphite"><div class="th" style="background:var(--primary)">石墨 graphite<span class="df">中性</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">oklch(38% .01 260)</b> · 讓資料最跳</div></div>
+</div>
+<div class="desc" style="margin-top:8px">三個主題<b>只覆寫一個 BASE</b>,深色階與淡底由 <span class="mono">color-mix</span> 推導 ——
+白牌客戶只需提供一個品牌色。⚠️ 推導值由 <span class="mono">contrast.test.ts</span> 實算把關;
+換 base 若某色相對比不足,CI 會紅,屆時退回手調並記錄為例外。</div>
+
+<div class="grp-t" style="margin-top:20px">功能色(跨主題共用)</div>
+<div class="fn-row"><span>連結 <b style="color:var(--link)">#0070b5</b></span>
+  <span>公式 fx <b style="color:var(--fx)">#0b6b5d</b></span>
+  <span>關聯 <b style="color:var(--rel)">#5b3fa8</b></span></div>
+</div></div>
+
+<!-- 字型 -->
+<div class="sec"><div class="sec-h"><span class="n">04</span>字型<span class="r">Inter(英數)+ Noto Sans TC(中文)· 四階 · 數字 Mono + tabular</span></div><div class="sec-b">
       <div class="why"><b>🔴 2026-08-01 取代</b>品牌板逐字:「內文與介面統一使用 <b>Inter(英數)＋ Noto Sans TC(中文)</b>,僅用 <b>Regular / Medium / Semibold / Bold 四階</b>,維持嚴謹一致的結構感。」品牌名用 Inter Extrabold、「織雲」用 Noto Sans TC Black。<br>
  <b>先前的 IBM Plex 超家族已作廢</b> —— 當初選它是為避開「Inter = AI 預設」,但該理由不敵品牌板的明訂;且實測 Linear / Vercel / Attio 皆為 Inter 系。代價誠實說:放棄同源鑄字,換取拉丁字的現代感與更廣的字重軸。<br>
  <b>大字負字距</b>(實測依據:Linear 48px→−1.056px、Vercel 56px→−3.36px、Attio 48px→−0.72px):24px→−.026em · 20px→−.020em · 16px→−.014em · ≤14px→0。<br>
@@ -465,7 +591,94 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     <!-- 元件庫 -->
     <div class="sec"><div class="sec-h"><span class="n">06</span>元件庫<span class="r">docs/14 §5 全部元件 · 實作於 packages/ui · 隨主題換色</span></div><div class="sec-b">
 
-      <div class="grp-t">基礎控制</div>
+      <div class="grp-t">Button —— 變體 × 狀態(完整矩陣)</div>
+<table class="ds-tbl">
+  <tr><th style="width:104px">變體</th><th>rest</th><th>hover</th><th>focus</th><th>disabled</th><th style="width:180px">用於</th></tr>
+  <tr><td><b>Primary</b></td><td><span class="b2 pri">儲存</span></td><td><span class="b2 pri hv">儲存</span></td>
+      <td><span class="b2 pri fo">儲存</span></td><td><span class="b2 dis">儲存</span></td>
+      <td>一個畫面<b>最多一顆</b>。過帳 / 儲存 / 送出</td></tr>
+  <tr><td><b>Secondary</b></td><td><span class="b2 sec">匯入</span></td><td><span class="b2 sec hv">匯入</span></td>
+      <td><span class="b2 sec fo" style="outline:2px solid var(--primary);outline-offset:2px">匯入</span></td>
+      <td><span class="b2 dis">匯入</span></td><td>次要但明確的動作</td></tr>
+  <tr><td><b>Ghost</b></td><td><span class="b2 gho">取消</span></td><td><span class="b2 gho hv">取消</span></td>
+      <td><span class="b2 gho fo" style="outline:2px solid var(--primary);outline-offset:2px">取消</span></td>
+      <td><span class="b2 dis">取消</span></td><td>取消 / 工具列 / 低頻</td></tr>
+  <tr><td><b>Danger</b></td><td><span class="b2 dng">刪除</span></td><td><span class="b2 dng hv">刪除</span></td>
+      <td><span class="b2 dng fo" style="outline:2px solid var(--er);outline-offset:2px">刪除</span></td>
+      <td><span class="b2 dis">刪除</span></td><td>破壞性 —— <b>一律需二次確認</b></td></tr>
+</table>
+<div class="ds-row" style="margin-top:10px">
+  <span class="ds-lbl">尺寸</span>
+  <span class="b2 pri sm">sm 26px</span><span class="b2 pri">md 30px</span><span class="b2 pri lg">lg 36px</span>
+  <span class="ds-lbl" style="margin-left:12px">載入中</span>
+  <span class="b2 pri"><span class="spin" style="border-color:rgba(255,255,255,.35);border-top-color:#fff"></span>儲存中…</span>
+</div>
+<div class="desc" style="margin-top:6px">🔴 <b>Danger 不做實心紅底</b> —— 實心紅在密集畫面裡會搶掉主要動作的位置;
+危險性由<b>文字色 + 二次確認</b>承載,不由面積承載。<br>
+<b>focus ring 一律 2px 主色 + offset 2px</b>,不得用 <span class="mono">outline:none</span> 取代(鍵盤可達性)。
+按鈕<b>不畫框</b>(Secondary 用 head 底、Ghost 透明),只有輸入類保留框。</div>
+
+<div class="grp-t" style="margin-top:20px">Select —— 觸發 · 選單 · 狀態</div>
+<div class="ds-row" style="align-items:flex-start">
+  <div class="ds-grid">
+    <div class="ds-row"><span class="ds-lbl">rest</span><span class="sel">單行文字</span></div>
+    <div class="ds-row"><span class="ds-lbl">focus</span><span class="sel fo">單行文字</span></div>
+    <div class="ds-row"><span class="ds-lbl">disabled</span><span class="sel dis">系統欄位</span></div>
+    <div class="ds-row"><span class="ds-lbl">placeholder</span><span class="sel" style="color:var(--ink4)">請選擇型別…</span></div>
+  </div>
+  <div class="selm" style="margin-left:14px">
+    <i class="on">單行文字<span class="ck">✓</span></i>
+    <i>多行文字</i><i>數值</i><i>金額</i><i>日期</i>
+    <i style="color:var(--ink4)">關聯(未啟用)</i>
+  </div>
+</div>
+<div class="desc" style="margin-top:6px">用 <b>自訂 Select</b> 不用原生 <span class="mono">&lt;select&gt;</span> ——
+原生在各 OS 的外觀不受控,與其餘控件對不齊(這是既有踩坑)。<br>
+選單為<b>浮層</b>:9px 圓角 + 分層陰影;選中列用 <span class="mono">active</span> 階 + 勾號<b>雙編碼</b>,不只靠底色。
+<b>選項 ≤ 4 個改用 Segmented</b>,不用下拉。</div>
+
+<div class="grp-t" style="margin-top:20px">Loading —— 三種,依「等多久 / 知不知道進度」選</div>
+<table class="ds-tbl">
+  <tr><th style="width:104px">型態</th><th style="width:210px">樣式</th><th style="width:120px">時機</th><th>規則</th></tr>
+  <tr><td><b>Skeleton</b></td><td>
+      <div class="skl" style="height:9px;width:150px"></div>
+      <div class="skl" style="height:9px;width:104px;margin-top:5px"></div></td>
+      <td>首次載入<br>已知版面</td><td>🔴 <b>形狀必須等於最終內容</b> —— 否則資料到達時版面跳動(CLS)</td></tr>
+  <tr><td><b>Spinner</b></td><td><span class="spin"></span> <span style="font-size:12.5px;color:var(--ink3);margin-left:6px">處理中…</span></td>
+      <td>動作進行中<br>不知進度</td><td>只用在<b>按鈕內或局部</b>;<b>禁全頁遮罩</b></td></tr>
+  <tr><td><b>Progress</b></td><td><div class="prog" style="width:150px"><i></i></div></td>
+      <td>背景任務<br>匯入 / 匯出</td><td>可知百分比就顯示百分比,不要用不確定條假裝</td></tr>
+</table>
+<div class="desc" style="margin-top:6px">🔴 <b>禁「載入中」把既有內容清空</b> —— 重新查詢時保留前次資料(keepPreviousData)並在角落顯示狀態,
+畫面不得閃白。&lt;200ms 完成的操作<b>不顯示任何載入指示</b>(閃一下比等一下更吵)。</div>
+
+<div class="grp-t" style="margin-top:20px">燈號 · Pill · 狀態章 —— 三種東西,職責不同</div>
+<table class="ds-tbl">
+  <tr><th style="width:100px">元件</th><th style="width:230px">樣式</th><th style="width:150px">職責</th><th>規則</th></tr>
+  <tr><td><b>燈號 Lamp</b></td><td>
+      <span class="lamp"><span class="d ok"></span>已連線</span>
+      <span class="lamp" style="margin-left:10px"><span class="d wn pulse"></span>同步中</span>
+      <span class="lamp" style="margin-left:10px"><span class="d er"></span>離線</span></td>
+      <td><b>系統即時狀態</b><br>連線 / 服務 / 裝置</td>
+      <td>7px 圓點 + <b>必附文字</b>;只有燈號可用<b>脈動</b>(1.6s),且僅限「進行中」</td></tr>
+  <tr><td><b>Pill</b></td><td>
+      <span class="pill2 num">24</span>
+      <span class="pill2" style="margin-left:6px">採購</span>
+      <span class="pill2 rm" style="margin-left:6px">供應商 = 鑫豐</span></td>
+      <td><b>計數與標籤</b><br>筆數 / 分類 / 已套用篩選</td>
+      <td>中性色,<b>不帶語意</b>;可移除者加 ×。<b>不得用於狀態</b></td></tr>
+  <tr><td><b>狀態章</b><br><span style="font-size:11px;color:var(--ok)">(定案:方形帶框)</span></td><td>
+      <span class="chip3 ok">已核准</span><span class="chip3 wn" style="margin-left:5px">待簽核</span>
+      <span class="chip3 er" style="margin-left:5px">退回</span><span class="chip3 nt" style="margin-left:5px">草稿</span></td>
+      <td><b>單據語意狀態</b><br>流程所在位置</td>
+      <td>3px 方角 + 字/框/底三值;<b>色 + 文字雙編碼</b></td></tr>
+</table>
+<div class="why" style="margin-top:10px;border-left-color:var(--ok)"><b>裁定|狀態章維持方形帶框,不改 pill。</b>
+實測 Linear / Vercel / Attio 三家都用 pill,但品牌板逐字寫「<b>嚴謹的網格互鎖</b>」「<b>結構本身的嚴謹與秩序</b>」——
+方角與標誌是同一套幾何語言,pill 只是外部慣例。<b>Pill 仍解禁</b>,但限定用於計數與標籤(中性、不帶語意),
+與狀態章在形狀上一眼可分。</div>
+
+<div class="grp-t" style="margin-top:20px">基礎控制(既有實作)</div>
       <div class="comp"><div class="clabel">Button<span class="ref">§3.8 · button.tsx</span></div>
         <div class="comp-row"><span class="cbtn pri">核准並過帳</span><span class="cbtn">儲存</span><span class="cbtn">列印 ▾</span><span class="cbtn dgr">作廢</span></div></div>
       <div class="comp"><div class="clabel">Input<span class="ref">input.tsx</span></div>
@@ -610,37 +823,45 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     </div></div>
 
     <!-- 形狀 · 深度 · 間距 -->
-    <div class="sec"><div class="sec-h"><span class="n">10</span>形狀 · 深度 · 間距<span class="r">§2.4</span></div><div class="sec-b">
-      <div class="why"><b>理由</b>方角 2–3px 傳達精確而非消費級玩具感;深度以框線而非陰影表達 —— 高密度表格疊陰影會產生視覺噪音,框線在列印與截圖下也一致;間距鎖 4 / 8,對齊 Tailwind scale 與後端 spacing token。</div>
-      <div class="spec-grid">
-        <div>
-          <div class="mini-h">圓角(方角 2–3px · 禁 pill / 禁 &gt;4px)</div>
-          <div class="radius-demo">
-            <div class="r"><i style="border-radius:2px"></i><span>2px 輸入/按鈕/章</span></div>
-            <div class="r"><i style="border-radius:3px"></i><span>3px 標記/面板</span></div>
-            <div class="r no"><i></i><span>禁 pill 9999px</span></div>
-          </div>
-        </div>
-        <div>
-          <div class="mini-h">深度 = 框線(禁陰影)</div>
-          <div class="shadow-demo">
-            <div class="box yes">框線 ✓</div>
-            <div class="box no">陰影 禁</div>
-          </div>
-        </div>
-      </div>
-      <div class="mini-h" style="margin-top:14px">間距節奏(4 / 8)</div>
-      <div class="spacing-demo">
-        <div class="s"><i style="width:4px;height:28px"></i><span>4</span></div>
-        <div class="s"><i style="width:8px;height:28px"></i><span>8</span></div>
-        <div class="s"><i style="width:12px;height:28px"></i><span>12</span></div>
-        <div class="s"><i style="width:16px;height:28px"></i><span>16</span></div>
-        <div class="s"><i style="width:24px;height:28px"></i><span>24</span></div>
-      </div>
-    </div></div>
+    <div class="sec"><div class="sec-h"><span class="n">10</span>形狀 · 深度 · 間距<span class="r">🔴 2026-08-01 依方向 B 改寫</span></div><div class="sec-b">
+<div class="why"><b>🔴 取代先前的「方角 2–3px · 禁 pill · 深度 = 框線禁陰影」。</b>
+實測 Linear 主要用 2px / 4px / 6px、Vercel 6px / 8px、Attio 8px / 10px / 12px ——
+<b>「精品用大圓角」不成立</b>,我方原本的緊圓角方向是對的,但 2–3px 過緊、且禁陰影使深度無處表達。
+新規:圓角三階、<b>深度兩級</b>、間距<b>分組</b>。</div>
 
-    <!-- 尺寸節奏(密度) -->
-    <div class="sec"><div class="sec-h"><span class="n">11</span>尺寸節奏(密度)<span class="r">§2.6 · 密度優先,留白是手段非風格</span></div><div class="sec-b">
+<div class="grp-t">圓角三階</div>
+<div class="ds-row">
+  <span class="ds-lbl">4px 控件</span><span class="b2 sec" style="border-radius:4px">按鈕 / 輸入 / 章</span>
+  <span class="ds-lbl">6px 容器</span><span style="display:inline-block;padding:7px 14px;background:var(--head);border-radius:6px;font-size:12.5px">卡片 / 面板</span>
+  <span class="ds-lbl">9px 浮層</span><span style="display:inline-block;padding:7px 14px;background:var(--card);border-radius:9px;font-size:12.5px;box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18)">選單 / 對話框</span>
+</div>
+<div class="desc" style="margin-top:6px">Pill(9999px)<b>解禁,但限用途</b>:僅<b>計數與標籤</b>(見 §06 Pill);
+<b>狀態章維持方形帶框</b>(§06)—— 與標誌的網格語言同源。</div>
+
+<div class="grp-t" style="margin-top:18px">深度只有兩級</div>
+<div class="ds-row" style="gap:16px">
+  <div style="padding:12px 16px;border-radius:6px;background:var(--card);box-shadow:0 0 0 1px var(--line);font-size:12.5px">
+    <b>常態 = hairline</b><br><span class="mono" style="font-size:11px;color:var(--ink3)">0 0 0 1px var(--line)</span></div>
+  <div style="padding:12px 16px;border-radius:9px;background:var(--card);font-size:12.5px;
+    box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.05)">
+    <b>浮層 = 分層真陰影</b><br><span class="mono" style="font-size:11px;color:var(--ink3)">+0 12px 28px -10px /.18 · +0 2px 6px /.05</span></div>
+</div>
+<div class="desc" style="margin-top:6px">依據:Linear 最常用的陰影是 <span class="mono">rgba(0,0,0,.03) 0 1.2px 0</span>(31 次)——
+<b>陰影是比框線更軟的替代品</b>,不是做戲;Attio 的陰影<b>帶色調且分層</b>。三家的陰影密度僅 1.8–4.1%。
+🔴 <b>殼的互動項不畫框</b>,靠 Surface 的 hover / active 階。</div>
+
+<div class="grp-t" style="margin-top:18px">間距 —— 分組尺度(不是一體適用)</div>
+<div class="ds-row">
+  <span class="ds-lbl">4px 組內</span><span style="height:16px;width:4px;background:var(--primary)"></span><span style="font-size:12.5px;color:var(--ink3)">標籤與其值、圖示與文字</span>
+</div>
+<div class="ds-row"><span class="ds-lbl">12px 組間</span><span style="height:16px;width:12px;background:var(--primary)"></span><span style="font-size:12.5px;color:var(--ink3)">欄位與欄位、清單列之間</span></div>
+<div class="ds-row"><span class="ds-lbl">24px 區段</span><span style="height:16px;width:24px;background:var(--primary)"></span><span style="font-size:12.5px;color:var(--ink3)">區段與區段、卡片外距</span></div>
+<div class="desc" style="margin-top:6px">🔴 先前全庫是 8–12px <b>一體適用</b>,所以所有東西看起來一樣近 =
+沒有分組 = 雜亂。三級尺度讓眼睛看得出「哪些是一夥的」。</div>
+</div></div>
+
+<!-- 尺寸節奏 -->
+<div class="sec"><div class="sec-h"><span class="n">11</span>尺寸節奏(密度)<span class="r">§2.6 · 密度優先,留白是手段非風格</span></div><div class="sec-b">
       <div class="density" style="max-width:560px">
         <div class="row" style="height:42px">topbar<b>42px</b></div>
         <div class="row" style="height:40px">工具列 toolbar<b>40px</b></div>
@@ -653,23 +874,32 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     </div></div>
 
     <!-- 動效 -->
-    <div class="sec"><div class="sec-h"><span class="n">12</span>動效(近乎無)<span class="r">§3.15 · 資料變更以時間戳表達,不以動畫</span></div><div class="sec-b">
-      <div class="dd">
-        <div class="col do"><h4>允許</h4><ul>
-          <li>hover / active 之 background · border 過渡 ≤120ms</li>
-          <li>panel 開合 ≤150ms</li>
-          <li>尊重 prefers-reduced-motion</li>
-        </ul></div>
-        <div class="col dont"><h4>禁止</h4><ul>
-          <li>入場動畫 / stagger / parallax</li>
-          <li>彈跳 / spring / 裝飾性 motion</li>
-          <li>animating width/height/top/left</li>
-        </ul></div>
-      </div>
-    </div></div>
+    <div class="sec"><div class="sec-h"><span class="n">12</span>動效<span class="r">Carbon productive 曲線 · 只服務狀態轉換 · 尊重 reduced-motion</span></div><div class="sec-b">
+<div class="why"><b>原則</b>動效只用來<b>解釋狀態改變</b>(這個東西從哪來、去哪),不用來取悅。
+資料變更以<b>時間戳</b>表達,不以動畫。曲線採 IBM Carbon 的 productive 組 ——
+它是為<b>高頻使用的生產力工具</b>設計的,與 expressive(行銷/首次體驗)不同。</div>
+<table class="ds-tbl">
+  <tr><th style="width:118px">token</th><th style="width:70px">時間</th><th style="width:210px">曲線</th><th>用於</th></tr>
+  <tr><td class="k">fast-01</td><td class="k">70ms</td><td class="k">cubic-bezier(0,0,.38,.9)</td><td>hover / active 底色、圖示色</td></tr>
+  <tr><td class="k">fast-02</td><td class="k">110ms</td><td class="k">cubic-bezier(0,0,.38,.9)</td><td>按鈕狀態、chip、focus ring</td></tr>
+  <tr><td class="k">moderate-01</td><td class="k">150ms</td><td class="k">cubic-bezier(.2,0,.38,.9)</td><td>浮層出現 / 面板展開</td></tr>
+  <tr><td class="k">moderate-02</td><td class="k">240ms</td><td class="k">cubic-bezier(.2,0,.38,.9)</td><td>抽屜 / 大面積轉場(上限)</td></tr>
+</table>
+<div class="ds-row" style="margin-top:12px">
+  <span class="ds-lbl">70ms</span><div class="mo" style="width:150px"><i style="animation:none;left:0"></i></div>
+  <span class="ds-lbl">150ms</span><div class="mo" style="width:150px"><i style="left:116px"></i></div>
+</div>
+<div class="grp-t" style="margin-top:16px">硬規則</div>
+<div class="desc">
+  <b>只動 <span class="mono">opacity</span> 與 <span class="mono">transform</span></b> —— 禁 animating width / height / top / left(會觸發 layout,密集表格下掉幀)。<br>
+  <b>禁</b>入場動畫 / stagger / parallax / 彈跳 / spring / 裝飾性 motion / 載入時的骨架跳動。<br>
+  <b><span class="mono">prefers-reduced-motion: reduce</span> 一律歸零</b>(採 Cloudscape 的全關立場;日後若引入位移類動效,再改 WebKit 的「換掉而非全關」)。<br>
+  <b>不得用動效掩蓋延遲</b> —— 慢就顯示進度,不要用動畫假裝快。
+</div>
+</div></div>
 
-    <!-- 無障礙 -->
-    <div class="sec"><div class="sec-h"><span class="n">13</span>無障礙 a11y<span class="r">§3.14 · AA 4.5:1 · 鍵盤全可達 · 雙編碼</span></div><div class="sec-b">
+<!-- 無障礙 -->
+<div class="sec"><div class="sec-h"><span class="n">13</span>無障礙 a11y<span class="r">§3.14 · AA 4.5:1 · 鍵盤全可達 · 雙編碼</span></div><div class="sec-b">
       <div class="why"><b>理由</b>AA 4.5:1 是企業採購與法遵底線,非加分項;狀態一律色 + 文字雙編碼,確保色盲使用者與黑白列印仍可辨識,落實「不單靠顏色傳達資訊」。</div>
       <div class="mini-h">主色白字對比(三主題皆 ≥7:1)<span style="font-weight:400;color:var(--ink3)"> —— 數值隨主色更新重算,非沿用</span></div>
       <div class="a11y-pairs">
