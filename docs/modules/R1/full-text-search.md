@@ -239,9 +239,58 @@ virtual(`lookup` / `rollup` / `createdBy`…)刻意排除:讀時計算,沒有任
 
 | # | 項目 | 為什麼可以先不做 |
 |---|---|---|
-| R1 | 既有資料 backfill + 對帳 job | 同 tx 寫入已覆蓋所有寫入路徑;既有資料的一次性補寫屬 pilot 上線前營運步驟。**pilot 前必做** |
+| ~~R1~~ ✅ | ~~既有資料 backfill + 對帳 job~~ | **已完成(2026-08-01)** —— 見 §9 |
 | R2 | 搜尋路徑的 `statement_timeout` | 1000 筆上限 + 2 字門檻已擋掉主要的失控來源;真正需要它是在單一租戶資料量級提升後 |
 | R3 | GIN 寫入延遲量測(`fastupdate` / `gin_pending_list_limit` 調校)| 目前每筆記錄僅數列 upsert;**沒量過就不該調參**,調了也不知道有沒有效 |
 | R4 | 批次匯入的索引寫入效能 | Excel 匯入走 bulk 路徑,逐筆 upsert 在大批量下會放大;需與 grid-and-excel-import 一起看 |
 | R5 | virtual 欄位(lookup / rollup)可搜 | 需要依賴失效機制,規模等同另一個模組 |
 | R6 | 相關性排序(BM25 或等價)| 現為自建啟發式;**若哪天真的需要相關性,那才是重新評估外部引擎的時機**(見 §0.4) |
+
+---
+
+## 9. 既有資料補寫(殘留 R1,2026-08-01 完成)
+
+### 為什麼這是 pilot 硬前提
+
+索引是同 tx 寫入的,四條寫入路徑都會維護它 —— **但那只涵蓋功能上線之後的寫入**。
+上線前就存在的記錄從未經過那些路徑,因此完全搜不到。
+
+對 pilot 客戶而言這是最糟的失敗形態:功能看起來好好的(新建的搜得到),
+但**歷年的資料一筆都搜不到**,而且沒有任何錯誤訊息。
+
+### 交付
+
+`SearchBackfillService` + CLI:
+
+```
+pnpm --filter @weyver/api search:backfill -- --tenant 1 --check   # 只對帳,不寫
+pnpm --filter @weyver/api search:backfill -- --tenant 1           # 補缺的
+pnpm --filter @weyver/api search:backfill -- --tenant 1 --force   # 全部重寫
+```
+
+| 性質 | 做法 |
+|---|---|
+| 分批可續跑 | 逐表單、逐批 500 筆各自成一交易 —— 中斷不回滾已完成的部分 |
+| 冪等 | 沿用索引寫入的 `onConflict … merge`;預設跳過已有索引者 |
+| **不另寫解析邏輯** | 直接呼叫 `SearchIndexService.upsertInTx`,與線上寫入**同一段程式碼** —— 兩份對「什麼算可搜尋」的判斷遲早分岔,而本模組已經踩過一次(手寫型別清單裡有兩個不存在的型別) |
+| 對帳**無副作用** | `--check` 只讀不寫。若它順手補掉,上線前的檢查腳本會永遠看起來是通過的 |
+
+### 實跑結果(dev,真實既有資料)
+
+`--check` 抓出 **27 張表單、254 筆記錄未進索引** → 補寫 240 筆(約 1 秒)→ 再 check 回報「索引完整,無缺漏」→ 重跑補 0 筆(冪等)。
+搜尋 API 實測:補寫前搜不到的值(`冷凍雞腿` / `PO-003`)補寫後即命中。
+
+### 🔴 兩個實作期才發現的形狀問題
+
+1. **`field_def` 的型別欄叫 `cell_value_type` 不是 `type`**,實體欄名是 `f<id>` 不是欄位名稱。
+   索引寫入吃的是**以欄位名稱為鍵**的物件 —— 直接把實體列丟進去的話,每個欄位都查到 `undefined`
+   → 被當成「值已清空」→ **一筆都不會進索引,而且不報錯**。
+2. **knex 對 bigint 回傳字串**(drizzle 有 `mode:"number"` 幫忙轉,knex 沒有)。
+   未轉的 `field_def.id` 會被 `physicalColumnName` 的 `Number.isSafeInteger` 擋下並拋
+   `illegal fieldId`;而 `form_def.id` 未轉則讓 `formId === xxx` 這種比較**靜默失敗**。
+
+### 順帶查證(非缺陷)
+
+軟刪表單的索引列**不會被清掉**,但搜尋只在 `metadata.listForms` 回傳的(未刪)表單裡找,
+故查不到 —— 實測 dev 有 100 列 `鮮勇…` 屬已刪表單,搜尋正確回 0。
+保留這些列反而讓「從回收桶還原表單」立即可搜,不必重跑 backfill。
