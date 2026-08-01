@@ -14,6 +14,17 @@ export const REQUIRED_FORM_ACTION = "authz:requiredFormAction"
 export const RequiresFormAction = (action: FormAction): MethodDecorator =>
   SetMetadata(REQUIRED_FORM_ACTION, action)
 
+/* 🔴 本端點作用對象**恆為操作者自己**(個人設定、我的代理人…)。
+
+   PermissionGuard 對「無 :formId 的非讀請求」預設要求 admin —— 那條規則是為了擋
+   建表 / 改租戶設定,但它會連帶擋掉自助端點:一般員工連自己的語言時區都改不了。
+   實測 `PATCH /api/settings/me` 對無角色使用者回 403,而測試與 dev 都看不到
+   —— dev 一律 isSuperAdmin,整條分支從來沒有人走過。
+
+   標了這個 decorator 的端點,授權由 controller/service 以 `tenant.actorId` 自行界定。 */
+export const SELF_SERVICE = "authz:selfService"
+export const SelfService = (): MethodDecorator => SetMetadata(SELF_SERVICE, true)
+
 /* 取 PermissionGuard 掛上的有效權限(list 端點過濾用)。 */
 export const Permissions = createParamDecorator(
   (_data: unknown, context: ExecutionContext): EffectivePermissions => {

@@ -215,7 +215,8 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 5. **駁回強制填理由**|目前 `comment` 為 optional。退回重工與稽核都需要
 6. **送簽前空簽核者防呆**(既有 FMEA A8 殘留)
 
-**P1** → 已立 [task #104]
+**P1** → 已立 [task #104]。**其中「代理簽核」已於 2026-08-01 交付**(見 §13 v1.2);
+其餘 7–11 仍為殘留,尚未實作。
 
 7. **會簽 / 擇辦(N-of-M)**|實務上「全部同意」用於責任分擔(品保+生產),「任一同意」用於加速與代理,**兩者都常用**
 8. **加簽 / 轉簽**|Ragic 三型:向前(前一關加人並暫停自己)/ 臨時(同關)/ 向後(下一關);Power Automate 的 Reassign 是一級按鈕
@@ -247,6 +248,7 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-01 | v1.2 | **#104 簽核代理人 SHIPPED**(P1 第 1 項;7–11 仍為殘留)。`approval_delegate`(起訖 + 不得代理自己 CHECK + RLS FORCE)+ `approval_step_log.on_behalf_of_actor_id`(**非 NULL = 代理行為**,稽核答得出「為什麼是他批的」)。`approverOf()` **先看本人再看代理**,親自核准不誤記為代理;時間窗用 **DB `now()`** 非應用層時鐘。自助設定(本人設自己的代理)+ admin 可代設(SAP 非計畫性代理);**代理人不得自行解除**。**待簽匣與待簽通知一併納入代理來源** —— 少了這段是「簽得了但找不到」的半殘。順帶修**既有缺陷**:`PATCH /api/settings/me` 對無角色使用者回 403(PermissionGuard「無 formId 的寫入需 admin」誤傷自助端點),新增 `@SelfService()` 標記並限定只在無 formId 時放行。api 26 approval + 10 guard + web 2 e2e 綠 | Claude Code |
 | 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 按鈕動作框架(0012:button_def/action_audit/approval_*;封閉 allowlist + 確定性編譯 + 權限 gate + 冪等 + audit)。M2 簽核狀態機(送簽/推進/退回/撤回 + 人核准 gate 角色閉包 + ZEN 金額路由 + 完成觸發按鈕 + ApprovalLockInterceptor 記錄鎖)。M3 記錄頁動作區 + 待簽佇列。M4 設計器動作/簽核雙頁籤。M5 spec 固化。FMEA A1–A4/A9 P0 全 ✅(A5/A8 殘留明列)。api 250 + web 19 e2e 綠 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-AA-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:簽核 DB 狀態機(無 DBOS)、三動作 allowlist、順序階層 + ZEN 金額路由、定義走 authz Tier-1 車道、整筆記錄鎖 | Claude Code |
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 後續-1:自訂按鈕動作框架(updateSelf/pushTo/openUrl)+ 簽核 state machine(階層 + ZEN 金額路由 + 人核准 gate + 自動執行)。核心洞見:簽核=DB 狀態機不需 DBOS、ZEN 只算路由、動作走 docs/22 不變量。裝 GoRules ZEN;DBOS/並簽/通知動作/留言 P1。OQ-AA-1..7 待裁定 | Claude Code |

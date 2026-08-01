@@ -4,7 +4,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { RequiresFormAction } from "../src/authz/authz-http.js"
+import { RequiresFormAction, SelfService } from "../src/authz/authz-http.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { PermissionGuard } from "../src/authz/permission.guard.js"
 import { PermissionService } from "../src/authz/permission.service.js"
@@ -34,7 +34,14 @@ function need<T>(v: T | undefined | null, m: string): T {
 class DummyController {
   @RequiresFormAction("design")
   manageRoute(): void {}
+
+  /* 自助端點:個人設定 / 我的代理人 —— 作用對象恆為操作者自己 */
+  @SelfService()
+  selfRoute(): void {}
 }
+
+const handlerOf = (name: "manageRoute" | "selfRoute"): ((...a: unknown[]) => unknown) =>
+  DummyController.prototype[name] as unknown as (...a: unknown[]) => unknown
 
 function ctxFor(
   request: { method: string; params: Record<string, string>; tenantContext?: TenantContext },
@@ -175,5 +182,38 @@ describe("PermissionGuard 表單級執法(P0-4a M3)", () => {
       tenantContext: tc(tenantB, actorReader),
     })
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(ForbiddenException)
+  })
+})
+
+/* 🔴 自助端點。這一段是**真實缺陷**的回歸:`PATCH /api/settings/me` 對無角色使用者
+   回 403 —— 一般員工連自己的語言時區都改不了。
+
+   為什麼從沒被發現:dev 一律 `isSuperAdmin`,而在此之前**沒有任何測試送過
+   `x-dev-real-authz`**,所以「無 formId 的寫入需 admin」這條分支從來沒有人走過。
+   同型的坑已經出現多次:只在某個環境生效的規則,等於從來沒有人驗證過。 */
+describe("🔴 自助端點不受「無 formId 的寫入需 admin」所限", () => {
+  it("🔴 無任何角色的人可以寫自己的東西", async () => {
+    const req = {
+      method: "PATCH",
+      params: {},
+      tenantContext: tc(tenantA, actorNone),
+    }
+    await expect(guard.canActivate(ctxFor(req, handlerOf("selfRoute")))).resolves.toBe(true)
+  })
+
+  it("沒標記時仍維持原本的 admin 要求(建表 / 租戶設定的保護不動)", async () => {
+    const req = { method: "PATCH", params: {}, tenantContext: tc(tenantA, actorNone) }
+    await expect(guard.canActivate(ctxFor(req))).rejects.toThrow(ForbiddenException)
+  })
+
+  it("自助標記**不會**放寬有 formId 的路由 —— 免得被誤用成萬用旁路", async () => {
+    const req = {
+      method: "PATCH",
+      params: { formId: String(formA) },
+      tenantContext: tc(tenantA, actorNone),
+    }
+    await expect(guard.canActivate(ctxFor(req, handlerOf("selfRoute")))).rejects.toThrow(
+      ForbiddenException,
+    )
   })
 })

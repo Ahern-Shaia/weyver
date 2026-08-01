@@ -2,7 +2,7 @@ import { Body, Controller, ForbiddenException, Get, Inject, Patch, UseGuards } f
 import { z } from "zod"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
-import { Permissions } from "../authz/authz-http.js"
+import { Permissions, SelfService } from "../authz/authz-http.js"
 import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
@@ -85,6 +85,7 @@ export class SettingsController {
   }
 
   @Patch("me")
+  @SelfService()
   async patchMe(
     @Tenant() tenant: TenantContext,
     @Body(new ZodValidationPipe(userPatchSchema)) body: z.infer<typeof userPatchSchema>,

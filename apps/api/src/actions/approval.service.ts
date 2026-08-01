@@ -20,6 +20,7 @@ import type {
   CreateApprovalDefBody,
 } from "./action-specs.js"
 import { ActionsRepository, type ApprovalDefRow } from "./actions.repository.js"
+import { ApprovalDelegateRepository } from "./approval-delegate.repository.js"
 import { ButtonService } from "./button.service.js"
 
 /* R1·後續-1 M2 簽核狀態機(OQ-AA-1=A:DB pending step 由 approve 推進,無 DBOS)。
@@ -29,6 +30,7 @@ import { ButtonService } from "./button.service.js"
 export class ApprovalService {
   constructor(
     @Inject(ActionsRepository) private readonly repo: ActionsRepository,
+    @Inject(ApprovalDelegateRepository) private readonly delegates: ApprovalDelegateRepository,
     @Inject(AuthzRepository) private readonly authz: AuthzRepository,
     @Inject(RecordService) private readonly records: RecordService,
     @Inject(ButtonService) private readonly buttons: ButtonService,
@@ -150,7 +152,8 @@ export class ApprovalService {
     if (step === undefined) {
       throw new ConflictException({ code: "APPROVAL_STEP_MISSING", message: "步驟定義遺失" })
     }
-    if (!(await this.canApprove(tenant, step))) {
+    const approver = await this.approverOf(tenant, step)
+    if (!approver.allowed) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "非本步驟之簽核者" })
     }
 
@@ -177,6 +180,8 @@ export class ApprovalService {
       instanceId,
       stepNo: step.stepNo,
       actorId: tenant.actorId,
+      /* 代理成立時記下被代理者 —— 只記「B 核准」的話,代理在事後完全看不見 */
+      onBehalfOfActorId: approver.onBehalfOf,
       decision,
       comment,
     })
@@ -292,10 +297,20 @@ export class ApprovalService {
   }
 
   /* 我的待簽:pending 實例中,當前步簽核角色 ∈ 我的角色閉包 */
+  /* 🔴 待簽匣必須含**代理來的**單據。少了這段,代理人「簽得了但找不到」——
+     API 放行、畫面上卻沒有那一筆,等於代理功能只做了一半。 */
   async listMyPending(tenant: TenantContext): Promise<ApprovalInstanceDto[]> {
     const instances = await this.repo.listPendingInstances(tenant.tenantId)
     if (instances.length === 0) return []
     const roleIds = new Set(await this.authz.resolveActorRoleIds(tenant.tenantId, tenant.actorId))
+    for (const principal of await this.delegates.activeDelegatorsOf(
+      tenant.tenantId,
+      tenant.actorId,
+    )) {
+      for (const r of await this.authz.resolveActorRoleIds(tenant.tenantId, principal)) {
+        roleIds.add(r)
+      }
+    }
     const out: ApprovalInstanceDto[] = []
     for (const inst of instances) {
       const def = await this.repo.getApprovalDef(tenant.tenantId, inst.defId)
@@ -318,13 +333,19 @@ export class ApprovalService {
     approverRoleId: number,
   ): Promise<void> {
     const approvers = await this.authz.listRoleMembers(tenant.tenantId, approverRoleId)
+    /* 代理人也要收到 —— Ragic 的設定名稱就叫「啟用及**通知**代理人」。
+       通知不到的話,代理人得自己想到去翻待簽匣,而請假期間沒有人會這樣做。 */
+    const withDelegates = new Set([
+      ...approvers,
+      ...(await this.delegates.activeDelegatesFor(tenant.tenantId, approvers)),
+    ])
     await this.notify.emit({
       tenantId: tenant.tenantId,
       event: NOTIFICATION_EVENTS.approvalPending,
       formId,
       recordId,
       actorId: tenant.actorId,
-      recipientActorIds: approvers,
+      recipientActorIds: [...withDelegates],
     })
   }
 
@@ -345,10 +366,28 @@ export class ApprovalService {
     })
   }
 
-  private async canApprove(tenant: TenantContext, step: ApprovalStep): Promise<boolean> {
-    if (tenant.isSuperAdmin === true) return true
+  /* 🔴 是否可簽。回傳 `onBehalfOf` —— 代理成立時要指名代的是誰,
+     否則稽核只看得到「B 核准」而答不出「他有什麼權?」
+
+     順序有意義:**先看本人**。若本人就在該關角色內,那是親自核准不是代理,
+     不該在日誌裡誤記成代理行為。 */
+  private async approverOf(
+    tenant: TenantContext,
+    step: ApprovalStep,
+  ): Promise<{ allowed: boolean; onBehalfOf: number | null }> {
+    if (tenant.isSuperAdmin === true) return { allowed: true, onBehalfOf: null }
     const roleIds = await this.authz.resolveActorRoleIds(tenant.tenantId, tenant.actorId)
-    return roleIds.includes(step.approverRoleId)
+    if (roleIds.includes(step.approverRoleId)) return { allowed: true, onBehalfOf: null }
+
+    /* 代理:操作者是某人的有效代理,而**那個人**在該關角色內。
+       🔴 **只查一層,不遞移** —— A 代 B、B 代 C 不使 A 得到 C 的簽核權。
+       代理鏈會讓實際權限無人能一眼算出,那正是內控最怕的東西。 */
+    const principals = await this.delegates.activeDelegatorsOf(tenant.tenantId, tenant.actorId)
+    for (const principal of principals) {
+      const theirRoles = await this.authz.resolveActorRoleIds(tenant.tenantId, principal)
+      if (theirRoles.includes(step.approverRoleId)) return { allowed: true, onBehalfOf: principal }
+    }
+    return { allowed: false, onBehalfOf: null }
   }
 
   private async toInstanceDto(

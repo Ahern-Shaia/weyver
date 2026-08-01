@@ -364,6 +364,8 @@ export class ActionsRepository {
     stepNo: number
     actorId: number
     decision: string
+    /* 非 NULL = 這是代理行為;稽核要答得出「為什麼是他批的」 */
+    onBehalfOfActorId?: number | null
     comment?: string | undefined
   }): Promise<void> {
     await this.db.insert(approvalStepLogs).values({
@@ -372,6 +374,7 @@ export class ActionsRepository {
       stepNo: input.stepNo,
       actorId: input.actorId,
       decision: input.decision,
+      onBehalfOfActorId: input.onBehalfOfActorId ?? null,
       comment: input.comment ?? null,
     })
   }
@@ -380,7 +383,14 @@ export class ActionsRepository {
     tenantId: number,
     instanceId: number,
   ): Promise<
-    { stepNo: number; actorId: number; decision: string; comment: string | null; at: string }[]
+    {
+      stepNo: number
+      actorId: number
+      decision: string
+      onBehalfOfActorId: number | null
+      comment: string | null
+      at: string
+    }[]
   > {
     const rows = await this.db
       .select()
@@ -393,6 +403,7 @@ export class ActionsRepository {
       stepNo: r.stepNo,
       actorId: r.actorId,
       decision: r.decision,
+      onBehalfOfActorId: r.onBehalfOfActorId,
       comment: r.comment,
       at: r.createdAt.toISOString(),
     }))

@@ -651,6 +651,25 @@ export const approvalInstances = pgTable(
   ],
 )
 
+/* 🔴 簽核代理人(#104)。簽核者請假時,經過他的單據不該全部卡死 ——
+   台灣企業的「職務代理人」是內控慣例,Ragic / Salesforce / SAP 三家都有。
+   起訖時間承 SAP 的計畫性代理:請假結束自動失效。 */
+export const approvalDelegates = pgTable(
+  "approval_delegate",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    principalActorId: bigint("principal_actor_id", { mode: "number" }).notNull(),
+    delegateActorId: bigint("delegate_actor_id", { mode: "number" }).notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    /* NULL = 無限期(非計畫性代理,例如離職交接) */
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdByActorId: bigint("created_by_actor_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("approval_delegate_lookup_idx").on(t.tenantId, t.delegateActorId, t.startsAt)],
+)
+
 /* 簽核步驟決策日誌(audit;不可變) */
 export const approvalStepLogs = pgTable(
   "approval_step_log",
@@ -661,6 +680,10 @@ export const approvalStepLogs = pgTable(
     stepNo: integer("step_no").notNull(),
     actorId: bigint("actor_id", { mode: "number" }).notNull(),
     decision: text("decision").notNull(),
+    /* 🔴 非 NULL = 這是一次**代理**行為,且指名被代理者是誰。
+       只記「B 核准」的話,代理在事後完全看不見 —— 稽核無法回答
+       「為什麼是 B 批的?他有權嗎?」 */
+    onBehalfOfActorId: bigint("on_behalf_of_actor_id", { mode: "number" }),
     comment: text("comment"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

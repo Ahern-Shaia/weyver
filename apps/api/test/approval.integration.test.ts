@@ -6,7 +6,7 @@ import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
-import { roles, tenants } from "../src/db/schema.js"
+import { roleMembers, roles, tenants, users } from "../src/db/schema.js"
 
 /* R1·後續-1 M2 簽核狀態機:送簽 → 金額路由(ZEN)→ 簽核推進 → 完成觸發按鈕 → 記錄鎖。 */
 
@@ -376,5 +376,277 @@ describe("🔴 簽核鎖的路由涵蓋(橫切 sweep)", () => {
     })
     expect(res.statusCode).toBe(409)
     expect((res.json() as { code: string }).code).toBe("RECORD_LOCKED_BY_APPROVAL")
+  })
+})
+
+/* 🔴 #104|簽核代理人。沒有代理時,簽核者一請假,經過他的單據就**全部卡死** ——
+   而請假是常態不是例外。台灣企業的「職務代理人」是內控慣例,
+   Ragic(啟用及通知代理人)/ Salesforce(Delegated Approver)/ SAP(計畫性代理)三家都有。
+
+   🔴 這組測試一律送 `x-dev-real-authz: 1` —— dev 預設 isSuperAdmin,
+   代理路徑會被第一行的 super admin 捷徑整個跳過,測了等於沒測。 */
+describe("🔴 簽核代理人", () => {
+  /* principal 在 mgr 角色內(真正的簽核者);delegate 不在任何角色內 —— 
+     否則代理有沒有生效根本測不出來 */
+  let principal = 0
+  let delegate = 0
+
+  const REAL = (actorId: number): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorId),
+    "x-dev-real-authz": "1",
+  })
+
+  beforeAll(async () => {
+    const db = createDrizzle(pool)
+    const u = await db
+      .insert(users)
+      .values([
+        { authUserId: "auth-principal", email: "principal@weyver.test", name: "課長本人" },
+        { authUserId: "auth-delegate", email: "delegate@weyver.test", name: "代理人" },
+      ])
+      .returning()
+    principal = u[0]?.id ?? 0
+    delegate = u[1]?.id ?? 0
+    await db
+      .insert(roleMembers)
+      .values([{ tenantId: tenantA, roleId: mgrRoleId, actorId: principal }])
+  })
+
+  const grantDelegate = async (
+    principalId: number,
+    delegateId: number,
+    endsAt: string | null = null,
+  ): Promise<void> => {
+    await pool.query("DELETE FROM approval_delegate WHERE tenant_id = $1", [tenantA])
+    await pool.query(
+      `INSERT INTO approval_delegate (tenant_id, principal_actor_id, delegate_actor_id, starts_at, ends_at)
+       VALUES ($1, $2, $3, now() - interval '1 day', $4)`,
+      [tenantA, principalId, delegateId, endsAt],
+    )
+  }
+
+  const submitFresh = async (): Promise<number> => {
+    const rec = await createRecord({ 品名: "代理測試", 金額: 100 })
+    const recordId = (rec.json() as { id: number }).id
+    return ((await submit(recordId)).json() as InstanceDto).id
+  }
+
+  const approveAs = (instanceId: number, actorId: number) =>
+    app.inject({
+      method: "POST",
+      url: `/api/approvals/${instanceId}/decide`,
+      headers: REAL(actorId),
+      payload: { decision: "approve" },
+    })
+
+  const lastLog = async (instanceId: number): Promise<Record<string, string | null>> => {
+    const r = await pool.query<{ actor_id: string; on_behalf_of_actor_id: string | null }>(
+      `SELECT actor_id, on_behalf_of_actor_id FROM approval_step_log
+        WHERE instance_id = $1 AND decision = 'approve' ORDER BY id DESC LIMIT 1`,
+      [instanceId],
+    )
+    return r.rows[0] ?? {}
+  }
+
+  it("🔴 基準:在角色內的人簽得了,且不記為代理", async () => {
+    const id = await submitFresh()
+    await pool.query("DELETE FROM approval_delegate WHERE tenant_id = $1", [tenantA])
+    expect((await approveAs(id, principal)).statusCode).toBe(200)
+    /* 本人親自核准**不得**被記成代理 —— 否則稽核會看到一堆不存在的代理行為 */
+    expect((await lastLog(id)).on_behalf_of_actor_id).toBeNull()
+  })
+
+  it("🔴 沒有代理關係時,不在角色內的人簽不了", async () => {
+    const id = await submitFresh()
+    await pool.query("DELETE FROM approval_delegate WHERE tenant_id = $1", [tenantA])
+    expect((await approveAs(id, delegate)).statusCode).toBe(403)
+  })
+
+  it("🔴 有有效代理時簽得了,且**稽核記下代的是誰**", async () => {
+    const id = await submitFresh()
+    await grantDelegate(principal, delegate)
+    expect((await approveAs(id, delegate)).statusCode).toBe(200)
+
+    /* 只記「代理人核准」的話,代理在事後完全看不見 ——
+       稽核無法回答「為什麼是他批的?他有什麼權?」 */
+    const log = await lastLog(id)
+    expect(Number(log.actor_id)).toBe(delegate)
+    expect(Number(log.on_behalf_of_actor_id)).toBe(principal)
+  })
+
+  /* 🔴 「簽得了但找不到」= 代理只做了一半。API 放行、待簽匣沒有那一筆的話,
+     代理人根本不知道有東西等他處理。 */
+  it("🔴 代理來的單據要出現在待簽匣裡", async () => {
+    const id = await submitFresh()
+    await pool.query("DELETE FROM approval_delegate WHERE tenant_id = $1", [tenantA])
+    const before = await app.inject({
+      method: "GET",
+      url: "/api/approvals/pending",
+      headers: REAL(delegate),
+    })
+    expect((before.json() as { id: number }[]).some((i) => i.id === id)).toBe(false)
+
+    await grantDelegate(principal, delegate)
+    const after = await app.inject({
+      method: "GET",
+      url: "/api/approvals/pending",
+      headers: REAL(delegate),
+    })
+    expect((after.json() as { id: number }[]).some((i) => i.id === id)).toBe(true)
+  })
+
+  it("🔴 代理期間已過就失效 —— 請假結束自動收回,不必記得手動關", async () => {
+    const id = await submitFresh()
+    await grantDelegate(principal, delegate, new Date(Date.now() - 3_600_000).toISOString())
+    expect((await approveAs(id, delegate)).statusCode).toBe(403)
+  })
+
+  it("🔴 代理尚未開始也不生效", async () => {
+    const id = await submitFresh()
+    await pool.query("DELETE FROM approval_delegate WHERE tenant_id = $1", [tenantA])
+    await pool.query(
+      `INSERT INTO approval_delegate (tenant_id, principal_actor_id, delegate_actor_id, starts_at)
+       VALUES ($1, $2, $3, now() + interval '1 day')`,
+      [tenantA, principal, delegate],
+    )
+    expect((await approveAs(id, delegate)).statusCode).toBe(403)
+  })
+
+  /* 🔴 代理不得成為繞過禁自簽的側門:送簽者拿到代理權也不能簽自己的單 */
+  it("🔴 代理不得繞過禁自簽", async () => {
+    const rec = await createRecord({ 品名: "自簽測試", 金額: 100 })
+    const recordId = (rec.json() as { id: number }).id
+    /* 用 principal 送簽,再讓 principal 以「代理」身分簽同一張。
+       送簽這一步不送 real-authz —— 這裡要驗的是禁自簽,不是送簽端的表單權限。 */
+    const sub = await app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/approvals/records/${recordId}/submit`,
+      headers: { ...A(), "x-dev-actor": String(principal) },
+    })
+    const id = (sub.json() as InstanceDto).id
+    await grantDelegate(delegate, principal)
+    const res = await approveAs(id, principal)
+    expect(res.statusCode).toBe(403)
+    expect((res.json() as { code: string }).code).toBe("SELF_APPROVAL_FORBIDDEN")
+  })
+
+  /* 🔴 代理不遞移:代理人的代理人**不會**繼承到最上游的簽核權。
+     代理鏈會讓「這張單到底誰能簽」變成沒人算得出來的問題。 */
+  it("🔴 代理不遞移(A 代 B、B 代 C ≠ A 可簽 C 的關卡)", async () => {
+    const id = await submitFresh()
+    const db = createDrizzle(pool)
+    const third = (
+      await db
+        .insert(users)
+        .values({ authUserId: "auth-third", email: "third@weyver.test", name: "第三人" })
+        .returning()
+    )[0]?.id
+    expect(third).toBeDefined()
+    await pool.query("DELETE FROM approval_delegate WHERE tenant_id = $1", [tenantA])
+    /* principal(有角色)→ delegate → third */
+    await pool.query(
+      `INSERT INTO approval_delegate (tenant_id, principal_actor_id, delegate_actor_id)
+       VALUES ($1, $2, $3), ($1, $3, $4)`,
+      [tenantA, principal, delegate, third],
+    )
+    expect((await approveAs(id, third ?? 0)).statusCode).toBe(403)
+  })
+
+  /* 🔴 DB 層擋住「代理自己」—— 那不是代理,是無意義的自我授權 */
+  it("🔴 不得把自己設為自己的代理", async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO approval_delegate (tenant_id, principal_actor_id, delegate_actor_id)
+         VALUES ($1, $2, $2)`,
+        [tenantA, principal],
+      ),
+    ).rejects.toThrow(/approval_delegate_not_self/)
+  })
+})
+
+/* #104 代理人的自助設定 API。權責邊界比 CRUD 本身重要 —— 代理是一種授權轉移。 */
+describe("🔴 簽核代理人 API(自助設定)", () => {
+  let alpha = 0
+  let beta = 0
+
+  const AS = (actorId: number): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorId),
+    "x-dev-real-authz": "1",
+  })
+
+  beforeAll(async () => {
+    const db = createDrizzle(pool)
+    const u = await db
+      .insert(users)
+      .values([
+        { authUserId: "auth-alpha", email: "alpha@weyver.test", name: "甲" },
+        { authUserId: "auth-beta", email: "beta@weyver.test", name: "乙" },
+      ])
+      .returning()
+    alpha = u[0]?.id ?? 0
+    beta = u[1]?.id ?? 0
+  })
+
+  const create = (actorId: number, payload: Record<string, unknown>) =>
+    app.inject({ method: "POST", url: "/api/approval-delegates", headers: AS(actorId), payload })
+
+  it("設定自己的代理人,兩邊都看得到", async () => {
+    const res = await create(alpha, { delegateActorId: beta })
+    expect(res.statusCode).toBe(201)
+    expect((res.json() as { active: boolean }).active).toBe(true)
+
+    const mine = await app.inject({
+      method: "GET",
+      url: "/api/approval-delegates",
+      headers: AS(alpha),
+    })
+    expect((mine.json() as { granted: unknown[] }).granted).toHaveLength(1)
+
+    /* 🔴 代理人自己也要看得到 —— 否則簽核匣多出別人的單會像系統出錯 */
+    const theirs = await app.inject({
+      method: "GET",
+      url: "/api/approval-delegates",
+      headers: AS(beta),
+    })
+    expect(
+      (theirs.json() as { received: { principalActorId: number }[] }).received[0]?.principalActorId,
+    ).toBe(alpha)
+  })
+
+  it("🔴 不得替別人設定代理(非 admin)", async () => {
+    const res = await create(beta, { principalActorId: alpha, delegateActorId: beta })
+    expect(res.statusCode).toBe(403)
+    expect((res.json() as { code: string }).code).toBe("DELEGATE_FORBIDDEN")
+  })
+
+  it("🔴 代理人不得自行解除 —— 授權的一端必須留在授權者手上", async () => {
+    const created = await create(alpha, { delegateActorId: beta })
+    const id = (created.json() as { id: number }).id
+    const byDelegate = await app.inject({
+      method: "DELETE",
+      url: `/api/approval-delegates/${id}`,
+      headers: AS(beta),
+    })
+    expect(byDelegate.statusCode).toBe(403)
+
+    const byPrincipal = await app.inject({
+      method: "DELETE",
+      url: `/api/approval-delegates/${id}`,
+      headers: AS(alpha),
+    })
+    expect(byPrincipal.statusCode).toBe(204)
+  })
+
+  it("代理人不可以是本人 / 結束早於開始", async () => {
+    expect((await create(alpha, { delegateActorId: alpha })).statusCode).toBe(400)
+    const bad = await create(alpha, {
+      delegateActorId: beta,
+      startsAt: "2026-08-10T00:00:00.000Z",
+      endsAt: "2026-08-01T00:00:00.000Z",
+    })
+    expect(bad.statusCode).toBe(400)
+    expect((bad.json() as { code: string }).code).toBe("DELEGATE_RANGE")
   })
 })

@@ -8,7 +8,7 @@ import {
 import { Reflector } from "@nestjs/core"
 import { adminPermissions, type EffectivePermissions } from "./authz-effective.js"
 import { type FormAction, requiredActionForMethod } from "./authz-model.js"
-import { REQUIRED_FORM_ACTION, type RequestWithPermissions } from "./authz-http.js"
+import { REQUIRED_FORM_ACTION, SELF_SERVICE, type RequestWithPermissions } from "./authz-http.js"
 import { PermissionService } from "./permission.service.js"
 
 /* P0-4a M3|表單級授權守衛。掛在 TenantGuard 之後(需 request.tenantContext)。
@@ -52,6 +52,18 @@ export class PermissionGuard implements CanActivate {
           message: "insufficient permission for this form",
         })
       }
+      return true
+    }
+
+    /* 自助端點:作用對象恆為操作者自己,不套下面那條「寫入需 admin」。
+       刻意放在 formId 分支**之後** —— 萬一被誤標在有 formId 的路由上,
+       表單權限仍然照驗,不會變成萬用旁路。見 authz-http.ts `SelfService`。 */
+    if (
+      this.reflector.getAllAndOverride<boolean | undefined>(SELF_SERVICE, [
+        context.getHandler(),
+        context.getClass(),
+      ]) === true
+    ) {
       return true
     }
 
