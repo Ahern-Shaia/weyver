@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test"
+import { openPalette } from "./hydration"
 
 /* R1·H-3 M4|⌘K 跨表全文搜尋。
 
@@ -28,13 +29,6 @@ async function seedForm(
   })
   expect(rec.status()).toBe(201)
   return formId
-}
-
-async function openPalette(page: import("@playwright/test").Page, q: string): Promise<void> {
-  await page.keyboard.press("ControlOrMeta+k")
-  const input = page.getByPlaceholder("搜尋表單、記錄、設定…")
-  await expect(input).toBeVisible()
-  await input.fill(q)
 }
 
 test("⌘K 搜得到**別張表**裡的記錄內容,並可直接開到那一筆", async ({ page, request }) => {

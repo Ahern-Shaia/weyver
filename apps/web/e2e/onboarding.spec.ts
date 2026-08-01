@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { actUntil } from "./hydration"
 
 /* 🔴 R1·A-1|新同事入職的完整迴圈:管理員建帳號 → 新人用初始密碼登入
    → **被擋下要求自設密碼** → 設完才進得去。
@@ -50,12 +51,17 @@ test("🔴 入職:初始密碼只能用一次,設完自己的密碼才進得去"
        · 送出時 onSubmit 尚未掛上 → 走**原生 GET**,網址變成 `/set-password?`
      兩者都只在整套跑時出現(單獨跑時頁面早已編譯、hydration 快),
      所以不能靠「單獨跑得過」就當作沒事。 */
-  await expect(async () => {
-    await hirePage.getByLabel("管理員給的初始密碼").fill(initial)
-    await hirePage.getByLabel("你的新密碼(至少 15 碼)").fill(own)
-    await hirePage.getByRole("button", { name: "設定並進入" }).click()
-    await expect(hirePage).toHaveURL(/\/app/, { timeout: 8_000 })
-  }).toPass({ timeout: 40_000 })
+  await actUntil(
+    async () => {
+      await hirePage.getByLabel("管理員給的初始密碼").fill(initial)
+      await hirePage.getByLabel("你的新密碼(至少 15 碼)").fill(own)
+      await hirePage.getByRole("button", { name: "設定並進入" }).click()
+    },
+    async () => {
+      await expect(hirePage).toHaveURL(/\/app/, { timeout: 8_000 })
+    },
+    40_000,
+  )
   await expect(hirePage).not.toHaveURL(/\/set-password/)
 
   await hire.close()
