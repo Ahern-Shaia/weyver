@@ -495,3 +495,140 @@ describe("🔴 M2 端點", () => {
     expect(other.statusCode).toBe(404)
   })
 })
+
+/* 🔴 M3|下載。三件事各自出事的方式不同:
+   · 次數沒有原子遞增 → 兩個分頁同時按就能各下載一次,上限形同虛設
+   · 到期沒清 → 整包公司資料無限期躺在儲存體上
+   · 到期把列也刪掉 → 稽核答不出「誰帶走了資料」 */
+describe("🔴 M3 下載", () => {
+  let app: import("@nestjs/platform-fastify").NestFastifyApplication
+  let storageDir = ""
+  const H = (): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorA),
+  })
+
+  beforeAll(async () => {
+    const { FastifyAdapter } = await import("@nestjs/platform-fastify")
+    const { Test } = await import("@nestjs/testing")
+    const { mkdtemp } = await import("node:fs/promises")
+    const { tmpdir } = await import("node:os")
+    const { join } = await import("node:path")
+    storageDir = await mkdtemp(join(tmpdir(), "weyver-export-m3-"))
+    process.env.STORAGE_LOCAL_DIR = storageDir
+    process.env.DATABASE_URL = container.getConnectionUri()
+    process.env.APP_DATABASE_URL = container.getConnectionUri()
+    const { AppModule } = await import("../src/app.module.js")
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
+    app = moduleRef.createNestApplication<typeof app>(new FastifyAdapter())
+    await app.init()
+    await app.getHttpAdapter().getInstance().ready()
+    /* 🔴 **向 app 問它實際用的目錄**,不要假設等於我剛設的那個環境變數。
+       同一個 process 內先前已建過 app,env 在那時就被讀進 ConfigModule ——
+       照自己設的路徑寫檔案,會寫到一個沒有人會去讀的地方(實測 ENOENT)。 */
+    const { ConfigService } = await import("@nestjs/config")
+    storageDir = app.get(ConfigService).get<string>("STORAGE_LOCAL_DIR") ?? storageDir
+  }, 180_000)
+
+  afterAll(async () => {
+    await app?.close()
+  })
+
+  /* 建一個 ready 的工作 + 一個真的檔案。走 worker 產生太慢,
+     這裡要驗的是**下載**那一段。 */
+  const seedReady = async (opts: { downloads?: number; expiresInMs?: number } = {}) => {
+    await reset()
+    const { writeFile, mkdir } = await import("node:fs/promises")
+    const { dirname, join } = await import("node:path")
+    const key = `t${String(tenantA)}/exports/00000000-0000-4000-8000-00000000000a.zip`
+    const full = join(storageDir, key)
+    await mkdir(dirname(full), { recursive: true })
+    await writeFile(full, Buffer.from("PK\u0003\u0004fake-zip"))
+    const res = await pool.query<{ id: string }>(
+      `INSERT INTO export_job
+         (tenant_id, requested_by_actor_id, status, object_key, size_bytes, row_count,
+          download_count, ready_at, expires_at)
+       VALUES ($1, $2, 'ready', $3, 10, 3, $4, now(), now() + ($5 || ' milliseconds')::interval)
+       RETURNING id`,
+      [tenantA, actorA, key, opts.downloads ?? 0, String(opts.expiresInMs ?? 86_400_000)],
+    )
+    return Number(res.rows[0]?.id ?? 0)
+  }
+
+  const download = (id: number) =>
+    app.inject({
+      method: "POST",
+      url: `/api/exports/${String(id)}/download`,
+      headers: H(),
+      payload: {},
+    })
+
+  it("下載得到封存檔,且次數遞增", async () => {
+    const id = await seedReady()
+    const res = await download(id)
+    expect(res.statusCode).toBe(200)
+    expect(res.headers["content-type"]).toContain("zip")
+    /* 🔴 一律 no-store:這是一份整包公司資料,不得被任何快取層留存 */
+    expect(String(res.headers["cache-control"])).toContain("no-store")
+
+    const after = await repo.getForTenant(tenantA, id)
+    expect(after?.downloadCount).toBe(1)
+  })
+
+  /* 🔴 原子性。先查再寫的話,兩個同時進來的請求會各自看到「還剩 1 次」。 */
+  it("🔴 併發下載不得突破次數上限", async () => {
+    const id = await seedReady({ downloads: 4 })
+    const results = await Promise.all([download(id), download(id), download(id)])
+    const ok = results.filter((r) => r.statusCode === 200)
+    expect(ok).toHaveLength(1)
+
+    const after = await repo.getForTenant(tenantA, id)
+    expect(after?.downloadCount).toBe(5)
+  })
+
+  it("超過次數後回 410,並說得出該怎麼辦", async () => {
+    const id = await seedReady({ downloads: 5 })
+    const res = await download(id)
+    expect(res.statusCode).toBe(410)
+    const body = res.json() as { code: string; message: string }
+    expect(body.code).toBe("EXPORT_DOWNLOAD_LIMIT")
+    expect(body.message).toContain("重新建立")
+  })
+
+  it("已過期回 410", async () => {
+    const id = await seedReady({ expiresInMs: -1_000 })
+    const res = await download(id)
+    expect(res.statusCode).toBe(410)
+    expect((res.json() as { code: string }).code).toBe("EXPORT_EXPIRED")
+  })
+
+  it("🔴 跨租戶下載不到", async () => {
+    const id = await seedReady()
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/exports/${String(id)}/download`,
+      headers: { "x-dev-tenant": String(tenantB), "x-dev-actor": String(actorA) },
+      payload: {},
+    })
+    expect(res.statusCode).toBe(404)
+  })
+
+  /* 🔴 到期清理:檔案刪掉、**列留著**。 */
+  it("🔴 到期清理刪檔但保留稽核列", async () => {
+    const id = await seedReady({ expiresInMs: -1_000 })
+    const { access } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const before = await repo.getForTenant(tenantA, id)
+    const key = before?.objectKey ?? ""
+    await expect(access(join(storageDir, key))).resolves.toBeUndefined()
+
+    const { ExportWorkerService } = await import("../src/export/export-worker.service.js")
+    await app.get(ExportWorkerService).expire()
+
+    await expect(access(join(storageDir, key))).rejects.toThrow()
+    const after = await repo.getForTenant(tenantA, id)
+    expect(after).not.toBeNull()
+    expect(after?.status).toBe("expired")
+    expect(after?.requestedByActorId).toBe(actorA)
+  })
+})

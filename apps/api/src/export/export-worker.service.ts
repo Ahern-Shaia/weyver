@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common"
-import { Interval } from "@nestjs/schedule"
+import { Cron, CronExpression, Interval } from "@nestjs/schedule"
+import { STORAGE_DRIVER, type StorageDriver } from "../storage/storage-driver.js"
 import { ExportRunnerService } from "./export-runner.service.js"
 import { ExportRepository } from "./export.repository.js"
 
@@ -28,6 +29,7 @@ export class ExportWorkerService {
   constructor(
     @Inject(ExportRepository) private readonly repo: ExportRepository,
     @Inject(ExportRunnerService) private readonly runner: ExportRunnerService,
+    @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
   ) {}
 
   @Interval(5_000)
@@ -56,6 +58,29 @@ export class ExportWorkerService {
       await this.repo.markFailed(job.id, message)
     }
     return true
+  }
+
+  /* 🔴 到期清理。**刪的是 storage 物件,列留著標 expired** ——
+     「誰在什麼時候把整包公司資料帶走了」是內控要問的問題,那筆紀錄不能跟著檔案一起消失。
+
+     每小時一次即可:保存期是 7 天,晚一小時清掉不構成風險,
+     但每分鐘掃一次會在沒有到期物件時白跑 1440 次。 */
+  /* 具名是硬性要求:未具名的 cron 以 UUID 進 registry,重複註冊就偵測不到
+     (`schedule-registration.integration.test` 釘住,加這支時它立刻轉紅)。 */
+  @Cron(CronExpression.EVERY_HOUR, { name: "export.expire" })
+  async expire(): Promise<void> {
+    const due = await this.repo.expireDue(new Date())
+    for (const row of due) {
+      /* 刪不掉也要把列標成 expired(repo 已經做了)—— 否則下載端點會放行一個
+         其實還在的檔案,或反過來一直重試同一列。孤兒物件由儲存層的生命週期規則收。 */
+      await this.storage.delete(row.objectKey).catch((error: unknown) => {
+        this.logger.error(
+          `匯出 #${String(row.id)} 的封存檔刪除失敗`,
+          error instanceof Error ? error.stack : "",
+        )
+      })
+    }
+    if (due.length > 0) this.logger.log(`已清理 ${String(due.length)} 份到期封存檔`)
   }
 }
 

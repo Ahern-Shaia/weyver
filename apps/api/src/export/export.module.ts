@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common"
 import { AuthzModule } from "../authz/authz.module.js"
 import { FormEngineModule } from "../form-engine/form-engine.module.js"
 import { StorageModule } from "../storage/storage.module.js"
+import { ExportDownloadService } from "./export-download.service.js"
 import { ExportRunnerService } from "./export-runner.service.js"
 import { ExportWorkerService } from "./export-worker.service.js"
 import { ExportRepository } from "./export.repository.js"
@@ -16,7 +17,13 @@ import { ExportsController } from "./exports.controller.js"
 @Module({
   imports: [AuthzModule, FormEngineModule, StorageModule],
   controllers: [ExportsController],
-  providers: [ExportRepository, ExportService, ExportRunnerService, ExportWorkerService],
+  providers: [
+    ExportRepository,
+    ExportService,
+    ExportDownloadService,
+    ExportRunnerService,
+    ExportWorkerService,
+  ],
   exports: [ExportRepository, ExportService, ExportRunnerService, ExportWorkerService],
 })
 export class ExportModule {}

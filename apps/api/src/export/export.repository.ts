@@ -113,6 +113,33 @@ export class ExportRepository {
     return row === undefined ? null : normalize(row)
   }
 
+  /* 🔴 認領一次下載。**條件式 UPDATE 一步完成「檢查 + 計數」** ——
+     先查再寫的話,兩個分頁同時按下載就能各自看到「還剩 1 次」而雙雙通過。
+     受影響列數為 0 即代表某個條件不成立,由呼叫端回查以給出精確原因。 */
+  async claimDownload(
+    tenantId: number,
+    id: number,
+    maxDownloads: number,
+  ): Promise<{ objectKey: string; downloadCount: number } | null> {
+    const res = await this.db.execute<Record<string, unknown>>(sql`
+      UPDATE export_job
+         SET download_count = download_count + 1
+       WHERE id = ${id}
+         AND tenant_id = ${tenantId}
+         AND status = 'ready'
+         AND object_key IS NOT NULL
+         AND expires_at > now()
+         AND download_count < ${maxDownloads}
+      RETURNING object_key, download_count
+    `)
+    const row = res.rows[0]
+    if (row === undefined) return null
+    return {
+      objectKey: String(row["object_key"]),
+      downloadCount: Number(row["download_count"]),
+    }
+  }
+
   async markReady(
     id: number,
     input: { objectKey: string; sizeBytes: number; rowCount: number; expiresAt: Date },

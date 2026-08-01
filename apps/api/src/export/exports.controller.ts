@@ -8,16 +8,21 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
+  Res,
+  StreamableFile,
   UseGuards,
 } from "@nestjs/common"
 import { Throttle } from "@nestjs/throttler"
+import type { FastifyReply } from "fastify"
 import { z } from "zod"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import { SelfService } from "../authz/authz-http.js"
 import { PermissionGuard } from "../authz/permission.guard.js"
-import type { TenantContext } from "../http/tenant-context.js"
+import type { RequestWithTenant, TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
+import { ExportDownloadService } from "./export-download.service.js"
 import { type ExportJobDto, ExportService } from "./export.service.js"
 
 /* R1·I-1 M2|資料匯出 API。
@@ -43,6 +48,9 @@ import { type ExportJobDto, ExportService } from "./export.service.js"
    再加上 service 的每日上限與 DB 的「同時只有一個」。三層各擋不同的東西:
    節流擋瞬間洪水、每日上限擋接力、唯一索引擋並行。 */
 
+/* 密碼只在 body,不進 URL */
+const downloadSchema = z.object({ password: z.string().max(200).optional() })
+
 const createSchema = z.object({
   /* 不指定 = 全部(仍逐表過權)。空陣列由 service 明確拒絕,不靜默當成全部。 */
   formIds: z.array(z.number().int().positive()).max(500).optional(),
@@ -52,7 +60,10 @@ const createSchema = z.object({
 @Controller("api/exports")
 @UseGuards(TenantGuard, PermissionGuard)
 export class ExportsController {
-  constructor(@Inject(ExportService) private readonly exports: ExportService) {}
+  constructor(
+    @Inject(ExportService) private readonly exports: ExportService,
+    @Inject(ExportDownloadService) private readonly downloads: ExportDownloadService,
+  ) {}
 
   @Get()
   async list(@Tenant() tenant: TenantContext): Promise<{ jobs: ExportJobDto[]; ttlDays: number }> {
@@ -79,5 +90,34 @@ export class ExportsController {
     @Body(new ZodValidationPipe(createSchema)) body: z.infer<typeof createSchema>,
   ): Promise<ExportJobDto> {
     return this.exports.create(tenant, body)
+  }
+
+  /* 🔴 下載是 **POST** 而非 GET —— 它要帶密碼(ASVS §7.5.3 的再認證),
+     而密碼不能放在 URL 裡(會進瀏覽器歷史、存取日誌、Referer)。
+     形狀對齊既有的檔案下載:能簽名就 302 過去(位元組不經應用層),
+     不能就代理串流。 */
+  @Post(":id/download")
+  @SelfService()
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async download(
+    @Tenant() tenant: TenantContext,
+    @Req() request: RequestWithTenant,
+    @Res({ passthrough: true }) reply: FastifyReply,
+    @Param("id", ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(downloadSchema)) body: z.infer<typeof downloadSchema>,
+  ): Promise<StreamableFile | undefined> {
+    const result = await this.downloads.authorize(tenant, request, id, body.password)
+    if ("url" in result) {
+      reply.status(302).header("location", result.url)
+      /* 簽名 URL 有時效且對應單一次授權結果 —— 絕不可被任何快取層留存 */
+      reply.header("cache-control", "no-store, private")
+      return undefined
+    }
+    reply.header("content-type", "application/zip")
+    reply.header("content-disposition", `attachment; filename="${result.filename}"`)
+    reply.header("content-length", String(result.size))
+    reply.header("cache-control", "no-store, private")
+    return new StreamableFile(result.stream)
   }
 }
