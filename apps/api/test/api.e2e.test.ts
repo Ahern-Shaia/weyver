@@ -263,7 +263,10 @@ describe("型別轉換端點(#105)", () => {
       method: "POST",
       url: "/api/forms",
       headers: A(),
-      payload: { name: `轉換E2E_${String(Date.now()).slice(-6)}`, fields: [{ name: "值", type: "text" }] },
+      payload: {
+        name: `轉換E2E_${String(Date.now()).slice(-6)}`,
+        fields: [{ name: "值", type: "text" }],
+      },
     })
     const body = created.json() as { id: number; fields: { id: number; name: string }[] }
     convFormId = body.id

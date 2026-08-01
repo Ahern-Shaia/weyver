@@ -105,8 +105,8 @@ describe("A3 DDL service on real PG", () => {
       [form.id],
     )
     expect(policy.rows.map((r) => [r.polname, r.polpermissive])).toEqual([
-      ['record_scope', false],
-      ['tenant_isolation', true],
+      ["record_scope", false],
+      ["tenant_isolation", true],
     ])
   })
 

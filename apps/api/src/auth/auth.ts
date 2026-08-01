@@ -4,6 +4,8 @@ import { APIError, createAuthMiddleware } from "better-auth/api"
 import { organization, twoFactor } from "better-auth/plugins"
 import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
 import { PEER_IP_HEADER, recordAuthEvent, recordFromContext } from "./auth-events.js"
+import { claimInitialCredential, clearInitialCredential } from "./initial-credential.js"
+import { LOCKOUT_MINUTES, isAccountLocked } from "./login-throttle.js"
 import { blockedPasswordMessage, checkPassword } from "./password-blocklist.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
 import type { Pool } from "pg"
@@ -105,15 +107,30 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
        全體使用者將落入同一個桶。屆時須設定 Fastify `trustProxy` 的信任範圍
        (而非改回直接相信 client 的 `x-forwarded-for`)。 */
     advanced: { ipAddress: { ipAddressHeaders: [PEER_IP_HEADER] } },
-    // 暴力防護集中在認證「寫」端點;高頻「讀」(session 輪詢)放寬,否則正常使用即被 429
+    /* 暴力防護集中在認證「寫」端點;其餘放寬。
+
+       🔴 **全域上限不能兼任暴力防護**。原本 300/分 把「可被暴力攻擊的端點」和
+       「無害的已認證讀取」(organization/list、set-active、get-full-organization…)
+       放進同一個逐 IP 的桶 —— 一整間辦公室共用一個對外 IP,正常使用就會撞到。
+       實測(e2e trace):連跑五輪即出現 `429 POST /api/auth/change-password`,
+       而 change-password 從頭到尾沒有被任何人暴力嘗試過。
+
+       → 全域改為單純的洪水保護;真正的門檻由 (a) 逐端點規則
+       (b) **逐帳號**節流(login-throttle.ts,63B-4 §3.2.2 要求的那一個)把守。 */
     rateLimit: {
       enabled: true,
       window: 60,
-      max: 300,
+      max: 2000,
       customRules: {
-        "/sign-in/email": { window: 60, max: 5 },
+        /* 🔴 20 而非 5:同一間辦公室共用一個對外 IP,早上陸續上班就會互相鎖住
+           (better-auth 的限流**不分成敗**,登入成功也照算)。
+           真正的暴力防護改由**逐帳號**節流把守 —— 見 login-throttle.ts;
+           per-IP 這一層留著只是擋最粗暴的單機洪水。 */
+        "/sign-in/email": { window: 60, max: 20 },
         "/sign-up/email": { window: 60, max: 5 },
         "/get-session": { window: 60, max: 2000 },
+        /* 敏感寫入,但必須先有「目前密碼」才可能成功 → 不必壓到與登入同級 */
+        "/change-password": { window: 60, max: 30 },
         // 二步驟驗證碼暴力防護(F-4 MFA)
         "/two-factor/verify-totp": { window: 60, max: 5 },
         "/two-factor/verify-backup-code": { window: 60, max: 5 },
@@ -170,6 +187,17 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
             }
           }
         }
+        /* 🔴 (0c) 逐帳號節流(63B-4 §3.2.2:consecutive failed attempts on a
+         **single account**)。放在 before —— 密碼根本不該被驗證。 */
+        if (ctx.path === "/sign-in/email") {
+          const email = (ctx.body as { email?: unknown } | undefined)?.email
+          if (typeof email === "string" && (await isAccountLocked(pool, email))) {
+            throw new APIError("TOO_MANY_REQUESTS", {
+              code: "ACCOUNT_TEMPORARILY_LOCKED",
+              message: `連續登入失敗過多,請 ${String(LOCKOUT_MINUTES)} 分鐘後再試`,
+            })
+          }
+        }
         /* (1) 備用碼:plugin 以 `storedCodes.includes(使用者輸入)` 比對,而我們存的是雜湊
                → 必須把使用者輸入也雜湊。這是「單向雜湊」在此 plugin 架構下成立的另一半。 */
         if (ctx.path === "/two-factor/verify-backup-code") {
@@ -215,6 +243,37 @@ export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
               message: "此驗證碼已使用過,請等待下一組",
             })
           }
+        }
+
+        /* 🔴 初始密碼的生命週期(ASVS §V6.4.1;見 initial-credential.ts)。
+           在記錄事件**之前**做,因為過期會把這次登入撤掉 —— 那該記成失敗而非成功。 */
+        if (ctx.path === "/sign-in/email") {
+          const newSession = ctx.context.newSession
+          const userId = newSession?.user?.id
+          if (typeof userId === "string") {
+            const claim = await claimInitialCredential(pool, userId)
+            if (claim === "expired") {
+              const token = newSession?.session?.token
+              if (typeof token === "string") await revokeSessionByToken(pool, token)
+              await recordAuthEvent(pool, {
+                event: "login.failure",
+                authUserId: userId,
+                ipAddress: ip,
+                userAgent: ua,
+                detail: { reason: "initial_credential_expired" },
+              })
+              throw new APIError("UNAUTHORIZED", {
+                code: "INITIAL_PASSWORD_EXPIRED",
+                message: "初始密碼已逾期,請聯絡管理員重新產生",
+              })
+            }
+          }
+        }
+
+        /* 自己改完密碼 → 初始憑證退場,強制改密碼的閘門隨之解除 */
+        if (ctx.path === "/change-password") {
+          const userId = ctx.context.session?.user?.id
+          if (typeof userId === "string") await clearInitialCredential(pool, userId)
         }
 
         await recordFromContext(pool, ctx, ip, ua)

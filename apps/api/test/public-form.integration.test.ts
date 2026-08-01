@@ -35,7 +35,10 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  const rows = await db.insert(tenants).values([{ name: "廠 A" }, { name: "廠 B" }]).returning()
+  const rows = await db
+    .insert(tenants)
+    .values([{ name: "廠 A" }, { name: "廠 B" }])
+    .returning()
   tenantA = rows[0]?.id ?? 0
   tenantB = rows[1]?.id ?? 0
   await pool.query(
@@ -280,7 +283,12 @@ describe("G-2 關閉條件與不可探測", () => {
       maxSubmissions: 2,
     })
     const submit = () =>
-      publicForms.submit({ token: share.token, values: { 名稱: "x" }, ipHash: null, userAgent: null })
+      publicForms.submit({
+        token: share.token,
+        values: { 名稱: "x" },
+        ipHash: null,
+        userAgent: null,
+      })
 
     await submit()
     await submit()

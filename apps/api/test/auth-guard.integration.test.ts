@@ -35,7 +35,12 @@ function cookiesFrom(headers: Headers): string {
 }
 
 /* 註冊 → 建 org(afterCreateOrganization hook 建 tenant + 連結)→ 設 active org;回 session cookie。 */
-async function onboard(email: string, name: string, slug: string, orgName: string): Promise<string> {
+async function onboard(
+  email: string,
+  name: string,
+  slug: string,
+  orgName: string,
+): Promise<string> {
   const signUp = await auth.api.signUpEmail({
     body: { email, password: "s3cret-passw0rd", name },
     returnHeaders: true,
@@ -132,13 +137,21 @@ describe("AuthGuard 租戶隔離(F-2 M3;prod session)", () => {
     })
     expect(create.statusCode).toBe(201)
 
-    const listA = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieA } })
+    const listA = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA },
+    })
     expect(listA.statusCode).toBe(200)
     expect(names(listA)).toContain("A採購單")
   })
 
   it("B 登入 → 讀不到 A 的表(租戶隔離)", async () => {
-    const listB = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieB } })
+    const listB = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieB },
+    })
     expect(listB.statusCode).toBe(200)
     expect(names(listB)).not.toContain("A採購單")
   })
@@ -237,7 +250,11 @@ describe("F-10 分頁級租戶上下文", () => {
     expect(names(res)).toContain("A2專用表")
 
     // 不帶 intent 則看到 A1 的,證明兩者確實解析到不同租戶
-    const plain = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieA } })
+    const plain = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA },
+    })
     expect(names(plain)).not.toContain("A2專用表")
   })
 
@@ -253,7 +270,10 @@ describe("F-10 分頁級租戶上下文", () => {
        目前的 active org 也讀得到,不需要伺服器回傳 */
     expect((res.json() as { code: string }).code).toBe("TENANT_CONTEXT_MISMATCH")
 
-    for (const [label, intent] of [["A1", orgA1Id], ["A2", orgA2Id]] as const) {
+    for (const [label, intent] of [
+      ["A1", orgA1Id],
+      ["A2", orgA2Id],
+    ] as const) {
       const list = await app.inject({
         method: "GET",
         url: "/api/forms",
@@ -283,7 +303,11 @@ describe("F-10 分頁級租戶上下文", () => {
       url: "/api/forms",
       headers: { cookie: cookieA, "x-weyver-org-intent": orgA2Id },
     })
-    const after = await app.inject({ method: "GET", url: "/api/forms", headers: { cookie: cookieA } })
+    const after = await app.inject({
+      method: "GET",
+      url: "/api/forms",
+      headers: { cookie: cookieA },
+    })
     // 不帶 intent 仍是 A1 → session 未被改寫
     expect(names(after)).not.toContain("A2專用表")
   })

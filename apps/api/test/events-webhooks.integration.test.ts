@@ -39,7 +39,10 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  const rows = await db.insert(tenants).values([{ name: "廠 A" }, { name: "廠 B" }]).returning()
+  const rows = await db
+    .insert(tenants)
+    .values([{ name: "廠 A" }, { name: "廠 B" }])
+    .returning()
   tenantA = rows[0]?.id ?? 0
   tenantB = rows[1]?.id ?? 0
   await pool.query(
@@ -61,7 +64,14 @@ beforeAll(async () => {
   ddl = new DdlService(ddlKnex, db, metadata)
   /* 🔴 RecordService 走 **app 車道**;事件寫入必須在 RLS 下也成立。
      用特權連線測會讓 grant 缺漏整個被遮住(本 session 已五度踩到)。 */
-  records = new RecordService(appKnex, metadata, undefined, undefined, undefined, new EventService())
+  records = new RecordService(
+    appKnex,
+    metadata,
+    undefined,
+    undefined,
+    undefined,
+    new EventService(),
+  )
   webhooks = new WebhookService(new TenantDb(appDb))
   apiKeys = new ApiKeyService(new TenantDb(appDb), db)
   const notifyStub = { emit: async () => 0 } as never
@@ -82,10 +92,15 @@ async function makeForm(tenantId: number, name: string): Promise<number> {
   return form.id
 }
 
-async function enabledEndpoint(tenantId: number, url = "https://example.com/hook"): Promise<number> {
+async function enabledEndpoint(
+  tenantId: number,
+  url = "https://example.com/hook",
+): Promise<number> {
   const created = await webhooks.create(tenantId, ALICE, { url, eventTypes: [] })
   // 直接標記已驗證:挑戰流程另有測試
-  await ddlKnex("webhook_endpoint").where({ id: created.id }).update({ verified_at: ddlKnex.fn.now() })
+  await ddlKnex("webhook_endpoint")
+    .where({ id: created.id })
+    .update({ verified_at: ddlKnex.fn.now() })
   return created.id
 }
 
@@ -147,12 +162,16 @@ describe("G-1 扇出", () => {
     const result = await fanout.run()
     expect(result.processed).toBeGreaterThan(0)
 
-    const deliveries = await ddlKnex("webhook_delivery").where({ endpoint_id: endpointId }).select("*")
+    const deliveries = await ddlKnex("webhook_delivery")
+      .where({ endpoint_id: endpointId })
+      .select("*")
     expect(deliveries.length).toBeGreaterThan(0)
     expect(deliveries[0]?.status).toBe("pending")
     expect(String(deliveries[0]?.message_id)).toMatch(/^msg_/)
 
-    const pending = await ddlKnex("event_outbox").where({ form_id: formId }).whereNull("fanned_out_at")
+    const pending = await ddlKnex("event_outbox")
+      .where({ form_id: formId })
+      .whereNull("fanned_out_at")
     expect(pending).toHaveLength(0)
   })
 
@@ -161,9 +180,13 @@ describe("G-1 扇出", () => {
     const endpointId = await enabledEndpoint(tenantA)
     await records.createRecord(tenantA, formId, { 品名: "醋" }, ALICE)
     await fanout.run()
-    const first = await ddlKnex("webhook_delivery").where({ endpoint_id: endpointId }).count({ n: "*" })
+    const first = await ddlKnex("webhook_delivery")
+      .where({ endpoint_id: endpointId })
+      .count({ n: "*" })
     await fanout.run()
-    const second = await ddlKnex("webhook_delivery").where({ endpoint_id: endpointId }).count({ n: "*" })
+    const second = await ddlKnex("webhook_delivery")
+      .where({ endpoint_id: endpointId })
+      .count({ n: "*" })
     expect(second[0]?.n).toBe(first[0]?.n)
   })
 
@@ -195,10 +218,14 @@ describe("G-1 扇出", () => {
       url: "https://example.com/only-deleted",
       eventTypes: ["record.deleted"],
     })
-    await ddlKnex("webhook_endpoint").where({ id: created.id }).update({ verified_at: ddlKnex.fn.now() })
+    await ddlKnex("webhook_endpoint")
+      .where({ id: created.id })
+      .update({ verified_at: ddlKnex.fn.now() })
     await records.createRecord(tenantA, formId, { 品名: "只想要刪除事件" }, ALICE)
     await fanout.run()
-    const rows = await ddlKnex("webhook_delivery").where({ endpoint_id: created.id }).select("event_type")
+    const rows = await ddlKnex("webhook_delivery")
+      .where({ endpoint_id: created.id })
+      .select("event_type")
     expect(rows).toHaveLength(0)
   })
 })
@@ -249,7 +276,10 @@ describe("G-1 端點管理", () => {
     })
     await ddlKnex("webhook_endpoint")
       .where({ id: created.id })
-      .update({ consecutive_failures: 19, first_failure_at: ddlKnex.raw("now() - interval '200 hours'") })
+      .update({
+        consecutive_failures: 19,
+        first_failure_at: ddlKnex.raw("now() - interval '200 hours'"),
+      })
     await webhooks.setEnabled(tenantA, created.id, false)
     await webhooks.setEnabled(tenantA, created.id, true)
     const row = await ddlKnex("webhook_endpoint").where({ id: created.id }).first()

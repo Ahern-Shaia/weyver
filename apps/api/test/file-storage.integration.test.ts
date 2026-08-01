@@ -435,7 +435,7 @@ describe("F-7 影像處理(EXIF 剝除 / 縮圖)", () => {
       .toBuffer()
     withExif = await sharp(base)
       /* sharp 的 Exif 型別未列 GPS(libvips 執行期接受);測試刻意寫入 GPS 以證明它會被剝除 */
-    .withExif({ IFD0: { Make: "Apple", Model: "iPhone" }, GPS: { GPSLatitudeRef: "N" } } as never)
+      .withExif({ IFD0: { Make: "Apple", Model: "iPhone" }, GPS: { GPSLatitudeRef: "N" } } as never)
       .toBuffer()
 
     const form = await app.inject({
@@ -597,7 +597,7 @@ describe("F-5 M2 欄位級授權(非 admin;dev header 恆為 super admin 故直�
 
 describe("🔴 追溯稽核:儲存型 CSV 公式注入", () => {
   it("**含公式起首字元的 CSV → 拒收** —— 同事以 Excel 開啟即觸發 DDE", async () => {
-    const evil = Buffer.from('姓名,備註\n王小明,=cmd|\'/c calc\'!A1\n', "utf8")
+    const evil = Buffer.from("姓名,備註\n王小明,=cmd|'/c calc'!A1\n", "utf8")
     const res = await upload(A(), "報表.csv", evil)
     expect(res.statusCode).toBe(415)
     expect((res.body as { code: string }).code).toBe("CSV_FORMULA_REJECTED")
@@ -681,7 +681,9 @@ describe("F-11 下載閘", () => {
       String(body.key),
     ])
     expect(row.rows[0]?.scan_status).toBe("skipped")
-    await expect(filesService.openForDownload(tenant(), full(), String(body.key))).resolves.toBeDefined()
+    await expect(
+      filesService.openForDownload(tenant(), full(), String(body.key)),
+    ).resolves.toBeDefined()
   })
 
   it("🔴 pending → 擋(這是掃毒有沒有意義的分界)", async () => {
@@ -740,7 +742,9 @@ describe("F-11 下載閘", () => {
 
   it("sha256 於上傳當下記錄(綁定掃的與放行的是同一份位元組)", async () => {
     const { body } = await upload(A(), "雜湊.pdf", Buffer.from("%PDF-1.7\nhash"))
-    const row = await pool.query("SELECT sha256 FROM file_object WHERE key = $1", [String(body.key)])
+    const row = await pool.query("SELECT sha256 FROM file_object WHERE key = $1", [
+      String(body.key),
+    ])
     expect(String(row.rows[0]?.sha256)).toMatch(/^[0-9a-f]{64}$/)
   })
 })

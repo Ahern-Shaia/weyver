@@ -233,7 +233,6 @@ describe("🔴 lookup 來源被刪除要看得出來(追溯稽核 #113)", () => 
   })
 })
 
-
 /* 🔴 #113 主體:欄位層顯式化 live / snapshot。
    §0-ter A-5 的決定性論點是**失敗不對稱** —— live 出錯是靜默改寫歷史單據且不可回復,
    snapshot 出錯只是看到舊值、按一下重整即可。故 snapshot 為建議值。 */
@@ -320,12 +319,7 @@ describe("🔴 快照帶入(syncMode=snapshot)", () => {
 
   it("換連結對象 → 快照重取(換 parent 才重取,對齊 Quickbase)", async () => {
     const s = await seed("snapshot")
-    const other = await records.createRecord(
-      tenantA,
-      s.customerFormId,
-      { 地址: "台中市" },
-      ACTOR,
-    )
+    const other = await records.createRecord(tenantA, s.customerFormId, { 地址: "台中市" }, ACTOR)
     const ord = await records.getRecord(tenantA, s.orderFormId, s.orderRecordId)
     await records.updateRecord(
       tenantA,

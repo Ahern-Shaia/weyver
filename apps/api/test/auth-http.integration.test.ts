@@ -6,6 +6,7 @@ import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { Auth } from "../src/auth/auth.js"
+import { MAX_CONSECUTIVE_FAILURES } from "../src/auth/login-throttle.js"
 import { AUTH } from "../src/auth/auth.tokens.js"
 import { runMigrations } from "../src/db/migrate.js"
 
@@ -108,16 +109,25 @@ describe("Better Auth HTTP handler 掛載 + 硬化(F-2 M4/M5)", () => {
     expect(forms.statusCode).toBe(200)
   })
 
-  it("登入暴力:重複錯誤密碼觸發 Better Auth rateLimit(429)", async () => {
+  /* 🔴 暴力防護的主力由 per-IP 換成**逐帳號**(63B-4 §3.2.2 的主詞是 single account)。
+
+     舊版打的是不存在的 `ghost@weyver.test`,靠 per-IP 5 次/分擋下。
+     那個設計同時做錯兩件事:誤傷共用出口 IP 的整間辦公室,又擋不住
+     天生分散在大量 IP 的憑證填充。現在 per-IP 放寬、帳號這一側把關,
+     所以這條測試改打**真實存在的帳號** —— 那才是攻擊者的目標。 */
+  it("🔴 對真實帳號連續猜密碼 → 逐帳號節流擋下(429)", async () => {
     const statuses: number[] = []
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < MAX_CONSECUTIVE_FAILURES + 2; i++) {
       const res = await app.inject({
         method: "POST",
         url: "/api/auth/sign-in/email",
-        payload: { email: "ghost@weyver.test", password: "wrong-guess" },
+        payload: { email: "m4a@weyver.test", password: "wrong-guess" },
       })
       statuses.push(res.statusCode)
     }
-    expect(statuses).toContain(429)
+    /* per-IP 上限是 20/分而這裡只打 12 次 → 429 必定來自帳號那一側。
+       門檻之前的每一次都該是正常的 401,不是一開頭就鎖。 */
+    expect(statuses.slice(0, MAX_CONSECUTIVE_FAILURES)).not.toContain(429)
+    expect(statuses.slice(MAX_CONSECUTIVE_FAILURES)).toContain(429)
   })
 })

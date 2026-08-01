@@ -212,7 +212,12 @@ describe("H-1 訂閱層級與總開關", () => {
   })
 
   it("總開關關閉 → 資料事件不送,**但簽核逾期仍送**(裁定 ④)", async () => {
-    await repo.setSettings({ tenantId: tenantA, actorId: bystander, enabled: false, channels: null })
+    await repo.setSettings({
+      tenantId: tenantA,
+      actorId: bystander,
+      enabled: false,
+      channels: null,
+    })
     const before = (await inbox(bystander)).length
 
     await notify.emitOrThrow({
@@ -318,7 +323,9 @@ describe("H-1 偏好唯讀性", () => {
 
 describe("H-1 M3 Email 派工", () => {
   it("**SMTP 未設定 → skipped 而非 failed** —— 「還沒設定」不是「寄送失敗」", async () => {
-    await pool.query("UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'")
+    await pool.query(
+      "UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'",
+    )
     await dispatcher.run()
     const rows = await pool.query<{ status: string; n: string }>(
       "SELECT status, count(*) AS n FROM notification_delivery WHERE channel='email' GROUP BY status",
@@ -371,7 +378,9 @@ describe("H-1 M3 Email 派工", () => {
       "INSERT INTO email_suppression (email, reason) VALUES ($1,'hard_bounce') ON CONFLICT DO NOTHING",
       [email],
     )
-    await pool.query("UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'")
+    await pool.query(
+      "UPDATE notification_delivery SET next_attempt_at = now() WHERE channel='email'",
+    )
     await dispatcher.run()
     const rows = await pool.query<{ last_error: string | null }>(
       `SELECT d.last_error FROM notification_delivery d

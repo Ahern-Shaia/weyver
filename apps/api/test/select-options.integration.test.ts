@@ -165,10 +165,7 @@ describe("🔴 選項改名連動既有記錄(追溯稽核 #105)", () => {
       C("o00000002", "乙"),
     ])
     await expect(
-      options.updateOptions(tenantA, formId, fieldId, [
-        C("o00000001", "乙"),
-        C("o00000002", "乙"),
-      ]),
+      options.updateOptions(tenantA, formId, fieldId, [C("o00000001", "乙"), C("o00000002", "乙")]),
     ).rejects.toThrow()
   })
 })
@@ -187,9 +184,11 @@ describe("🔴 選項刪除:軟停用而非清空資料(追溯稽核 #105)", () 
     expect(await readStatus(formId, r.id)).toBe("舊分類")
     // 選項被保留但標記停用
     const form = await metadata.getForm(tenantA, formId)
-    const choices = (form.fields.find((f) => f.id === fieldId)?.options as {
-      choices: { id: string; name: string; retired?: boolean }[]
-    }).choices
+    const choices = (
+      form.fields.find((f) => f.id === fieldId)?.options as {
+        choices: { id: string; name: string; retired?: boolean }[]
+      }
+    ).choices
     expect(choices.find((c) => c.id === "o00000001")?.retired).toBe(true)
     // 持有停用值的記錄仍可存檔(否則使用者會覺得系統壞了)
     await records.updateRecord(tenantA, formId, r.id, 1, { 編號: "A2", 狀態: "舊分類" }, ACTOR)
@@ -204,9 +203,11 @@ describe("🔴 選項刪除:軟停用而非清空資料(追溯稽核 #105)", () 
 
     await options.updateOptions(tenantA, formId, fieldId, [C("o00000002", "有人用")])
     const form = await metadata.getForm(tenantA, formId)
-    const choices = (form.fields.find((f) => f.id === fieldId)?.options as {
-      choices: { id: string }[]
-    }).choices
+    const choices = (
+      form.fields.find((f) => f.id === fieldId)?.options as {
+        choices: { id: string }[]
+      }
+    ).choices
     expect(choices.map((c) => c.id)).toEqual(["o00000002"])
   })
 
@@ -217,7 +218,14 @@ describe("🔴 選項刪除:軟停用而非清空資料(追溯稽核 #105)", () 
     ])
     const r = await records.createRecord(tenantA, formId, { 編號: "A", 狀態: "暫定" }, ACTOR)
 
-    await options.updateOptions(tenantA, formId, fieldId, [C("o00000002", "確認")], "replace", "確認")
+    await options.updateOptions(
+      tenantA,
+      formId,
+      fieldId,
+      [C("o00000002", "確認")],
+      "replace",
+      "確認",
+    )
     expect(await readStatus(formId, r.id)).toBe("確認")
   })
 

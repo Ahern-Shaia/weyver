@@ -6,11 +6,17 @@ import {
   type ExecutionContext,
 } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
+import { fromNodeHeaders } from "better-auth/node"
+import type pg from "pg"
 import { EntitlementService } from "../billing/entitlement.service.js"
 import { isReadOnlyStatus, isWriteMethod } from "../billing/tenant-status.js"
 import { DevTenantGuard } from "../http/dev-tenant.guard.js"
 import type { RequestWithTenant } from "../http/tenant-context.js"
+import { PG_POOL } from "../db/db.module.js"
 import { AuthGuard } from "./auth-guard.js"
+import { AUTH } from "./auth.tokens.js"
+import type { Auth } from "./auth.js"
+import { mustChangePassword } from "./initial-credential.js"
 
 /* 依環境分派租戶解析:認證強制(AuthGuard,真實 session)vs dev header(DevTenantGuard,x-dev-tenant)。
    強制條件 = production 一律,或 dev/test 設 ENFORCE_AUTH=1(測 auth-gate 用)。
@@ -26,6 +32,9 @@ export class TenantGuard implements CanActivate {
     @Inject(AuthGuard) private readonly authGuard: AuthGuard,
     @Inject(DevTenantGuard) private readonly devGuard: DevTenantGuard,
     @Inject(EntitlementService) private readonly entitlement: EntitlementService,
+    @Inject(AUTH) private readonly auth: Auth,
+    /* `initial_credential` 刻意無 RLS(判斷發生在租戶語境之前)→ 走特權車道 */
+    @Inject(PG_POOL) private readonly pool: pg.Pool,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -42,6 +51,31 @@ export class TenantGuard implements CanActivate {
     if (!resolved) return false
 
     const request = context.switchToHttp().getRequest<RequestWithTenant>()
+
+    /* 🔴 「還在用管理員給的初始密碼」的閘門要**兩條路都攔**(ASVS §V6.4.1)。
+
+       它問的是「拿著這個 session 的人」,與租戶怎麼解析無關,所以放在分派**之後**、
+       兩條路的共同出口。原本只寫在 AuthGuard 裡 —— 而 dev 走 DevTenantGuard,
+       閘門整個不執行:e2e 實測新同事用初始密碼直接進到工作區。
+       只在 prod 生效的安全機制,等同於**從來沒有人驗證過**。
+
+       prod 路徑的身分由 AuthGuard 帶上(`request.authUserId`),不重複查 session;
+       dev 路徑沒有那一步,但**登入流程是真的**、cookie 也在 → 回頭查一次。
+       兩邊都沒有身分時就沒有「這個人」可問,略過。 */
+    const authUserId =
+      request.authUserId ??
+      (
+        await this.auth.api
+          .getSession({ headers: fromNodeHeaders(request.headers) })
+          .catch(() => null)
+      )?.user.id
+    if (authUserId !== undefined && (await mustChangePassword(this.pool, authUserId))) {
+      throw new ForbiddenException({
+        code: "PASSWORD_CHANGE_REQUIRED",
+        message: "請先設定你自己的密碼",
+      })
+    }
+
     const tenantId = request.tenantContext?.tenantId
     if (tenantId === undefined) return true
     if (!isWriteMethod(request.method)) return true

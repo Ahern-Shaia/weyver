@@ -46,7 +46,13 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: uri, max: 5 })
   await runMigrations(pool)
   const db = createDrizzle(pool)
-  tenantId = (await db.insert(tenants).values([{ name: "廠 A" }]).returning())[0]?.id ?? 0
+  tenantId =
+    (
+      await db
+        .insert(tenants)
+        .values([{ name: "廠 A" }])
+        .returning()
+    )[0]?.id ?? 0
 
   process.env.DATABASE_URL = uri
   process.env.APP_DATABASE_URL = uri

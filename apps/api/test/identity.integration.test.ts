@@ -29,7 +29,10 @@ afterAll(async () => {
 describe("IdentityService — org↔tenant · user↔actor 對映(F-2 M2)", () => {
   it("ensureTenantForOrg 冪等:同 org 兩次 → 同 tenantId(不重建)", async () => {
     const first = await identity.ensureTenantForOrg({ authOrgId: "org_A", name: "廠 A" })
-    const second = await identity.ensureTenantForOrg({ authOrgId: "org_A", name: "廠 A(改名不生效)" })
+    const second = await identity.ensureTenantForOrg({
+      authOrgId: "org_A",
+      name: "廠 A(改名不生效)",
+    })
     expect(second).toBe(first)
     expect(await identity.getTenantIdByOrg("org_A")).toBe(first)
   })

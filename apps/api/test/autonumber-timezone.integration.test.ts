@@ -35,10 +35,7 @@ beforeAll(async () => {
   db = createDrizzle(pool)
   const rows = await db
     .insert(tenants)
-    .values([
-      { name: "台北廠" },
-      { name: "UTC 廠", timezone: "UTC" },
-    ])
+    .values([{ name: "台北廠" }, { name: "UTC 廠", timezone: "UTC" }])
     .returning()
   taipei = rows[0]?.id ?? 0
   utcTenant = rows[1]?.id ?? 0

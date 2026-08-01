@@ -3,6 +3,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
+import { MAX_CONSECUTIVE_FAILURES } from "../src/auth/login-throttle.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
@@ -48,8 +49,14 @@ afterAll(async () => {
   await container?.stop()
 })
 
-/* 直接打 handler(而非 `auth.api.*`)—— 偽造發生在 HTTP header 這一層 */
-async function attempt(headers: Record<string, string>): Promise<number> {
+/* 直接打 handler(而非 `auth.api.*`)—— 偽造發生在 HTTP header 這一層。
+
+   ⚠️ **兩個機制會互相干擾**,所以測哪一個就要把另一個排除:
+   · 測 **IP 分桶**時每次換一個不存在的帳號 → 帳號節流永遠不會觸發
+     (查無此帳號 → 連續失敗數為 0),429 只可能來自 IP 這一側。
+   · 測 **帳號節流**時每次換一個 peer → IP 限流永遠不會觸發。
+   混在一起測的話,測試會因為「另一個機制先擋下」而通過,看起來綠、其實沒測到。 */
+async function attempt(headers: Record<string, string>, email = EMAIL): Promise<number> {
   const res = await auth.handler(
     new Request("http://localhost:3001/api/auth/sign-in/email", {
       method: "POST",
@@ -58,7 +65,7 @@ async function attempt(headers: Record<string, string>): Promise<number> {
         origin: "http://localhost:3000",
         ...headers,
       },
-      body: JSON.stringify({ email: EMAIL, password: "wrong-password-here" }),
+      body: JSON.stringify({ email, password: "wrong-password-here" }),
     }),
   )
   return res.status
@@ -67,11 +74,16 @@ async function attempt(headers: Record<string, string>): Promise<number> {
 describe("🔴 登入限流不得被 x-forwarded-for 繞過", () => {
   it("🔴 每次換一個假 x-forwarded-for,仍必須被擋下", async () => {
     const codes: number[] = []
-    for (let i = 0; i < 12; i += 1) {
-      codes.push(await attempt({ "x-forwarded-for": `203.0.113.${String(i + 1)}` }))
+    for (let i = 0; i < 40; i += 1) {
+      codes.push(
+        await attempt(
+          { "x-forwarded-for": `203.0.113.${String(i + 1)}` },
+          `ip-${String(i)}@x.test`,
+        ),
+      )
     }
-    /* 修正前:12 次全是 401(限流被逐 IP 分桶,等於沒有上限)。
-       修正後:超過 5 次/分即 429。 */
+    /* 修正前:每個偽造 IP 各自一個桶 → 40 次全是 401,等於沒有上限。
+       修正後:全部落在同一個真實 peer 的桶 → 超過額度即 429。 */
     expect(codes.filter((c) => c === 429).length).toBeGreaterThan(0)
   })
 
@@ -80,10 +92,52 @@ describe("🔴 登入限流不得被 x-forwarded-for 繞過", () => {
      這一條確認分桶**確實依 peer header**:A 被鎖時 B 仍能嘗試。 */
   it("🔴 不同 peer 各自分桶 —— 一個來源被鎖不得波及其他人", async () => {
     const a: number[] = []
-    for (let i = 0; i < 8; i += 1) a.push(await attempt({ "x-weyver-peer-ip": "198.51.100.10" }))
+    for (let i = 0; i < 25; i += 1) {
+      a.push(await attempt({ "x-weyver-peer-ip": "198.51.100.10" }, `bucket-${String(i)}@x.test`))
+    }
     expect(a.filter((c) => c === 429).length).toBeGreaterThan(0)
 
-    const b = await attempt({ "x-weyver-peer-ip": "198.51.100.99" })
-    expect(b).not.toBe(429)
+    const bRes = await auth.handler(
+      new Request("http://localhost:3001/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3000",
+          "x-weyver-peer-ip": "198.51.100.99",
+        },
+        body: JSON.stringify({ email: "bucket-b@x.test", password: "wrong-password-here" }),
+      }),
+    )
+    expect(bRes.status).not.toBe(429)
+  })
+})
+
+/* 🔴 63B-4 §3.2.2 要求的是**逐帳號**的連續失敗上限,不是逐 IP ——
+   憑證填充天生分散在大量 IP,per-IP 上限對它無效;而 per-IP 上限反過來
+   會誤傷共用出口 IP 的整間辦公室。 */
+describe("🔴 逐帳號節流(63B-4 §3.2.2)", () => {
+  it("🔴 同一帳號連續失敗到上限即暫時鎖定 —— **即使每次都換 IP**", async () => {
+    const codes: number[] = []
+    for (let i = 0; i < MAX_CONSECUTIVE_FAILURES + 3; i += 1) {
+      codes.push(await attempt({ "x-weyver-peer-ip": `192.0.2.${String(i + 1)}` }, EMAIL))
+    }
+    /* 每次一個全新的 peer → per-IP 限流完全不會觸發;
+       擋下來的必定是帳號這一側。 */
+    expect(codes.slice(-1)[0]).toBe(429)
+  })
+
+  it("🔴 別的帳號不受影響 —— 否則亂打就能把任何人鎖死(阻斷服務)", async () => {
+    const other = await auth.handler(
+      new Request("http://localhost:3001/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3000",
+          "x-weyver-peer-ip": "192.0.2.250",
+        },
+        body: JSON.stringify({ email: "someone-else@weyver.test", password: "whatever-1234" }),
+      }),
+    )
+    expect(other.status).not.toBe(429)
   })
 })

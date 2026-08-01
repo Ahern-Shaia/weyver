@@ -139,9 +139,7 @@ describe("🔴 執行轉換(#105)", () => {
 
   it("forbidden 一律拒絕", async () => {
     const { formId, fieldId } = await formWith("拒絕", "text", ["x"])
-    await expect(
-      ddl.convertFieldType(tenantA, formId, fieldId, "autoNumber"),
-    ).rejects.toThrow()
+    await expect(ddl.convertFieldType(tenantA, formId, fieldId, "autoNumber")).rejects.toThrow()
   })
 
   it("轉換寫入 ddl_audit(含 kind,供事後追查)", async () => {

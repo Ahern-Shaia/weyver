@@ -2,6 +2,7 @@ import { Global, Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
 import { Test } from "@nestjs/testing"
 import { getMigrations } from "better-auth/db/migration"
+import { runMigrations as runWeyverMigrations } from "../src/db/migrate.js"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
@@ -22,6 +23,11 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   auth = createAuth(pool, "test-secret-0123456789")
   // Better Auth 自建其 schema(user/account/session/organization/member/invitation…)
+  /* 🔴 **我們自己的 migration 也要跑**。認證的 before/after hook 會查
+     `auth_audit`(逐帳號節流)與 `initial_credential`(初始密碼生命週期);
+     只跑 Better Auth 的 schema 等於在一個與 production 不一致的 DB 上測登入
+     —— 實測會直接 `relation "auth_audit" does not exist`。 */
+  await runWeyverMigrations(pool)
   const { runMigrations } = await getMigrations(auth.options)
   await runMigrations()
 }, 120_000)

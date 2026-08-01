@@ -56,7 +56,9 @@ beforeAll(async () => {
   auth = createAuth(pool, "test-secret-0123456789abcdef")
   const { runMigrations } = await getMigrations(auth.options)
   await runMigrations()
-  /* Weyver 自有的 drizzle migration —— TOTP 重放防護表(#111)不屬 better-auth schema */
+  /* 🔴 Weyver 自有的 drizzle migration。原本的理由是 TOTP 重放防護表(#111),
+     現在還多了 `auth_audit`(逐帳號節流)與 `initial_credential`(初始密碼生命週期)
+     —— 認證 hook 會查它們,少跑就等於在一個與 production 不一致的 DB 上測登入。 */
   const { runMigrations: runWeyverMigrations } = await import("../src/db/migrate.js")
   await runWeyverMigrations(pool)
 }, 120_000)

@@ -188,10 +188,10 @@ describe("🔴 失敗請求的冪等語意(追溯稽核:原本一律釋放)", ()
     expect(bad.statusCode).toBe(400)
 
     /* 佔位必須已釋放(列不存在)—— handler 尚未執行,重試應真正重跑 */
-    const row = await pool.query(
-      "SELECT 1 FROM idempotency_key WHERE tenant_id=$1 AND key=$2",
-      [tenantA, key],
-    )
+    const row = await pool.query("SELECT 1 FROM idempotency_key WHERE tenant_id=$1 AND key=$2", [
+      tenantA,
+      key,
+    ])
     expect(row.rowCount).toBe(0)
 
     /* 同一把 key 換成合法 payload 應能成功 —— 證明佔位已釋放而非鎖成永久錯誤 */

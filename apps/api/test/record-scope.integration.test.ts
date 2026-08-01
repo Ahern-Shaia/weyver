@@ -36,7 +36,10 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  const rows = await db.insert(tenants).values([{ name: "廠 A" }]).returning()
+  const rows = await db
+    .insert(tenants)
+    .values([{ name: "廠 A" }])
+    .returning()
   tenantA = rows[0]?.id ?? 0
   await pool.query(
     `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS; GRANT weyver_app TO app_login`,
@@ -167,15 +170,11 @@ describe("🔴 記錄範圍:業務只看自己的客戶(#96)", () => {
 
   it("被指派者看得到(assignees)—— 這是 Ragic 賴以達成此需求的機制", async () => {
     const formId = await seed()
-    await pool.query(`UPDATE data.t${formId} SET assignees = ARRAY[$1::bigint] WHERE created_by = $2`, [
-      BOB,
-      ALICE,
-    ])
-    expect(await names(formId, ownScoped(formId), BOB)).toEqual([
-      "A的客戶1",
-      "A的客戶2",
-      "B的客戶",
-    ])
+    await pool.query(
+      `UPDATE data.t${formId} SET assignees = ARRAY[$1::bigint] WHERE created_by = $2`,
+      [BOB, ALICE],
+    )
+    expect(await names(formId, ownScoped(formId), BOB)).toEqual(["A的客戶1", "A的客戶2", "B的客戶"])
   })
 })
 
@@ -260,7 +259,6 @@ describe("🔴 指派同步:member 欄勾 grantsAccess(#96 M2)", () => {
     expect(await names(form.id, ownScoped(form.id), BOB)).toEqual([])
   })
 })
-
 
 describe("🔴 預覽模擬器(#96 M3)", () => {
   it("**回「看得到幾筆 / 全部幾筆 + 每筆為什麼」** —— 只給一個數字管理員無從判斷對錯", async () => {
@@ -358,7 +356,13 @@ describe("🔴 記錄範圍必須涵蓋所有記錄路徑,不只列表", () => {
     )
     const target = all.records.find((r) => r.values.客戶名稱 === "A的客戶2")
     await expect(
-      records.softDeleteRecord(tenantA, formId, target?.id ?? 0, BOB, scopedFor(formId, ["delete"])),
+      records.softDeleteRecord(
+        tenantA,
+        formId,
+        target?.id ?? 0,
+        BOB,
+        scopedFor(formId, ["delete"]),
+      ),
     ).rejects.toThrow()
     const after = await records.getRecord(tenantA, formId, target?.id ?? 0, allScoped(formId))
     expect(after.values.客戶名稱).toBe("A的客戶2")
@@ -401,7 +405,12 @@ describe("🔴 帶入(lookup)不得成為越權讀取的側門", () => {
       BOB,
     )
     await records.createRecord(tenantA, order.id, { 客戶: cust.id }, BOB)
-    const custFields = await records.getRecord(tenantA, customer.id, cust.id, allScoped(customer.id))
+    const custFields = await records.getRecord(
+      tenantA,
+      customer.id,
+      cust.id,
+      allScoped(customer.id),
+    )
     void custFields
     return { customerFormId: customer.id, orderFormId: order.id, customerFieldId: cust.id }
   }

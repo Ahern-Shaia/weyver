@@ -40,7 +40,10 @@ beforeAll(async () => {
   pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
   await runMigrations(pool)
   db = createDrizzle(pool)
-  const rows = await db.insert(tenants).values([{ name: "廠 A" }]).returning()
+  const rows = await db
+    .insert(tenants)
+    .values([{ name: "廠 A" }])
+    .returning()
   tenantA = rows[0]?.id ?? 0
   await pool.query(
     `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS; GRANT weyver_app TO app_login`,
@@ -143,7 +146,11 @@ describe("F-1 分組:排序變形 + keyset 保留", () => {
       const page = await records.listRecords(
         tenantA,
         formId,
-        query({ limit: 5, groupBy: [{ field: "狀態", dir: "asc" }], ...(cursor ? { cursor } : {}) }),
+        query({
+          limit: 5,
+          groupBy: [{ field: "狀態", dir: "asc" }],
+          ...(cursor ? { cursor } : {}),
+        }),
       )
       collected.push(...page.records.map((r) => String(r.values.客戶)))
       if (page.nextCursor === null) break
@@ -155,7 +162,12 @@ describe("F-1 分組:排序變形 + keyset 保留", () => {
 
   it("空值自成一組且不被切成兩段(NULLS LAST 與群排序一致)", async () => {
     const { formId } = await orderForm(`空值分組_${String(Date.now()).slice(-6)}`)
-    for (const [c, s] of [["甲", "新單"], ["乙", null], ["丙", "新單"], ["丁", null]] as const) {
+    for (const [c, s] of [
+      ["甲", "新單"],
+      ["乙", null],
+      ["丙", "新單"],
+      ["丁", null],
+    ] as const) {
       await records.createRecord(
         tenantA,
         formId,
@@ -468,7 +480,12 @@ describe("F-1 行事曆區間查詢", () => {
   it("超過上限時明示截斷(不靜默丟棄)", async () => {
     const formId = await leaveForm(`截斷_${String(Date.now()).slice(-6)}`)
     for (let i = 0; i < 4; i++) {
-      await records.createRecord(tenantA, formId, { 事由: `E${String(i)}`, 開始: "2026-02-05" }, ALICE)
+      await records.createRecord(
+        tenantA,
+        formId,
+        { 事由: `E${String(i)}`, 開始: "2026-02-05" },
+        ALICE,
+      )
     }
     const res = await records.calendarRange(tenantA, formId, {
       startField: "開始",
@@ -547,8 +564,18 @@ describe("F-2 樞紐分析", () => {
 
   it("值(measure)可與列軸/欄軸同時計算", async () => {
     const { formId } = await salesForm(`值_${String(Date.now()).slice(-6)}`)
-    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "新單", 金額: "100.0000" }, ALICE)
-    await records.createRecord(tenantA, formId, { 區域: "北", 狀態: "新單", 金額: "50.0000" }, ALICE)
+    await records.createRecord(
+      tenantA,
+      formId,
+      { 區域: "北", 狀態: "新單", 金額: "100.0000" },
+      ALICE,
+    )
+    await records.createRecord(
+      tenantA,
+      formId,
+      { 區域: "北", 狀態: "新單", 金額: "50.0000" },
+      ALICE,
+    )
     const res = await records.pivot(
       tenantA,
       formId,

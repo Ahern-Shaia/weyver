@@ -37,6 +37,10 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException({ code: "UNAUTHENTICATED", message: "no valid session" })
     }
 
+    /* 初始密碼閘門需要「這個人是誰」,但它必須**兩條路都攔**,所以做在 TenantGuard;
+       這裡把已解析出的身分帶過去,免得再查一次 session。 */
+    request.authUserId = session.user.id
+
     const orgId = session.session.activeOrganizationId
     if (typeof orgId !== "string" || orgId.length === 0) {
       throw new ForbiddenException({

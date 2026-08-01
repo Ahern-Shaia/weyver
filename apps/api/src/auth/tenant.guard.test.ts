@@ -3,7 +3,9 @@ import type { ConfigService } from "@nestjs/config"
 import { describe, expect, it, vi } from "vitest"
 import type { EntitlementService } from "../billing/entitlement.service.js"
 import type { DevTenantGuard } from "../http/dev-tenant.guard.js"
+import type pg from "pg"
 import type { AuthGuard } from "./auth-guard.js"
+import type { Auth } from "./auth.js"
 import { TenantGuard } from "./tenant.guard.js"
 
 /* 認證強制分派:prod 一律 AuthGuard;dev/test 依 ENFORCE_AUTH 旗標(預設關 → DevTenantGuard)。
@@ -18,12 +20,25 @@ function make(nodeEnv: string, enforce: string, status = "active") {
   const entitlement = {
     planFor: vi.fn(async () => ({ planCode: null, status, trialEndsAt: null })),
   } as unknown as EntitlementService
-  return { guard: new TenantGuard(config, auth, dev, entitlement), auth, dev, entitlement }
+  /* 初始密碼閘門:此檔的 request fixture 沒有 cookie、getSession 回 null → 閘門不觸發,
+     其行為由 `initial-credential.integration.test` 對真 PG 驗證。 */
+  const betterAuth = { api: { getSession: vi.fn(async () => null) } } as unknown as Auth
+  const pool = { query: vi.fn(async () => ({ rows: [{ n: 0 }] })) } as unknown as pg.Pool
+  return {
+    guard: new TenantGuard(config, auth, dev, entitlement, betterAuth, pool),
+    auth,
+    dev,
+    entitlement,
+  }
 }
 
 /* tenantId 用 null 表示「未解析」而非 undefined —— 顯式傳 undefined 會觸發預設參數。 */
 function ctxOf(method = "GET", tenantId: number | null = 1): ExecutionContext {
-  const request = { method, tenantContext: tenantId === null ? undefined : { tenantId } }
+  const request = {
+    method,
+    headers: {},
+    tenantContext: tenantId === null ? undefined : { tenantId },
+  }
   return {
     switchToHttp: () => ({ getRequest: () => request }),
   } as unknown as ExecutionContext

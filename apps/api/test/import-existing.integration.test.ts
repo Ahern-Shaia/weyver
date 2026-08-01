@@ -43,13 +43,7 @@ beforeAll(async () => {
   knexDestroy = () => ddlKnex.destroy()
   ddl = new DdlService(ddlKnex, db, metadata)
   records = new RecordService(ddlKnex, metadata)
-  imports = new ImportService(
-    tenantDb,
-    metadata,
-    records,
-    new OptionService(ddlKnex, metadata),
-    db,
-  )
+  imports = new ImportService(tenantDb, metadata, records, new OptionService(ddlKnex, metadata), db)
 }, 120_000)
 
 afterAll(async () => {
@@ -422,7 +416,11 @@ describe("未知選項處理", () => {
 describe("匯入批次清單(撤銷 UI 的前提)", () => {
   it("列出本表批次,且已被撤銷者標出 revertedByBatchId", async () => {
     const formId = await customerForm(`批次清單_${String(Date.now()).slice(-6)}`)
-    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "B1", 名稱: "甲" }] })
+    const input = plan({
+      policy: "insert_only",
+      matchFields: [],
+      rows: [{ 編號: "B1", 名稱: "甲" }],
+    })
     const planned = await imports.plan(tenantA, formId, input)
     const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
 
@@ -517,24 +515,30 @@ describe("決策表補完:命中多筆 / 正規化命中 / 大量影響", () => 
   it("小幅更新不觸發二次確認", async () => {
     const formId = await customerForm(`小幅更新_${String(Date.now()).slice(-6)}`)
     for (let i = 0; i < 10; i++) {
-      await records.createRecord(tenantA, formId, { 客戶編號: `E${String(i)}`, 客戶名稱: "原" }, ACTOR)
+      await records.createRecord(
+        tenantA,
+        formId,
+        { 客戶編號: `E${String(i)}`, 客戶名稱: "原" },
+        ACTOR,
+      )
     }
-    const result = await imports.plan(
-      tenantA,
-      formId,
-      plan({ rows: [{ 編號: "E0", 名稱: "改" }] }),
-    )
+    const result = await imports.plan(tenantA, formId, plan({ rows: [{ 編號: "E0", 名稱: "改" }] }))
     expect(result.impact.needsConfirm).toBe(false)
   })
 })
 
 /* 🔴 OQ-IMP-2(決策方直接裁定,涉資料銷毀):清空既有值需打字確認表單名稱。
-   **後端也驗** —— 只放前端對話框等於沒有,直接打 API 就繞過了。 */
+ **後端也驗** —— 只放前端對話框等於沒有,直接打 API 就繞過了。 */
 describe("清空既有值需確認表單名稱", () => {
   it("blankPolicy=clear 未帶確認 → 擋", async () => {
     const name = `清空確認_${String(Date.now()).slice(-6)}`
     const formId = await customerForm(name)
-    await records.createRecord(tenantA, formId, { 客戶編號: "F1", 客戶名稱: "原", 電話: "0912" }, ACTOR)
+    await records.createRecord(
+      tenantA,
+      formId,
+      { 客戶編號: "F1", 客戶名稱: "原", 電話: "0912" },
+      ACTOR,
+    )
     const input = plan({ blankPolicy: "clear", rows: [{ 編號: "F1", 名稱: "新", 電話: "" }] })
     const planned = await imports.plan(tenantA, formId, input)
     await expect(imports.commit(tenantA, formId, ACTOR, planned.planHash, input)).rejects.toThrow(
@@ -545,7 +549,12 @@ describe("清空既有值需確認表單名稱", () => {
   it("帶對表單名稱 → 放行,且空白格真的清空", async () => {
     const name = `清空放行_${String(Date.now()).slice(-6)}`
     const formId = await customerForm(name)
-    await records.createRecord(tenantA, formId, { 客戶編號: "G1", 客戶名稱: "原", 電話: "0912" }, ACTOR)
+    await records.createRecord(
+      tenantA,
+      formId,
+      { 客戶編號: "G1", 客戶名稱: "原", 電話: "0912" },
+      ACTOR,
+    )
     const input = plan({ blankPolicy: "clear", rows: [{ 編號: "G1", 名稱: "新", 電話: "" }] })
     const planned = await imports.plan(tenantA, formId, input)
     await imports.commit(tenantA, formId, ACTOR, planned.planHash, input, name)
@@ -556,7 +565,11 @@ describe("清空既有值需確認表單名稱", () => {
 
   it("預設 keep 不需確認(既有行為不受影響)", async () => {
     const formId = await customerForm(`預設保留_${String(Date.now()).slice(-6)}`)
-    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "H1", 名稱: "甲" }] })
+    const input = plan({
+      policy: "insert_only",
+      matchFields: [],
+      rows: [{ 編號: "H1", 名稱: "甲" }],
+    })
     const planned = await imports.plan(tenantA, formId, input)
     await expect(
       imports.commit(tenantA, formId, ACTOR, planned.planHash, input),
@@ -567,7 +580,11 @@ describe("清空既有值需確認表單名稱", () => {
 describe("撤銷保留期(OQ-IMP-1 = 30 天)", () => {
   it("逾期批次不給撤銷(diff 還在,但久遠的還原會吃掉他人後續編輯)", async () => {
     const formId = await customerForm(`保留期_${String(Date.now()).slice(-6)}`)
-    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "I1", 名稱: "甲" }] })
+    const input = plan({
+      policy: "insert_only",
+      matchFields: [],
+      rows: [{ 編號: "I1", 名稱: "甲" }],
+    })
     const planned = await imports.plan(tenantA, formId, input)
     const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
 
@@ -580,7 +597,11 @@ describe("撤銷保留期(OQ-IMP-1 = 30 天)", () => {
 
   it("期限內可撤銷", async () => {
     const formId = await customerForm(`期限內_${String(Date.now()).slice(-6)}`)
-    const input = plan({ policy: "insert_only", matchFields: [], rows: [{ 編號: "J1", 名稱: "甲" }] })
+    const input = plan({
+      policy: "insert_only",
+      matchFields: [],
+      rows: [{ 編號: "J1", 名稱: "甲" }],
+    })
     const planned = await imports.plan(tenantA, formId, input)
     const committed = await imports.commit(tenantA, formId, ACTOR, planned.planHash, input)
     await expect(imports.revert(tenantA, formId, ACTOR, committed.batchId)).resolves.toBeDefined()
