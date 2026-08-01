@@ -10,10 +10,16 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* docs/14 v2|資料密度基準 12.5px;長文另行放大至 ≥14px */
+  /* docs/14 §2.5|`base` 階 14 / 20 —— 未帶字級 class 的文字之預設。
+
+     🔴 原本是 `12.5px`,依據寫著「docs/14 v2」,但 **v5.0 §2.5 已明文否決 12.5px**
+     (「於三大系統皆無對應且會產生 sub-pixel rounding」)。它活下來的原因是
+     **M10 的字階 CI 只掃 `.ts/.tsx` 的 `text-[Npx]`,沒掃 CSS** ——
+     規則沒有檢查就會漏,這是同一句話的第三次應驗(字階 / 色碼 / 這裡)。
+     已把該檢查擴及 `.css` 的 `font-size`。 */
   body {
     font-family: var(--font-sans);
-    font-size: 12.5px;
+    font-size: 14px;
     line-height: 1.5;
     color: var(--color-ink);
     background-color: var(--color-surface);

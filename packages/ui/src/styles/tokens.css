@@ -6,7 +6,17 @@
    ⚠️ 禁在元件硬編 hex,一律走語意 token。深度靠 border + 極淡 shadow(非重陰影)。
 ═══════════════════════════════════════════════════════════════════ */
 
-@theme {
+/* 🔴 `static` 不能拿掉。
+
+   Tailwind 4 的 `@theme` **只輸出被 class 用到的變數**(4.3.3 實測:未被使用的
+   `--color-icon-3` 在瀏覽器裡 `getComputedStyle` 讀出來是空字串,加上 `static` 後才出現)。
+   但本庫有**在執行期讀 token** 的程式:`grid-tone.ts` 以 `getComputedStyle` 取 24 個狀態色
+   餵給 Glide 網格(該處無法用 class)。少了 `static`,那些變數之所以還在,
+   純粹是因為別的元件剛好也用了同名 class —— 哪天最後一處 `bg-c5-t` 被刪掉,
+   網格的 c5 色就會**安靜地消失**,沒有任何錯誤。
+
+   代價實測 **410 bytes**(dev 全站 CSS 71227 vs 70817,+0.6%),換掉一個無聲失效路徑。 */
+@theme static {
   /* ── 結構中性色(淺冷灰;層次靠明度微差,非重灰)─────────── */
   --color-surface: #f6f7f9; /* 應用底(淺,不再是 v2.1 重灰 #e8eaed)*/
   --color-card: #ffffff; /* 面板 / 表單 */
@@ -26,6 +36,11 @@
      本 token 更名為 disabled 並限縮:**僅停用元件內的文字**可用
      (WCAG 1.4.3 對 inactive 元件有 incidental 豁免)。 */
   --color-ink-disabled: #9aa4b1; /* 2.52:1 —— 僅限停用元件內文字 */
+  /* ⚠️ 這裡**刻意沒有** `--color-icon-*` —— docs/28 A4 曾裁定採用,落地時撤回。
+     Metabase 需要它是因為其圖示吃 `color` prop;本庫全庫只有一處直接給圖示上色
+     (`select.tsx` 的 chevron),其餘一律**繼承容器**,A4 想要的「圖示與相鄰文字同階」
+     在架構上已經成立。加三個純 alias 的 token 不會讓它更成立,只會多三個沒人用的名字。 */
+
   --color-line: #e3e6ea; /* 面板框(hairline,由 v2.1 #c9cfd6 軟化)*/
   --color-line-2: #eef0f3; /* 次分隔 */
   --color-cell: #e7eaee; /* 欄位格線(全框線表)*/
@@ -39,9 +54,17 @@
   --color-line-input: #8d8d8d; /* 3.32:1,僅輸入框 */
 
   /* ── 主題主色(預設深藍;克制使用:選取 / 主按鈕 / 焦點)── */
-  --color-primary: #22568a;
-  --color-primary-d: #1a476f;
-  --color-primary-t: #eaf1f8; /* 選取列 / 主色極淡底 */
+  /* ═══ 主色:BASE → 語意(docs/14 §0.4;Metabase 逐字「Base colors … never be
+     used outside this file」)══════════════════════════════════════════════
+     **`--base-brand` 是唯一可調的來源值**;`-d` / `-t` 由它推導。
+     白牌客戶換一個變數,hover / 選取底 / 淡底全部跟著對 ——
+     原本三個主題各自手寫三個值,每加一個白牌就要人工配三次。
+     ⚠️ 元件一律用 `--color-*`,不得直接用 `--base-*`。
+     ⚠️ 推導值由 `contrast.test.ts` 實算把關(它看得懂 color-mix)。 */
+  --base-brand: #22568a;
+  --color-primary: var(--base-brand);
+  --color-primary-d: color-mix(in srgb, var(--base-brand), black 20%);
+  --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%); /* 選取列 / 主色極淡底 */
 
   /* ── 功能色(跨主題共用)───────────────────────────────── */
   --color-link: #1160b4;
@@ -128,14 +151,11 @@
 
 /* ── 三配色主題(主色家族;結構/狀態/功能色跨主題共用)──── */
 [data-theme="teal"] {
-  --color-primary: #0c5f73;
-  --color-primary-d: #094a5a;
-  --color-primary-t: #e5f0f3;
+  /* 只換 BASE,其餘自動推導 */
+  --base-brand: #0c5f73;
 }
 [data-theme="graphite"] {
-  --color-primary: #333739;
-  --color-primary-d: #22262a;
-  --color-primary-t: #edeef0;
+  --base-brand: #333739;
 }
 
 /* ── reduced-motion:採 Cloudscape「全部歸零」式(R1·UX-1 OQ-10=A 維持現況)。

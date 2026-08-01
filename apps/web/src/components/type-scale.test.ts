@@ -18,7 +18,7 @@ function walk(dir: string, out: string[] = []): string[] {
     if (statSync(p).isDirectory()) {
       if (name === "node_modules" || name === ".next") continue
       walk(p, out)
-    } else if (p.endsWith(".tsx") || p.endsWith(".ts")) {
+    } else if (p.endsWith(".tsx") || p.endsWith(".ts") || p.endsWith(".css")) {
       out.push(p)
     }
   }
@@ -31,13 +31,25 @@ interface Offender {
   readonly line: number
 }
 
+/* 只看程式碼不看註解 —— 註解裡引用被否決的舊值來說明「為什麼不能這樣寫」是合理的
+   (本檔自己就有一段引用 `12.5px`,加上這道檢查的第一次執行就被自己抓到)。
+   與 `color-literal.test.ts` 同機制。行號以**原始檔**為準,故用等長空白替換而非刪除。 */
+function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/.*$/gm, "$1")
+}
+
 function scan(root: string): Offender[] {
   const bad: Offender[] = []
   for (const file of walk(root)) {
-    const lines = readFileSync(file, "utf-8").split("\n")
+    const lines = stripComments(readFileSync(file, "utf-8")).split("\n")
     lines.forEach((ln, i) => {
-      for (const m of ln.matchAll(/text-\[([0-9.]+)px\]/g)) {
-        const raw = m[1]
+      /* 兩種寫法都要看:Tailwind 的 `text-[Npx]`,與 CSS 的 `font-size: Npx`。
+         🔴 只看前者的話,`globals.css` 的 `font-size: 12.5px` 可以躺整整一版沒人發現
+         —— 事實上它就是這樣躺過來的(docs/14 §0.4(d))。 */
+      for (const m of ln.matchAll(/text-\[([0-9.]+)px\]|font-size:\s*([0-9.]+)px/g)) {
+        const raw = m[1] ?? m[2]
         if (raw === undefined) continue
         if (!ALLOWED.has(Number(raw))) {
           bad.push({ file: file.replace(process.cwd(), ""), size: raw, line: i + 1 })

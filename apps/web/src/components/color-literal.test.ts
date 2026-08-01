@@ -38,6 +38,10 @@ const EXEMPT = [
   "packages/ui/src/styles/tokens.css", // 色值的唯一來源
   "apps/web/src/app/design-system/page.tsx", // 設計系統展示頁:內容即色票
   "apps/web/src/components/color-literal.test.ts", // 本檢查自身:內含比對用素材
+  /* 對比檢查:它的工作就是**對色值做算術**(解析 `color-mix`、比對推導結果、
+     以純白/純黑當對比基準)。這些不是「硬編在畫面上的顏色」,是斷言的素材本身。
+     ⚠️ 界線:此豁免僅限測試檔;任何會被 render 的程式碼都不得援引。 */
+  "apps/web/src/components/contrast.test.ts",
 ]
 
 /* 🔴 只抓**六碼**與 Tailwind 的任意色語法。
