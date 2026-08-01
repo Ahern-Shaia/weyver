@@ -1,18 +1,18 @@
 import { Global, Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
 import { Test } from "@nestjs/testing"
-import { getMigrations } from "better-auth/db/migration"
-import { runMigrations as runWeyverMigrations } from "../src/db/migrate.js"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
+import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { AuthModule } from "../src/auth/auth.module.js"
-import { BillingModule } from "../src/billing/billing.module.js"
-import { AUTH } from "../src/auth/auth.tokens.js"
 import { type Auth, createAuth } from "../src/auth/auth.js"
+import { AuthModule } from "../src/auth/auth.module.js"
+import { AUTH } from "../src/auth/auth.tokens.js"
+import { BillingModule } from "../src/billing/billing.module.js"
 import { validateEnv } from "../src/config/env.js"
 import { APP_DRIZZLE, DRIZZLE, PG_POOL, TenantDb, createDrizzle } from "../src/db/db.module.js"
+import { runMigrations as runWeyverMigrations } from "../src/db/migrate.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -108,5 +108,23 @@ describe("Better Auth 接入(F-2 M1)", () => {
     })
     expect(ok.user.email).toBe("a@weyver.test")
     await moduleRef.close()
+  })
+})
+
+/* 🔴 成員數上限不得由套件預設值代管。
+
+   Better Auth 的 `membershipLimit` 預設 **100**(`plugins/organization/adapter.mjs`
+   逐字:`options?.membershipLimit ?? 100`)。未明設的話,**超過 100 人的租戶
+   就再也加不了成員** —— 而首波 pilot 是食品加工廠,百人以上完全正常。
+
+   這條紅燈原本是以「建立成員時出現 internal error」的形式出現在 e2e 上,
+   查了伺服器 log 才看到真正的 `Organization membership limit reached`。 */
+describe("🔴 組織成員上限", () => {
+  it("🔴 明設 membershipLimit,不吃套件預設的 100", () => {
+    const opts = auth.options as { plugins?: { id?: string; options?: unknown }[] }
+    const org = opts.plugins?.find((p) => p.id === "organization")
+    const limit = (org?.options as { membershipLimit?: number } | undefined)?.membershipLimit
+    expect(limit).toBeDefined()
+    expect(limit).toBeGreaterThan(100)
   })
 })

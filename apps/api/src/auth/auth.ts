@@ -2,14 +2,14 @@ import { hash, verify } from "@node-rs/argon2"
 import { betterAuth } from "better-auth"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { organization, twoFactor } from "better-auth/plugins"
-import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
+import type { Pool } from "pg"
 import { PEER_IP_HEADER, recordAuthEvent, recordFromContext } from "./auth-events.js"
+import { BACKUP_CODE_COUNT, generateBackupCode, hashBackupCode, isHashed } from "./backup-codes.js"
 import { claimInitialCredential, clearInitialCredential } from "./initial-credential.js"
 import { isAccountLocked } from "./login-throttle.js"
 import { blockedPasswordMessage, checkPassword } from "./password-blocklist.js"
 import { claimTotpStep, revokeSessionByToken } from "./totp-replay.js"
 import { revokeTrustedDevicesFor } from "./trusted-device.js"
-import type { Pool } from "pg"
 
 /* org 建立時的 provisioning 回呼(M2 IdentityService 綁入,見 auth.module.ts):
    org → 建 tenant + 連結。idempotent,故重放安全。 */
@@ -55,6 +55,16 @@ export interface AuthOptions {
 const ORG_SECURITY = {
   requireEmailVerificationOnInvitation: true,
   allowUserToCreateOrganization: true,
+  /* 🔴 Better Auth 的 `membershipLimit` **預設 100**(逐字見
+     `plugins/organization/adapter.mjs`:`options?.membershipLimit ?? 100`)——
+     未明設就是吃那個預設,於是**超過 100 人的租戶再也加不了成員**,
+     而且錯誤是 `APIError: Organization membership limit reached`,
+     到使用者面前變成「internal error」,管理員只會反覆重按。
+
+     首波 pilot 是食品加工廠,百人以上完全正常。此處明設一個不會擋到真實客戶的值;
+     真正的用量控制屬於 F-8 的租戶配額(`tenants.max_*`),不該由 auth 套件的
+     預設值代管 —— 那是「規模上限藏在別人家預設值裡」的典型。 */
+  membershipLimit: 10_000,
 } as const
 
 export function createAuth(pool: Pool, secret: string, options?: AuthOptions) {
