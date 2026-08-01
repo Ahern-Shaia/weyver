@@ -61,7 +61,12 @@ export default function RegisterPage(): React.ReactNode {
           />
         </Field>
         <Field label="您的姓名">
-          <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="王小明" />
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="王小明"
+          />
         </Field>
         <Field label="電子郵件">
           <Input

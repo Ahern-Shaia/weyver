@@ -55,15 +55,15 @@ export function DeviceList(): React.ReactNode {
               >
                 <span className="text-[12px] text-ink">{s.device}</span>
                 {s.current ? (
-                  <span className="rounded-xs border border-ok-line bg-ok-t px-1.5 py-0.5 text-[11px] text-ok">
+                  <span className="rounded-xs border border-ok-line bg-ok-t px-1.5 py-0.5 text-[12px] text-ok">
                     目前這台
                   </span>
                 ) : null}
-                <span className="ml-auto font-mono text-[11px] text-ink-3">
+                <span className="ml-auto font-mono text-[12px] text-ink-3">
                   {s.ipAddress ?? "IP 未知"}
                 </span>
                 <span
-                  className="text-[11px] text-ink-3"
+                  className="text-[12px] text-ink-3"
                   title={s.lastActiveAt.toLocaleString("zh-TW")}
                 >
                   最後活動 {relTime(s.lastActiveAt)}

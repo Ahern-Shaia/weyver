@@ -1,6 +1,14 @@
 "use client"
 
-import { DndContext, type DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from "@dnd-kit/core"
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
 import { type ReactNode, useState } from "react"
 import { formatFieldValue } from "@/components/form/value"
 import { choicesOf } from "@/components/form/value"
@@ -27,7 +35,16 @@ export function canStackBy(field: FieldDto): boolean {
 }
 
 /* computed 欄不可拖(比照 Teable)—— 其值由引擎算出,拖了也寫不回去 */
-const COMPUTED = new Set(["formula", "rollup", "lookup", "autoNumber", "createdAt", "createdBy", "updatedAt", "updatedBy"])
+const COMPUTED = new Set([
+  "formula",
+  "rollup",
+  "lookup",
+  "autoNumber",
+  "createdAt",
+  "createdBy",
+  "updatedAt",
+  "updatedBy",
+])
 
 const UNCATEGORIZED = "__uncategorized__"
 
@@ -62,8 +79,11 @@ function Card({
         onClick={() => onOpen(record.id)}
         className="w-full truncate text-left font-medium text-ink hover:underline"
       >
-        {formatFieldValue(fields[0] as FieldDto, record.values[fields[0]?.name ?? ""], memberNames) ||
-          `#${String(record.id)}`}
+        {formatFieldValue(
+          fields[0] as FieldDto,
+          record.values[fields[0]?.name ?? ""],
+          memberNames,
+        ) || `#${String(record.id)}`}
       </button>
       {fields.slice(1, 3).map((f) => (
         <div key={f.id} className="truncate text-[12px] text-ink-3">
@@ -150,11 +170,7 @@ export function KanbanView({
 
     setError(null)
     const next =
-      target === UNCATEGORIZED
-        ? null
-        : stackField.type === "member"
-          ? Number(target)
-          : target
+      target === UNCATEGORIZED ? null : stackField.type === "member" ? Number(target) : target
     updateRecord.mutate(
       { recordId: record.id, expectedVersion: record.version, values: { [stackField.name]: next } },
       {
@@ -191,12 +207,7 @@ export function KanbanView({
           {stacks.map((s) => {
             const rows = records.filter((r) => keyOf(r) === s.id)
             return (
-              <Column
-                key={s.id}
-                id={s.id}
-                title={s.title}
-                count={counts.get(s.id) ?? rows.length}
-              >
+              <Column key={s.id} id={s.id} title={s.title} count={counts.get(s.id) ?? rows.length}>
                 {rows.map((r) => (
                   <Card
                     key={r.id}

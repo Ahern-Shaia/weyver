@@ -1,5 +1,7 @@
 "use client"
 
+import dynamic from "next/dynamic"
+
 import { FileText } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -8,10 +10,6 @@ import { type ReactNode, useEffect, useRef, useState } from "react"
 import { recordFormVisit } from "@/lib/recent-forms"
 import { useTenantScope } from "@/lib/use-tenant-scope"
 import { ImportBatches, importBatchKey } from "./import-batches"
-import { CalendarView } from "./calendar-view"
-import { ChartView } from "./chart-view"
-import { PivotView } from "./pivot-view"
-import { KanbanBoard } from "./kanban-board"
 import { ImportPanel } from "./import-panel"
 import { Segmented } from "@weyver/ui/segmented"
 import { describeEngineError } from "@/lib/engine/client"
@@ -31,6 +29,32 @@ import { CollectionView } from "./collection-view"
 import { ListControls } from "./list-controls"
 import { ObjectPage } from "./object-page"
 import { RecordList } from "./record-list"
+
+/* 🔴 **次要視圖延後載入**。預設是列表模式,而看板 / 行事曆 / 樞紐 / 圖表
+   各自帶著自己的相依(圖表還多一份繪圖庫)—— 靜態匯入等於讓每個只是來看列表的人
+   先下載四種他不會開的視圖。切過去時才載,`ssr: false`(都只在瀏覽器有意義)。 */
+/* ⚠️ `next/dynamic` 的 options **必須是 object literal** —— 抽成共用常數會在 build
+   時被擋下(invalid-dynamic-options-type),所以這裡刻意重複四次。 */
+const loadingView = (): ReactNode => (
+  <div className="flex-1 bg-surface p-6 text-[12px] text-ink-3">載入視圖…</div>
+)
+
+const CalendarView = dynamic(() => import("./calendar-view").then((m) => m.CalendarView), {
+  ssr: false,
+  loading: loadingView,
+})
+const ChartView = dynamic(() => import("./chart-view").then((m) => m.ChartView), {
+  ssr: false,
+  loading: loadingView,
+})
+const PivotView = dynamic(() => import("./pivot-view").then((m) => m.PivotView), {
+  ssr: false,
+  loading: loadingView,
+})
+const KanbanBoard = dynamic(() => import("./kanban-board").then((m) => m.KanbanBoard), {
+  ssr: false,
+  loading: loadingView,
+})
 
 const EMPTY_CONFIG: ViewConfig = {
   fields: [],

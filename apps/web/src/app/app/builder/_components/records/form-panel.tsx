@@ -211,9 +211,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
             {childFields.length === 0 ? (
               <div className="p-4 text-center text-[12px] text-ink-3">子表載入中…</div>
             ) : lines.length === 0 ? (
-              <div className="p-4 text-center text-[12px] text-ink-3">
-                點「＋ 加一行」新增明細
-              </div>
+              <div className="p-4 text-center text-[12px] text-ink-3">點「＋ 加一行」新增明細</div>
             ) : (
               <div className="overflow-x-auto">
                 <table

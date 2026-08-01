@@ -52,8 +52,7 @@ export function CalendarView({
   const memberNames = useMemberNames(form.fields)
 
   const from = ymd(year, month, 1)
-  const to =
-    month === 12 ? ymd(year + 1, 1, 1) : ymd(year, month + 1, 1) /* 排他上界 */
+  const to = month === 12 ? ymd(year + 1, 1, 1) : ymd(year, month + 1, 1) /* 排他上界 */
 
   const params =
     startName === ""
@@ -161,9 +160,7 @@ export function CalendarView({
             ))}
         </Select>
         {data?.truncated === true ? (
-          <span className="ml-auto text-[12px] text-warn">
-            本月事件過多,僅顯示前 1000 筆
-          </span>
+          <span className="ml-auto text-[12px] text-warn">本月事件過多,僅顯示前 1000 筆</span>
         ) : null}
       </div>
 
@@ -181,10 +178,7 @@ export function CalendarView({
               const key = d === null ? `blank-${String(i)}` : ymd(year, month, d)
               const rows = d === null ? [] : (byDay.get(key) ?? [])
               return (
-                <div
-                  key={key}
-                  className={`min-h-20 bg-card p-1 ${d === null ? "opacity-40" : ""}`}
-                >
+                <div key={key} className={`min-h-20 bg-card p-1 ${d === null ? "opacity-40" : ""}`}>
                   {d === null ? null : (
                     <>
                       <div className="mb-0.5 text-right font-mono text-[12px] text-ink-3">{d}</div>

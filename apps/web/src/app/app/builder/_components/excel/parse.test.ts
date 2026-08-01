@@ -16,7 +16,7 @@ function book(sheets: Record<string, unknown[][]>): ArrayBuffer {
 }
 
 describe("🔴 工作表選擇(追溯稽核 #106)", () => {
-  it("讀得到全部工作表名稱(原本只看得到第一張)", () => {
+  it("讀得到全部工作表名稱(原本只看得到第一張)", async () => {
     const data = book({
       使用說明: [["請勿修改本表"]],
       客戶資料: [
@@ -24,10 +24,10 @@ describe("🔴 工作表選擇(追溯稽核 #106)", () => {
         ["王先生", "0912345678"],
       ],
     })
-    expect(readWorkbook(data).sheetNames).toEqual(["使用說明", "客戶資料"])
+    expect((await readWorkbook(data)).sheetNames).toEqual(["使用說明", "客戶資料"])
   })
 
-  it("**可指定工作表** —— 否則說明頁會被當成資料匯進來", () => {
+  it("**可指定工作表** —— 否則說明頁會被當成資料匯進來", async () => {
     const data = book({
       使用說明: [["請勿修改本表"]],
       客戶資料: [
@@ -35,14 +35,14 @@ describe("🔴 工作表選擇(追溯稽核 #106)", () => {
         ["王先生", "0912345678"],
       ],
     })
-    const parsed = parseSheet(data, "客戶資料")
+    const parsed = await parseSheet(data, "客戶資料")
     expect(parsed.columns).toEqual(["客戶名稱", "電話"])
     expect(parsed.rows).toEqual([["王先生", "0912345678"]])
   })
 })
 
 describe("🔴 標題列偵測(追溯稽核 #106)", () => {
-  it("**標題不在第一列時仍找得到** —— 原本寫死 matrix[0],整份資料會錯位", () => {
+  it("**標題不在第一列時仍找得到** —— 原本寫死 matrix[0],整份資料會錯位", async () => {
     const data = book({
       Sheet1: [
         ["鮮勇食品股份有限公司"],
@@ -52,7 +52,7 @@ describe("🔴 標題列偵測(追溯稽核 #106)", () => {
         ["豬里肌", "5", "180"],
       ],
     })
-    const parsed = parseSheet(data)
+    const parsed = await parseSheet(data)
     expect(parsed.columns).toEqual(["品項", "數量", "單價"])
     expect(parsed.headerRowIndex).toBe(3)
     expect(parsed.rows).toEqual([
@@ -61,19 +61,19 @@ describe("🔴 標題列偵測(追溯稽核 #106)", () => {
     ])
   })
 
-  it("標題本來就在第一列時不受影響", () => {
+  it("標題本來就在第一列時不受影響", async () => {
     const data = book({
       Sheet1: [
         ["品項", "數量"],
         ["雞胸肉", "10"],
       ],
     })
-    const parsed = parseSheet(data)
+    const parsed = await parseSheet(data)
     expect(parsed.columns).toEqual(["品項", "數量"])
     expect(parsed.headerRowIndex).toBe(1)
   })
 
-  it("全數字的列不會被誤判成標題", () => {
+  it("全數字的列不會被誤判成標題", async () => {
     const data = book({
       Sheet1: [
         ["編號", "數量"],
@@ -81,14 +81,14 @@ describe("🔴 標題列偵測(追溯稽核 #106)", () => {
         ["2", "200"],
       ],
     })
-    expect(parseSheet(data).columns).toEqual(["編號", "數量"])
+    expect((await parseSheet(data)).columns).toEqual(["編號", "數量"])
   })
 
-  it("空白列不會混進資料(且不影響標題列號)", () => {
+  it("空白列不會混進資料(且不影響標題列號)", async () => {
     const data = book({
       Sheet1: [["品項"], ["雞胸肉"], [], ["豬里肌"], []],
     })
-    const parsed = parseSheet(data)
+    const parsed = await parseSheet(data)
     expect(parsed.rows).toEqual([["雞胸肉"], ["豬里肌"]])
   })
 })

@@ -36,7 +36,9 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })
 }
 
-export function NotificationBell({ collapsed = true }: { readonly collapsed?: boolean }): ReactNode {
+export function NotificationBell({
+  collapsed = true,
+}: { readonly collapsed?: boolean }): ReactNode {
   const [open, setOpen] = useState(false)
   const { data } = useNotifications()
   const markRead = useMarkNotificationsRead()
@@ -67,15 +69,39 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
     if (!n.read) markRead.mutate([n.id])
     setOpen(false)
     if (n.formId !== null) {
-      router.push(n.recordId === null ? `/app/forms/${n.formId}` : `/app/forms/${n.formId}?mode=record`)
+      router.push(
+        n.recordId === null ? `/app/forms/${n.formId}` : `/app/forms/${n.formId}?mode=record`,
+      )
     }
+  }
+
+  /* 🔴 面板必須 **fixed**,不能 absolute。
+
+     導覽軌 `<nav>` 帶著 `overflow-y-auto`(WCAG 1.4.12:放大行高時導覽要能捲到),
+     而 CSS 規範下 `overflow-y` 一旦非 visible,`overflow-x` 也會跟著變成非 visible ——
+     於是這個 340px 寬的面板被**裁在導覽軌的 172px 邊界**,右邊 210px 直接不見。
+     實測:面板 box 是 52–392,但 x=250 那一點命中的是底下的表單清單,面板根本沒畫出去。
+
+     這與 #140 是同一類問題:**某個祖先的 overflow 靜默裁掉後代**。
+     `fixed` 會跳脫祖先的 overflow 裁切(nav 上沒有 transform/filter,故成立),
+     位置改由按鈕的實際座標算 —— 收合態與展開態的軌寬不同,寫死會錯。 */
+  const [anchor, setAnchor] = useState<{ left: number; bottom: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  const toggle = (): void => {
+    if (!open && btnRef.current !== null) {
+      const r = btnRef.current.getBoundingClientRect()
+      setAnchor({ left: r.right + 8, bottom: window.innerHeight - r.bottom })
+    }
+    setOpen((v) => !v)
   }
 
   return (
     <div ref={ref} className="relative">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         /* 🔴 筆數放 aria-label 而非 title —— aria-label 在無障礙名稱計算上優先於 title,
            原本 `aria-label="通知"` 代表螢幕閱讀器使用者從來聽不到未讀數(title 只服務滑鼠)。
            title 僅收合態需要:展開態筆數已以徽章呈現於標籤旁。 */
@@ -89,14 +115,19 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
         {collapsed ? null : <span>通知</span>}
         {unread > 0 ? (
           /* 方框非 pill(docs/14);等寬字避免位數變動時抖動 */
-          <span className={`flex h-[16px] min-w-[16px] items-center justify-center rounded-xs border border-er-line bg-er px-[3px] font-mono text-[12px] font-semibold leading-none text-white ${collapsed ? "absolute right-0.5 top-0.5" : "ml-auto"}`}>
+          <span
+            className={`flex h-[16px] min-w-[16px] items-center justify-center rounded-xs border border-er-line bg-er px-[3px] font-mono text-[12px] font-semibold leading-none text-white ${collapsed ? "absolute right-0.5 top-0.5" : "ml-auto"}`}
+          >
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute bottom-0 left-11 z-50 w-[340px] overflow-hidden rounded-md border border-line bg-card shadow-overlay">
+        <div
+          style={anchor === null ? undefined : { left: anchor.left, bottom: anchor.bottom }}
+          className="fixed z-50 w-[340px] overflow-hidden rounded-md border border-line bg-card shadow-overlay"
+        >
           <div className="flex min-h-[30px] items-center border-b border-line bg-head px-2.5 text-[12px] font-semibold">
             通知
             {unread > 0 ? (
@@ -114,9 +145,7 @@ export function NotificationBell({ collapsed = true }: { readonly collapsed?: bo
             <div className="px-3 py-6 text-center text-[12px] leading-relaxed text-ink-3">
               目前沒有通知。
               <br />
-              <span className="text-[12px]">
-                可在通知設定調整要接收哪些事件。
-              </span>
+              <span className="text-[12px]">可在通知設定調整要接收哪些事件。</span>
             </div>
           ) : (
             <div className="max-h-[420px] overflow-y-auto">

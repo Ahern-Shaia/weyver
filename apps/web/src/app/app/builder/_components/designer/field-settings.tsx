@@ -41,7 +41,9 @@ function MoveButtons({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-ink-3">位置(第 {layout.row + 1} 列、第 {layout.col + 1} 欄)</span>
+      <span className="text-ink-3">
+        位置(第 {layout.row + 1} 列、第 {layout.col + 1} 欄)
+      </span>
       <div className="flex items-center gap-1">
         <button
           type="button"

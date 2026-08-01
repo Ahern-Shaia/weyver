@@ -1,11 +1,19 @@
 "use client"
 
+import dynamic from "next/dynamic"
+
 import { Segmented } from "@weyver/ui/segmented"
 import { useState } from "react"
 import { useForm, useRecords } from "@/lib/engine/hooks"
 import { EditFormPanel } from "@/app/app/builder/_components/shell/edit-form"
 import { RecordFormPanel } from "@/app/app/builder/_components/records/form-panel"
-import { RecordGridPanel } from "@/app/app/builder/_components/records/grid-panel"
+/* 🔴 Glide Data Grid 是 canvas 實作、體積可觀,而且**只有切到「表格」模式才用得到**。
+   靜態匯入等於讓每個只是要設計欄位或填單的人先下載整套網格引擎。
+   `ssr: false` —— 它本來就只能在瀏覽器跑。 */
+const RecordGridPanel = dynamic(
+  () => import("@/app/app/builder/_components/records/grid-panel").then((m) => m.RecordGridPanel),
+  { ssr: false, loading: () => <div className="p-6 text-[12px] text-ink-3">載入表格…</div> },
+)
 import { RecordsListPanel } from "@/app/app/builder/_components/records/list-panel"
 
 const MODES = [

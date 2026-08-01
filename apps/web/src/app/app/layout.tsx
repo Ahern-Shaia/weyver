@@ -63,7 +63,8 @@ function NavItem({
   readonly active: boolean
   readonly collapsed: boolean
 }): ReactNode {
-  const base = "flex items-center rounded-sm transition-colors duration-fast-01 ease-productive-exit"
+  const base =
+    "flex items-center rounded-sm transition-colors duration-fast-01 ease-productive-exit"
   const tone = active
     ? "bg-primary-t text-primary font-medium"
     : "text-ink-2 hover:bg-head hover:text-ink"
@@ -83,6 +84,11 @@ function NavItem({
 
 function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
   const [open, setOpen] = useState(false)
+  /* 同通知面板:導覽軌的 `overflow-y-auto` 會把絕對定位的選單裁在軌寬邊界。
+     這個選單 144px + 左偏 44px = 188px > 172px,右側 16px 被切掉 —— 幅度小到
+     容易被當成「就長這樣」,但成因與通知面板完全相同。 */
+  const [anchor, setAnchor] = useState<{ left: number; bottom: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
   const [theme, setTheme] = useState<ThemeId>("navy")
   useEffect(() => {
     applyTheme(theme)
@@ -91,8 +97,15 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
   return (
     <div className="relative">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open && btnRef.current !== null) {
+            const r = btnRef.current.getBoundingClientRect()
+            setAnchor({ left: r.right + 8, bottom: window.innerHeight - r.bottom })
+          }
+          setOpen((v) => !v)
+        }}
         {...(collapsed ? { title: "配色主題" } : {})}
         aria-label="配色主題"
         className={`flex items-center rounded-sm text-ink-2 transition-colors duration-fast-01 ease-productive-exit hover:bg-head hover:text-ink ${
@@ -111,7 +124,10 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute bottom-0 left-11 z-20 w-36 rounded-md border border-line bg-card p-1 shadow-md">
+          <div
+            style={anchor === null ? undefined : { left: anchor.left, bottom: anchor.bottom }}
+            className="fixed z-20 w-36 rounded-md border border-line bg-card p-1 shadow-md"
+          >
             {THEMES.map((item) => (
               <button
                 key={item.id}

@@ -31,7 +31,10 @@ export function AuthShell({
   )
 }
 
-export function Field({ label, children }: { readonly label: string; readonly children: ReactNode }): ReactNode {
+export function Field({
+  label,
+  children,
+}: { readonly label: string; readonly children: ReactNode }): ReactNode {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[12px] font-medium text-ink-2">{label}</span>

@@ -200,7 +200,9 @@ export function ImportPanel({
             <div className="border border-er/40 bg-er/5 px-3 py-2 text-[14px] text-er">{error}</div>
           ) : null}
           {result !== null ? (
-            <div className="border border-ok/40 bg-ok/5 px-3 py-2 text-[12px] text-ink">{result}</div>
+            <div className="border border-ok/40 bg-ok/5 px-3 py-2 text-[12px] text-ink">
+              {result}
+            </div>
           ) : null}
 
           {sheet === null ? (
@@ -375,8 +377,12 @@ export function ImportPanel({
               {planned !== null ? (
                 <div className="space-y-2 border border-line p-3">
                   <div className="flex flex-wrap gap-4 text-[12px] text-ink">
-                    <span>將新增 <b>{planned.totals.toInsert}</b></span>
-                    <span>將更新 <b>{planned.totals.toUpdate}</b></span>
+                    <span>
+                      將新增 <b>{planned.totals.toInsert}</b>
+                    </span>
+                    <span>
+                      將更新 <b>{planned.totals.toUpdate}</b>
+                    </span>
                     <span className="text-ink-3">未變動 {planned.totals.unchanged}</span>
                     <span className="text-ink-3">略過 {planned.totals.skipped}</span>
                     {planned.totals.errors > 0 ? (
@@ -428,7 +434,11 @@ export function ImportPanel({
                   {/* 🔴 錯誤列可下載:只顯示前 5 列等於叫使用者自己去猜其餘幾百列是哪些。
                       要修檔案就得知道全部,這是 Excel 遷移的實際工作方式。 */}
                   {planned.rowErrors.length > 0 ? (
-                    <Button variant="subtle" size="sm" onClick={() => downloadErrorsCsv(planned.rowErrors)}>
+                    <Button
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => downloadErrorsCsv(planned.rowErrors)}
+                    >
                       <Download size={11} className="mr-1" />
                       下載錯誤列(共 {planned.rowErrors.length} 列)
                     </Button>

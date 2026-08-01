@@ -32,7 +32,10 @@ export interface GridKeyboard {
   readonly pos: GridPos
   readonly editing: boolean
   /* 綁在每個資料 `<td>` 上 */
-  cellProps: (row: number, col: number) => {
+  cellProps: (
+    row: number,
+    col: number,
+  ) => {
     tabIndex: number
     onFocus: () => void
     onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void
@@ -47,7 +50,9 @@ export function useGridKeyboard(rows: number, cols: number): GridKeyboard {
   const containerRef = useRef<HTMLElement | null>(null)
 
   const cellAt = useCallback((row: number, col: number): HTMLElement | null => {
-    return containerRef.current?.querySelector<HTMLElement>(`[data-grid-cell="${row}:${col}"]`) ?? null
+    return (
+      containerRef.current?.querySelector<HTMLElement>(`[data-grid-cell="${row}:${col}"]`) ?? null
+    )
   }, [])
 
   /* 導覽態:格內所有可聚焦元素退出 Tab 序列,使整個 grid 只剩一個停點。

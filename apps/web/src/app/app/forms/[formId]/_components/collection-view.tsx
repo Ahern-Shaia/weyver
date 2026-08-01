@@ -29,7 +29,6 @@ import {
 import { GridSheet } from "@weyver/ui/grid-sheet"
 import type { ChipTone } from "@weyver/ui/status-chip"
 import { type ReactNode, useMemo, useState } from "react"
-import { utils, writeFile } from "xlsx"
 
 const EMPTY_SELECTION: GridSelection = {
   columns: CompactSelection.empty(),
@@ -99,7 +98,10 @@ export function CollectionView({
     [selection, records],
   )
 
-  const onExport = (): void => {
+  /* 🔴 `xlsx` **動態載入**。它是整個路由裡最大的第三方相依,但只有按下「匯出」
+     才用得到 —— 靜態匯入等於讓每個只是來看資料的人先下載一份試算表函式庫。 */
+  const onExport = async (): Promise<void> => {
+    const { utils, writeFile } = await import("xlsx")
     const rows = records.map((r) => {
       const o: Record<string, unknown> = {}
       for (const f of displayFields) {

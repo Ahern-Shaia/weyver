@@ -229,7 +229,12 @@ export function OptionsEditorPanel({
         加選項
       </button>
 
-      <Button variant="primary" onClick={() => void submit(rows, "retire").catch(() => undefined)} disabled={busy} className="w-fit">
+      <Button
+        variant="primary"
+        onClick={() => void submit(rows, "retire").catch(() => undefined)}
+        disabled={busy}
+        className="w-fit"
+      >
         {busy ? "儲存中…" : "儲存選項"}
       </Button>
 

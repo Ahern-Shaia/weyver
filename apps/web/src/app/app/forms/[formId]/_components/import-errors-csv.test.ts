@@ -6,9 +6,9 @@ import { csvCell, errorsCsv } from "./import-errors-csv"
 describe("錯誤列 CSV", () => {
   it("公式起手字元前綴單引號,不讓 Excel 當公式執行", () => {
     expect(csvCell("=cmd|'/c calc'!A1")).toBe("\"'=cmd|'/c calc'!A1\"")
-    expect(csvCell("+1")).toBe("\"'+1\"")
-    expect(csvCell("-1")).toBe("\"'-1\"")
-    expect(csvCell("@SUM(A1)")).toBe("\"'@SUM(A1)\"")
+    expect(csvCell("+1")).toBe('"\'+1"')
+    expect(csvCell("-1")).toBe('"\'-1"')
+    expect(csvCell("@SUM(A1)")).toBe('"\'@SUM(A1)"')
   })
 
   it("一般值不加前綴,雙引號成對逸出", () => {

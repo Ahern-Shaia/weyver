@@ -78,7 +78,12 @@ describe("choicesOf 相容 v1 字串與 v2 物件", () => {
 
   it("v2 物件選項回傳名稱(#105 之後的實際形狀)", () => {
     expect(
-      choicesOf(withChoices([{ id: "o1", name: "新單" }, { id: "o2", name: "已完成" }])),
+      choicesOf(
+        withChoices([
+          { id: "o1", name: "新單" },
+          { id: "o2", name: "已完成" },
+        ]),
+      ),
     ).toEqual(["新單", "已完成"])
   })
 
@@ -88,7 +93,12 @@ describe("choicesOf 相容 v1 字串與 v2 物件", () => {
 
   it("停用(retired)的選項不出現在可選清單", () => {
     expect(
-      choicesOf(withChoices([{ id: "o1", name: "在用" }, { id: "o2", name: "停用", retired: true }])),
+      choicesOf(
+        withChoices([
+          { id: "o1", name: "在用" },
+          { id: "o2", name: "停用", retired: true },
+        ]),
+      ),
     ).toEqual(["在用"])
   })
 

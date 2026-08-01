@@ -739,8 +739,7 @@ export function useSaveNotificationPref() {
       scopeId: number | null
       level: number
       customEvents: string[] | null
-    }) =>
-      engineFetch("/notifications/prefs", z.unknown(), { method: "POST", body: input }),
+    }) => engineFetch("/notifications/prefs", z.unknown(), { method: "POST", body: input }),
     onSuccess: () => invalidate([notificationKeys.settings]),
   })
 }
@@ -794,7 +793,10 @@ export function useWebhooks() {
   return useQuery({
     queryKey: integrationKeys.webhooks,
     queryFn: () =>
-      engineFetch("/integrations/webhooks", z.object({ endpoints: z.array(webhookEndpointSchema) })),
+      engineFetch(
+        "/integrations/webhooks",
+        z.object({ endpoints: z.array(webhookEndpointSchema) }),
+      ),
     staleTime: 15_000,
   })
 }
@@ -872,8 +874,7 @@ export function useRedeliver(endpointId: number) {
 export function useApiKeys() {
   return useQuery({
     queryKey: integrationKeys.apiKeys,
-    queryFn: () =>
-      engineFetch("/integrations/api-keys", z.object({ keys: z.array(apiKeySchema) })),
+    queryFn: () => engineFetch("/integrations/api-keys", z.object({ keys: z.array(apiKeySchema) })),
     staleTime: 15_000,
   })
 }

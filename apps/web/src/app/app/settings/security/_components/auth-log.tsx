@@ -55,10 +55,10 @@ export function AuthLog(): React.ReactNode {
                   <span className={meta.alert ? "text-[12px] text-er" : "text-[12px] text-ink"}>
                     {meta.text}
                   </span>
-                  <span className="ml-auto font-mono text-[11px] text-ink-3">
+                  <span className="ml-auto font-mono text-[12px] text-ink-3">
                     {r.ipAddress ?? "—"}
                   </span>
-                  <span className="text-[11px] text-ink-3">
+                  <span className="text-[12px] text-ink-3">
                     {r.createdAt.toLocaleString("zh-TW")}
                   </span>
                 </li>

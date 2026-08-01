@@ -83,9 +83,7 @@ export function RelationRail({
                 </li>
               ))}
             </ul>
-            {g.truncated ? (
-              <div className="mt-1 text-[12px] text-ink-3">僅顯示前 20 筆</div>
-            ) : null}
+            {g.truncated ? <div className="mt-1 text-[12px] text-ink-3">僅顯示前 20 筆</div> : null}
           </div>
         ))
       )}

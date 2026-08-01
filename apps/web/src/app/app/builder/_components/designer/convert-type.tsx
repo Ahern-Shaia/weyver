@@ -73,9 +73,7 @@ export function ConvertTypePanel({
   const doPreview = async (): Promise<void> => {
     try {
       setPreview(
-        previewSchema.parse(
-          await run(`/forms/${formId}/fields/${fieldId}/convert/preview`),
-        ),
+        previewSchema.parse(await run(`/forms/${formId}/fields/${fieldId}/convert/preview`)),
       )
     } catch (e) {
       setError(describeEngineError(e))
@@ -182,18 +180,20 @@ export function ConvertTypePanel({
             ) : null}
             {KIND_LABEL[preview.kind]}
           </div>
-          {preview.note !== undefined ? (
-            <div className="text-ink-3">{preview.note}</div>
-          ) : null}
+          {preview.note !== undefined ? <div className="text-ink-3">{preview.note}</div> : null}
 
           {blocked ? null : (
             <div className="flex flex-wrap gap-3 text-ink-2">
               {/* 🔴 兩個數字分開 —— 「被清空」與「被改變」的嚴重度不同 */}
               <span>
-                將被清空 <b className={preview.willBeNulled > 0 ? "text-er" : ""}>{preview.willBeNulled}</b>
+                將被清空{" "}
+                <b className={preview.willBeNulled > 0 ? "text-er" : ""}>{preview.willBeNulled}</b>
               </span>
               <span>
-                值會被改變 <b className={preview.willBeAltered > 0 ? "text-warn" : ""}>{preview.willBeAltered}</b>
+                值會被改變{" "}
+                <b className={preview.willBeAltered > 0 ? "text-warn" : ""}>
+                  {preview.willBeAltered}
+                </b>
               </span>
               <span className="text-ink-3">共 {preview.totalNonNull} 筆有值</span>
             </div>

@@ -86,9 +86,9 @@ export function ExcelImportPanel({
     setError(null)
     try {
       const data = await file.arrayBuffer()
-      const wb = readWorkbook(data)
+      const wb = await readWorkbook(data)
       setBook({ names: wb.sheetNames, data })
-      const parsed = parseSheet(data)
+      const parsed = await parseSheet(data)
       if (parsed.columns.length === 0) {
         setError("找不到欄位(標題列為空)")
         return
@@ -102,10 +102,10 @@ export function ExcelImportPanel({
     }
   }
 
-  const switchSheet = (nextName: string): void => {
+  const switchSheet = async (nextName: string): Promise<void> => {
     if (book === null) return
     try {
-      const parsed = parseSheet(book.data, nextName)
+      const parsed = await parseSheet(book.data, nextName)
       setSheet(parsed)
       setName(parsed.sheetName)
       setDrafts(buildDrafts(parsed))

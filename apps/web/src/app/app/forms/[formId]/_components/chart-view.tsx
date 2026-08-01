@@ -86,7 +86,9 @@ export function ChartView({
     const ariaDesc = `${valueLabel}依${points.length}個分類:${points
       .map((p) => `${p.name} ${String(p.value)}`)
       .join("、")}`
-    const ariaOpt = { aria: { enabled: true, decal: { show: true }, label: { description: ariaDesc } } }
+    const ariaOpt = {
+      aria: { enabled: true, decal: { show: true }, label: { description: ariaDesc } },
+    }
 
     if (type === "pie") {
       return {

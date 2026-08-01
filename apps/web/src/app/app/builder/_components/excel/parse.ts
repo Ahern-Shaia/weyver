@@ -1,7 +1,9 @@
-import { read, utils } from "xlsx"
 import { normalizeColumnNames } from "@/app/app/builder/_components/excel/import"
 
 /* SheetJS 薄封裝(前端解析,原檔不上傳;OQ-GEI-3=A)。
+
+   🔴 **動態載入**:只有真的要匯入 Excel 才需要這個函式庫,
+   而那是少數操作 —— 靜態匯入會讓每個開表單的人都先付這份下載成本。
    以 raw:false 取「格式化文字」(貨幣符號 / 日期字串保留),餵型別推斷 heuristic。 */
 
 export const MAX_IMPORT_ROWS = 5000
@@ -22,7 +24,8 @@ export interface Workbook {
 
 /* 🔴 原本寫死 `SheetNames[0]`(#106):客戶的舊 Excel 常有「說明」「範本」等前置工作表,
    靜默吃錯表 —— 匯進來的是一堆說明文字,而使用者只會覺得「這軟體壞了」。改為讓使用者選。 */
-export function readWorkbook(data: ArrayBuffer): Workbook {
+export async function readWorkbook(data: ArrayBuffer): Promise<Workbook> {
+  const { read } = await import("xlsx")
   const wb = read(data, { type: "array", dense: true })
   if (wb.SheetNames.length === 0) throw new Error("活頁簿沒有工作表")
   return { sheetNames: wb.SheetNames, data }
@@ -50,7 +53,8 @@ function detectHeaderRow(matrix: readonly (readonly unknown[])[]): number {
   return best
 }
 
-export function parseSheet(data: ArrayBuffer, sheetName?: string): ParsedSheet {
+export async function parseSheet(data: ArrayBuffer, sheetName?: string): Promise<ParsedSheet> {
+  const { read, utils } = await import("xlsx")
   const wb = read(data, { type: "array", dense: true })
   const name = sheetName ?? wb.SheetNames[0]
   if (name === undefined) throw new Error("活頁簿沒有工作表")

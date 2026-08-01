@@ -31,8 +31,7 @@ export function RecordList({
 }): ReactNode {
   const statusField = fields.find((f) => f.type === "singleSelect")
   const moneyField = fields.find((f) => f.type === "money")
-  const rovingId =
-    records.find((r) => r.id === selectedId)?.id ?? records[0]?.id ?? null
+  const rovingId = records.find((r) => r.id === selectedId)?.id ?? records[0]?.id ?? null
 
   return (
     <div data-noprint className="flex w-60 shrink-0 flex-col border-r border-line bg-card">

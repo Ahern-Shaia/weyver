@@ -111,16 +111,16 @@ export function ChannelCard({ status }: { readonly status: ChannelStatus }): Rea
         {status.secretSet ? (
           status.verifiedAt === null ? (
             /* 已填但沒測過 —— 不能顯示成「可用」,那會讓使用者以為通知會送到 */
-            <span className="rounded-xs border border-wn-line bg-wn-t px-1.5 py-0.5 text-[11px] text-wn">
+            <span className="rounded-xs border border-wn-line bg-wn-t px-1.5 py-0.5 text-[12px] text-wn">
               已設定,尚未測試
             </span>
           ) : (
-            <span className="rounded-xs border border-ok-line bg-ok-t px-1.5 py-0.5 text-[11px] text-ok">
+            <span className="rounded-xs border border-ok-line bg-ok-t px-1.5 py-0.5 text-[12px] text-ok">
               已連接
             </span>
           )
         ) : (
-          <span className="rounded-xs border border-line bg-head px-1.5 py-0.5 text-[11px] text-ink-3">
+          <span className="rounded-xs border border-line bg-head px-1.5 py-0.5 text-[12px] text-ink-3">
             未連接
           </span>
         )}
