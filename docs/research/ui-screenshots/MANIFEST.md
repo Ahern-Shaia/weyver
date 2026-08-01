@@ -2,7 +2,8 @@
 
 > **用途**|競品分析 / 設計研究(UX gap、資訊架構、視覺調性參考)
 > **⚠️ 法律紅線**|不可像素級複製 UI(CLAUDE.md 法律紅線)。之後真的做 UI 走 clean-room。
-> **最後更新**|2026-07-17 v3(**423 張 / 75 MB**|新增 ERP/MES/ISO 全線 vendor + Ragic 詳細 UI 60 張)
+> **最後更新**|2026-08-01 v4(新增 **Metabase 27 張**|`docker run metabase/metabase` 自架後以 Playwright 實走截圖,1600×1000 @2x)
+> 前版|2026-07-17 v3(**423 張 / 75 MB**|新增 ERP/MES/ISO 全線 vendor + Ragic 詳細 UI 60 張)
 > **設計分析**|見 `docs/research/ui-design-analysis.md`(向上設計分析,含 做對/做錯/Weyver 超越方向)
 
 ---
@@ -11,6 +12,7 @@
 
 | Vendor | 張數 | 大小 | 對應 Weyver 模組 | 品質 |
 |---|---|---|---|---|
+| **Metabase** | 27 | — | A-I 表單引擎 / F 報表 / 設定中心 | 🟢 高(**自架實走**,非行銷圖)|
 | **Odoo 18** | 53 | 3.0 MB | J-Q ERP + M + T + U | 🟢 高 |
 | **Airtable** | 17 | 5.1 MB | A-I 表單引擎 | 🟢 高(含 2560×1920)|
 | **Linear** | 12 | 5.7 MB | H UX craft | 🟢 高(含 7584×3520)|
