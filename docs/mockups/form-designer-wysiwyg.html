@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════
-   UP-3c 高保真 mockup v5(2026-08-02)
+   UP-3c 高保真 mockup v6(2026-08-02)
 
    ⚠️ v4 推翻的是「設計即所見」的**形式**,不是版面模型(v3 的試算表模型保留)。
    依據:review 提供的**兩張真實生產環境 Ragic 截圖**(客戶 台灣福祉,5822 筆收款憑單)
@@ -34,8 +34,9 @@
       (超過就整批不重算 → 合計安靜地算錯),官方解法是寫每日補算程式(doc-kb/281)
 
    🔴 本檔自我約束
-   · 間距只用 4 / 8 / 12 / 16 / 24 · 不用 opacity 造文字階 · 圖示一律 Lucide 真路徑
-   · 字級只用 12 / 13 / 14 / 16 / 20 / 24 · 殼的互動項不畫框 · 動效只動 opacity/transform
+   · 間距用分組尺度 4 / 12 / 24 / 32(docs/14 §2.7)· 不用 opacity 造文字階 · 圖示一律 Lucide 真路徑
+   · 字級只用 12 / 13 / 14 / 16 / 20 / 24,**內文回 base 14**;字重 600 ≤5%、500 ≤20%
+   · 殼的互動項不畫框 · 動效只動 opacity/transform · **以上四條由 mockup-hierarchy.spec 執法**
    ══════════════════════════════════════════════════════════════ */
 :root{
   --s1:#fcfdfe;--s2:#f6f8fa;--s3:#eef1f5;--s4:#e4e9ef;--s6:#e6eaf0;--s7:#d3dae3;--s8:#bcc6d2;
@@ -78,7 +79,7 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .nav{height:38px;flex:0 0 38px;display:flex;align-items:flex-end;gap:2px;padding:0 12px;
   background:var(--s3);box-shadow:inset 0 -1px 0 var(--s7)}
 .nav .mk{width:24px;height:24px;border-radius:6px;background:var(--ink);color:var(--s1);
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;
   letter-spacing:-.04em;margin:0 12px 6px 0}
 .nav b{font-size:13px;font-weight:400;line-height:18px;color:var(--ink3);padding:6px 12px;
   border-radius:var(--r1) var(--r1) 0 0;cursor:default;
@@ -92,7 +93,7 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 /* 工具列 = 動作層 */
 .bar{height:42px;flex:0 0 42px;display:flex;align-items:center;gap:8px;padding:0 12px;
   background:var(--s1);box-shadow:inset 0 -1px 0 var(--line)}
-.bar h2{font-size:15px;font-weight:600;letter-spacing:-.014em;display:flex;align-items:center;gap:4px}
+.bar h2{font-size:16px;font-weight:500;letter-spacing:-.014em;display:flex;align-items:center;gap:4px}
 .bar h2 svg{color:var(--ink4)}
 .bar .m{font-size:12px;color:var(--ink3);font-family:'IBM Plex Mono',monospace}
 .bar .sp{flex:1}
@@ -124,13 +125,13 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .stabs .add{margin-left:4px;color:var(--ink4);padding:7px 8px}
 
 /* 試算表(v3 保留,OQ-FDW-7=A):整欄全域欄寬 · 欄位佔相鄰兩格 · 只有橫線 */
-.ss{display:grid;grid-auto-rows:var(--rowh);width:max-content;font-size:13px;line-height:18px}
-.ss .ch,.ss .rh,.ss .corner{background:var(--s3);color:var(--ink4);font-size:11px;
+.ss{display:grid;grid-auto-rows:var(--rowh);width:max-content;font-size:14px;line-height:20px}
+.ss .ch,.ss .rh,.ss .corner{background:var(--s3);color:var(--ink4);font-size:12px;
   display:flex;align-items:center;justify-content:center;
   font-family:'IBM Plex Mono',monospace;position:relative}
 .ss .ch,.ss .corner{box-shadow:inset -1px 0 0 var(--s7),inset 0 -1px 0 var(--s7);height:20px}
 .ss .rh{box-shadow:inset -1px 0 0 var(--s7),inset 0 -1px 0 var(--s7)}
-.ss .ch.hi,.ss .rh.hi{background:var(--pri-t);color:var(--pri-d);font-weight:600}
+.ss .ch.hi,.ss .rh.hi{background:var(--pri-t);color:var(--pri-d);font-weight:500}
 .ss .ch::after{content:"";position:absolute;right:-3px;top:0;bottom:0;width:6px;cursor:col-resize}
 .ss .ch.drag::after{background:var(--pri);width:2px;right:-1px}
 .ss .e{box-shadow:inset -1px 0 0 var(--grid),inset 0 -1px 0 var(--grid)}
@@ -138,12 +139,12 @@ body{background:var(--s3);color:var(--ink);padding:24px;
   padding:0 8px;min-width:0}
 .ss .k{background:#f7f8f9;color:var(--ink2);font-size:12px;justify-content:flex-end;
   text-align:right;gap:3px}
-.ss .v{color:var(--ink);gap:6px}
+.ss .v{color:var(--ink);gap:4px}
 .ss .v .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ss .v.n{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1}
-.ss .req{color:var(--er);font-weight:600}
+.ss .req{color:var(--er)}
 .ss .hlp{display:inline-flex;width:12px;height:12px;border-radius:50%;border:1px solid var(--s7);
-  align-items:center;justify-content:center;font-size:11px;color:var(--ink3);flex:0 0 12px}
+  align-items:center;justify-content:center;font-size:12px;color:var(--ink3);flex:0 0 12px}
 .ss .lnk{color:var(--pri);text-decoration:underline;text-underline-offset:2px}
 /* 🔴 OQ-FDW-13b:設計模式**顯示的是那筆記錄的真實值** —— 因為你根本沒離開它。
    只有「無記錄 / 無讀取權」才退回依型別生成的示例值(下方 .ex)。 */
@@ -153,7 +154,7 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .ss .cur{display:inline-block;width:1px;height:14px;background:var(--pri);
   animation:bl 1s step-end infinite}
 @keyframes bl{50%{opacity:0}}
-.ss .desc{display:flex;align-items:center;padding:0 10px;font-size:12px;font-weight:600;
+.ss .desc{display:flex;align-items:center;padding:0 12px;font-size:12px;font-weight:500;
   letter-spacing:.04em;background:var(--pri);color:#fff}
 .ss .desc.plain{background:transparent;color:var(--ink3);font-weight:400;letter-spacing:0}
 .ss .sk{display:flex;align-items:center;justify-content:center;background:#eef2f6;
@@ -164,14 +165,14 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .ss .sv.n{font-family:'IBM Plex Mono',monospace;justify-content:flex-end}
 .ss .dirty{box-shadow:inset 0 -1px 0 var(--cell),inset 3px 0 0 var(--wn)}
 .chip{display:inline-block;border-radius:3px;border:1px solid;padding:1px 7px;font-size:12px;
-  font-weight:500;line-height:16px}
+  font-weight:400;line-height:16px}
 .chip.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-l)}
 .chip.ok{color:var(--ok);background:var(--ok-t);border-color:var(--ok-l)}
 
 /* 左欄:檢視模式 = 搜尋/篩選;設計模式 = 欄位設定。**同一個位置換角色** */
-.lp{width:212px;flex:0 0 212px;background:var(--s2);box-shadow:-1px 0 0 var(--line) inset;
-  padding:12px 10px;overflow:auto;order:-1}
-.lp .h{font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:8px}
+.lp{width:232px;flex:0 0 232px;background:var(--s2);box-shadow:-1px 0 0 var(--line) inset;
+  padding:24px 12px;overflow:auto;order:-1}
+.lp .h{font-size:12px;font-weight:500;color:var(--ink3);margin-bottom:12px}
 .lp .sbox{height:28px;border:1px solid var(--s7);border-radius:var(--r1);background:var(--s1);
   display:flex;align-items:center;gap:6px;padding:0 8px;font-size:12px;color:var(--ink4);
   margin-bottom:8px}
@@ -179,18 +180,18 @@ body{background:var(--s3);color:var(--ink);padding:24px;
   font-size:12px;color:var(--ink2);text-decoration:none}
 .lp a:hover{background:var(--s3)}
 .lp a.on{background:var(--s4);color:var(--ink);font-weight:500}
-.lp .grp{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--ink4);
-  padding:12px 8px 4px;text-transform:uppercase}
+.lp .grp{font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--ink4);
+  padding:24px 8px 4px;text-transform:uppercase}
 .lp .fl{font-size:12px;color:var(--ink3);padding:4px 8px}
 .lp .fl:hover{background:var(--s3);color:var(--ink2);border-radius:var(--r1)}
 /* 設計模式的左欄 */
-.dsg .ptab{display:flex;gap:2px;box-shadow:inset 0 -1px 0 var(--cell);margin-bottom:10px}
-.dsg .ptab b{font-size:12px;font-weight:400;color:var(--ink3);padding:6px 7px;cursor:default;white-space:nowrap}
+.dsg .ptab{display:flex;gap:4px;box-shadow:inset 0 -1px 0 var(--cell);margin-bottom:24px}
+.dsg .ptab b{font-size:12px;font-weight:400;color:var(--ink3);padding:4px 8px 12px;cursor:default;white-space:nowrap}
 .dsg .ptab b.on{color:var(--ink);font-weight:500;box-shadow:inset 0 -2px 0 var(--pri)}
-.dsg .who{font-size:13px;font-weight:600;line-height:18px}
-.dsg .whos{font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:8px;
+.dsg .who{font-size:16px;font-weight:600;line-height:22px}
+.dsg .whos{font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:12px;
   font-family:'IBM Plex Mono',monospace}
-.fld{margin-top:10px}
+.fld{margin-top:12px}
 .fld label{display:block;font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:4px}
 .inp{width:100%;height:28px;padding:0 8px;border:1px solid var(--s7);border-radius:var(--r1);
   background:var(--s1);font:inherit;font-size:13px;color:var(--ink)}
@@ -202,11 +203,11 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .sw .t::after{content:"";position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;
   background:#fff}
 .sw.off .t{background:var(--s7)} .sw.off .t::after{right:auto;left:2px}
-.acc{padding:10px 0;box-shadow:inset 0 1px 0 var(--line);margin-top:10px}
+.acc{padding:12px 0 0;box-shadow:inset 0 1px 0 var(--line);margin-top:24px}
 .acc > h4{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;
   color:var(--ink2);cursor:default}
 .acc > h4 .ch{margin-left:auto;color:var(--ink4)}
-.parts{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.parts{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
 .parts i{font-style:normal;display:inline-flex;align-items:center;gap:5px;font-size:12px;
   color:var(--ink2);background:var(--s1);border-radius:var(--r1);padding:5px 7px;cursor:grab}
 
@@ -219,28 +220,28 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .dirty-note .d{width:6px;height:6px;border-radius:1px;background:var(--wn);flex:0 0 6px}
 
 /* 🔴「工具」巨型選單 —— 心智模型:表單就是操作中心(OQ-FDW-15=A) */
-.mega{position:absolute;background:var(--s1);border-radius:var(--r3);padding:14px 16px;
-  box-shadow:var(--ovl);z-index:26;display:grid;grid-template-columns:repeat(3,168px);
-  gap:16px 24px;font-size:13px}
-.mega .g > b{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--ink3);
-  text-transform:uppercase;margin-bottom:4px}
+.mega{position:absolute;background:var(--s1);border-radius:var(--r3);padding:24px;
+  box-shadow:var(--ovl);z-index:26;display:grid;grid-template-columns:repeat(3,172px);
+  gap:24px;font-size:14px}
+.mega .g > b{display:block;font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--ink3);
+  text-transform:uppercase;margin-bottom:12px}
 .mega .g i{font-style:normal;display:flex;align-items:center;gap:7px;height:26px;padding:0 6px;
   border-radius:var(--r1);color:var(--ink);transition:background var(--fast)}
 .mega .g i:hover{background:var(--s3)}
 .mega .g i svg{color:var(--ink4);flex:0 0 13px}
-.ctx{position:absolute;width:200px;background:var(--s1);border-radius:var(--r3);padding:5px;
-  box-shadow:var(--ovl);z-index:24;font-size:13px}
+.ctx{position:absolute;width:212px;background:var(--s1);border-radius:var(--r3);padding:4px;
+  box-shadow:var(--ovl);z-index:24;font-size:14px}
 .ctx i{font-style:normal;display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;
   border-radius:var(--r1);color:var(--ink)}
 .ctx i:hover{background:var(--s3)}
-.ctx i .k{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink4)}
+.ctx i .k{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink4)}
 .ctx hr{border:0;height:1px;background:var(--line);margin:5px 8px}
 .pop{position:absolute;width:210px;background:var(--s1);border-radius:var(--r3);padding:6px;
   box-shadow:var(--ovl);z-index:20}
 .pop .srch{height:28px;border:1px solid var(--s7);border-radius:var(--r1);padding:0 8px;
   font-size:13px;color:var(--ink3);display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.pop .g{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--ink3);
-  padding:6px 8px 2px;text-transform:uppercase}
+.pop .g{font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--ink3);
+  padding:12px 8px 4px;text-transform:uppercase}
 .pop i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:27px;
   padding:0 8px;border-radius:var(--r1);color:var(--ink)}
 .pop i:hover{background:var(--s3)}
@@ -261,20 +262,53 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
 
 /* ── v5:規則表 + 刻意不出現的東西 ── */
-.rules{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1)}
-.rules th,.rules td{padding:8px 10px;text-align:left;box-shadow:inset 0 -1px 0 var(--cell);vertical-align:top}
-.rules th{background:var(--s2);font-size:11px;font-weight:600;letter-spacing:.06em;
+.rules{width:100%;border-collapse:collapse;font-size:14px;background:var(--s1)}
+.rules th,.rules td{padding:12px;text-align:left;box-shadow:inset 0 -1px 0 var(--cell);vertical-align:top}
+.rules th{background:var(--s2);font-size:12px;font-weight:500;letter-spacing:.06em;
   color:var(--ink3);text-transform:uppercase}
 .rules td.when{color:var(--ink2)} .rules td.then{font-weight:500}
-.rules .tag{display:inline-block;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:500;
+.rules .tag{display:inline-block;border-radius:3px;padding:1px 6px;font-size:12px;font-weight:500;
   background:var(--s3);color:var(--ink2);margin-right:4px}
-.rules .src{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink4)}
+.rules .src{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink4)}
 .absent{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;background:var(--s1);
-  border-radius:var(--r3);padding:16px 18px;box-shadow:var(--hair)}
-.absent .it{padding:10px 0;box-shadow:inset 0 -1px 0 var(--line)}
-.absent .it b{display:block;font-size:13px;font-weight:600;color:var(--ink)}
+  border-radius:var(--r3);padding:24px;box-shadow:var(--hair)}
+.absent .it{padding:12px 0;box-shadow:inset 0 -1px 0 var(--line)}
+.absent .it b{display:block;font-size:14px;font-weight:500;color:var(--ink)}
 .absent .it span{display:block;font-size:12px;line-height:17px;color:var(--ink3);margin-top:3px}
 .absent .it em{font-style:normal;color:var(--er);font-weight:500}
+
+/* ══ v6 A|所見即後果 ══
+   🔴 這是本模組唯一過得了「向上設計三條」的一項:
+   ① 巨人停在那裡 —— Ragic 公式用**儲存格座標**參照(doc/26 逐字「C9*D9…參照的是標頭所在的位置」),
+      搬一個欄位就可能弄壞公式,而設計模式不告訴你會弄壞誰。
+      ⚠️ 「Ragic 有無影響分析」**未查證**,只能說我方稿子先前沒畫。
+   ② 架構讓我們過得去 —— 欄位名公式 + 依賴圖 + E-1 欄位級權限(已 SHIPPED)+ layout 純 metadata,
+      **這些關係本來就在系統裡**,顯示出來成本極低。
+   ③ 對取代 ERP 有意義 —— 對不會寫程式的人,「我改了會不會壞」的唯一判斷方式就是**看得到**。
+      看不到就得找人問 —— 那就又回到需要專業。 */
+.imp{margin-top:24px;box-shadow:inset 0 1px 0 var(--line);padding-top:12px}
+.imp > b{display:block;font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--ink3);
+  text-transform:uppercase;margin-bottom:12px}
+.imp .row{display:flex;align-items:flex-start;gap:4px;padding:4px 0;font-size:12px;line-height:17px}
+.imp .row svg{flex:0 0 13px;margin-top:2px;color:var(--ink4)}
+.imp .row .n{color:var(--ink)}
+.imp .row .n em{font-style:normal;color:var(--ink3)}
+.imp .row.warn svg{color:var(--wn)}
+.imp .row.warn .n{color:var(--wn)}
+/* 畫布上被牽連的格子:淡色外框呼應面板,不搶主色 */
+.ss .dep{box-shadow:inset 0 -1px 0 var(--cell),inset 0 0 0 1px var(--wn-l);background:var(--wn-t)}
+
+/* ══ v6 B|直接操作的手感 ══
+   動效在設計工具裡是**狀態的說明**不是裝飾:拖曳時的即時數字回答「現在多寬」,
+   輔助線回答「對齊到哪」。動效值用 Carbon productive(tokens.css 既有)。 */
+.ss .ch.drag{background:var(--pri-t);color:var(--pri-d)}
+.gd{position:absolute;top:0;bottom:0;width:2px;background:var(--pri);z-index:12;pointer-events:none}
+.gd .num{position:absolute;top:-2px;left:6px;background:var(--pri);color:#fff;
+  font-size:12px;line-height:16px;font-family:'IBM Plex Mono',monospace;
+  padding:2px 6px;border-radius:var(--r1);white-space:nowrap}
+/* hover 才浮現的操作示意:靜態稿裡用 :hover 真的做出來,不是畫上去的 */
+.ss .k,.ss .v{transition:background var(--fast)}
+.ss .k:hover{background:var(--s3)}
 q{quotes:"「" "」"}
 </style>
 </head>
@@ -282,8 +316,12 @@ q{quotes:"「" "」"}
 <div class="wrap">
 
 <div class="lede">
-  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v5</span></h1>
-  <p><b>v5 要證明的是定位本身:「不用寫 code」。</b>前四版都在解「設計即所見」;
+  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v6</span></h1>
+  <p><b>v6 修的是「像公司內部後台」——量測後成因是缺層級,不是缺裝飾。</b>
+     字級只有 11/12/13 三種小字在撐(11px 違規 24 處)、74% 是最輕的字重、間距 11 種值全擠在 2–10px
+     —— 眼睛沒有任何線索可以分組。三項<b>全是規格早有、稿子沒照做</b>,已由
+     <code>mockup-hierarchy.spec</code> 執法。同時補上<b>所見即後果</b>(選一格就看得到改它會牽動誰)。<br>
+     <span style="font-size:.92em"><b>v5 要證明的是定位本身:「不用寫 code」。</b></span>前四版都在解「設計即所見」;
      v5 讓設計器<b>展示</b>而不是宣稱 —— 語意標記讓「算」的綁定在設計欄位時就完成、
      四段本來要寫 JS 的規則收成一張條件→動作表、而<b>「重算時機」這個設定刻意不存在</b>。<br>
      <span style="font-size:.92em">v4 推翻的是「設計即所見」的形式。</span>v1–v3 都在解「讓<b>設計頁籤</b>長得像<b>填單頁籤</b>」——
@@ -445,13 +483,23 @@ q{quotes:"「" "」"}
            不需要另開一個顧問配置頁。命門:算的綁定必須自助化。 -->
       <div class="fld"><label style="color:var(--pri-d);font-weight:500">用途（讓系統知道怎麼算）</label>
         <div class="selbox" style="border-color:var(--pri)">交易金額 · 未稅<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div>
-        <div style="font-size:11px;line-height:15px;color:var(--ink3);margin-top:4px">標了用途,這張單就能自動過帳、進成本與估值 —— 不必寫程式,也不必請人配置。</div></div>
-      <div class="fld"><label>不重複</label>
-        <div class="selbox">允許重複<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
-      <div class="fld"><label>跨欄數（合併儲存格）</label>
-        <div class="selbox">1<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
-      <div class="fld"><span class="sw"><span class="t"></span>必填</span></div>
-      <div class="acc"><h4>驗證<span class="ch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+        <div style="font-size:12px;line-height:15px;color:var(--ink3);margin-top:4px">標了用途,這張單就能自動過帳、進成本與估值 —— 不必寫程式,也不必請人配置。</div></div>
+      <!-- 🔴 v6 D|常駐只留三項(名稱 / 種類 / 用途),其餘收摺 —— 原本九項平權展開 = 沒有重點 -->
+      <div class="acc"><h4>版面與驗證<span class="ch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
+
+      <!-- 🔴 v6 A|所見即後果:選了這一格,就看得到改它會牽動什麼 -->
+      <div class="imp"><b>改這一欄會影響</b>
+        <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/></svg>
+          <span class="n"><em>2 個公式用到它</em> · 小計 · 未稅合計</span></div>
+        <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 12 3 3 5-5"/></svg>
+          <span class="n"><em>1 條規則會觸發</em> · 金額被修改 → 記錄改動人</span></div>
+        <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3v18M3 12h18"/></svg>
+          <span class="n"><em>過帳到</em> 5111 進貨 · 2131 應付帳款</span></div>
+        <div class="row warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12"/><path d="m4 4 16 16"/></svg>
+          <span class="n"><em>倉管群組看不到這一欄</em> · 欄位權限</span></div>
+        <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/></svg>
+          <span class="n"><em>列印在</em> 第 1 頁 · 右欄</span></div>
+      </div>
       <div class="acc"><h4>新增元件</h4>
         <div class="parts">
           <i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>敘述欄位</i>
@@ -468,6 +516,8 @@ q{quotes:"「" "」"}
           <b class="add"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></b></div>
         <div class="ss" id="ssDesign"></div>
       </div>
+      <!-- 🔴 v6 B|拖欄邊線時的即時回饋:數字回答「現在多寬」,線回答「對齊到哪」 -->
+      <div class="gd" style="left:410px;top:78px;height:340px"><span class="num">168px</span></div>
     </div>
   </div>
   <div class="foot"><span class="dot"></span>已連線<span class="mono">3 項設計變更未儲存</span>
@@ -613,6 +663,18 @@ q{quotes:"「" "」"}
 </div>
 
 <div style="max-width:1460px;margin:24px auto 0">
+  <h3 class="sec">v5 → v6 改了什麼</h3>
+  <table class="mtab">
+    <tr><th style="width:150px">項目</th><th style="width:210px">v5(實測)</th><th style="width:210px">v6</th><th>依據</th></tr>
+    <tr><td>字級</td><td class="k wn">11px × 24 違規;<br>11/12/13 三種小字在撐</td><td class="k ok">六階;<b>內文回 base 14</b></td><td>docs/14 §2.5 地板 12px + §2.7(a)</td></tr>
+    <tr><td>字重</td><td class="k wn">400 佔 74%,<b>600 佔 12.7%</b></td><td class="k ok">600 ≤5%(全屏兩個錨點)</td><td>§2.7(b)。⚠️ 我初判「600 太少」<b>被量測推翻</b>,病灶是錨點太多</td></tr>
+    <tr><td>間距</td><td class="k wn">11 種值,最常用 6/10px<br>全擠在 2–10px</td><td class="k ok">分組尺度 4/12/24</td><td>§0.3 Directus 實走 + §2.7(c)</td></tr>
+    <tr><td>左面板</td><td class="k">九項平權展開</td><td class="k ok">常駐三項 + 其餘收摺</td><td>平權展開 = 沒有重點</td></tr>
+    <tr><td>改欄位的後果</td><td class="k">看不到</td><td class="k ok"><b>「改這一欄會影響」</b><br>公式 / 規則 / 過帳 / 權限 / 列印</td><td>本模組<b>唯一過得了向上三條</b>的一項</td></tr>
+    <tr><td>拖欄寬</td><td class="k">無回饋</td><td class="k ok">即時數字 + 輔助線</td><td>動效是狀態的說明,不是裝飾</td></tr>
+    <tr><td>規則執法</td><td class="k wn">mockup 無任何檢查</td><td class="k ok"><code>mockup-hierarchy.spec</code></td><td>同型失誤第五次,共同點是「沒檢查」</td></tr>
+  </table>
+
   <h3 class="sec">v4 → v5 改了什麼</h3>
   <table class="mtab">
     <tr><th style="width:160px">項目</th><th style="width:200px">v4</th><th style="width:230px">v5</th><th>依據</th></tr>
@@ -650,9 +712,11 @@ q{quotes:"「" "」"}
   </table>
 
   <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:12px">
-  <b>此稿的自我約束</b>|間距只用 4/8/12/16/24 · 不用 <code>opacity</code> 造文字階 ·
-  圖示全 Lucide 真路徑不自繪 · 字級只用 12/13/14/16/20/24 · 殼的互動項不畫框 ·
-  動效只動 <code>opacity</code>/<code>transform</code> 且有 <code>prefers-reduced-motion</code>。<br>
+  <b>此稿的自我約束(v6 起由 CI 執法)</b>|字級六階 12/13/14/16/20/24 且內文回 base 14 · 字重 600 ≤5% / 500 ≤20% ·
+  一個 surface 主標唯一 · 間距用分組尺度 4/12/24/32 · 不用 <code>opacity</code> 造文字階 ·
+  圖示全 Lucide 真路徑不自繪 · 殼的互動項不畫框 · 動效只動 <code>opacity</code>/<code>transform</code> 且有 <code>prefers-reduced-motion</code>。<br>
+  🔴 前五次同型失誤(字階 16 種 → 色碼 → CSS font-size → mockup)的共同點都是「規則寫了沒檢查」,
+  故 <code>apps/web/e2e/mockup-hierarchy.spec.ts</code> 直接量這份 HTML。<br>
   <b>格線由資料驅動</b>|<code>COLS</code> 即 <code>layout.grid.colWidths</code>,欄位以 <code>{r,c,span}</code> 定位,
   與引擎同構。<b>畫面一與畫面二吃同一份 cells 資料</b> —— 稿子本身就在證明「只有一個畫面」。</p>
 </div>
@@ -736,9 +800,13 @@ const SHEET = [
 build(document.getElementById("ssView"), { cells: SHEET, ruler: false });
 
 /* 畫面二:同一份 SHEET,只是進了設計模式 —— 加欄標列號 + 選取一格 */
+/* 🔴 v6 A|面板說「2 個公式用到它」,畫布就要**指出是哪兩個** —— 說了不指等於沒說 */
 const designCells = SHEET.map((x) =>
   x.r === 4 && x.c === 1 ? { ...x, cls: "k sel" } :
-  x.r === 4 && x.c === 2 ? { ...x, cls: "v n sel" } : x);
+  x.r === 4 && x.c === 2 ? { ...x, cls: "v n sel" } :
+  x.r === 6 && x.c === 4 ? { ...x, cls: "sk dep" } :
+  x.r === 7 && x.c === 4 ? { ...x, cls: "sv n dep" } :
+  x.r === 8 && x.c === 4 ? { ...x, cls: "sv n dep" } : x);
 build(document.getElementById("ssDesign"), { cells: designCells, ruler: true, hiCol: 0, hiRow: 3, dragCol: 1, rows: 11 });
 
 /* 畫面三:設計模式中新增欄位 */
