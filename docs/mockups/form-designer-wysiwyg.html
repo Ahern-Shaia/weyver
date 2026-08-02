@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════
-   UP-3c 高保真 mockup v4(2026-08-02)
+   UP-3c 高保真 mockup v5(2026-08-02)
 
    ⚠️ v4 推翻的是「設計即所見」的**形式**,不是版面模型(v3 的試算表模型保留)。
    依據:review 提供的**兩張真實生產環境 Ragic 截圖**(客戶 台灣福祉,5822 筆收款憑單)
@@ -21,6 +21,17 @@
 
    OQ-FDW-13=A 模式切換 · 13b=A 有記錄就顯示真實值 · 14=A 頁籤橫列 · 15=A 工具選單
    v3 保留:試算表模型 / 21 欄 / 分段頁籤 / 敘述欄位佔一格 / 子表水平標頭 / 只有橫線
+
+   ⚠️ v5(承 AGENTS.md〈第一約束:不用寫 code〉+ docs/31 向上設計 backlog)
+   前四版都在解「設計即所見」。v5 解的是**定位本身**:設計器要能**展示**「不用寫 code」,
+   而不只是宣稱。落點三處(皆對應 docs/31 的三件最該做):
+   A. 屬性面板加「**用途(語意標記)**」—— 計算層自助綁定的入口,在**設計欄位的當下**完成,
+      不是另開一個顧問配置頁(命門:算的綁定必須自助化)
+   B. 屬性面板加「**規則**」頁籤 —— 上鎖 / 重複警告 / 權限阻擋 / 欄位稽核
+      在 Ragic 是四段各自要貼的 JS(doc-kb/215、253、193、155),這裡是同一張條件→動作表
+   C. **刻意不出現的東西** —— 公式欄位沒有「重算時機」設定,因為引擎自動處理。
+      Ragic 要你勾「儲存時觸發相關表單全部公式重算」並面對 2000 筆上限
+      (超過就整批不重算 → 合計安靜地算錯),官方解法是寫每日補算程式(doc-kb/281)
 
    🔴 本檔自我約束
    · 間距只用 4 / 8 / 12 / 16 / 24 · 不用 opacity 造文字階 · 圖示一律 Lucide 真路徑
@@ -174,7 +185,7 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .lp .fl:hover{background:var(--s3);color:var(--ink2);border-radius:var(--r1)}
 /* 設計模式的左欄 */
 .dsg .ptab{display:flex;gap:2px;box-shadow:inset 0 -1px 0 var(--cell);margin-bottom:10px}
-.dsg .ptab b{font-size:12px;font-weight:400;color:var(--ink3);padding:6px 9px;cursor:default}
+.dsg .ptab b{font-size:12px;font-weight:400;color:var(--ink3);padding:6px 7px;cursor:default;white-space:nowrap}
 .dsg .ptab b.on{color:var(--ink);font-weight:500;box-shadow:inset 0 -2px 0 var(--pri)}
 .dsg .who{font-size:13px;font-weight:600;line-height:18px}
 .dsg .whos{font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:8px;
@@ -248,6 +259,22 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .mtab td.k{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink3);white-space:nowrap}
 .ok{color:var(--ok);font-weight:600} .wn{color:var(--wn);font-weight:600}
 h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
+
+/* ── v5:規則表 + 刻意不出現的東西 ── */
+.rules{width:100%;border-collapse:collapse;font-size:13px;background:var(--s1)}
+.rules th,.rules td{padding:8px 10px;text-align:left;box-shadow:inset 0 -1px 0 var(--cell);vertical-align:top}
+.rules th{background:var(--s2);font-size:11px;font-weight:600;letter-spacing:.06em;
+  color:var(--ink3);text-transform:uppercase}
+.rules td.when{color:var(--ink2)} .rules td.then{font-weight:500}
+.rules .tag{display:inline-block;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:500;
+  background:var(--s3);color:var(--ink2);margin-right:4px}
+.rules .src{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink4)}
+.absent{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;background:var(--s1);
+  border-radius:var(--r3);padding:16px 18px;box-shadow:var(--hair)}
+.absent .it{padding:10px 0;box-shadow:inset 0 -1px 0 var(--line)}
+.absent .it b{display:block;font-size:13px;font-weight:600;color:var(--ink)}
+.absent .it span{display:block;font-size:12px;line-height:17px;color:var(--ink3);margin-top:3px}
+.absent .it em{font-style:normal;color:var(--er);font-weight:500}
 q{quotes:"「" "」"}
 </style>
 </head>
@@ -255,8 +282,11 @@ q{quotes:"「" "」"}
 <div class="wrap">
 
 <div class="lede">
-  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v4</span></h1>
-  <p><b>v4 推翻的是「設計即所見」的形式。</b>v1–v3 都在解「讓<b>設計頁籤</b>長得像<b>填單頁籤</b>」——
+  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v5</span></h1>
+  <p><b>v5 要證明的是定位本身:「不用寫 code」。</b>前四版都在解「設計即所見」;
+     v5 讓設計器<b>展示</b>而不是宣稱 —— 語意標記讓「算」的綁定在設計欄位時就完成、
+     四段本來要寫 JS 的規則收成一張條件→動作表、而<b>「重算時機」這個設定刻意不存在</b>。<br>
+     <span style="font-size:.92em">v4 推翻的是「設計即所見」的形式。</span>v1–v3 都在解「讓<b>設計頁籤</b>長得像<b>填單頁籤</b>」——
      而生產環境截圖顯示 Ragic <b>沒有這兩個頁籤</b>,只有<b>一個畫面</b>加右上角一顆「修改設計」。
      那個「兩個頁籤」的結構<b>本身就是漂移的來源</b>;改成模式切換後,
      設計即所見從<b>紀律問題</b>變成<b>結構保證</b>。</p>
@@ -405,18 +435,23 @@ q{quotes:"「" "」"}
   </div>
   <div class="body rel">
     <aside class="lp dsg">
-      <div class="ptab"><b class="on">欄位設定</b><b>樣式</b><b>公式</b></div>
-      <div class="who">供應商</div>
-      <div class="whos">單行文字 · A3:B3</div>
-      <div class="fld"><label>欄位名稱</label><input class="inp" value="供應商"></div>
+      <div class="ptab"><b class="on">欄位</b><b>規則</b><b>樣式</b><b>公式</b></div>
+      <div class="who">金額</div>
+      <div class="whos">金額 · A4:B4</div>
+      <div class="fld"><label>欄位名稱</label><input class="inp" value="金額"></div>
       <div class="fld"><label>欄位種類</label>
-        <div class="selbox">單行文字<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+        <div class="selbox">金額<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+      <!-- 🔴 v5 A|計算層自助綁定的入口。在**設計欄位的當下**指定語意,引擎據此接上過帳與估值,
+           不需要另開一個顧問配置頁。命門:算的綁定必須自助化。 -->
+      <div class="fld"><label style="color:var(--pri-d);font-weight:500">用途（讓系統知道怎麼算）</label>
+        <div class="selbox" style="border-color:var(--pri)">交易金額 · 未稅<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div>
+        <div style="font-size:11px;line-height:15px;color:var(--ink3);margin-top:4px">標了用途,這張單就能自動過帳、進成本與估值 —— 不必寫程式,也不必請人配置。</div></div>
+      <div class="fld"><label>不重複</label>
+        <div class="selbox">允許重複<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
       <div class="fld"><label>跨欄數（合併儲存格）</label>
         <div class="selbox">1<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
       <div class="fld"><span class="sw"><span class="t"></span>必填</span></div>
-      <div class="fld"><span class="sw off"><span class="t"></span>唯讀</span></div>
       <div class="acc"><h4>驗證<span class="ch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
-      <div class="acc"><h4>條件式格式<span class="ch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></span></h4></div>
       <div class="acc"><h4>新增元件</h4>
         <div class="parts">
           <i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>敘述欄位</i>
@@ -436,7 +471,7 @@ q{quotes:"「" "」"}
     </div>
   </div>
   <div class="foot"><span class="dot"></span>已連線<span class="mono">3 項設計變更未儲存</span>
-    <span class="pos">A3:B3 · 欄寬 96px</span></div>
+    <span class="pos">A4:B4 · 欄寬 96px</span></div>
 </div>
 <div class="cap"><b>畫面二 · 同一個畫面,按下「修改設計」。</b>
   <b>單據沒有換,記錄沒有換,連捲動位置都沒換</b> —— 只是多了欄標與列號、左欄由搜尋換成欄位設定、
@@ -467,7 +502,7 @@ q{quotes:"「" "」"}
   </div>
   <div class="body rel">
     <aside class="lp dsg">
-      <div class="ptab"><b class="on">欄位設定</b><b>樣式</b><b>公式</b></div>
+      <div class="ptab"><b class="on">欄位</b><b>規則</b><b>樣式</b><b>公式</b></div>
       <div class="who">尚未選取欄位</div>
       <div class="whos">點畫布上任一格</div>
       <div class="acc" style="box-shadow:none;padding-top:0">
@@ -529,7 +564,64 @@ q{quotes:"「" "」"}
   <q>對想調整的欄寬或列高點右鍵後,選擇 欄寬或列高</q>(doc/21)· <q>在列上點擊右鍵選擇 新增分段</q>(doc/121)。
   ⚠️ <b>刻意分歧</b>:Ragic 是整批儲存,我們維持 B′ Enter 即建欄 + 三項補償(M0 §10-bis)。</span></div>
 
+
+<div style="max-width:1460px;margin:0 auto 24px">
+  <h3 class="sec">v5 · 屬性面板的「規則」頁籤 —— 四段 JS 收成一張表</h3>
+  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:4px">
+    下面四條在 Ragic 是<b>四段各自要貼的 JavaScript</b>,散在四篇 KB 裡。
+    它們其實是<b>同一件事的四個變形</b>:某個條件成立時,對這張單做某件事。
+    一張條件→動作表全吃,並順帶接住「任意商業邏輯」的長尾(GoRules ZEN,docs/20 已選型)。</p>
+  <table class="rules">
+    <tr><th style="width:38%">當…</th><th style="width:32%">就…</th><th>在 Ragic 的做法</th></tr>
+    <tr><td class="when">狀態 = 取消 或 已出貨</td><td class="then">整筆唯讀 · 寫入稽核軌</td>
+        <td><span class="tag">貼 JS</span><span class="src">entry.lock()</span> · 官方註記「此功能目前還在<b>規劃中</b>」<span class="src">doc-kb/215</span></td></tr>
+    <tr><td class="when">客戶統編 與既有資料重複</td><td class="then">警告但仍可儲存</td>
+        <td><span class="tag">貼 JS</span><span class="src">checkIfUniqueFieldValue()</span> 到 Global + Post-workflow<span class="src"> doc-kb/253</span></td></tr>
+    <tr><td class="when">使用者不屬於 採購群組</td><td class="then">不可新增</td>
+        <td><span class="tag">貼 JS</span> Pre-workflow <span class="src">param.isCreateNew()</span><span class="src"> doc-kb/193</span></td></tr>
+    <tr><td class="when">金額 被修改</td><td class="then">記錄改動人與時間</td>
+        <td><span class="tag">貼 JS</span> 兩段各約 20 行,還要先查 KeyField ID<span class="src"> doc-kb/155</span></td></tr>
+    <tr><td class="when">交期 早於今天 且 狀態 ≠ 已結案</td><td class="then">標示逾期 · 通知負責人</td>
+        <td><span class="tag" style="background:var(--ok-t);color:var(--ok)">已有</span>條件式格式 + 通知</td></tr>
+  </table>
+</div>
+<div class="cap"><b>為什麼這一張表比四段 JS 重要。</b>
+  不是少寫幾行程式,是<b>誰能做這件事</b>。四段 JS 意味著:設計表單的人(通常不是工程師)做不到,
+  得排隊等有人幫忙 —— 而他當初選這個平台,就是為了不必排隊。
+  <span class="ev">⚠️ 誠實邊界:<b>視覺化 ≠ 簡化</b>。若這張表要求使用者理解執行順序、型別、例外處理,
+  只是換皮。判準是「<b>這張表單的設計者自己能不能完成</b>」(AGENTS.md 第一約束)。
+  任意商業邏輯本質上仍需某種規則表達,無法完全消除 —— 這一點寫在 docs/31 沒有粉飾。</span></div>
+
+<div style="max-width:1460px;margin:0 auto 24px">
+  <h3 class="sec">v5 · 這個設計器裡<b>刻意不存在</b>的東西</h3>
+  <p style="font-size:13px;line-height:18px;color:var(--ink3);margin-top:4px">
+    mockup 通常展示「有什麼」。但對「不用寫 code」這個定位來說,<b>不該出現的東西</b>同樣是主張。</p>
+  <div class="absent">
+    <div class="it"><b>公式欄位沒有「重算時機」設定</b>
+      <span>引擎用依賴圖自動失效,改了來源就重算,<b>沒有筆數上限</b>。<br>
+      對照:官方要你勾「儲存時觸發相關表單全部公式重算」,並面對
+      <em>2000 筆上限 —— 超過就整批不重算</em>,解法是「撰寫每日自動執行公式重算的程式」<span class="src">doc-kb/281 · 131 · 163</span></span></div>
+    <div class="it"><b>沒有「JavaScript workflow」入口</b>
+      <span>需要邏輯就用規則表與公式。API 與 webhook 是<b>開發者的逃生口</b>,不是核心需求的唯一路徑。</span></div>
+    <div class="it"><b>沒有「請聯絡管理員/原廠」的設定</b>
+      <span>對照:客製列印報表<em>只有系統管理者能設定</em><span class="src">doc/138</span>;
+      公司設定缺功能要<em>寄信給原廠手動更新系統表單</em><span class="src">doc/56</span>。</span></div>
+    <div class="it"><b>沒有要你寫正規表示法的地方</b>
+      <span>驗證與篩選用條件建構器。<br>
+      (⚠️ 這一項對手<b>已用 AI 解掉一半</b> —— 輸入檢查小幫手可由 AI 產生 regex<span class="src">doc/24</span>,不得宣稱為差異化。)</span></div>
+  </div>
+</div>
+
 <div style="max-width:1460px;margin:24px auto 0">
+  <h3 class="sec">v4 → v5 改了什麼</h3>
+  <table class="mtab">
+    <tr><th style="width:160px">項目</th><th style="width:200px">v4</th><th style="width:230px">v5</th><th>依據</th></tr>
+    <tr><td>屬性面板</td><td class="k">欄位設定 / 樣式 / 公式</td><td class="k ok">+ <b>規則</b>頁籤</td><td>docs/31 §5-3:上鎖/重複/權限/稽核四條 JS 是同一件事的變形</td></tr>
+    <tr><td>「算」怎麼綁</td><td class="k">未呈現</td><td class="k ok"><b>用途(語意標記)</b><br>在設計欄位的當下完成</td><td>命門:算的綁定必須自助化;docs/31 §5-2</td></tr>
+    <tr><td>重算時機</td><td class="k">未呈現</td><td class="k ok"><b>刻意不存在</b></td><td>doc-kb/281 2000 筆上限 → 合計安靜算錯;docs/31 §5-1</td></tr>
+    <tr><td>唯一性</td><td class="k">未呈現</td><td class="k ok">欄位屬性的一個選項</td><td>doc-kb/253 要貼 checkIfUniqueFieldValue()</td></tr>
+  </table>
+
   <h3 class="sec">v3 → v4 改了什麼</h3>
   <table class="mtab">
     <tr><th style="width:150px">項目</th><th style="width:210px">v3</th><th style="width:230px">v4</th><th>依據</th></tr>
@@ -645,9 +737,9 @@ build(document.getElementById("ssView"), { cells: SHEET, ruler: false });
 
 /* 畫面二:同一份 SHEET,只是進了設計模式 —— 加欄標列號 + 選取一格 */
 const designCells = SHEET.map((x) =>
-  x.r === 3 && x.c === 1 ? { ...x, cls: "k sel" } :
-  x.r === 3 && x.c === 2 ? { ...x, cls: "v sel" } : x);
-build(document.getElementById("ssDesign"), { cells: designCells, ruler: true, hiCol: 0, hiRow: 2, dragCol: 1, rows: 11 });
+  x.r === 4 && x.c === 1 ? { ...x, cls: "k sel" } :
+  x.r === 4 && x.c === 2 ? { ...x, cls: "v n sel" } : x);
+build(document.getElementById("ssDesign"), { cells: designCells, ruler: true, hiCol: 0, hiRow: 3, dragCol: 1, rows: 11 });
 
 /* 畫面三:設計模式中新增欄位 */
 const addCells = SHEET.slice(0, 9)
