@@ -300,7 +300,14 @@ h3.sec{font-size:16px;font-weight:600;letter-spacing:-.014em;margin-top:24px}
 
 /* ══ v6 B|直接操作的手感 ══
    動效在設計工具裡是**狀態的說明**不是裝飾:拖曳時的即時數字回答「現在多寬」,
-   輔助線回答「對齊到哪」。動效值用 Carbon productive(tokens.css 既有)。 */
+   輔助線回答「對齊到哪」。動效值用 Carbon productive(tokens.css 既有)。
+
+   🔴 **v6.1 撤回:輔助線已從靜態畫面移除**(2026-08-02 review)。兩個錯誤:
+   ① **把互動狀態畫進靜態截圖**,沒有游標、沒有「拖曳中」標示 —— review 看到只會問「這條線是什麼」,
+      而**需要解釋的設計提示就是失敗的設計提示**。
+   ② **位置是硬寫的,沒量**:`left:410px`,但實測 B 欄右緣在 **562px** —— 線飄在 B 欄中間,
+      指著一個不存在的邊界,卻標著 B 欄的寬度 168px。**又一次「沒量就寫死」。**
+   互動狀態若要呈現,應獨立成一張**標明「拖曳中」的圖**,不能混進靜態屏。 */
 .ss .ch.drag{background:var(--pri-t);color:var(--pri-d)}
 .gd{position:absolute;top:0;bottom:0;width:2px;background:var(--pri);z-index:12;pointer-events:none}
 .gd .num{position:absolute;top:-2px;left:6px;background:var(--pri);color:#fff;
@@ -516,8 +523,6 @@ q{quotes:"「" "」"}
           <b class="add"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></b></div>
         <div class="ss" id="ssDesign"></div>
       </div>
-      <!-- 🔴 v6 B|拖欄邊線時的即時回饋:數字回答「現在多寬」,線回答「對齊到哪」 -->
-      <div class="gd" style="left:410px;top:78px;height:340px"><span class="num">168px</span></div>
     </div>
   </div>
   <div class="foot"><span class="dot"></span>已連線<span class="mono">3 項設計變更未儲存</span>
