@@ -70,6 +70,48 @@ test.describe("docs/14 §2.7 層級配置", () => {
     expect(pct("500"), `500 佔 ${pct("500").toFixed(1)}%,超過 20%`).toBeLessThanOrEqual(20)
   })
 
+  /* 🔴 起因:review 問「圖中的 168px 的線是什麼?」——
+     量測發現線在 x=434 而 B 欄右緣在 562,`left:410px` 是硬寫的、沒量過。
+     自查後同型錯誤還有三個:工具選單偏離觸發鈕 169px、型別 popover 蓋住它正在編輯的那一格、
+     右鍵選單沒有錨點。改為由錨點推導後,這條測防止它再退回硬寫。 */
+  test("🔴 浮層必須錨定在觸發點,不得硬寫座標", async ({ page }) => {
+    const pairs = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("[data-anchor]")).map((el) => {
+        const a =
+          document.getElementById((el as HTMLElement).dataset.anchor ?? "") ??
+          document.querySelector(`.${(el as HTMLElement).dataset.anchor ?? ""}`)
+        const e = el.getBoundingClientRect()
+        return {
+          anchor: (el as HTMLElement).dataset.anchor ?? "",
+          place: (el as HTMLElement).dataset.place ?? "",
+          found: a !== null,
+          dx: a === null ? 999 : Math.round(e.left - a.getBoundingClientRect().left),
+          gap: a === null ? 999 : Math.round(e.top - a.getBoundingClientRect().bottom),
+          dyRight: a === null ? 999 : Math.round(e.top - a.getBoundingClientRect().top),
+        }
+      }),
+    )
+    expect(pairs.length, "找不到任何 data-anchor 浮層").toBeGreaterThan(0)
+    for (const p of pairs) {
+      expect(p.found, `錨點 ${p.anchor} 不存在 —— 浮層會退回硬寫位置`).toBe(true)
+      if (p.place === "below") {
+        expect(
+          Math.abs(p.dx),
+          `${p.anchor}:左緣未對齊觸發點(差 ${String(p.dx)}px)`,
+        ).toBeLessThanOrEqual(2)
+        expect(
+          p.gap,
+          `${p.anchor}:與觸發點的垂直間距 ${String(p.gap)}px,應為 4`,
+        ).toBeLessThanOrEqual(8)
+      } else {
+        expect(
+          Math.abs(p.dyRight),
+          `${p.anchor}:頂緣未對齊觸發點(差 ${String(p.dyRight)}px)`,
+        ).toBeLessThanOrEqual(2)
+      }
+    }
+  })
+
   test("🔴 一個 surface 只有一個主標(20 或 24)", async ({ page }) => {
     const perApp = await page.evaluate(() =>
       Array.from(document.querySelectorAll(".app")).map(

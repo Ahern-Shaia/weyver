@@ -164,6 +164,9 @@ body{background:var(--s3);color:var(--ink);padding:24px;
   box-shadow:inset 0 -1px 0 var(--cell),inset -1px 0 0 var(--cell)}
 .ss .sv.n{font-family:'IBM Plex Mono',monospace;justify-content:flex-end}
 .ss .dirty{box-shadow:inset 0 -1px 0 var(--cell),inset 3px 0 0 var(--wn)}
+/* 🔴 v6.1|右鍵選單的**錨點**。原本選單浮在畫布中間,看不出是對誰按的右鍵 ——
+   與 168px 輔助線同型:互動狀態沒有錨。 */
+.ss .ctx-on{box-shadow:inset 0 0 0 2px var(--ink3);z-index:3;position:relative}
 .chip{display:inline-block;border-radius:3px;border:1px solid;padding:1px 7px;font-size:12px;
   font-weight:400;line-height:16px}
 .chip.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-l)}
@@ -406,13 +409,13 @@ q{quotes:"「" "」"}
     <div class="bar" style="box-shadow:inset 0 -1px 0 var(--line)">
       <h2>採購單</h2><span class="m">第 1 筆 / 共 5,822 筆</span>
       <button class="btn pri">＋ 新增</button>
-      <button class="btn gho" style="background:var(--s4);color:var(--ink)">工具 ⌄</button>
+      <button class="btn gho" id="tools-btn" style="background:var(--s4);color:var(--ink)">工具 ⌄</button>
       <span class="sp"></span>
       <span class="seg"><b class="on">表單</b><b>網格</b><b>資料</b></span>
       <button class="btn mode">修改設計</button>
     </div>
     <!-- 🔴 表單就是操作中心:針對這張表的所有動作都在這張表上 -->
-    <div class="mega" style="top:50px;left:118px">
+    <div class="mega" data-anchor="tools-btn" data-place="below">
       <div class="g"><b>編輯</b>
         <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>編輯多筆資料</i>
         <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h7"/></svg>大量修改</i>
@@ -579,7 +582,7 @@ q{quotes:"「" "」"}
       </div>
     </div>
 
-    <div class="ctx" style="top:150px;left:470px">
+    <div class="ctx" data-anchor="ctx-target" data-place="right">
       <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>複製欄位<span class="k">⌘C</span></i>
       <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>貼上欄位<span class="k">⌘V</span></i>
       <hr>
@@ -590,7 +593,7 @@ q{quotes:"「" "」"}
       <i style="color:var(--er)">刪除欄位<span class="k">Del</span></i>
     </div>
 
-    <div class="pop" style="top:252px;left:214px">
+    <div class="pop" data-anchor="new-field" data-place="below">
       <div class="srch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>搜尋型別…</div>
       <div class="g">文字</div>
       <i class="on">單行文字<svg class="ck" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></i>
@@ -814,15 +817,42 @@ const designCells = SHEET.map((x) =>
   x.r === 8 && x.c === 4 ? { ...x, cls: "sv n dep" } : x);
 build(document.getElementById("ssDesign"), { cells: designCells, ruler: true, hiCol: 0, hiRow: 3, dragCol: 1, rows: 11 });
 
+/* 🔴 v6.1|**浮層從錨點算位置,不硬寫座標**。
+   起因:review 問「168px 的線是什麼」→ 量測發現線在 x=434 而 B 欄右緣在 562,
+   `left:410px` 是硬寫的沒量過。自查後同型錯誤還有三個:
+   工具選單偏離其觸發鈕 169px、型別 popover **蓋住它正在編輯的那一格**、右鍵選單沒有錨點。
+   再調一次數字仍是硬寫 —— 故改為 render 時由錨點推導,結構上不可能再漂。 */
+function anchorTo(el) {
+  const a = document.getElementById(el.dataset.anchor) || document.querySelector("." + el.dataset.anchor)
+  if (!a) return
+  const host = el.offsetParent
+  const hb = host.getBoundingClientRect(), ab = a.getBoundingClientRect()
+  const GAP = 4
+  if (el.dataset.place === "below") {
+    el.style.left = `${String(Math.round(ab.left - hb.left))}px`
+    el.style.top = `${String(Math.round(ab.bottom - hb.top + GAP))}px`
+  } else {
+    el.style.left = `${String(Math.round(ab.right - hb.left + GAP))}px`
+    el.style.top = `${String(Math.round(ab.top - hb.top))}px`
+  }
+}
+
 /* 畫面三:設計模式中新增欄位 */
 const addCells = SHEET.slice(0, 9)
-  .map((x) => (x.r === 2 && x.c === 1) || (x.r === 3 && x.c === 3)
-    ? { ...x, cls: x.cls + " dirty" } : x)
+  .map((x) => {
+    /* 右鍵按在「交期」標籤格上 —— 選單必須看得出是對誰按的 */
+    if (x.r === 3 && x.c === 3) return { ...x, cls: `${x.cls} dirty ctx-target ctx-on` }
+    if (x.r === 2 && x.c === 1) return { ...x, cls: `${x.cls} dirty` }
+    return x
+  })
   .concat([
-    { r: 5, c: 1, cls: "k sel", html: '運費<span class="cur"></span>' },
+    { r: 5, c: 1, cls: "k sel new-field", html: '運費<span class="cur"></span>' },
     { r: 5, c: 2, cls: "v", html: '<span class="t" style="color:var(--ink4)">單行文字</span>' },
   ]);
 build(document.getElementById("ssAdd"), { cells: addCells, ruler: true, hiCol: 0, hiRow: 4, rows: 10 });
+
+/* 錨定所有浮層(畫布渲染完才有錨點可量) */
+for (const el of document.querySelectorAll("[data-anchor]")) anchorTo(el);
 </script>
 
 </div>
