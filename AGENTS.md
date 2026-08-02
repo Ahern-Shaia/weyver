@@ -13,6 +13,32 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 
 ---
 
+## 🧭 向上設計三條(做設計 / 寫策略前先過)
+
+**「站在巨人的肩膀上」的意思是看得更遠,不是站在同一個位置。** 照抄競品叫 parity,不叫 design。
+
+任何一項**宣稱為向上 / 差異化**的設計,必須**同時**成立三件事,缺一即降級為 parity:
+
+| # | 條件 | 檢驗方式 |
+|---|---|---|
+| ① | **巨人明確停在那裡** | 有**一手逐字依據**(官方文件原文 / 生產環境實證),不是「我覺得他們沒有」。⚠️「文件沒寫」≠「沒有」,只能標**待驗證**,不得當硬差異化 |
+| ② | **我們的架構讓我們能過去** | 差異來自**地基不同**(如 layout 與 DDL 正交、metadata 驅動、真實表),不是「我們多寫幾行程式」。後者競品隨時能追上 |
+| ③ | **對「取代 ERP」有意義** | 不是對「比競品炫」有意義。解決客戶真實的業務痛,不是補齊功能表 |
+
+**踩過的坑(2026-08-02)**|`docs/17` 逐字寫「**Ragic / 鼎新 / 正航 / 傳統 ERP = 0 AI**」,
+整條 AI-native「類別差異」論述建立其上。查證後 Ragic 有 AI 建庫 / NL 查詢 / 公式助手 /
+單據抽取 / **AI Agent(6 觸發 × 11 動作,含 `CREATE_RECORD`/`MODIFY_RECORD`)** / MCP /
+本地模型 + BYO key —— **我們列為「槓桿最高」的四項它全部已有**。
+違反的是條件 ①:承重斷言沒回一手查證。
+
+**推論**|「競品沒有 X」是**風險最高的句型**。寫下它之前先查;查不到就寫「未查證」,不要寫「沒有」。
+競品的功能會變,一手依據要附**查證日期**。
+
+**參考**|[[feedback-verify-load-bearing-claims]] · [[feedback-design-evidence-anchored]] ·
+[[pitfall-unread-schema-field-drift]](巨人的第一站是**自家 repo** —— 上游 design doc 與 schema 常已裁定過)
+
+---
+
 ## ⚠️ Weyver 專屬鐵則(最優先,違反 = 事故)
 
 1. **[P0] 動態 DDL 防 SQL 注入**|Tier-2 動態建 / 改表(Knex)——**值一律參數綁定;identifier(表名 / 欄名)無法參數化 → 必須對 metadata catalog 白名單驗證**,絕不拼接使用者輸入的 identifier。這是最大注入破口(docs/16)。
