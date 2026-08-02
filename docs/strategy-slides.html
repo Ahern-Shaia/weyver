@@ -86,20 +86,20 @@
     <!-- 3. 市場驗證 -->
     <section>
       <div class="kicker">市場驗證(需求不是猜的)</div>
-      <h2>客戶已在拿 Ragic 取代 ERP,只是撞到「<strong>算</strong>」的牆</h2>
-      <p class="lead" style="margin-bottom: 16px;">Ragic 自由度極高,客戶已主動在其上重建 ~80% 的 ERP 內容(進銷存 / 採購 / 訂單 / 主檔 / 簡易庫存生產 / 品質 / HR)。但撞到一道明確的牆 ——</p>
+      <h2>客戶已在拿表單平台取代 ERP,直到需要「<strong>算</strong>」的時候</h2>
+      <p class="lead" style="margin-bottom: 16px;">表單平台自由度極高,客戶已主動在其上重建 ~80% 的 ERP 內容(進銷存 / 採購 / 訂單 / 主檔 / 簡易庫存生產 / 品質 / HR)。剩下的 20% 有一個共同點 ——</p>
       <div class="grid-2">
         <div class="card" style="border-color: var(--accent);">
           <h4 style="color: var(--accent);">Ragic 已擅長的 80%(「填」)</h4>
           <p style="margin: 0; font-size: 0.85em;">表單 / 子表 / 公式 / 關聯 / 工作流 / 權限 —— 對很多中小廠「幾乎就取代 ERP」。</p>
         </div>
         <div class="card" style="border-color: var(--warn);">
-          <h4 style="color: var(--warn);">過不去的 20%(「算」)</h4>
-          <p style="margin: 0; font-size: 0.85em;">會計 GL / 期結 / 成本 / MRP / 庫存估值 —— 是<strong>算</strong>不是<strong>填</strong>,表單資料庫做不到。</p>
+          <h4 style="color: var(--warn);">需要寫程式的 20%(「算」)</h4>
+          <p style="margin: 0; font-size: 0.85em;">會計 GL / 期結 / 成本 / MRP / 庫存估值 —— 是<strong>算</strong>不是<strong>填</strong>。現有表單平台的答案是<strong>寫伺服器端程式</strong>,而客戶當初選它就是為了不寫程式。</p>
         </div>
       </div>
       <div class="quote" style="margin-top: 22px; font-size: 0.92em;">
-        「你已經在拿 Ragic 取代 ERP 了,只是撞到會計、成本、MRP 那道牆。<strong>Weyver 把那道牆(計算層)補上</strong>,讓你真正 100% 取代 ERP,還加上 MES + ISO —— 全在同一個 Ragic 範式裡。」
+        「你已經在拿表單平台取代 ERP 了,只差會計、成本、MRP —— 而那一段目前得寫程式。<strong>Weyver 讓那一段也不用寫程式</strong>,真正 100% 取代 ERP,還加上 MES + ISO —— 全在同一個範式裡。」
       </div>
       <div class="footer-note">首客 pilot|鮮勇(食品加工 · 既有 Ragic 用戶 · 內部有 3 家 ERP);pipeline 17 家集中食品 / 團膳,平台不限產業。</div>
     </section>
@@ -195,8 +195,8 @@
     <!-- 7. 計算層 = 差異化命門 -->
     <section>
       <div class="kicker">核心差異化(docs/18)</div>
-      <h2>計算層 —— Ragic 過不去、傳統 ERP 才有的「<strong>算</strong>」</h2>
-      <p class="lead" style="margin-bottom: 14px;">1:1 對應兩層架構:<strong>Tier-2 = Ragic 已擅長的 80%</strong>;<strong>Tier-1 真實表 + 計算層 = 過不去的 20%</strong>。計算層蒸餾成規格(純合法):</p>
+      <h2>計算層 —— 讓「<strong>算</strong>」也不用寫程式</h2>
+      <p class="lead" style="margin-bottom: 14px;">1:1 對應兩層架構:<strong>Tier-2 = 表單平台已擅長的 80%</strong>;<strong>Tier-1 真實表 + 計算層 = 需要寫程式的 20%</strong>。計算層蒸餾成規格(純合法):</p>
       <div class="grid-2">
         <div class="card">
           <h4>財會 / 估值</h4>
@@ -253,7 +253,7 @@
           </tr>
         </tbody>
       </table>
-      <p class="lead" style="margin-top: 16px;"><strong>先 land 再 expand</strong>|客戶目前都在用 Ragic → R1 先把現有表單 app 原封搬上平台(遷移);R2 補上 Ragic 過不去的「算」才是付費升級。</p>
+      <p class="lead" style="margin-top: 16px;"><strong>先 land 再 expand</strong>|客戶目前都在用 Ragic → R1 先把現有表單 app 原封搬上平台(遷移);R2 讓「算」也不用寫程式,那才是付費升級。</p>
     </section>
 
     <!-- 9. 實證產能校準 -->
@@ -300,7 +300,7 @@
           <tr><td>C</td><td>公式引擎(fork Teable MIT)</td><td>第二護城河,spreadsheet 計算難</td></tr>
           <tr><td>C</td><td>單據流編排</td><td>ERP 靈魂 workflow,沒串好 ERP 感就沒了</td></tr>
           <tr><td>J</td><td>GL 合規 + 期結 + 多幣別</td><td>台灣科目表 / 匯兌損益錯了合規炸鍋</td></tr>
-          <tr><td>—</td><td>計算層(成本 / MRP / 估值)</td><td>「算」不是「填」,Ragic 過不去的差異化</td></tr>
+          <tr><td>—</td><td>計算層(成本 / MRP / 估值)</td><td>「算」不是「填」;讓它自助化即差異化</td></tr>
           <tr><td>M</td><td>批號 forward/backward 追蹤</td><td>召回法規要 traceability,做不到不能賣</td></tr>
           <tr><td>O</td><td>電子發票</td><td>法規強制,做不對客戶開不了發票</td></tr>
           <tr><td>Q</td><td>多 ERP 對帳 bridge</td><td>onboarding 一次性匯入客戶既有 ERP</td></tr>
