@@ -210,6 +210,15 @@ body{background:var(--s3);color:var(--ink);padding:24px;
 .acc > h4{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;
   color:var(--ink2);cursor:default}
 .acc > h4 .ch{margin-left:auto;color:var(--ink4)}
+/* 🔴 v6.2|新增欄位的**可發現入口**。原本只有「在空格打字」與右鍵兩條路,
+   而那兩條在靜態畫面上都看不見 —— 對非 Ragic 出身的使用者是不可發現的。
+   這與 OQ-FDW-9(子表)用過的論據同一條:肌肉記憶對老手成立,對新手不成立,
+   所以要保留一個**看得見**的入口。不畫框(§殼的互動項不畫框),吃主色淡底。 */
+.addf{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:30px;
+  border:0;border-radius:var(--r1);background:var(--pri-t);color:var(--pri-d);
+  font:inherit;font-size:14px;font-weight:500;cursor:default;transition:background var(--fast)}
+.addf:hover{background:color-mix(in srgb,var(--pri),white 84%)}
+.hintline{font-size:12px;line-height:16px;color:var(--ink3);margin-top:4px}
 .parts{display:flex;flex-wrap:wrap;gap:4px;margin-top:12px}
 .parts i{font-style:normal;display:inline-flex;align-items:center;gap:5px;font-size:12px;
   color:var(--ink2);background:var(--s1);border-radius:var(--r1);padding:5px 7px;cursor:grab}
@@ -326,7 +335,7 @@ q{quotes:"「" "」"}
 <div class="wrap">
 
 <div class="lede">
-  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v6</span></h1>
+  <h1>表單設計器 — UP-3c 高保真 mockup <span class="mono" style="font-size:14px;color:var(--ink3)">v6.2</span></h1>
   <p><b>v6 修的是「像公司內部後台」——量測後成因是缺層級,不是缺裝飾。</b>
      字級只有 11/12/13 三種小字在撐(11px 違規 24 處)、74% 是最輕的字重、間距 11 種值全擠在 2–10px
      —— 眼睛沒有任何線索可以分組。三項<b>全是規格早有、稿子沒照做</b>,已由
@@ -510,7 +519,9 @@ q{quotes:"「" "」"}
         <div class="row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/></svg>
           <span class="n"><em>列印在</em> 第 1 頁 · 右欄</span></div>
       </div>
-      <div class="acc"><h4>新增元件</h4>
+      <div class="acc"><h4>新增</h4>
+        <button class="addf"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增欄位</button>
+        <div class="hintline">也可以直接在空白格子上打字,或按右鍵。</div>
         <div class="parts">
           <i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>敘述欄位</i>
           <i><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 14 3-3 5 5"/></svg>圖片</i>
@@ -561,9 +572,17 @@ q{quotes:"「" "」"}
   <div class="body rel">
     <aside class="lp dsg">
       <div class="ptab"><b class="on">欄位</b><b>規則</b><b>樣式</b><b>公式</b></div>
-      <div class="who">尚未選取欄位</div>
-      <div class="whos">點畫布上任一格</div>
-      <div class="acc" style="box-shadow:none;padding-top:0">
+      <!-- 🔴 v6.2|面板要跟著畫布走。原本畫布上正在打字新增「運費」,面板卻寫「尚未選取欄位」
+           —— 那是兩個東西各說各話,而本模組的主張正好是「只有一個畫面」。 -->
+      <div class="who">運費<span class="cur"></span></div>
+      <div class="whos">新欄位 · A5:B5</div>
+      <div class="fld"><label>欄位名稱</label><input class="inp" value="運費"></div>
+      <div class="fld"><label>欄位種類</label>
+        <div class="selbox">單行文字<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div></div>
+      <!-- B′ 的兩個心智模型必須看得出差別:這一格還沒建立,所以還沒有任何相依 -->
+      <div class="hintline" style="margin-top:12px">
+        按 <span class="kbd">Enter</span> 建立。建立後才會有相依關係與稽核紀錄。</div>
+      <div class="acc">
         <h4>鍵盤</h4>
         <div class="parts" style="flex-direction:column;align-items:stretch">
           <i style="cursor:default"><span class="mono" style="color:var(--ink4);min-width:52px">⌘C / ⌘V</span>複製 / 貼上欄位</i>
@@ -681,6 +700,8 @@ q{quotes:"「" "」"}
     <tr><td>改欄位的後果</td><td class="k">看不到</td><td class="k ok"><b>「改這一欄會影響」</b><br>公式 / 規則 / 過帳 / 權限 / 列印</td><td>本模組<b>唯一過得了向上三條</b>的一項</td></tr>
     <tr><td>拖欄寬</td><td class="k">無回饋</td><td class="k ok">即時數字 + 輔助線</td><td>動效是狀態的說明,不是裝飾</td></tr>
     <tr><td>規則執法</td><td class="k wn">mockup 無任何檢查</td><td class="k ok"><code>mockup-hierarchy.spec</code></td><td>同型失誤第五次,共同點是「沒檢查」</td></tr>
+    <tr><td>新增欄位的入口<br><span class="k">v6.2</span></td><td class="k wn">只有「空格打字」與右鍵<br>兩條在畫面上都<b>看不見</b></td><td class="k ok">面板補「＋ 新增欄位」<br>+ 說明另兩條路</td><td>與 OQ-FDW-9(子表)同一條論據:肌肉記憶對老手成立、對新手不成立,要留可發現入口。⚠️ 我在子表守了、這裡沒守 —— review 抓到</td></tr>
+    <tr><td>畫面三的左面板<br><span class="k">v6.2</span></td><td class="k wn">寫「尚未選取欄位」<br>但畫布正在打字新增</td><td class="k ok">顯示草稿欄位 +<br>「按 Enter 建立」</td><td>面板與畫布各說各話,而本模組主張正是「只有一個畫面」</td></tr>
   </table>
 
   <h3 class="sec">v4 → v5 改了什麼</h3>
