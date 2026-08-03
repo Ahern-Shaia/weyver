@@ -119,9 +119,35 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 | Superset | Apache-2.0 | ✅ | ✅ | 未複核 |
 | **Metabase** | **AGPL-3.0(core)** | ❌ | ❌ 只讀公開文件(`docs/28` 為 2026-08-03 前之明示例外,見下) | 未複核 |
 
+**MES 生態(2026-08-03 逐一複驗 LICENSE 檔,完整表見 `docs/34 §1`)**|
+
+| 來源 | 授權(SPDX) | 可 fork | **可讀實作** | 查證日 |
+|---|---|---|---|---|
+| United Manufacturing Hub / benthos-umh | Apache-2.0(2023-03 由 AGPL relicense) | ✅ | ✅ | 2026-08-03 |
+| AMRC Factory+ / ACS | MIT | ✅ | ✅ | 2026-08-03 |
+| ktg-mes(苦糖果) | MIT | ✅ | ✅ | 2026-08-03 |
+| frePPLe | MIT(dual;商業版另計) | ✅ | ✅ | 2026-08-03 |
+| OR-Tools / Timefold Community / OFBiz / PLC4X / Rapid SCADA | Apache-2.0 | ✅ | ✅ | 2026-08-03 |
+| node-opcua / NanoMQ / FUXA / Bento / Telegraf / BaSyx | MIT | ✅ | ✅ | 2026-08-03 |
+| open62541 | MPL-2.0(檔案級 copyleft) | ✅ | ✅ | 2026-08-03 |
+| Mosquitto | EPL-2.0 OR BSD-3-Clause | ✅ | ✅ | 2026-08-03 |
+| B2MML(ISA-95 物件模型) | permissive + **強制姓名標示** | ✅ | ✅ | 2026-08-03 |
+| **qcadoo MES** | **AGPL-3.0-or-later** | ❌ | ❌ 只讀公開文件 | 2026-08-03 |
+| OpenMes / Axelor / Grash CMMS / openMAINT / **Grafana**(v8+) | AGPL-3.0 | ❌ | ❌ 只讀公開文件 | 2026-08-03 |
+| iPlusMES / 万界星空 / ERPNext / Tryton / Dolibarr / Scada-LTS / OpenPLC Editor | GPL-2.0 或 GPL-3.0 | ❌ | ❌ 只讀公開文件 | 2026-08-03 |
+| iDempiere / metasfresh | GPL-2.0 | ❌ | ❌ 只讀公開文件 | 2026-08-03 |
+| Odoo Community | LGPL-3.0 | ❌ | ❌ 只讀公開文件 | 2026-08-03 |
+| **EMQX v5.9.0+** | **BSL 1.1 —— 明文排除 embedded 出貨** | ❌ | ❌ | 2026-08-03 |
+| Redpanda Connect | Apache-2.0 + RCL 雙軌 | ❌ | ❌ 改用 Bento / benthos-umh | 2026-08-03 |
+| **LiteMES / ScadaBR** | **無 LICENSE 檔 = 保留所有權利** | ❌ | ❌ **完全不可用** | 2026-08-03 |
+
 **規則**|
 - 引用競品原始碼時**必附授權識別碼 + 查證日期**;無法確認者標**未查證**並**不得作為承重依據**。
 - 授權會變(NocoDB 就變過)→ **每次引用都重新確認**,不沿用舊結論。
+- 🔴 **`gh api ... --jq .license.spdx_id` 不可作為唯一依據** —— qcadoo(AGPL)、Odoo(LGPL)、frePPLe(MIT)、Mosquitto(dual)、B2MML **全數回 `NOASSERTION`**,偵測不出。**必須讀 LICENSE 檔本文。**
+- 🔴 **廠商行銷頁 / 部落格不算授權依據,只有 repo 內的 LICENSE 檔算數** —— 万界星空官方推廣文稱 Apache-2.0,repo LICENSE 實為 GPL-3.0。
+- 🔴 **同一家公司的不同產品授權可以不同** —— EMQ 的旗艦 EMQX 轉 BSL,邊緣產品 NanoMQ 仍 MIT。**不要以公司為單位推論。**
+- **無 LICENSE 檔 ≠ 開源** —— 等同保留所有權利,比 AGPL 更不可用。
 - ✅ **Metabase 已裁定(2026-08-03)|既成引用保留,往後從嚴**。
   逐項驗過才裁,不是憑感覺放行:
   - **採用的四項全是架構想法**(色彩兩層制 / 由 base 以 `color-mix` 推導 / `--icon-*` 對齊文字階 /
