@@ -1,0 +1,246 @@
+# approval-advanced.md — [R1·後續-1b] 簽核進階語意(動態簽核人 / 會簽擇辦 / 加簽 / 退回 / 不可竄改)
+
+| | |
+|---|---|
+| 狀態 | 📝 **M0 DRAFT — OQ-AP2-1..11 待裁定** |
+| 建立 | 2026-08-03 |
+| 上游 | [actions-approval.md](actions-approval.md) §0-bis 之 P1 第 7–11 項(task #104);代理簽核已於 2026-08-01 交付 |
+| 為什麼獨立成檔 | 六個子項**各自改動簽核狀態機的語意**(誰是簽核人 / 一關算不算過 / 關卡集合可否在執行期變動 / 往回走 / 紀錄可否被改)。這不是加功能,是動地基 —— 混進既有模組的 changelog 會讓「當初為什麼這樣設計」查不回來 |
+
+---
+
+## 0. 現況(對碼查證,2026-08-03)
+
+**不是從文件推的,是逐一打開檔案確認的。**
+
+| 面向 | 現況 | 出處 |
+|---|---|---|
+| 簽核人 | **一關一個靜態角色**:`approvalStepSchema = { stepNo, approverRoleId, amountField?, minAmount? }` | `actions/action-specs.ts` |
+| 一關算不算過 | 單人決定即推進,無 N-of-M 概念 | `approval.service.ts` |
+| 進行中的狀態 | `approval_instance`:`currentStep` / `status` / `submittedBy` —— **單軌** | `db/schema.ts` |
+| 紀錄 | `approval_step_log`:`stepNo` / `actorId` / `decision` / `onBehalfOfActorId` / `comment`。**append-only 只是慣例,沒有任何機制保證** | `db/schema.ts` |
+| 退回 | 只有終審駁回 + 重送從頭 | §0-bis 第 9 項 |
+| 代理人 | ✅ 已交付(`approval_delegate` + `on_behalf_of` + 待簽匣納入 + 不遞移) | v1.2 |
+
+### 🔴 0.1 最關鍵的架構事實:**本專案沒有「主管」這個關係**
+
+全庫 grep `managerActorId` / `manager_id` / `parentRoleId` —— **零命中**。
+現有的唯一組織結構是 **role tree**:`roles.parentId`(自我參照)+ `roles.depth` + `role_members`(actor ↔ role),
+它目前的用途是**權限繼承**(authz-resource-inheritance)。
+
+這件事直接決定 OQ-AP2-1:要嘛從 role tree 推導主管,要嘛新增第二份組織關係。
+**兩份組織結構會分岔** —— 這不是理論風險,是「權限樹改了、簽核流沒跟著改」這種日常。
+
+---
+
+## 1. 競品證據(一手查證,2026-08-03)
+
+> 逐字引用原文。凡標「查不到」者為真的查不到,不以推測填空 ——
+> 「文件沒提到」與「官方明說不做」對決策的意義完全不同,故分開標注。
+
+### 1.1 動態簽核人:組織關係存在哪裡
+
+**沒有一家用獨立組織樹,全部掛在使用者物件上。**
+
+- **Ragic**(最直接對標,官方繁中逐字):
+  > 「選擇**直屬主管**的話,系統就會送簽給發起簽核的使用者的直屬主管;選擇**直屬主管的主管**,簽核對象就會是該名使用者主管的主管;選擇**前一簽核人的主管**,簽核對象就會是前一名簽核者的主管。」
+  > 「(直屬主管及直屬主管的主管簽核功能,會需要搭配**系統使用者表單的直屬主管欄位**。若您的表單中沒有此欄位,請聯絡 Ragic support 協助更新系統表單)」
+  > —— [Ragic 設定簽核](https://www.ragic.com/intl/zh-TW/doc/15/approval-flow-configuration)(官方)
+- **Salesforce**:`ApprovalStepApprover` 型別為**封閉列舉** `adhoc` / `user` / `userHierarchyField` / `relatedUserField`;`userHierarchyField` 搭配 `nextAutomatedApprover`,可選「從記錄擁有者的階層而非送簽者的階層開始」—— [Metadata API](https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/meta_approvalprocess.htm)(官方)
+- **SAP S/4HANA Flexible Workflow**:recipient role 提供 Manager of Workflow Initiator / of Initiator's Manager / of Last Approver —— [SAP Community(SAP 作者)](https://community.sap.com/t5/enterprise-resource-planning-blog-posts-by-sap/using-the-agent-determination-manager-of-approver/ba-p/12839688)。help.sap.com 原文**查不到**
+
+**→ Ragic 的三種解析(直屬主管 / 主管的主管 / 前一簽核人的主管)是 parity 基準線,不是進階功能。**
+
+### 1.2 🔴 解析失敗:業界一致是「硬失敗」,沒有人做 fallback
+
+- **Salesforce 直接擋住並報錯**:「This approval request requires the next approver to be determined by the *Field Name* field. This value is empty.」
+  且該錯誤「can occur when someone submits a record for approval **or when an approver responds to an approval request**」;觸發條件是「the field has no value **or specifies an inactive user**」
+  —— [sfdc techie](https://sfdctechie.wordpress.com/2017/11/04/what-does-this-approvals-error-mean/)(第三方逐字轉錄;官方頁 JS 渲染抓不到原文,**證據強度中等**)
+  **兩個要點**:(a) **離職與空值同等對待**;(b) **流程跑到一半才炸**,不是送簽當下。
+- **SAP**:解析不到 → work item 進 "No agent found",需管理員以 SWI1_RULE 重跑 —— [SAP Community](https://community.sap.com/t5/technology-q-a/workflow-stuck-due-to-no-agent-found/qaq-p/10386464)(社群)
+- **「主管就是申請人自己」**:ServiceNow **無內建防護**,社群做法是自寫 business rule —— [ServiceNow Community](https://www.servicenow.com/community/developer-forum/auto-approve-when-the-requestor-is-same-as-approver/m-p/1563556)(社群)。
+  唯一有官方開關的是 **Odoo Studio Exclusive Approval**:「Enable Exclusive Approval on any step so that a user who approves a step **cannot approve another step for the same record**.」
+  —— [Odoo 19 Studio](https://www.odoo.com/documentation/19.0/applications/studio/approval_rules.html)(官方)。但它解的是「同一人簽兩關」,**不是**「主管=申請人」。
+- **自動往上跳一層 / 改送代理人 / 轉租戶預設簽核人這類 fallback:五家全部查不到。**
+
+**→ 這是一個「沒有前例可抄、但也沒有前例反對」的位置。要做就得自己定義並承擔。**
+
+### 1.3 N-of-M:過半數是少數派能力
+
+| 系統 | 支援度 | 逐字 |
+|---|---|---|
+| **JSM** | 最精確,**三種** | `approval.condition.type`:「**number** - when a specific number of people should approve … **percent** - when a percentage of people should approve … **numberPerPrincipal** - when a specific number of people **from each group** should approve」—— [Atlassian KB](https://support.atlassian.com/jira/kb/jira-service-management-cloud-approval-workflow-properties/)(官方)|
+| **Ragic** | 會簽 / 擇辦 | 「會簽:群組中所有人都同意才簽過。擇辦:群組中部分人同意就簽過。」設定為「點擊圖示旁的 All 來設定擇辦人數」,且「**若將擇辦人數清空,則等同於會簽(All)**」—— [Ragic](https://www.ragic.com/intl/zh-TW/doc/15/approval-flow-configuration)(官方)|
+| **ServiceNow** | Anyone / All / % / # | 官方頁 JS 渲染**抓不到原文**,來源為社群整理,**證據強度中等** |
+| **Camunda** | 任意 quorum | `numberOfCompletedInstances / numberOfInstances >= 0.5` —— [Multi-instance](https://docs.camunda.io/docs/components/modeler/bpmn/multi-instance/)(官方)|
+| **Salesforce** | **官方明說只有兩種** | `Unanimous`(預設)「**If any of the approvers reject the request, the approval request for this step is rejected.**」/ `FirstResponse`「Approve or reject based on the first response.」**封閉列舉,無百分比無計數** —— [Metadata API](https://developer.salesforce.com/docs/atlas.en-us.api_meta.meta/api_meta/meta_approvalprocess.htm)(官方)|
+
+**🔴 Ragic 的資料模型設計值得直接抄**:「擇辦人數清空 = 會簽」——
+**All 是 N 的退化值,不是獨立模式**。一個欄位表達兩件事,少一個永遠可能矛盾的 enum。
+
+**有人拒絕時等不等**:Power Automate 講得最白 ——
+「The actions that follow the **Start and wait for an approval** action run after *all* the approvers respond, **or when a single rejection occurs**.」
+(即**立刻整單否決,不等**)—— [Microsoft Learn](https://learn.microsoft.com/en-us/power-automate/get-started-approvals)(官方)。
+Salesforce 同。**Ragic 會簽遇拒絕的處理:官方明文查不到。**
+
+### 1.4 加簽:Ragic 是唯一把「方向」做成一級概念的
+
+> 「**簽核人**在簽核表單時也可以加簽其他成員。只要點擊在簽核欄最右側的 **+** 按鈕就可以選擇加簽的方式。」
+> - 向前加簽:「在目前簽核的前一階增加新的簽核人,**並且暫停你目前的簽核動作**。」
+> - 臨時加簽:「在目前簽核的同一階增加新的簽核人。」
+> - 向後加簽:「在目前簽核的後一階增加新的簽核人。」
+>
+> —— [Ragic 使用簽核流程](https://www.ragic.com/intl/zh-TW/doc-user/13/approval-flow)(官方)
+
+三種各自對應不同的狀態機操作,而且**「向前加簽會暫停目前簽核動作」直接回答了「簽完回到哪」—— 回到原關**。
+
+- **Power Automate** 有官方 Reassign;實作語意由第三方拆解:「The 'Reassign' button **makes a new row, and marks the old one as delegated**.」
+  —— [Matthew Devaney](https://www.matthewdevaney.com/reassign-an-approval-in-power-automate/)(第三方)。
+  **與我方已交付的 `on_behalf_of` 同源**:新列 + 舊列標記,而非改寫舊列。
+- **Salesforce**:只有 `allowDelegate` 與**設計期**的 `adhoc` approver;執行中插入關卡在 metadata 模型裡**不存在**(封閉列舉,強證據)。
+- **⚠️ 刻意不做的訊號**:ServiceNow 無官方 ad-hoc 加簽,社群結論需 scripting,並直言
+  「**approvals aren't really designed to be added manually in this way**」—— 手動加的 approval 不會正確反應 rejection
+  —— [ServiceNow Community](https://www.servicenow.com/community/developer-forum/adhoc-approvals-for-change-requests/m-p/2751524)(社群)。
+  **這是「動態插入關卡會破壞狀態機一致性」的實務警告,直接寫進本模組的風險欄。**
+- 「加簽導致稽核軌跡難讀」:**查不到任何官方或第三方論述**。
+
+### 1.5 退回:兩端很清楚
+
+- **Salesforce 只給退一關**(封閉列舉):`RejectRequest`「Rejects the request even if previous steps were approved.」/
+  `BackToPrevious`「Rejects the request, and **returns the approval request to the previous approver**.」—— 官方 Metadata API
+- **Kissflow 是這題的完整答案**:
+  「Send back allows the assignee to send an in progress item back to a previous step in the workflow.」
+  可限制目標:「You can limit the number of preceding steps … **When you disable this option, items can be sent to all preceding steps.**」
+  —— [Kissflow](https://community.kissflow.com/t/g9h9qt6/configuring-actions-for-process-steps)(官方社群文件)
+- **退回後指派給誰,Kissflow 明確二選一**(這正是「歷史簽核人 vs 重新解析」的分岔):
+  「it will be assigned **only to the user who previously approved it at that step**」vs
+  「it will be assigned to **all users and groups originally set as assignees for the step**」
+  —— [Send back actions](https://community.kissflow.com/t/h7ylt39/send-back-actions)(官方社群文件)
+- **🔴 已簽過的關要不要重簽:預設是全部重簽,而且沒有人做得更好。**
+  Kissflow 自己承認這是痛點:「when proposals are sent back for revisions, **they must go through all the approval steps again, causing unnecessary redundancy**」,
+  官方給的解法只是「在特定關加條件跳過」—— [Kissflow](https://kissflow.com/workflow/how-to-automate-document-management-workflows/)(官方)。
+  **沒有任何一家提供「保留已簽結果、只重簽受影響關卡」的內建語意。**
+- **Camunda 刻意不把退回放進 BPMN 語彙**:唯一路徑是 process instance modification
+  (`cancelActivityInstance(...).startTransition(...)`)—— [Camunda Forum](https://forum.camunda.io/t/go-back-to-previous-user-task/29485)(官方論壇)。
+  意涵:**退回被視為流程實例的例外操作,不是流程模型的一部分。**
+- **Ragic 是否支援退回指定關:官方文件查不到。**
+
+### 1.6 🔴 append-only:查遍六家,沒有一家在簽核紀錄上做 hash chain
+
+- **Salesforce** 靠「物件宣告為 read-only」在 API 層封死:`ProcessInstanceHistory` 是
+  「a read-only object which shows all steps and pending approval requests associated with an approval process」,
+  且「neither searchable nor queryable」—— 官方頁 JS 渲染抓不到,逐字取自 [riptutorial](https://riptutorial.com/salesforce/example/21989/processinstancehistory-)(第三方,**證據強度中等**)。
+  **強制力來自平台沒開 DML 入口,不是資料庫層。**
+- **ServiceNow**:`sysapproval_approver` 就是一張一般表,靠 ACL + sys_audit,**無不可竄改機制**
+- **🔴 Odoo 有真正的 hash chain,但用在會計分錄不是簽核,而且是稅務機關逼出來的**:
+  「Tax authorities in some countries require companies to prove their posted accounting entries are inalterable」;
+  做法是「Odoo can use the SHA-256 algorithm to create a unique fingerprint for each posted entry, called a hash」,
+  串鏈方式是「**The previous entry's hash is always added to the next entry to form a hash chain. This is used to ensure a new entry is not added afterward between two posted entries, as doing so would break the hash chain.**」
+  —— [Odoo 18 資料不可竄改檢查報告](https://www.odoo.com/documentation/18.0/applications/finance/accounting/reporting/data_inalterability.html)(官方)。
+  **這是唯一可借用的 OSS 先例,而且它同時提供「檢查報告」讓稽核者自行驗證鏈有沒有斷 —— 不只寫入端防護,還有讀取端證明。**
+- SAP / Power Automate / Ragic / Kissflow 是否對簽核 log 做技術性防竄改:**全部查不到**(屬「文件沒提到」)。
+
+**我方已有的先例**:F-8 的 `tenant_usage_daily` —— **app 車道只授 SELECT**,
+append-only 由**權限**保證而非自律,整合測以 `SET ROLE weyver_app` 斷言 UPDATE/DELETE 皆 permission denied。
+這比 Salesforce 的「平台沒開入口」更硬,因為它在 DB 層。
+
+---
+
+## 2. 範圍
+
+### 2.1 做
+
+七項,對應 §0-bis 第 7–11 項與實作期發現的兩個缺陷:
+
+1. 動態簽核人解析(直屬主管 / 主管的主管 / 前一簽核人的主管)
+2. 會簽 / 擇辦(N-of-M)
+3. 加簽(方向三分法)/ 轉簽
+4. 退回到指定關
+5. 簽核紀錄 append-only 之**機制性**保證
+6. 鎖定逃生路徑(§0-bis 第 10 項)
+7. `decide()` 的先讀後寫 race → 條件式 UPDATE(§0-bis 資料模型節已點名)
+
+### 2.2 不做,並說明為什麼
+
+- **逾期提醒 / 升級**|已於 P0 批次(#103)處理,不重複。
+- **BPMN / 流程圖編輯器**|本模組維持 DB 狀態機。Camunda 的證據反而支持這個選擇:
+  連 BPMN 都把「退回」排除在流程模型之外,當成實例的例外操作。
+- **「保留已簽結果、只重簽受影響關卡」**|§1.5 已查證**業界無人做**。
+  它需要「哪些關卡受這次修改影響」的判定,而那需要欄位級的變更影響分析 —— 規模等同另一個模組。
+- **簽核流程的視覺化編輯器**|ZEN 決策表 UI 未曝露(§0-bis 第 4 項)是另一條殘留,不混進來。
+
+---
+
+## 3. 開放問題(OQ-AP2-N)— **待裁定**
+
+| # | 議題 | 選項 | 建議 |
+|---|---|---|---|
+| **OQ-AP2-1** ⭐⭐ | **「主管」關係從哪來** | A. **由 role tree 推導**(申請人的角色 → `parentId` → 該父角色的成員即為主管)<br>B. **新增 `actors.manager_actor_id`**(Salesforce / Ragic 形態)<br>C. 兩者並存,B 優先 A 兜底 | **A** —— 我方已有 role tree 且它**已經是權限繼承的真實來源**;B 會製造**第二份組織結構**,而兩份組織結構必然分岔(「權限樹改了、簽核流沒跟著改」是日常不是意外)。代價誠實列出:A 的「主管」是**一組人**不是一個人,故 OQ-AP2-3 的 N-of-M 變成必需品而非選配;且 Ragic 客戶遷移時他們的「直屬主管欄位」要映射成角色關係。**若決策方認為客戶心智就是「一個主管」,則選 B** —— 這一題是產品心智問題,不純是技術問題 |
+| **OQ-AP2-2** ⭐⭐ | **解析失敗怎麼辦**(沒設主管 / 主管離職 / 主管就是申請人) | A. **硬失敗,且在送簽當下就擋**<br>B. 硬失敗,但跑到那一關才炸(Salesforce 現況)<br>C. fallback 鏈(往上跳一層 → 租戶預設簽核人 → admin) | **A** —— 業界一致硬失敗(§1.2),**沒有人做 fallback**,故 C 是無前例可抄也無前例反對的自創,風險由我方獨吞。但 **B 是明確的反面教材**:Salesforce 會在「簽核人回應時」才炸,那時單子已經走到一半、申請人早就以為送出去了。**送簽當下就解析全部關卡並擋下**,代價是「送簽後才離職」仍會卡住 → 由 OQ-AP2-9 的逃生路徑接手。**「主管=申請人」比照 Odoo Exclusive Approval 明確擋下**,不靜默跳關 |
+| **OQ-AP2-3** ⭐ | **N-of-M 的資料模型** | A. **`quorum: number \| null`,null = 全體同意**(Ragic 形態)<br>B. `mode: 'all' \| 'any' \| 'quorum'` + `quorum?`<br>C. 加上 JSM 的 `numberPerPrincipal`(每群組各 N 人) | **A** —— Ragic 官方逐字「若將擇辦人數清空,則等同於會簽(All)」:**All 是 N 的退化值**。B 的 enum 與數字永遠可能矛盾(`mode:'all'` 卻帶 `quorum:2` 要信哪個),A 結構上不可能矛盾。C 暫不做:JSM 有它是因為它的簽核人可以是多個 group picker,我方一關一個角色,沒有「每群組」可言 |
+| **OQ-AP2-4** | **會簽關卡有人拒絕** | A. **立刻整單否決,不等其他人**<br>B. 等全部回應完再結算 | **A** —— Power Automate 與 Salesforce 官方皆明文如此(§1.3 逐字)。B 會讓已經確定不會過的單子繼續佔著其他人的待簽匣 |
+| **OQ-AP2-5** ⭐ | **加簽做幾種** | A. **三種全做**(向前 / 臨時 / 向後,對齊 Ragic)<br>B. 只做「臨時加簽」(同關加人)<br>C. 只做轉簽,不做加簽 | **B 起步,A 為目標** —— 三種之中**只有「臨時加簽」不改變關卡集合**(它只是擴充該關的 N-of-M 成員,而 OQ-AP2-3 已經把那個結構做出來了),因此**幾乎零額外狀態機風險**。向前 / 向後加簽會在執行期插入關卡,正是 ServiceNow 社群警告「approvals aren't really designed to be added manually in this way」的那件事。**建議 B 先出、A 列本模組 P1**,並在 doc 明記「Ragic 有三種,我們先做一種」以免日後誤以為已 parity |
+| **OQ-AP2-6** | **退回目標** | A. **只退一關**(Salesforce `BackToPrevious`)<br>B. **可退任意先前關卡,並可逐關設定白名單**(Kissflow)<br>C. 只退回申請人(現況) | **B** —— A 對多關流程不夠用(第 4 關發現第 1 關填錯,退一關給第 3 關的人毫無意義);Kissflow 的「可限制範圍」讓嚴謹流程仍能收斂。誠實代價:B 的狀態轉移比 A 多,測試面較大 |
+| **OQ-AP2-7** | **退回後那一關指派給誰** | A. **原本簽過的那個人**<br>B. **該關原始指派集合(重新解析)**<br>C. 逐關可設 | **B** —— A 在「原簽核人已離職」時直接卡死,而那正是我們要避免的形態;B 與 OQ-AP2-1 的動態解析同源,語意一致。Kissflow 兩者都給(§1.5 逐字),故 **C 是有前例的**,但先不做 —— 多一個設定要多一份說明,而 B 涵蓋絕大多數情況 |
+| **OQ-AP2-8** | **退回後已簽關卡要不要重簽** | A. **全部重簽**<br>B. 保留已簽結果,只重簽受影響關卡 | **A** —— §1.5 查證**業界無人做 B**,連 Kissflow 都只能承認這是痛點。B 需要「哪些關卡受這次修改影響」的判定,那是欄位級變更影響分析,規模等同另一個模組。**A 要在 UI 上講清楚**(退回時明示「重新送出後需重跑全部關卡」),不能讓人以為只補簽一關 |
+| **OQ-AP2-9** ⭐⭐ | **append-only 怎麼強制** | A. **DB grant:app 車道對 `approval_step_log` 只授 SELECT / INSERT**<br>B. **A + Odoo 式 hash chain + 稽核用的鏈完整性檢查報告**<br>C. 維持現況(靠自律) | **B** —— A 是我方已驗證的先例(F-8 `tenant_usage_daily`,整合測以真 `weyver_app` 角色斷言 UPDATE/DELETE permission denied),**比 Salesforce 的「平台沒開入口」更硬**,且成本只有一段 grant。但 A 擋不住**握有特權連線的人**,而 21 CFR Part 11 要求「連系統管理員都不應能改」(§0-bis 第 11 項)。Odoo 的 hash chain 是唯一可借用的 OSS 先例,**且它附了檢查報告 —— 讀取端能自行證明鏈沒斷,這對食品廠 ISO 22000 稽核正是被問到的東西**。若決策方認為 R1 不需要到 Part 11 等級,則**退為 A**,並把 B 列為觸發條件明確的後續(第一個要求 Part 11 的客戶) |
+| **OQ-AP2-10** | **鎖定逃生路徑** | A. **三條全做**(admin 強制解鎖 / allowed-users 白名單 / 改派簽核人)<br>B. 只做 admin 強制解鎖 | **A** —— Salesforce 三條都有(§0-bis 第 6 項),而我方目前**只有 withdraw**,簽核人離職會導致記錄永久鎖死。三條各解不同情境:解鎖給緊急修改、白名單給常態例外、改派給人事異動。**每一條都必須進 `approval_step_log`** —— 逃生路徑不留痕就是內控破口 |
+| **OQ-AP2-11** | **`decide()` 的先讀後寫 race** | A. **條件式 UPDATE**(`WHERE status='pending' AND current_step=N`,0 列即為併發)<br>B. `SELECT … FOR UPDATE`<br>C. 唯一約束 | **A** —— 與 I-1 匯出的下載計數同一個修法(已在本專案驗證過:先查再寫會讓兩個分頁各自看到「還剩 1 次」)。B 要多一次往返且鎖範圍較大;C 對「同一關兩人同時簽」擋不住(兩列本來就都該存在)。**A 的 0 列回查要給出精確原因**,不能只回「失敗」 |
+
+---
+
+## 4. 資料模型(草案,待 OQ 定案後調整)
+
+```
+approval_def.steps[]  擴充(全為選配,既有定義零遷移)
+  approverRoleId      既有:靜態角色
++ approverRule         'role' | 'manager' | 'managerOfManager' | 'managerOfPrevApprover'
++ quorum               number | null   -- null = 全體同意(Ragic 退化式)
++ returnableTo         number[] | null -- 可退回的關卡白名單;null = 全部先前關卡
+
+approval_instance     不變(currentStep / status 仍為單軌)
+
+approval_step_log     既有,加:
++ addedByActorId       臨時加簽的來源(誰把這個人拉進來的)
++ prevHash / hash      OQ-AP2-9 選 B 時才加
+  → app 車道 grant 收斂為 SELECT / INSERT(OQ-AP2-9 選 A/B 皆需)
+```
+
+**一關算不算過,由 `approval_step_log` 推導,不另存計數** ——
+計數欄與 log 是兩份真相,遲早分岔;而 log 本來就是 append-only 的那一份。
+
+---
+
+## 5. 里程碑(草案)
+
+| M | 內容 | 產出 |
+|---|---|---|
+| M1 | `decide()` 條件式 UPDATE(OQ-11)+ `approval_step_log` grant 收斂(OQ-9 之 A) | api |
+| M2 | 動態簽核人解析 + 送簽當下的可解析性檢查(OQ-1 / OQ-2) | api |
+| M3 | N-of-M(OQ-3 / OQ-4)+ 臨時加簽(OQ-5 之 B) | api |
+| M4 | 退回到指定關(OQ-6 / OQ-7 / OQ-8) | api |
+| M5 | 鎖定逃生路徑三條(OQ-10) | api |
+| M6 | 設定 UI + 簽核畫面(加簽 / 退回目標選擇 / 重簽警語) | web |
+| M7 | FMEA + e2e + docs/25 回填 | 兩側 |
+
+> **M1 刻意排最前**:它們是**既有的缺陷**不是新功能,而且 grant 收斂會讓後面每一個 milestone
+> 都在「log 真的改不動」的前提下開發 —— 反過來做的話,前面幾個 milestone 寫出來的程式碼
+> 可能已經預設自己能改 log。
+
+≈ 0.5–0.7 人月(視 OQ-9 是否含 hash chain)。
+
+---
+
+## 12. 失效場景反思(FMEA)
+
+> M7 收尾時填。設計階段已預見的:
+> 動態解析在送簽後才失效(主管離職)· 加簽讓稽核軌跡難讀(§1.4 查不到業界論述 = 我方要自己想)·
+> 退回白名單設錯導致單子退不回去 · hash chain 一旦斷裂如何處置(Odoo 的檢查報告只報告不修復)
+
+---
+
+## 13. 變更紀錄
+
+| 日期 | 版本 | 變更 | 作者 |
+|---|---|---|---|
+| 2026-08-03 | v0.1 | M0 DRAFT。**§0.1 對碼查證推翻一個隱含前提**:本專案**沒有任何「主管」關係**,只有用於權限繼承的 role tree —— 動態簽核人不是「接一個欄位」而是「要不要引入第二份組織結構」的架構決定(OQ-AP2-1)。**§1 一手查證五題**:(a) Ragic 三種動態解析為 **parity 基準線非進階**,且官方明載相依於系統使用者表單的直屬主管欄位;(b) **解析失敗業界一致硬失敗、無人做 fallback**,Salesforce 更把「離職」與「空值」同等對待且**在簽核人回應時才炸**(反面教材);(c) Ragic 的 **「擇辦人數清空 = 會簽」** 是最好的 N-of-M 資料模型 —— All 是 N 的退化值,結構上不可能矛盾;(d) Ragic 的**加簽三分法**直接回答「向前加簽會暫停目前簽核動作」,而 **ServiceNow 社群明文警告** ad-hoc 加簽會破壞狀態機一致性;(e) **退回後全部重簽是業界唯一預設**,Kissflow 自承是痛點,無人做「只重簽受影響關卡」;(f) **簽核紀錄 hash chain 六家皆無**,Odoo 有但用在會計分錄且附**鏈完整性檢查報告**(讀取端可自證),是唯一可借用的 OSS 先例。OQ-AP2-1..11 待裁定 | Claude Code |

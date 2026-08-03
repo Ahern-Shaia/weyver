@@ -373,3 +373,72 @@ OQ-PC-9 的裁定(widget 級 all-or-nothing)仍有效,實作時直接沿用。
 |---|---|---|---|
 | 2026-07-30 | **v1.0 SHIPPED**(M4 除外) | M1→M3 + M5 落地(§4.7)。**核心決斷成立**:pivot 與 group-stats 共用引擎,只改 grouping set 產生規則(前綴 rollup → 兩組前綴笛卡兒積),RLS/交易/filter/聚合/截斷全部不動。回長表、前端轉置。**實走揪出兩個研究未預見的 a11y 問題**:ECharts 只內建簡體且自動描述覆寫 `aria-label`;自動描述在直角座標系下把軸索引唸成資料值(§4.7)—— 研究說「a11y 是一行開關」對 `decal` 成立、對自動描述不成立。**M4 小圖表列殘留並說明理由**。api 589 + web 87 + e2e 5 全綠 | Claude Code |
 | 2026-07-30 | v0.1 | M0 DRAFT。承 docs/25 §F 之 pivot(5)+ 圖表(4)+ 儀表板(4)。**兩路深度研究推翻原規劃兩個前提**:(a) **Ragic 的資料儀表板根本不可拖拉**(官方逐字「依據表單中的位置,從左到右、從上到下依序排列」),可拖曳的是**小圖表 widgets**,且首頁為受限直欄版面 → `docs/10` §131「拖拉排版」記載有誤需更正,拖拉式儀表板非 parity 必要項;(b) **業界一致回長表**,沒有一家回動態寬表(Metabase/Superset/Cube 原始碼),PG result set 1,664 欄為硬天花板。**最省的結論**:F-1 的 group-stats 只需改 grouping set 產生器(前綴 rollup → 兩組前綴笛卡兒積),RLS/交易/filter/聚合/截斷全部不動。**§0.5 洩漏面主角是維度值清單而非聚合值** —— CVE-2024-55951(Metabase filter values 跨 sandbox 快取共用)為直接可引之公開事件。圖表庫維持 ECharts(Apache-2.0 + a11y 一行開關 + 甘特/地圖一次補齊),但不用 `echarts-for-react`。OQ-PC-1..9 待裁定 | Claude Code |
+
+---
+
+## 11. M4 小圖表:動工前的設計增補(2026-08-03)
+
+> **本節不是新模組**。M4 的核心裁定(OQ-PC-9 = widget 級 all-or-nothing)仍然有效。
+> 但為 M4 補查競品時,查出**三件既有設計沒有涵蓋、且會改動實作**的事,故補三條 OQ。
+
+### 11.1 🔴 列表頁小圖表會跟著使用者當下的篩選連動 —— 表單頁不會
+
+Ragic 官方把篩選優先序列成表([doc/122](https://www.ragic.com/intl/zh-TW/doc/122/widgets)):
+
+| 小圖表位置 | 篩選優先序 |
+|---|---|
+| **列表頁** | 固定篩選 > **自訂篩選及共通篩選** > 小圖表本身設定的篩選條件 |
+| 表單頁 / 首頁 | 固定篩選 > 小圖表本身設定的篩選條件(**沒有中間那層**) |
+
+**這一條之前完全沒被設計進去**,而它決定了 M4 的資料流形狀:
+列表頁的 widget **不能只吃自己的設定**,必須拿到當下 view 的 filter 一起送查詢。
+語意上也是對的 —— 使用者把列表篩成「本月南區」,旁邊那張圖還顯示全年全區,那張圖是在騙人。
+
+### 11.2 🔴 觀看者對分組 / 聚合欄位無權限時,圖表怎麼辦
+
+三家三種做法,**沒有一家靜默略過**:
+
+| 系統 | 做法 | 逐字 |
+|---|---|---|
+| **Ragic** | **設計期就擋** | 欄位層級存取權限影響表:「報表|**分析欄位無法選擇無權限欄位**」—— [doc/32](https://www.ragic.com/intl/zh-TW/doc/32/access-rights) |
+| **Salesforce** | **執行期 fail-closed,給具名錯誤** | 「The report chart is not available because **the running user doesn't have access to a field used for grouping or aggregation**」—— [KB 000387647](https://help.salesforce.com/s/articleView?id=000387647&type=1) |
+| **Metabase** | 縮限安全機制的適用範圍並明文公告 | 「Row and column security permissions **don't apply to public questions or public dashboards**」·「Groups with native query permissions … **can bypass** row and column security」—— [docs](https://www.metabase.com/docs/latest/permissions/row-and-column-security) |
+
+我方有欄位級權限(遮罩 / 隱藏),所以這題**一定會遇到**:
+建圖的人看得到「成本」欄,觀看者看不到,那張圓餅圖要不要畫。
+
+### 11.3 🔴 快照 / 排程產物的權限落差是全業界共通破口
+
+兩家自陳,**都是明文警告**:
+
+- **Ragic**:「**注意:快照是以 SYSAdmin 的權限產生的,因此內容可能包含檢視者在報表中無權存取的資料。**」—— [doc/9](https://www.ragic.com/intl/zh-TW/doc/9/reports)
+- **Metabase**:「**Notification recipients can see whatever the notification creator can see.**」—— [docs](https://www.metabase.com/docs/latest/permissions/notifications)
+
+對照之下,Ragic 的**即時**計算是跟著觀看者走的:
+「備註:**使用者看到的分析結果只會包含該使用者有權限瀏覽的資料。**」(同上)
+
+→ **即時依觀看者、非同步依建立者** 是業界共通的斷層。M4 只做即時 widget 故不受影響,
+但這條要記著:**日後任何「排程寄送圖表 / 快照」的功能,第一個要決定的就是以誰的權限算。**
+
+### 11.4 順帶查證:兩件既有記載
+
+- ✅ **「Ragic 資料儀表板不可拖拉、可拖曳的是小圖表」成立**。儀表板是自動生成:
+  「各欄位統計數據會依據表單中的位置,從左到右、從上到下依序排列顯示」([doc/7](https://www.ragic.com/intl/zh-TW/doc/7/dashboard-report));
+  小圖表則「**能夠拖曳到表單的任何位置,一張表單也可以插入多個小圖表**」([doc/122](https://www.ragic.com/intl/zh-TW/doc/122/widgets))。
+- 🔴 **Ragic 小圖表的下鑽行為官方沒提**(屬「文件沒提到」)。但樞紐分析的下鑽有明確副作用警告:
+  下鑽會套上篩選,而「如果希望報表回到可以查看所有資料的狀態,則需要先在表單列表頁點選**清除篩選與排序**」
+  ([doc-user/27](https://www.ragic.com/intl/zh-TW/doc-user/27/pivot-table))——
+  **下鑽污染列表頁的持久篩選狀態**,是可預期的客訴來源。我方若做下鑽,不應沿用這個行為。
+- **Teable 已把獨立儀表板整個廢掉**:「**The standalone Dashboard feature has been replaced by App Builder.**」
+  ([changelog](https://help.teable.ai/changelog))—— 與 docs/24「儀表板為次要視圖」同向的又一個佐證。
+
+### 11.5 補三條 OQ(待裁定)
+
+| # | 議題 | 選項 | 建議 |
+|---|---|---|---|
+| **OQ-PC-10** | 列表頁 widget 是否吃當下 view 的篩選 | A. **吃,且優先序照 Ragic**(固定 > 使用者篩選 > widget 自身)<br>B. 只吃 widget 自身設定 | **A** —— B 會讓「列表篩成本月南區、旁邊圖顯示全年全區」,那張圖在騙人。表單頁 / 首頁維持不吃(沒有「當下篩選」可言) |
+| **OQ-PC-11** ⭐ | 觀看者對分組 / 聚合欄位無權限 | A. **設計期擋 + 執行期 fail-closed 雙保險**(Ragic + Salesforce 兩者都做)<br>B. 只做設計期擋<br>C. 只做執行期擋 | **A** —— B 擋不住「建完圖之後才收回權限」(而那正是權限收回的常態);C 讓使用者建得出一張永遠壞掉的圖。兩者成本都低:設計期是欄位候選清單過濾,執行期是渲染前比對 `fieldVisibility`。**錯誤訊息要具名**(照 Salesforce),不能只顯示空白圖 —— 空白圖會被當成「沒資料」 |
+| **OQ-PC-12** | widget 可見群組的候選清單 | A. **先被來源表單權限過濾**(Ragic 形態:預設繼承、只能收窄)<br>B. 列出租戶所有群組 | **A** —— Ragic 官方逐字:「可檢視群組會**列出對來源表單具有表單權限的群組**」「**若未設定,報表將依來源表單的權限顯示**」。這讓「widget 自有可見群組」**結構上不可能成為提權路徑** —— 你選不到一個對來源表單沒權限的群組。B 則是每加一個 widget 就多一個可能放寬權限的地方 |
+
+> **OQ-PC-9 不變**(widget 級 all-or-nothing,不做部分聚合遮蔽)。
+> 上述三條是它的**執行細節**,不是推翻它。
