@@ -94,7 +94,7 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 | Baserow enterprise | 專有 | ❌ | ❌ | 2026-07-18 |
 | Ragic / Odoo / 鼎新 / 正航 | 專有 | ❌ | ❌ | — |
 | Superset | Apache-2.0 | ✅ | ✅ | 未複核 |
-| **Metabase** | **AGPL-3.0(core)** | ❌ | ⚠️ **待裁定** | 未複核 |
+| **Metabase** | **AGPL-3.0(core)** | ❌ | ❌ 只讀公開文件(`docs/28` 為 2026-08-03 前之明示例外,見下) | 未複核 |
 
 **規則**|
 - 引用競品原始碼時**必附授權識別碼 + 查證日期**;無法確認者標**未查證**並**不得作為承重依據**。
