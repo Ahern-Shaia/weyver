@@ -59,7 +59,12 @@ export class ExportDownloadService {
   ): Promise<{ url: string } | { stream: Readable; size: number; filename: string }> {
     await this.reauthenticate(request, password)
 
-    const claimed = await this.repo.claimDownload(tenant.tenantId, id, EXPORT_MAX_DOWNLOADS)
+    const claimed = await this.repo.claimDownload(
+      tenant.tenantId,
+      tenant.actorId,
+      id,
+      EXPORT_MAX_DOWNLOADS,
+    )
     if (claimed === null) await this.explainFailure(tenant, id)
 
     const key = claimed?.objectKey ?? ""
@@ -104,7 +109,7 @@ export class ExportDownloadService {
   /* 條件式 UPDATE 影響 0 列時,回查是哪一個條件不成立。
      只有這一步允許多一次查詢 —— 錯誤訊息說不清楚的話,使用者只會反覆重按。 */
   private async explainFailure(tenant: TenantContext, id: number): Promise<never> {
-    const row = await this.repo.getForTenant(tenant.tenantId, id)
+    const row = await this.repo.getForActor(tenant.tenantId, tenant.actorId, id)
     if (row === null) {
       throw new NotFoundException({ code: "EXPORT_NOT_FOUND", message: "找不到此匯出" })
     }

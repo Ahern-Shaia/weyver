@@ -29,6 +29,7 @@ let repo: ExportRepository
 let tenantA = 0
 let tenantB = 0
 let actorA = 0
+let actorB = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
@@ -44,9 +45,15 @@ beforeAll(async () => {
   tenantB = t[1]?.id ?? 0
   const u = await db
     .insert(users)
-    .values([{ authUserId: "ex-admin", email: "ex@weyver.test", name: "管理員" }])
+    .values([
+      { authUserId: "ex-admin", email: "ex@weyver.test", name: "管理員" },
+      /* 🔴 同租戶的**另一個人**。原測試只有一位 actor,於是「同租戶跨 actor」
+         這條路徑從來沒被測過 —— 而漏掉的正是那裡。 */
+      { authUserId: "ex-member", email: "ex2@weyver.test", name: "一般成員" },
+    ])
     .returning()
   actorA = u[0]?.id ?? 0
+  actorB = u[1]?.id ?? 0
 
   await pool.query(
     `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS; GRANT weyver_app TO app_login`,
@@ -80,9 +87,43 @@ describe("🔴 建立與查詢", () => {
       includeAttachments: false,
     })
     expect(job.status).toBe("queued")
-    const list = await repo.listForTenant(tenantA)
+    const list = await repo.listForActor(tenantA, actorA)
     expect(list).toHaveLength(1)
     expect(list[0]?.id).toBe(job.id)
+  })
+
+  /* 🔴🔴 P0(2026-08-03 稽核發現,已出貨):**同租戶、不同人**也不得讀到。
+
+     原本三支讀取端(list / get / claimDownload)**只綁 `tenant_id`**。
+     而封存檔是以**建立者的權限**產生的 —— admin 的匯出含全租戶資料 ——
+     於是同租戶任一成員可 `GET /api/exports` 取到別人的 job id、再下載整包,
+     等於任何已登入成員都能取走整個租戶的資料。
+
+     為什麼沒被抓到:既有測試只覆蓋**跨租戶**(RLS 會擋),
+     而 RLS 的粒度是租戶,擋不住同租戶跨人。**下載端點的 `@SelfService()`
+     又讓它跳過 admin 守衛,再認證驗的是呼叫者自己的密碼 ——
+     那證明的是「你是你」,不是「這包是你的」。**
+
+     AGENTS 資安鐵則 2:每查詢綁 `tenant_id` **且**驗此人能存取「這個 ID」(BOLA)。 */
+  it("🔴 同租戶但不是本人 —— 讀不到、也認領不到下載", async () => {
+    await reset()
+    const job = await repo.create({
+      tenantId: tenantA,
+      actorId: actorA,
+      formIds: null,
+      includeAttachments: false,
+    })
+    await pool.query(
+      `UPDATE export_job SET status='ready', object_key='k', expires_at=now()+interval '1 day' WHERE id=$1`,
+      [job.id],
+    )
+
+    expect(await repo.listForActor(tenantA, actorB)).toHaveLength(0)
+    expect(await repo.getForActor(tenantA, actorB, job.id)).toBeNull()
+    /* 最關鍵的一條:即使拿到了 id,也認領不到檔案 */
+    expect(await repo.claimDownload(tenantA, actorB, job.id, 3)).toBeNull()
+    /* 本人仍然可以 —— 修正不得把功能一起關掉 */
+    expect(await repo.claimDownload(tenantA, actorA, job.id, 3)).not.toBeNull()
   })
 
   it("🔴 跨租戶讀不到 —— RLS 執法,不靠服務層記得加 WHERE", async () => {
@@ -93,8 +134,8 @@ describe("🔴 建立與查詢", () => {
       formIds: null,
       includeAttachments: false,
     })
-    expect(await repo.listForTenant(tenantB)).toHaveLength(0)
-    expect(await repo.getForTenant(tenantB, job.id)).toBeNull()
+    expect(await repo.listForActor(tenantB, actorA)).toHaveLength(0)
+    expect(await repo.getForActor(tenantB, actorA, job.id)).toBeNull()
   })
 
   /* 🔴 同時只允許一個進行中(OQ-EX-8=A)。寫成部分唯一索引而非應用層檢查 ——
@@ -195,7 +236,7 @@ describe("🔴 worker 認領", () => {
     })
     const job = await repo.claimNext()
     await repo.markFailed(job?.id ?? 0, "資料量超過單次匯出上限")
-    const after = await repo.getForTenant(tenantA, job?.id ?? 0)
+    const after = await repo.getForActor(tenantA, actorA, job?.id ?? 0)
     expect(after?.status).toBe("failed")
     expect(after?.error).toContain("上限")
   })
@@ -223,7 +264,7 @@ describe("🔴 到期", () => {
     expect(due).toHaveLength(1)
     expect(due[0]?.objectKey).toContain(".zip")
 
-    const after = await repo.getForTenant(tenantA, id)
+    const after = await repo.getForActor(tenantA, actorA, id)
     expect(after).not.toBeNull()
     expect(after?.status).toBe("expired")
     expect(after?.objectKey).toBeNull()
@@ -330,7 +371,7 @@ describe("🔴 端到端:runner 產出的封存檔", () => {
       const worker = app.get(ExportWorkerService)
       expect(await worker.drainOne()).toBe(true)
 
-      const jobs = await repo.listForTenant(tenantA)
+      const jobs = await repo.listForActor(tenantA, actorA)
       const job = jobs[0]
       expect(job?.status).toBe("ready")
       expect(job?.rowCount).toBe(3)
@@ -571,7 +612,7 @@ describe("🔴 M3 下載", () => {
     /* 🔴 一律 no-store:這是一份整包公司資料,不得被任何快取層留存 */
     expect(String(res.headers["cache-control"])).toContain("no-store")
 
-    const after = await repo.getForTenant(tenantA, id)
+    const after = await repo.getForActor(tenantA, actorA, id)
     expect(after?.downloadCount).toBe(1)
   })
 
@@ -594,7 +635,7 @@ describe("🔴 M3 下載", () => {
       expect((res.json() as { url: string }).url).toContain("https://storage.example.com/")
       expect(String(res.headers["cache-control"])).toContain("no-store")
       /* 交出簽名 URL 也算一次下載 —— 否則限次可被「只取 URL 不取檔」繞過 */
-      expect((await repo.getForTenant(tenantA, id))?.downloadCount).toBe(1)
+      expect((await repo.getForActor(tenantA, actorA, id))?.downloadCount).toBe(1)
     } finally {
       driver.presign = undefined
     }
@@ -607,7 +648,7 @@ describe("🔴 M3 下載", () => {
     const ok = results.filter((r) => r.statusCode === 200)
     expect(ok).toHaveLength(1)
 
-    const after = await repo.getForTenant(tenantA, id)
+    const after = await repo.getForActor(tenantA, actorA, id)
     expect(after?.downloadCount).toBe(5)
   })
 
@@ -643,7 +684,7 @@ describe("🔴 M3 下載", () => {
     const id = await seedReady({ expiresInMs: -1_000 })
     const { access } = await import("node:fs/promises")
     const { join } = await import("node:path")
-    const before = await repo.getForTenant(tenantA, id)
+    const before = await repo.getForActor(tenantA, actorA, id)
     const key = before?.objectKey ?? ""
     await expect(access(join(storageDir, key))).resolves.toBeUndefined()
 
@@ -651,7 +692,7 @@ describe("🔴 M3 下載", () => {
     await app.get(ExportWorkerService).expire()
 
     await expect(access(join(storageDir, key))).rejects.toThrow()
-    const after = await repo.getForTenant(tenantA, id)
+    const after = await repo.getForActor(tenantA, actorA, id)
     expect(after).not.toBeNull()
     expect(after?.status).toBe("expired")
     expect(after?.requestedByActorId).toBe(actorA)

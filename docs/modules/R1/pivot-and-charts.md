@@ -377,6 +377,7 @@ OQ-PC-9 的裁定(widget 級 all-or-nothing)仍有效,實作時直接沿用。
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-03 | v1.1(§14 稽核補) | 承 `_audit/giants-shoulders-audit-B.md` §4.3 判語(「查了怎麼算,沒問誰在看」)與 §5 第 5 項建議,補**聚合結果離開畫面的三個出口**:匯出 / 下鑽 / R2 排程寄送(§14)。**對碼結論**:樞紐與圖表**目前無匯出、無下鑽**(`pivot-view.tsx` 269 行、`chart-view.tsx` 225 行皆無下載或點擊;`chart.tsx:110-120` 未註冊 `ToolboxComponent`,`saveAsImage` 執行期不存在),故此二出口今日無洩漏面但為 parity 缺口;`/pivot` 與 `/group-stats` 與列表共用同一條權限鏈(`@RequiresFormAction("view")` + `assertReadable` + `inTenantTx` 的 RLS 與記錄範圍)。**🔴 §14.4 查到一條已出貨的實際洩漏路徑,但不在本模組**:`data-export` 的封存檔以**建立者**權限產生(`export-runner.service.ts:36`),而**取件端只綁租戶不綁 actor**(`export.repository.ts:119-134` 的 `claimDownload` 無 `requested_by_actor_id`;`exports.controller.ts:113-116` 的 `@SelfService()` 使守衛跳過 admin 要求;再認證驗的是呼叫者自己的密碼)→ 同租戶低權限成員可 `GET /api/exports` 取得 job id 後下載他人以更高權限產生的整包資料;既有測試只覆蓋**跨租戶**隔離(`data-export.integration.test.ts:480/:493`),同租戶跨 actor 未測。此與 `data-export.md` OQ-EX-4=B「誰有權匯誰的」及 `@SelfService()` 的不變量皆衝突,建議回填該模組。**競品一手(查證日 2026-08-03)**:Metabase 下載為獨立權限軸(No / Granular / 10k / 1M 列)、下鑽需 query-building 權且不修改原查詢、**受記錄級與欄位級安全限制的群組不得建立排程訂閱**;Ragic **報表中心「只能查看自己儲存的報表快照」**(§11.3 只引到 SYSAdmin 警告句,漏掉這條**取件端的收斂手段**,兩句合讀才是完整設計)、**定期寄出報表的 Excel 產物「不受欄位存取權限限制」**且收件人是 Email 非系統身分(結構上不可能 per-viewer 重算);Teable 整表匯出「including hidden fields and records」;Airtable 把匯出當外洩管道做組織級開關。**§14.5 順帶對碼兩件落差**:(a) 樞紐 / 圖表**未繼承列表頁篩選**(`form-workspace.tsx:282-286` 寫死空 filter),與 §1.3 記載不符,是 §11.1「那張圖在騙人」的整頁版;(b) 軸候選清單未先過欄位權限(`forms.controller.ts:122-128` 的 form DTO 未套 `fieldVisibility`)→ OQ-PC-11=A 的「設計期擋」那一半尚未成立,執行期仍 fail-closed 故值不洩漏、欄位**名稱**會洩漏。補 **OQ-PC-13..15 待裁定**(匯出需 `export` 動作 / 下鑽走既有集合視圖端點 / 排程寄送以建立者權限產生且產物只回建立者 + 受限群組不得建排程)。**OQ-PC-1..12 全部不變** | Claude Code |
 | 2026-07-30 | **v1.0 SHIPPED**(M4 除外) | M1→M3 + M5 落地(§4.7)。**核心決斷成立**:pivot 與 group-stats 共用引擎,只改 grouping set 產生規則(前綴 rollup → 兩組前綴笛卡兒積),RLS/交易/filter/聚合/截斷全部不動。回長表、前端轉置。**實走揪出兩個研究未預見的 a11y 問題**:ECharts 只內建簡體且自動描述覆寫 `aria-label`;自動描述在直角座標系下把軸索引唸成資料值(§4.7)—— 研究說「a11y 是一行開關」對 `decal` 成立、對自動描述不成立。**M4 小圖表列殘留並說明理由**。api 589 + web 87 + e2e 5 全綠 | Claude Code |
 | 2026-07-30 | v0.1 | M0 DRAFT。承 docs/25 §F 之 pivot(5)+ 圖表(4)+ 儀表板(4)。**兩路深度研究推翻原規劃兩個前提**:(a) **Ragic 的資料儀表板根本不可拖拉**(官方逐字「依據表單中的位置,從左到右、從上到下依序排列」),可拖曳的是**小圖表 widgets**,且首頁為受限直欄版面 → `docs/10` §131「拖拉排版」記載有誤需更正,拖拉式儀表板非 parity 必要項;(b) **業界一致回長表**,沒有一家回動態寬表(Metabase/Superset/Cube 原始碼),PG result set 1,664 欄為硬天花板。**最省的結論**:F-1 的 group-stats 只需改 grouping set 產生器(前綴 rollup → 兩組前綴笛卡兒積),RLS/交易/filter/聚合/截斷全部不動。**§0.5 洩漏面主角是維度值清單而非聚合值** —— CVE-2024-55951(Metabase filter values 跨 sandbox 快取共用)為直接可引之公開事件。圖表庫維持 ECharts(Apache-2.0 + a11y 一行開關 + 甘特/地圖一次補齊),但不用 `echarts-for-react`。OQ-PC-1..9 待裁定 | Claude Code |
 
@@ -448,3 +449,288 @@ Ragic 官方把篩選優先序列成表([doc/122](https://www.ragic.com/intl/zh-
 
 > **OQ-PC-9 不變**(widget 級 all-or-nothing,不做部分聚合遮蔽)。
 > 上述三條是它的**執行細節**,不是推翻它。
+
+---
+
+## 14. 「誰在看」的三個出口:匯出 / 下鑽 / 排程寄送(2026-08-03 稽核補)
+
+> **這一節在補什麼**|`_audit/giants-shoulders-audit-B.md` §4.3 對本檔的判語是
+> 「查了『**怎麼算**』,沒問『**誰在看**』」,並於該檔 §5 第 5 項建議:
+> 「§11 已補三條;建議同法檢查**匯出、下鑽、以及 R2 的排程寄送**」。
+> §11 覆蓋的是 M4 widget 的三條(列表頁篩選連動 / 觀看者對軸與 measure 無權 / 快照排程之標記);
+> 本節補的是**聚合結果離開畫面的三個出口**,且逐項先對碼再查競品。
+>
+> **方法**|站①自家 repo 對碼(附檔名與行號)→ 站③競品一手(逐字 + 出處 + 查證日 **2026-08-03**)。
+> **clean-room**|Metabase core = **AGPL-3.0**、Teable `apps/` = **AGPL-3.0**、Airtable = **專有** ——
+> 依 `AGENTS.md` 鐵則 5-bis,本節對這三家**只讀公開文件,不看實作**;
+> §0 引用 Metabase 原始碼者為本檔既有內容,其待複核狀態依 §0 導言不變。
+> Ragic = 專有,同樣只讀官方文件(本地鏡像 `reference-materials/ragic-doc-zh-TW/`)。
+
+### 14.1 出口一:匯出
+
+#### 現況(對碼)
+
+| 事實 | 位置 |
+|---|---|
+| **樞紐與圖表目前沒有任何匯出路徑** | `apps/web/src/app/app/forms/[formId]/_components/pivot-view.tsx`(全 269 行無下載 / Blob / CSV)· 同目錄 `chart-view.tsx`(全 225 行同上) |
+| ECharts 的 `toolbox`(含 `saveAsImage` / `dataView`)**執行期不存在** | `apps/web/src/components/chart.tsx:110-120` 的 `echarts.use()` 未註冊 `ToolboxComponent`;:67-83 的 `toolbox` 只是 zh-TW locale 模板 |
+| 記錄匯出的權限鏈**是接上的**:執行當下重解析權限 | `apps/api/src/export/export-runner.service.ts:36`(`resolveForActor`,在 worker 跑 job 時才解析,非請求當下快照) |
+| 逐表過 `export` 動作權、依 `fieldVisibility` 濾欄、走同一支 `listRecords(..., policy, actorId)` | 同檔 `:45` · `:47-49` · `:67-78` |
+| 🔴 **但下載端沒有對到人** —— 見 §14.4 | — |
+
+→ 匯出這條出口在**樞紐 / 圖表側今日不存在**(故無此洩漏面),但也因此是 parity 缺口;
+而**記錄側的產檔正確、取檔不正確**。
+
+#### 競品怎麼做(一手,查證日 2026-08-03)
+
+- **Metabase**(AGPL-3.0;公開文件)[docs/latest/permissions/data](https://www.metabase.com/docs/latest/permissions/data) 逐字:
+  > 「You can set permissions on whether people in a group can **download results (and how many rows)** from a data source.
+  > Options are: **No** (they can't download results), **Granular** …, **10 thousand rows**, **1 million rows**」
+
+  → 匯出是**與檢視分離的獨立權限軸**,且本身帶**列數上限**。
+  本專案 `authz` 已有 `export` FormAction(`apps/api/src/authz/authz-model.ts:12`),軸的方向一致;**列數上限尚無對應物**。
+
+- **Ragic**(專有;公開文件)[doc/58 備份與還原](https://www.ragic.com/intl/zh-TW/doc/58) 逐字:
+  > 「從歷史紀錄下載 時如果表單中有 **文字遮罩** 欄位,會出現以下視窗讓你選擇是否遮罩欄位內容,
+  > 勾選的話該欄位就會匯出**遮罩過的值**,反之則匯出**未遮罩的值**。」
+
+  → 遮罩在匯出當下是**可選項**而非強制。本專案 `export-runner.service.ts:47-49` 是強制濾除,較嚴。
+
+- **Teable**(`apps/` 為 AGPL-3.0;僅讀公開文件)[help.teable.ai `basic/table/export`](https://help.teable.ai/en/basic/table/export) 逐字:
+  > 「**Entire table export**: Includes the raw table data, **including hidden fields and records**.」
+  > 「**View export**: Exports only the data currently shown in the view.」
+
+  → 官方明說整表匯出**含隱藏欄位**;「隱藏」在該產品是視圖偏好而非權限,兩種匯出範圍不同且明文標示。
+
+- **Airtable**(專有;僅讀公開支援文件)[Collaboration export controls in admin panel](https://support.airtable.com/docs/collaboration-export-controls-in-admin-panel) 逐字:
+  > 「Collaboration export controls help enterprises **prevent data exfiltration** by restricting how external collaborators export information from Airtable.」
+  > 「exports can be blocked for either non-members only—with an optional domain allowlist—or **all collaborators, including internal members**.」
+
+  → 匯出被當成**外洩管道**做組織級開關(CSV / 列印 / 複製貼上),而不只是一個便利功能。
+
+#### 風險等級與建議
+
+**風險**|🟢 目前(樞紐 / 圖表無匯出);**一旦開做即 P0**(檔案離開系統後不再有 RLS)。
+
+1. 樞紐 / 圖表若補匯出,端點需標 **`@RequiresFormAction("export")` 而非 `view`** ——
+   現行 `/pivot` 標 `view`(`apps/api/src/form-engine/api/records.controller.ts:114-116`),
+   對「在螢幕上看」是正確的;存成檔案帶走是另一件事,Metabase 把它拆成獨立權限軸即此理由。
+2. 匯出的前置檢查與螢幕**完全相同**:軸與 measure 各過 `assertReadable`(`record.service.ts:736`/`:743`),
+   且 **§4.3 的欄標頭鐵則不因換成檔案而放寬** —— 維度值仍只能從同一交易的 grouping set 導出。
+3. 匯出須沿用格數上限(`MAX_PIVOT_CELLS` / `MAX_PIVOT_COLS`),不得以「檔案不怕大」為由繞過;
+   對照 Metabase 的 10k / 1M 形態,**上限本身就是權限的一部分**。
+4. 若日後要開 `saveAsImage`,須一併註冊 `ToolboxComponent` ——
+   屆時圖片會把**圖例(即維度值清單)**一起帶出系統,應與 CSV 匯出同一道權限,
+   不可當成前端小開關加上去。
+
+### 14.2 出口二:下鑽(drill-down)
+
+#### 現況(對碼)
+
+- **目前完全沒有下鑽**。`pivot-view.tsx:177-188` 的資料格 `<td>` 未掛任何 `onClick`;
+  `chart-view.tsx` 未註冊 ECharts 事件。故不存在「繞過集合視圖那條已套好權限的路」的第二條查詢路徑。
+- 一旦要做,**唯一應走的**是既有的集合視圖端點
+  `POST /forms/:formId/records/query`(`records.controller.ts:76-86`)→ `record.service.ts` 的 `listRecords`。
+  它同時具備四件事,而任何新開的「明細」端點都得各自再做一次:
+  `@RequiresFormAction("view")`(:78)· filter 欄位過 `assertReadable`(`record.service.ts:596`)·
+  回傳前 `maskRead`(:575)· `inTenantTx(..., { own })` 的記錄範圍(:1312 一帶同型)。
+
+#### 競品怎麼做(一手,查證日 2026-08-03)
+
+- **Metabase**(AGPL-3.0;公開文件)[docs/latest/questions/visualizations/drill-through](https://www.metabase.com/docs/latest/questions/visualizations/drill-through) 逐字:
+  > 「Drill-through **requires query-building permissions**. You must have permission to create queries on the underlying data to see the drill-through menu.」
+
+  → 下鑽被視為**比看圖更高的權限**:看得到聚合 ≠ 看得到明細。
+
+  同頁逐字:
+  > 「The drill-through **does not modify the original question**. Drill-through creates a new question without overwriting or modifying your original question.」
+
+  → 與 §11.4 已記的 Ragic 行為(下鑽會污染列表頁的持久篩選,需手動「清除篩選與排序」才復原)**正相反**,
+  為 §11.4「本專案若做下鑽,不應沿用該行為」補上一個正面對照。
+
+  同頁逐字(嵌入情境):
+  > 「Authenticated modular embedding」→「**Full drill-through, scoped to the user's permissions**」;
+  > 「Guest modular embeds」與「Public embeds」→「**No drill-through**」
+
+  → 觀看者身分不明確時,巨人的做法是**直接關掉下鑽**,而不是想辦法算得更保守。
+
+- **Airtable**(專有;僅讀公開支援文件)[Airtable extensions: Chart](https://support.airtable.com/docs/chart-extension) 逐字:
+  > 「Clicking on a point or bar will **bring up the relevant record, or a relevant list of records**.
+  > You can also double-click an item in the legend for a **quick drill down**.」
+
+  → 下鑽是使用者對圖表的既定期待;不做是 parity 缺口,做了則多一條權限鏈。
+
+#### 風險等級與建議
+
+**風險**|🟢 目前(不存在);**做了之後為 P0**(第二條查詢路徑 = 第二份要維護的權限鏈)。
+
+1. 下鑽**不得新開明細端點**:由前端(或後端)把該格的 rowKeys / colKeys 組成 filter,
+   再打既有的 `POST /forms/:formId/records/query`。
+   若某格的條件無法用既有 filter 語法表達(例如 `date_trunc` 分桶對應的區間),
+   應該修的是 **filter 語法**,而不是另開一支查詢 —— 後者正是 F-1 / F-2 一路避開的形狀。
+2. 下鑽產生**暫時查詢**,不寫回 `view_def`(Metabase 形態),對齊 §11.4 的觀察。
+3. **空白格(count = 0)不得可下鑽** —— 「點得動 / 點不動」本身會洩漏該組合的存在性,
+   與 §0.5「洩漏面主角是維度值清單」同一類。
+4. 下鑽結果的欄位仍走 `maskRead`;不得因為「使用者已經看到聚合值」就放寬明細欄位。
+
+### 14.3 出口三:R2 排程寄送
+
+#### 現況(對碼)
+
+- 本專案**尚無任何報表排程寄送**。與匯出相關的唯一 `@Cron` 是 `export.expire`(到期清理封存檔),
+  不產生也不寄送任何內容。
+- 但 `data-export` 已留下一個**可直接援用的先例**:
+  產檔的權限在 **worker 執行當下**才解析(`export-runner.service.ts:36`),而非在請求當下快照。
+  排程寄送應沿用此形狀 —— 排程的本質就是「請求與產出之間隔著很長的時間」,
+  而權限正是在那段時間裡改變的。
+
+#### 競品怎麼做(一手,查證日 2026-08-03)
+
+**四段引用指向同一個結論:非同步產物一律與觀看者斷開,差別只在各家用什麼去補。**
+
+- **Ragic**(專有)[doc/9 報表](https://www.ragic.com/intl/zh-TW/doc/9) §定期儲存報表快照 逐字
+  (§11.3 已引警告句,以下補其設定面):
+  > 「**可檢視群組**:設定哪些使用者群組可以查看此排程的快照。**留空表示僅限 SYSAdmin 檢視。**」
+  > 「注意:**快照是以 SYSAdmin 的權限產生的**,因此內容可能包含檢視者在報表中無權存取的資料。」
+
+- 🔴 **Ragic 的補償機制在另一頁**,兩句要合起來讀才是完整設計 ——
+  [doc-user/86 報表中心](https://www.ragic.com/intl/zh-TW/doc-user/86/report-center) 逐字:
+  > 「你可以在報表中心查看已儲存的 **報表快照**,會依不同報表分類顯示各自的快照。
+  > **備註:只能查看自己儲存的報表快照。**」
+
+  → 即:**以最高權限產生,但產物預設只回建立者**。§11.3 只引到前半段(警告),
+  漏掉後半段(收斂手段),會把 Ragic 讀成單純的破口 —— 它其實做了收斂,只是收斂在「取件」而非「產出」。
+
+- **Ragic**[doc/99 定期寄出報表](https://www.ragic.com/intl/zh-TW/doc/99/schedule-report) 逐字
+  (本檔前此完全未引;這是「排程**寄送**」而非「排程**快照**」,是兩個不同功能):
+  > 「備註:若選擇 **以 Excel 檔的形式**,匯出內容將包含列表頁顯示的所有欄位(不含隱藏欄位),
+  > 且**不受 欄位存取權限 限制**,無法另外自訂。如需自訂匯出欄位內容,請改用 **列表頁合併列印** 格式。」
+  > 「相同條件的寄出報表設定**只能有一組**。因此如果有不同使用者需要一樣的定期報表,
+  > 請選擇 更新現有的定期報表 並**增加收件人**。」
+  > 「注意:單封信件的**收件人上限為 50 人**。」
+
+  收件人以 Email 填寫,並支援 `{{GROUPUSERS_群組名稱}}` 變數帶入整個群組。
+  → 兩個結構性事實:(a) 產物**明文不受欄位存取權限限制**;
+  (b) 排程按「相同條件」去重、收件人是 **Email 而非系統身分** ——
+  故該設計**結構上不可能** per-viewer 重算。
+
+- **Metabase**(AGPL-3.0;公開文件)[docs/latest/permissions/notifications](https://www.metabase.com/docs/latest/permissions/notifications) 逐字
+  (§11.3 已引第一句,以下兩句為新):
+  > 「People in groups with **impersonation or row and column security permissions cannot create Slack alerts or dashboard subscriptions**.」
+  > 「If Beau creates a subscription to a dashboard saved in their personal collection and adds Anya to the subscription,
+  > **Anya will see the dashboard results in her email, even though she lacks permissions to view that dashboard** in Beau's personal collection.」
+
+  → 巨人的解法不是「算得更聰明」,而是**讓受記錄級 / 欄位級安全限制的群組根本不能建立排程訂閱**。
+  這是唯一不需要「檢視時重新授權」就能保證正確的做法。
+
+#### 風險等級與建議
+
+**風險**|🟡 目前(未實作);**一旦實作即 P0**。
+§1.4 已把「報表快照 / 排程寄送」排除在 R1 之外並註明「要做必須**檢視時重新授權**」——
+本節把那句話換成四條可執行的硬約束,以免 R2 動工時重問一次。
+
+1. **以建立者的當下權限產生,且產物預設只回建立者**(Ragic 報表中心形態)。
+   要寄給別人必須是**明示的第二個決定**,UI 上逐字寫出「收件人將看到建立者權限下的內容」。
+2. **受記錄範圍(`isScopedToOwn`)或欄位遮罩限制的 actor 不得建立排程寄送**(Metabase 形態)。
+   這條是四條裡最省的:它把「非同步無法對到觀看者」這個問題**移到建立的那一刻**解決。
+3. 收件人若為系統內 actor,**寄送當下重驗**其對來源表單仍有 `view`
+   —— 離職 / 換部門 / 權限收回是常態而非例外;收件人若為外部 Email,
+   應視同公開分享,走另一套裁定(§1.4 已把公開分享排除在 R1 外)。
+4. 每次排程產出一律進 audit:誰建立、何時執行、**以誰的權限產生**、寄給誰。
+   Ragic 的警告句之所以只能是警告,正因為那三件事在它的模型裡沒有被記下來。
+
+### 14.4 🔴 對碼查到的**實際洩漏路徑**(不在樞紐,在 `data-export` 的取件端)
+
+> 本項不屬於本模組,但它**正是本節在找的形狀**:聚合 / 打包產物離開查詢層之後,
+> RLS 與 `maskRead` 都不再執法,而防線只剩「誰能把它取走」。故記於此,
+> 並建議回填 `docs/modules/R1/data-export.md`(本次只允許修改本檔,故不逕行改動該檔)。
+
+**逐行事實**
+
+| # | 事實 | 位置 |
+|---|---|---|
+| 1 | 封存檔的內容 = **建立者**的可見範圍(逐表 `export` 權 + 欄位遮罩) | `apps/api/src/export/export-runner.service.ts:36` · `:45` · `:47-49` |
+| 2 | 列表**只綁租戶,不綁 actor** | `apps/api/src/export/export.service.ts:43-46` → `export.repository.ts:60`(`listForTenant(tenantId)`) |
+| 3 | 下載端標 `@SelfService()`,守衛因此跳過「無 formId 的寫入需 admin」 | `apps/api/src/export/exports.controller.ts:113-116` · `apps/api/src/authz/permission.guard.ts:61-68` |
+| 4 | 🔴 領取封存檔的 `WHERE` **沒有 `requested_by_actor_id`** | `apps/api/src/export/export.repository.ts:119-134`(條件僅 `id` + `tenant_id` + `status` + 到期 + 次數) |
+| 5 | 下載前的再認證驗的是**呼叫者自己的**密碼 | `apps/api/src/export/export-download.service.ts:79-102`(`verifyPassword`) |
+
+**重現條件**(prod 車道,真實認證;dev 車道無身分,不適用)
+
+1. 租戶內 actor **A**(admin 或權限較廣者)建立一次匯出,狀態 `ready`、未過期、`download_count < 5`。
+2. actor **B** 為同租戶合法成員,對多數表單**無 `view` / `export` 權**。
+3. B 呼叫 `GET /api/exports` → 取得 A 那筆 job 的 `id`
+   (此步本身已洩漏 `formIds` 與 `rowCount`,即「有哪些表、各有多少筆」)。
+4. B 呼叫 `POST /api/exports/{id}/download`,`body.password` 填 **B 自己的**密碼
+   → 取得以 **A 的權限**產生的整包封存檔(含 B 無權檢視的表單與 B 被遮罩的欄位)。
+
+**為什麼既有測試沒抓到**|`apps/api/test/data-export.integration.test.ts` 的隔離斷言全部是**跨租戶**
+(`:480`、`:493` 以 `tenantB` 讀 `tenantA`),**同租戶跨 actor 未被測**;
+且所有 seed 一律使用同一個 `actorA`(`:553`)。
+這與 §12.2 P1「ALICE 建北/中/南、BOB 只有北 → BOB 的 `colHeaders` 僅 `["北"]`」的反向驗證**形狀相同、對象不同** ——
+本檔在聚合面做了那個反向驗證,匯出面沒有。
+
+**與既有裁定的衝突**
+
+- `data-export.md` **OQ-EX-4 = B**:「依 `export` 權逐表,**誰有權匯誰的**」。
+  下載端不綁 actor,使該裁定在**取件**這一步失效(產出這一步是成立的)。
+- `permission.guard.ts:58-60` 對 `@SelfService()` 的逐字定義是
+  「自助端點:**作用對象恆為操作者自己**」;而下載的作用對象是**任何一筆同租戶 job**,
+  與該不變量不符。此處不是守衛壞掉,是標註套用錯了對象。
+
+**建議**(屬 `data-export` 模組)
+
+1. `claimDownload` / `getForTenant` / `listForTenant` 的 `WHERE` 加上 `requested_by_actor_id`。
+2. 若要保留「管理者代取」,應是**明示的另一條路徑**並留 audit,不是預設行為。
+3. 補一條同租戶跨 actor 的整合測(A 建、B 取 → 404 / 403)。
+4. 對照組就在競品文件裡:Ragic 報表中心逐字「**只能查看自己儲存的報表快照**」——
+   巨人在同一個問題上正是收斂在取件端。
+
+### 14.5 順帶對碼:兩件與「誰在看」相鄰、但屬正確性的落差
+
+1. **樞紐 / 圖表不吃列表頁的當下篩選**。
+   `form-workspace.tsx:282-286` 傳給 `PivotView` 的是寫死的 `{ filters: [], combinator: "and", sort: [] }`;
+   `ChartView`(:292)連 `query` 參數都沒有,`chart-view.tsx:54-62` 自行組出 `filters: []`。
+   而 §1.3 原本寫的是「檢視級圖表 —— 掛在既有 `view_def` 之下,**繼承該列表頁的篩選**」,**未落地**。
+   這不是洩漏(RLS 與 `assertReadable` 仍在),但正是 §11.1
+   「使用者把列表篩成『本月南區』,旁邊那張圖還顯示全年全區,那張圖是在騙人」的同一件事 ——
+   只是發生在整頁樞紐 / 圖表,而非 M4 的 widget。**建議 M4 一併處理,勿只修 widget。**
+2. **軸候選清單未先被欄位權限過濾(OQ-PC-11=A 的「設計期擋」那一半尚未成立)**。
+   `pivot-view.tsx:45-50` 與 `chart-view.tsx:43-48` 由 `form.fields` 產生候選,
+   而 `GET /forms/:formId`(`apps/api/src/form-engine/api/forms.controller.ts:122-128`)
+   **未套 `fieldVisibility`**,回的是該表全部欄位。
+   執行期是 fail-closed 的(`record.service.ts:736`/`:743` 的 `assertReadable` 會擋),
+   故**欄位值不會洩漏**;但**被設為 hidden 的欄位名稱會出現在下拉選單**,
+   且使用者選得到一個必定失敗的軸 —— 那正是 OQ-PC-11 引 Salesforce 時要避免的
+   「使用者建得出一張永遠壞掉的圖」。
+   修正點在 form DTO(`forms.controller.ts` / `api-schemas.ts` 的 `toFormDto`),
+   屬 `authz` × `form-engine` 交界,不在本模組;本節僅記錄。
+
+### 14.6 誠實聲明:本次查不到的
+
+- **Ragic 是否可將樞紐分析結果單獨匯出為 Excel / CSV**(而非整張報表下載為 PDF):
+  [doc/9](https://www.ragic.com/intl/zh-TW/doc/9) 與 [doc-user/27](https://www.ragic.com/intl/zh-TW/doc-user/27/pivot-table)
+  均未載明 → **未查證**。已知的只有「快照可下載為 PDF」與「儲存到報表中心的快照無法再次編輯,只能下載為 PDF」。
+- **Ragic 小圖表是否可下鑽**:§11.4 已標為「官方沒提」,本次複查仍**未查證**。
+- **Baserow 對匯出是否套用權限**:本地鏡像僅有開發者向的
+  [docs/technical/permissions-guide](https://baserow.io/docs/technical/permissions-guide),
+  未見匯出與權限的交集敘述 → **未查證**。
+- **Metabase 的「下載」是否套用 row and column security**:其 permissions/data 頁只定義下載的**列數層級**,
+  未逐字說明與 row-and-column security 的交互 → **未查證**。
+  ⚠️ 不得由 §0.5 的「public questions 不套用」那句推論到下載,那是兩個不同的面。
+- **Airtable 的 Interface / Extension 圖表是否把 `Viewer's records` 篩選帶進匯出** → **未查證**。
+- **鼎新 / 正航 / 千奧** 對報表排程寄送以誰的身分產生 → **未查證**(本專案對這三家的一手材料尚未建立)。
+
+### 14.7 補三條 OQ(⏳ 待裁定)
+
+> 既有裁定 **OQ-PC-1..12 全部不變**。以下三條是三個出口各自的第一個決定,
+> 皆為「動工前先定、不要做到一半才問」的性質。
+
+| # | 議題 | 選項 | 建議 |
+|---|---|---|---|
+| **OQ-PC-13** ⭐ | 樞紐 / 圖表匯出需要哪個動作權 | A. **`export`**(與記錄匯出同一軸)+ 沿用螢幕上的 `assertReadable` 與格數上限<br>B. 沿用 `view`(看得到就下載得了) | **A** —— Metabase 把「download results」拆成獨立權限軸並附列數上限;Airtable 把匯出當成外洩管道做組織級開關。B 的問題不是嚴不嚴,是**看與帶走本來就是兩個決定**:檔案離開系統後 RLS 不再執法,產生當下沒濾掉就是永久外洩。本專案 `authz` 已有 `export` 動作,成本只是端點上換一個 decorator |
+| **OQ-PC-14** ⭐ | 下鑽走哪條查詢路徑 | A. **一律組出 filter 後打既有集合視圖端點**(`POST /records/query`);不寫回 `view_def`;空白格不可下鑽<br>B. 新增專用的 `/pivot/cell-records` 明細端點 | **A** —— B 等於開第二條要各自維護的權限鏈(`@RequiresFormAction` / filter 的 `assertReadable` / `maskRead` / 記錄範圍,四件事都要重做一次)。Metabase 逐字「Drill-through requires query-building permissions」把下鑽視為**比看圖更高**的權限,而走既有端點自然就繼承了那一層。「不寫回 `view_def`」對齊 Metabase「does not modify the original question」,並避開 §11.4 記載的 Ragic 下鑽污染列表頁篩選 |
+| **OQ-PC-15** ⭐⭐ | 排程寄送以誰的身分產生(R2) | A. **建立者當下權限產生 + 產物預設只回建立者 + 受記錄範圍/欄位遮罩者不得建排程 + 收件 actor 於寄送當下重驗**<br>B. 以每個收件人的權限各自重算<br>C. 以系統管理員權限產生並加警語(Ragic 形態) | **A** —— C 是 Ragic 的做法,而它的警語(「內容可能包含檢視者無權存取的資料」)之所以只能是警語,是因為那條路徑上沒有任何東西能收斂;Ragic 自己也是靠報表中心「只能查看自己儲存的報表快照」在**取件端**補回來。B 看似最正確,但收件人可能是外部 Email(Ragic 的 `{{GROUPUSERS_}}` 即此形態),沒有身分就無從重算,且 N 個收件人 = N 次全量重算。A 的第三項(受限群組不得建排程)直接取自 Metabase 逐字,是把問題移到**建立那一刻**解決 —— 唯一不需要「檢視時重新授權」就能保證正確的做法 |
+
+> **不建議重裁的**|`/pivot` 目前標 `@RequiresFormAction("view")` 在「無匯出」的前提下是正確的,
+> 不需重裁;OQ-PC-13 若裁 A,受影響的是**新增的匯出端點**,不是既有的 `/pivot`。

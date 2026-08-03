@@ -57,24 +57,35 @@ export class ExportRepository {
     })
   }
 
-  async listForTenant(tenantId: number, limit = 20): Promise<ExportJobRow[]> {
+  /* 🔴 2026-08-03 P0 修正:全部三支讀取端一律**同時綁 tenant 與 actor**。
+     原本只綁 `tenant_id` —— 而封存檔是以**建立者的權限**產生的,
+     於是同租戶任一成員可 `GET /api/exports` 取到別人的 job id、再下載整包。
+     admin 的匯出含全租戶資料 → 這是任何已登入成員都能觸發的全租戶外洩。
+     AGENTS 資安鐵則 2:每查詢綁 tenant_id **且**驗此人能存取「這個 ID」(BOLA)。 */
+  async listForActor(tenantId: number, actorId: number, limit = 20): Promise<ExportJobRow[]> {
     return this.tenantDb.withTenant(tenantId, async (tx) => {
       const rows = await tx
         .select()
         .from(exportJobs)
-        .where(eq(exportJobs.tenantId, tenantId))
+        .where(and(eq(exportJobs.tenantId, tenantId), eq(exportJobs.requestedByActorId, actorId)))
         .orderBy(desc(exportJobs.createdAt))
         .limit(limit)
       return rows as ExportJobRow[]
     })
   }
 
-  async getForTenant(tenantId: number, id: number): Promise<ExportJobRow | null> {
+  async getForActor(tenantId: number, actorId: number, id: number): Promise<ExportJobRow | null> {
     return this.tenantDb.withTenant(tenantId, async (tx) => {
       const rows = await tx
         .select()
         .from(exportJobs)
-        .where(and(eq(exportJobs.tenantId, tenantId), eq(exportJobs.id, id)))
+        .where(
+          and(
+            eq(exportJobs.tenantId, tenantId),
+            eq(exportJobs.id, id),
+            eq(exportJobs.requestedByActorId, actorId),
+          ),
+        )
       return (rows[0] as ExportJobRow | undefined) ?? null
     })
   }
@@ -118,6 +129,7 @@ export class ExportRepository {
      受影響列數為 0 即代表某個條件不成立,由呼叫端回查以給出精確原因。 */
   async claimDownload(
     tenantId: number,
+    actorId: number,
     id: number,
     maxDownloads: number,
   ): Promise<{ objectKey: string; downloadCount: number } | null> {
@@ -126,6 +138,7 @@ export class ExportRepository {
          SET download_count = download_count + 1
        WHERE id = ${id}
          AND tenant_id = ${tenantId}
+         AND requested_by_actor_id = ${actorId}
          AND status = 'ready'
          AND object_key IS NOT NULL
          AND expires_at > now()

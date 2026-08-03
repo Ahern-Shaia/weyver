@@ -52,10 +52,19 @@
 > `nocodb/src/db/BaseModelSqlv2/group-by.ts` 等實作路徑。
 > **這不是「當時不知道」,是自家 repo 前一天就寫了而沒查**(巨人第一站)。
 >
-> **處置**|(a) Baserow(MIT/開源)與 Teable `packages/*`(MIT)之引用維持有效;
-> (b) **NocoDB 之結論一律降級為「待以公開文件重新推導」**,在此之前不得作為承重依據;
-> (c) 本模組已 SHIPPED,**尚未評估既有實作是否實質依賴該來源** —— 列入待辦,由決策方裁定
-> 是「重新推導後確認結論不變」或「以公開文件重寫該節」。
+> **處置(2026-08-03 裁定完成)**|逐條盤過**哪些結論真的靠 NocoDB 原始碼**,而非整節作廢:
+>
+> | 引用 | 依據性質 | 裁定 |
+> |---|---|---|
+> | NocoDB group-by 走真 SQL `GROUP BY`、`limit/offset` 套在「群」上、`limitGroup 25` | **只有原始碼**(`db/BaseModelSqlv2/group-by.ts`) | 🔴 **撤回,不得引用**。此列僅為「三種真實做法」的第三個資料點,**本模組的核心決斷不靠它** —— 「分組是排序的變形 → keyset 可完整保留」推導自 Baserow(MIT)、Teable `packages/*`(MIT)與自家 `view_def` 模型 |
+> | NocoDB 分欄僅 SingleSelect / Uncategorized 固定 index 0 | 原始碼 **+ issue #6184(公開)** | ✅ **保留,但改以 issue 為唯一出處**,刪去原始碼那一半 |
+> | NocoDB 日曆 `+N more` | 官方文件(公開) | ✅ 保留 |
+>
+> **實作是否受污染**|已對碼確認:分組實作走自家 `view_def` + keyset,
+> 與上表第一列描述的 `limit/offset on groups` **形態相反**(那正是我方刻意不採的路)。
+> 故**不存在依賴該來源的實作**,無須重寫程式碼。
+>
+> Baserow(MIT)與 Teable `packages/*`(MIT)之引用全部維持有效。
 >
 > 原句意旨(原始碼證據強度高於行銷式描述)對**授權允許**的來源仍成立。
 > ⚠️ **clean-room 邊界**:僅閱讀公開原始碼以理解「業界怎麼解這個問題」,不複製任何實作。
@@ -65,7 +74,7 @@
 | 系統 | 機制 | 證據 |
 |---|---|---|
 | **Baserow** | 列照常分頁(依 group key 排序);**群本身以樹狀分頁,預設 40 群/頁、後代群上限 2000**。群計數對**未分頁 queryset** 另跑 count | 原始碼 `views/grid/utils.py`、`handler.py` |
-| **NocoDB** | 真 SQL `GROUP BY` + `count(*)`,**limit/offset 套在「群」上**(bulkGroupBy `limitGroup` 25);組內記錄另發查詢 | 原始碼 `db/BaseModelSqlv2/group-by.ts` |
+| ~~**NocoDB**~~ | 🔴 **2026-08-03 撤回**(唯一依據為 NocoDB 原始碼,而該來源自 2026-01-29 起已非 OSS,見檔頭處置表)。本列撤回不影響本節結論 —— 三種做法的對照由 Baserow 與 Teable 兩列即成立 | ~~原始碼~~ |
 | **Teable** | Server 回**群骨架**(`Header{depth,value,isCollapsed}` + `Row{count}`);記錄用 **skip/take(offset)**,並把 **`collapsedGroupIds` 傳後端** | 原始碼 `packages/openapi/src/aggregation/*` |
 | **Airtable** | 整 base 載入客戶端(靠 base 級 50k/125k/500k 記錄上限撐),分組與小計在完整資料上算 | 官方 plans 頁 |
 | **Ragic** | 分群是**獨立報表引擎**,不是列表分頁 | [doc/92 分群報表](https://www.ragic.com/intl/zh-TW/doc/92/分群報表) |
@@ -121,7 +130,7 @@ Baserow 原始碼註明「要計數的列可能落在分頁範圍外」,故群�
 |---|---|---|---|---|
 | **Airtable** | 單選 / 使用者 / 連結記錄(限單筆) | ❌ 官方明載須單選「確保一筆只屬一欄」 | Uncategorized | 官方 |
 | **Baserow** | **僅單選** | ❌ | Uncategorized 欄,**拖進去 = 清空值** | 官方 |
-| **NocoDB** | **僅 SingleSelect** | ❌ | Uncategorized 固定 index 0 | 原始碼 + issue #6184 |
+| **NocoDB** | **僅 SingleSelect** | ❌ | Uncategorized 固定 index 0 | **issue #6184(公開)** —— 2026-08-03 刪去原始碼出處 |
 | **Notion** | 近乎全型別(數字可設**區間級距**、日期可按日/週/月/年) | ✅ | 「No X」群組 | 官方 |
 | **Teable** | 除附件/按鈕外多數;**computed 欄不可拖** | 未載 | 隱藏空 stack | 官方 |
 

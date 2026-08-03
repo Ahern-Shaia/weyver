@@ -41,12 +41,12 @@ export class ExportService {
   constructor(@Inject(ExportRepository) private readonly repo: ExportRepository) {}
 
   async list(tenant: TenantContext): Promise<{ jobs: ExportJobDto[]; ttlDays: number }> {
-    const rows = await this.repo.listForTenant(tenant.tenantId)
+    const rows = await this.repo.listForActor(tenant.tenantId, tenant.actorId)
     return { jobs: rows.map(toExportDto), ttlDays: EXPORT_TTL_DAYS }
   }
 
   async get(tenant: TenantContext, id: number): Promise<ExportJobDto | null> {
-    const row = await this.repo.getForTenant(tenant.tenantId, id)
+    const row = await this.repo.getForActor(tenant.tenantId, tenant.actorId, id)
     return row === null ? null : toExportDto(row)
   }
 
