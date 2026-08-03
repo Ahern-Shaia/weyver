@@ -159,17 +159,36 @@ export const formatConditionSchema = z.object({
   value: z.unknown().optional(),
 })
 
+/* 🔴 OQ-CF-8 = 選項 C-1(2026-08-03):效果升為判別式聯集。
+   權威在後端 `layout-specs.ts`,此為鏡射 —— 兩邊要一起改(這份鏡射
+   在稽核時被發現**沒有 `.strict()`**,未知欄位會被靜默剝除)。 */
+export const formatEffectSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("color"), tone: z.enum(FORMAT_TONES) }),
+])
+export type FormatEffect = z.infer<typeof formatEffectSchema>
+
 export const formatRuleSchema = z.object({
   combinator: z.enum(["and", "or"]).default("and"),
   conditions: z.array(formatConditionSchema).min(1).max(20),
   targets: z.array(z.string().min(1).max(100)).max(50).default([]),
-  tone: z.enum(FORMAT_TONES),
+  effects: z.array(formatEffectSchema).min(1).max(10),
+  note: z.string().max(200).optional(),
+  enabled: z.boolean().default(true),
 })
 export type FormatRule = z.infer<typeof formatRuleSchema>
 
+/* 相容讀取器,與後端同構:舊 `{ …, tone }` 升級為 `{ effects: [{ kind:"color", tone }] }` */
+const formatRuleInputSchema = z.preprocess((raw) => {
+  if (typeof raw !== "object" || raw === null) return raw
+  const o = raw as Record<string, unknown>
+  if (o.effects !== undefined || o.tone === undefined) return raw
+  const { tone, ...rest } = o
+  return { ...rest, effects: [{ kind: "color", tone }] }
+}, formatRuleSchema)
+
 export const conditionalFormatsSchema = z.object({
-  record: z.array(formatRuleSchema).max(20).default([]),
-  list: z.array(formatRuleSchema).max(20).default([]),
+  record: z.array(formatRuleInputSchema).max(20).default([]),
+  list: z.array(formatRuleInputSchema).max(20).default([]),
 })
 export type ConditionalFormats = z.infer<typeof conditionalFormatsSchema>
 

@@ -1,3 +1,4 @@
+import type { ChipTone } from "@weyver/ui/status-chip"
 import { describe, expect, it } from "vitest"
 import { evaluateFormats, matchesCondition } from "./conditional-format"
 import type { FormatRule } from "./schemas"
@@ -6,10 +7,16 @@ import type { FormatRule } from "./schemas"
 
 const FIELDS = ["單號", "交期", "狀態", "金額"]
 
-const rule = (r: Partial<FormatRule> & Pick<FormatRule, "conditions" | "tone">): FormatRule => ({
+/* 測試 helper 仍以 `tone` 表達(可讀性高於逐條寫 `effects`),
+   內部組成 C-1 的判別式形狀 —— 與相容讀取器同一個轉換。 */
+const rule = (
+  r: Partial<FormatRule> & Pick<FormatRule, "conditions"> & { tone: ChipTone },
+): FormatRule => ({
   combinator: "and",
   targets: [],
+  enabled: true,
   ...r,
+  effects: [{ kind: "color", tone: r.tone }],
 })
 
 describe("matchesCondition", () => {
@@ -156,10 +163,47 @@ describe("evaluateFormats", () => {
         combinator: "and",
         conditions: [{ field: "狀態", op: "eq", value: "待審" }],
         targets: ["狀態"],
-        tone: "rainbow",
+        effects: [{ kind: "color", tone: "rainbow" }],
       },
     ] as unknown as FormatRule[]
     expect(evaluateFormats(rules, values, FIELDS).size).toBe(0)
+  })
+
+  /* 🔴 OQ-CF-8 = C-1 之後新增:**沒有 `effects` 的舊形狀不得讓求值器爆掉**。
+     型別上 `effects` 必存,但型別不是執行期保證 —— 舊備份、手改的 JSONB、
+     未經 zod 的路徑都可能送進來。渲染前最後一道要能吞掉它,而不是整頁白畫面。 */
+  it("FMEA G1-bis:舊形狀(無 effects)略過而非拋錯", () => {
+    const rules = [
+      {
+        combinator: "and",
+        conditions: [{ field: "狀態", op: "eq", value: "待審" }],
+        targets: ["狀態"],
+        tone: "warn",
+      },
+    ] as unknown as FormatRule[]
+    expect(() => evaluateFormats(rules, values, FIELDS)).not.toThrow()
+    expect(evaluateFormats(rules, values, FIELDS).size).toBe(0)
+  })
+
+  it("同一條規則帶多個 color 效果時,取最後一個(與跨規則後者覆蓋同語意)", () => {
+    const rules = [
+      {
+        combinator: "and",
+        conditions: [{ field: "狀態", op: "eq", value: "待審" }],
+        targets: ["狀態"],
+        effects: [
+          { kind: "color", tone: "ok" },
+          { kind: "color", tone: "error" },
+        ],
+      },
+    ] as unknown as FormatRule[]
+    expect(evaluateFormats(rules, values, FIELDS).get("狀態")).toBe("error")
+  })
+
+  it("enabled: false 的規則不套用 —— 停用不是刪除,規則要留著", () => {
+    const r = rule({ conditions: [{ field: "狀態", op: "eq", value: "待審" }], tone: "warn" })
+    expect(evaluateFormats([{ ...r, enabled: false }], values, FIELDS).size).toBe(0)
+    expect(evaluateFormats([r], values, FIELDS).size).toBe(1)
   })
 
   it("無規則 → 空結果(零成本短路)", () => {

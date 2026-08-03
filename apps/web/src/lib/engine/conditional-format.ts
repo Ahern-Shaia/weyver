@@ -87,7 +87,12 @@ function ruleMatches(rule: FormatRule, values: RecordValues, known: ReadonlySet<
   return rule.combinator === "or" ? results.some(Boolean) : results.every(Boolean)
 }
 
-/* 回傳「欄位顯示名 → tone」。targets 為空 = 套用到該規則條件所涉之欄位。 */
+/* 回傳「欄位顯示名 → tone」。targets 為空 = 套用到該規則條件所涉之欄位。
+
+   🔴 OQ-CF-8 = C-1:規則已升為判別式 `effects[]`,但本函式**仍只回 tone** ——
+   目前 `effects` 只有 `color` 一種。等 C-2(hide / readonly / section / message)
+   落地時,回傳型別改為 `Map<欄位名, EffectState>`,呼叫端一併改。
+   **現在不預先做那個泛化**:沒有第二種效果時,`EffectState` 只會是包了一層的 tone。 */
 export function evaluateFormats(
   rules: readonly FormatRule[],
   values: RecordValues,
@@ -96,12 +101,22 @@ export function evaluateFormats(
   const known = new Set(fieldNames)
   const out = new Map<string, ChipTone>()
   for (const rule of rules) {
-    if (!isChipTone(rule.tone)) continue // 白名單兜底(後端已 enum 收斂,此為第二道)
+    if (rule.enabled === false) continue
+    /* 一條規則可帶多個效果;取最後一個 color(同規則內後者覆蓋,與跨規則同語意) */
+    /* 🔴 防禦性:`effects` 型別上必存,但本函式是**渲染前最後一道** ——
+       舊形狀的資料、手改的 JSONB、未來的 schema 漂移都可能讓它不見。
+       型別不是執行期保證,而 FMEA G1 測的正是「壞資料闖到這裡」。 */
+    const effects = Array.isArray(rule.effects) ? rule.effects : []
+    const tone = effects.reduce<ChipTone | null>(
+      (acc, e) => (e.kind === "color" && isChipTone(e.tone) ? e.tone : acc),
+      null,
+    )
+    if (tone === null) continue // 白名單兜底(後端已 enum 收斂,此為第二道)
     if (!ruleMatches(rule, values, known)) continue
     const targets = rule.targets.length > 0 ? rule.targets : rule.conditions.map((c) => c.field)
     for (const name of targets) {
       if (!known.has(name)) continue // 目標欄已刪 → 略過該欄,其餘照套
-      out.set(name, rule.tone) // 後者覆蓋(Ragic 語意)
+      out.set(name, tone) // 後者覆蓋(Ragic 語意)
     }
   }
   return out

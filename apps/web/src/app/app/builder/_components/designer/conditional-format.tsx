@@ -34,7 +34,25 @@ const TONE_LABEL: Partial<Record<ChipTone, string>> = {
 }
 
 function newRule(field: string): FormatRule {
-  return { combinator: "and", conditions: [{ field, op: "isNotEmpty" }], targets: [], tone: "warn" }
+  return {
+    combinator: "and",
+    conditions: [{ field, op: "isNotEmpty" }],
+    targets: [],
+    effects: [{ kind: "color", tone: "warn" }],
+    enabled: true,
+  }
+}
+
+/* 🔴 OQ-CF-8 = C-1:規則已升為 `effects[]`,但**這個編輯器目前只編得了顏色**。
+   刻意如此 —— C-1 只改形狀不擴效果面。取最後一個 color 與求值器同語意。
+   C-2 落地時這裡才會出現效果種類的選擇器。 */
+function toneOf(rule: FormatRule): ChipTone {
+  return rule.effects.reduce<ChipTone>((acc, e) => (e.kind === "color" ? e.tone : acc), "neutral")
+}
+
+function withTone(rule: FormatRule, tone: ChipTone): Partial<FormatRule> {
+  const rest = rule.effects.filter((e) => e.kind !== "color")
+  return { effects: [...rest, { kind: "color", tone }] }
 }
 
 function describe(rule: FormatRule): string {
@@ -124,8 +142,8 @@ export function ConditionalFormatPanel({
               } ${i === selected ? "border-primary bg-primary-t" : "bg-card hover:bg-head"}`}
             >
               <span className="truncate text-[12px] text-ink-2">{describe(r)}</span>
-              <StatusChip tone={r.tone} className="ml-auto shrink-0">
-                {TONE_LABEL[r.tone] ?? r.tone}
+              <StatusChip tone={toneOf(r)} className="ml-auto shrink-0">
+                {TONE_LABEL[toneOf(r)] ?? toneOf(r)}
               </StatusChip>
               <span className="shrink-0 text-[12px] text-ink-3">
                 → {r.targets.length > 0 ? r.targets.join("、") : "條件欄"}
@@ -308,10 +326,10 @@ export function ConditionalFormatPanel({
                   <button
                     key={tone}
                     type="button"
-                    onClick={() => patch(selected, { tone })}
+                    onClick={() => patch(selected, withTone(rule, tone))}
                     aria-label={`顏色 ${tone}`}
                     className={
-                      rule.tone === tone ? "outline-2 outline-primary outline-offset-1" : ""
+                      toneOf(rule) === tone ? "outline-2 outline-primary outline-offset-1" : ""
                     }
                   >
                     <StatusChip tone={tone}>{TONE_LABEL[tone] ?? tone}</StatusChip>
