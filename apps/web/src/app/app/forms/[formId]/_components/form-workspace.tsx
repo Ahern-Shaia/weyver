@@ -16,6 +16,7 @@ import {
   useViews,
 } from "@/lib/engine/hooks"
 import type { FormSummary, ViewConfig } from "@/lib/engine/schemas"
+import { buildRecordQuery } from "@/lib/engine/view-query"
 import { recordFormVisit } from "@/lib/recent-forms"
 import { useTenantScope } from "@/lib/use-tenant-scope"
 import { Segmented } from "@weyver/ui/segmented"
@@ -23,7 +24,7 @@ import { FileText } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
-import { type ReactNode, useEffect, useRef, useState } from "react"
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { CollectionView } from "./collection-view"
 import { FormToolsMenu } from "./form-tools-menu"
 import { ImportBatches, importBatchKey } from "./import-batches"
@@ -96,6 +97,11 @@ export function FormWorkspace(): ReactNode {
   const { data: views = [] } = useViews(valid ? formId : null)
   const [activeViewId, setActiveViewId] = useState<number | null>(null)
   const [workingConfig, setWorkingConfig] = useState<ViewConfig>(EMPTY_CONFIG)
+  /* 樞紐 / 圖表與列表**共用同一份查詢推導** —— 見 `view-query.ts` 註解 */
+  const viewQuery = useMemo(
+    () => buildRecordQuery({ view: workingConfig, quickSearch: q }),
+    [workingConfig, q],
+  )
   const [msg, setMsg] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const invalidate = useInvalidate()
@@ -279,17 +285,16 @@ export function FormWorkspace(): ReactNode {
         form === undefined ? (
           <div className="p-6 text-[12px] text-ink-3">載入…</div>
         ) : (
-          <PivotView
-            formId={formId}
-            form={form}
-            query={{ filters: [], combinator: "and", sort: [] }}
-          />
+          /* 🔴 OQ-PC-10 = A:吃當下檢視的篩選。
+             原本寫死空 filter → 列表篩成「本月南區」、樞紐卻顯示全年全區,
+             而畫面沒有任何提示。那不是少一個功能,是那張圖在騙人。 */
+          <PivotView formId={formId} form={form} query={viewQuery} />
         )
       ) : mode === "chart" ? (
         form === undefined ? (
           <div className="p-6 text-[12px] text-ink-3">載入…</div>
         ) : (
-          <ChartView formId={formId} form={form} />
+          <ChartView formId={formId} form={form} query={viewQuery} />
         )
       ) : (
         <RecordDetail

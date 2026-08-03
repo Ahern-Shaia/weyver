@@ -3,6 +3,7 @@
 import { Chart, type ChartOption } from "@/components/chart"
 import { type RecordQuery, useGroupStats } from "@/lib/engine/hooks"
 import { type FormDto, GROUP_AGGREGATE_FNS } from "@/lib/engine/schemas"
+import { isNarrowed } from "@/lib/engine/view-query"
 import { Select } from "@weyver/ui/select"
 import { type ReactNode, useMemo, useState } from "react"
 
@@ -36,9 +37,14 @@ const AGG_LABEL: Record<string, string> = {
 export function ChartView({
   formId,
   form,
+  query: viewQuery,
 }: {
   readonly formId: number
   readonly form: FormDto
+  /* 🔴 OQ-PC-10 = A:吃當下檢視的篩選。
+     原本這裡自己組 `filters: []`,於是列表篩成「本月南區」、圖表仍畫全年全區
+     —— 而畫面沒有任何提示。那不是少一個功能,是那張圖在騙人。 */
+  readonly query: RecordQuery
 }): ReactNode {
   const groupable = form.fields.filter(
     (f) => !["attachment", "image", "signature", "link"].includes(f.type),
@@ -53,12 +59,12 @@ export function ChartView({
 
   const query = useMemo<RecordQuery>(
     () => ({
-      filters: [],
-      combinator: "and",
-      sort: [],
+      ...viewQuery,
+      /* 分組由圖表的維度決定,不吃檢視的 groupBy —— 兩者語意不同:
+         檢視的分組是列表的視覺分群,圖表的維度是 X 軸 */
       groupBy: dimension === "" ? [] : [{ field: dimension, dir: "asc" }],
     }),
-    [dimension],
+    [viewQuery, dimension],
   )
   const { data, isPending } = useGroupStats(formId, query, measure === null ? [] : [measure])
 
@@ -177,6 +183,12 @@ export function ChartView({
             ))}
           </Select>
         )}
+        {/* 🔴 圖表最容易被當成全貌 —— 套著篩選時要講出來。
+            Metabase / Ragic 的反面教材都在「產出物離開畫面後就沒有上下文」,
+            而這裡連畫面上都沒有,使用者會拿它去開會。 */}
+        {isNarrowed(viewQuery) ? (
+          <span className="ml-auto text-[12px] text-wn">僅涵蓋目前篩選 / 搜尋的資料</span>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-4">

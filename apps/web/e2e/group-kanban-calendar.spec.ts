@@ -196,7 +196,16 @@ test("看板:純鍵盤即可換欄,且一次按鍵跳一整欄", async ({ page, 
   await expect(page.getByLabel("看板分欄依據")).toBeVisible({ timeout: 30_000 })
 
   /* 聚焦卡片本身(外層 draggable),不點內層開啟記錄的按鈕 */
-  await page.locator('[data-stack="甲欄"]').getByRole("button").first().focus()
+  /* ⚠️ 先等畫面穩下來再 focus。dnd-kit 的鍵盤感測器靠 `document.activeElement`,
+     而卡片載入後還會因 group-stats 回來再重繪一次 —— 焦點會被吃掉,
+     Space 就變成什麼都沒發生(而畫面完全正常)。等三欄的計數都出現代表已定案。 */
+  const card = page.locator('[data-stack="甲欄"]').getByRole("button").first()
+  await expect(card).toBeVisible()
+  await expect(page.locator('[data-stack="乙欄"]')).toBeVisible()
+  await page.waitForLoadState("networkidle")
+
+  await card.focus()
+  await expect(card).toBeFocused()
   await page.keyboard.press("Space") // 拿起
   await page.keyboard.press("ArrowRight") // 一次 = 一欄
   await page.keyboard.press("Space") // 放下
@@ -214,4 +223,37 @@ test("看板:純鍵盤即可換欄,且一次按鍵跳一整欄", async ({ page, 
     )
     /* 丙欄 = 錯的話代表跳了兩欄;甲欄 = 完全沒動 */
     .toBe("乙欄")
+})
+
+/* 🔴 OQ-PC-10 = A|樞紐 / 圖表要吃當下檢視的篩選。
+
+   出貨時 `form-workspace.tsx` 傳給樞紐的是**寫死的空 filter**,而 `chart-view.tsx`
+   自己也組了一份 `filters: []` —— 於是列表篩成「南區」、圖表照樣畫全區,
+   **而畫面沒有任何提示**。那不是少一個功能,是**那張圖在騙人**;
+   使用者會拿它去開會。
+
+   退化時完全沒有技術訊號(圖畫得出來、數字也是真的,只是範圍不對),
+   所以這條斷言比它看起來重要。 */
+test("圖表吃列表的搜尋條件,並標示只涵蓋部分資料", async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-6)
+  const formId = await createForm(request, `E2E圖表篩選_${stamp}`, [
+    { name: "區域", type: "singleSelect", options: { choices: ["北區", "南區"] } },
+  ])
+  await addRecord(request, formId, { 區域: "北區" })
+  await addRecord(request, formId, { 區域: "北區" })
+  await addRecord(request, formId, { 區域: "南區" })
+
+  await page.goto(`/app/forms/${String(formId)}?mode=chart`)
+  const table = page.getByRole("table", { name: "圖表資料" })
+  await expect(table).toBeVisible({ timeout: 30_000 })
+  await expect(table.getByRole("row")).toHaveCount(3) // 標頭 + 北區 + 南區
+  await expect(page.getByText("僅涵蓋目前篩選 / 搜尋的資料")).toHaveCount(0)
+
+  await page.getByRole("tab", { name: "列表" }).click()
+  await page.getByPlaceholder("搜尋此表單…").fill("南區")
+  await page.getByRole("tab", { name: "圖表" }).click()
+
+  /* 北區必須消失 —— 這是「圖跟著列表走」的唯一證明 */
+  await expect(table.getByRole("row")).toHaveCount(2)
+  await expect(page.getByText("僅涵蓋目前篩選 / 搜尋的資料")).toBeVisible()
 })

@@ -5,7 +5,6 @@ import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
 import { describeEngineError } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
-import { operatorNeedsValue } from "@/lib/engine/field-filters"
 import { gridThemeOverride } from "@/lib/engine/grid-tone"
 import {
   type RecordQuery,
@@ -16,6 +15,7 @@ import {
   useUpdateRecord,
 } from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
+import { buildRecordQuery } from "@/lib/engine/view-query"
 import {
   CompactSelection,
   type EditableGridCell,
@@ -60,20 +60,10 @@ export function CollectionView({
   /* 折疊狀態 —— 傳到後端從查詢排除,而非前端隱藏(否則折疊後仍吃 page size)。 */
   const [collapsed, setCollapsed] = useState<readonly (readonly string[])[]>([])
 
+  /* 🔴 與樞紐 / 圖表共用同一份推導(`buildRecordQuery`)——
+     這段原本只寫在這裡,而 workspace 傳給樞紐的是寫死的空 filter。 */
   const query = useMemo<RecordQuery>(
-    () => ({
-      // 跳過未填值的條件(避免 op 需值但空 → 後端 422;亦即「輸入前不套用」)
-      filters: (view?.filter.conditions ?? []).filter(
-        (c) =>
-          !operatorNeedsValue(c.op) ||
-          (c.value !== "" && c.value !== null && c.value !== undefined),
-      ),
-      combinator: view?.filter.combinator ?? "and",
-      sort: view?.sorts ?? [],
-      q: quickSearch.trim() || view?.search || undefined,
-      groupBy: view?.groupBy ?? [],
-      collapsed,
-    }),
+    () => buildRecordQuery({ view, quickSearch, collapsed }),
     [view, quickSearch, collapsed],
   )
   const recordsQuery = useInfiniteRecordsQuery(formId, query)
