@@ -1,8 +1,16 @@
 "use client"
 
+import { formatFieldValue } from "@/components/form/value"
+import { choicesOf } from "@/components/form/value"
+import { describeEngineError } from "@/lib/engine/client"
+import { useUpdateRecord } from "@/lib/engine/hooks"
+import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"
 import {
+  type ClientRect,
   DndContext,
   type DragEndEvent,
+  type KeyboardCoordinateGetter,
+  KeyboardSensor,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -10,11 +18,6 @@ import {
   useSensors,
 } from "@dnd-kit/core"
 import { type ReactNode, useState } from "react"
-import { formatFieldValue } from "@/components/form/value"
-import { choicesOf } from "@/components/form/value"
-import { describeEngineError } from "@/lib/engine/client"
-import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"
-import { useUpdateRecord } from "@/lib/engine/hooks"
 
 /* 🔴 F-1 M3 Kanban。stack 就是**單欄 group-by 的一階特例**,故資料層完整共用 M1。
 
@@ -47,6 +50,48 @@ const COMPUTED = new Set([
 ])
 
 const UNCATEGORIZED = "__uncategorized__"
+
+/* 鍵盤拖曳的落點計算:看板是**橫向的欄**,一次跳一整欄。
+   不能用 dnd-kit 的預設 getter —— 它一次移 25px,跨一欄要按十幾下,
+   等於「技術上可用、實際上不可用」,而 WCAG 2.1.1 要的是後者。
+   ↑/↓ 不接管(欄內排序不由本元件決定,排序在檢視設定)。 */
+const stackCoordinateGetter: KeyboardCoordinateGetter = (
+  event,
+  { context, currentCoordinates },
+) => {
+  const dir = event.code === "ArrowRight" ? 1 : event.code === "ArrowLeft" ? -1 : 0
+  if (dir === 0) return undefined
+  const dragged = context.collisionRect
+  if (dragged === null) return undefined
+
+  const rects: ClientRect[] = context.droppableContainers
+    .getEnabled()
+    .map((c) => context.droppableRects.get(c.id))
+    .filter((r): r is ClientRect => r !== undefined)
+    .sort((a, b) => a.left - b.left)
+  if (rects.length === 0) return undefined
+
+  const centerOf = (r: ClientRect): number => r.left + r.width / 2
+  const draggedCenter = centerOf(dragged)
+  /* 用最近的欄當基準而非「包含」—— 卡片被拖到欄與欄的間隙時 `包含` 會找不到 */
+  let fromIdx = 0
+  let best = Number.POSITIVE_INFINITY
+  rects.forEach((r, i) => {
+    const d = Math.abs(centerOf(r) - draggedCenter)
+    if (d < best) {
+      best = d
+      fromIdx = i
+    }
+  })
+
+  const toIdx = fromIdx + dir
+  const target = rects[toIdx]
+  if (target === undefined) return undefined // 已在最左/最右,不繞回
+  return {
+    x: currentCoordinates.x + (centerOf(target) - draggedCenter),
+    y: currentCoordinates.y,
+  }
+}
 
 function Card({
   record,
@@ -144,7 +189,13 @@ export function KanbanView({
 }): ReactNode {
   const [error, setError] = useState<string | null>(null)
   const updateRecord = useUpdateRecord(formId)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    /* 🔴 WCAG 2.1.1 Keyboard(Level A)。與 `designer/canvas.tsx` 完全同型的缺口:
+       原本只有 PointerSensor,沒有滑鼠就完全不能移動卡片。
+       空白/Enter 拿起 → ←/→ 換一欄 → 再按空白放下(dnd-kit 內建語意)。 */
+    useSensor(KeyboardSensor, { coordinateGetter: stackCoordinateGetter }),
+  )
 
   const locked = COMPUTED.has(stackField.type)
 

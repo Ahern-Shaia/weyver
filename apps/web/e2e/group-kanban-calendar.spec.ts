@@ -177,3 +177,41 @@ test("圖表:繪出 canvas 且附可讀資料表", async ({ page, request }) => 
   expect(desc).toMatch(/北 \d+/)
   await expect(page.getByText("圖表資料")).toBeVisible()
 })
+
+/* 🔴 WCAG 2.1.1 Keyboard(Level A):全程不用滑鼠也要能移動卡片。
+
+   這一條盯的是**一次按鍵跳一整欄**,不只是「按了有反應」——
+   dnd-kit 的預設 coordinateGetter 一次移 25px,跨一欄要按十幾下,
+   那是「技術上可用、實際上不可用」,而 Level A 要的是後者。
+   退化時畫面完全正常(拖曳照樣能用滑鼠操作),只有鍵盤使用者受影響。 */
+test("看板:純鍵盤即可換欄,且一次按鍵跳一整欄", async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-6)
+  const formId = await createForm(request, `E2E看板鍵盤_${stamp}`, [
+    { name: "標題", type: "text" },
+    { name: "狀態", type: "singleSelect", options: { choices: ["甲欄", "乙欄", "丙欄"] } },
+  ])
+  await addRecord(request, formId, { 標題: "鍵盤任務", 狀態: "甲欄" })
+
+  await page.goto(`/app/forms/${String(formId)}?mode=kanban`)
+  await expect(page.getByLabel("看板分欄依據")).toBeVisible({ timeout: 30_000 })
+
+  /* 聚焦卡片本身(外層 draggable),不點內層開啟記錄的按鈕 */
+  await page.locator('[data-stack="甲欄"]').getByRole("button").first().focus()
+  await page.keyboard.press("Space") // 拿起
+  await page.keyboard.press("ArrowRight") // 一次 = 一欄
+  await page.keyboard.press("Space") // 放下
+
+  await expect
+    .poll(
+      async () => {
+        const res = await request.get(`http://localhost:3001/api/forms/${String(formId)}/records`, {
+          headers: { "x-dev-tenant": "1" },
+        })
+        const body = (await res.json()) as { records: { values: Record<string, unknown> }[] }
+        return body.records[0]?.values.狀態
+      },
+      { timeout: 15_000 },
+    )
+    /* 丙欄 = 錯的話代表跳了兩欄;甲欄 = 完全沒動 */
+    .toBe("乙欄")
+})
