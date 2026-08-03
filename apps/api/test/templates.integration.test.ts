@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
+import { TEMPLATE_PACKS } from "../src/templates/packs.js"
 import { templatePackSchema } from "../src/templates/template-specs.js"
 import { TemplateService } from "../src/templates/template.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
@@ -134,5 +135,67 @@ describe("套用範本包", () => {
     })
     await expect(templates.apply(tenantA, pack, 1)).rejects.toThrow(/ghost/)
     expect(await formCount()).toBe(before)
+  })
+})
+
+/* 🔴 M4|**首發範本集的每一個包都要真的套得起來**。
+
+   包的 schema 在 module load 時就驗了,但**欄位 options 要到套用時才驗**
+   (`createFormSpecSchema`)—— 也就是說一個寫錯的 `singleSelect.choices` 或
+   `formula.expression` 在單元測試裡完全看不出來,而使用者按下去才炸。
+   這正是本專案反覆踩到的形狀:**有資料、沒人驗過**。 */
+describe("首發範本集", () => {
+  it("九個包全部套得起來(逐包實建再收掉)", async () => {
+    expect(TEMPLATE_PACKS.length).toBeGreaterThanOrEqual(8)
+    for (const pack of TEMPLATE_PACKS) {
+      const unique = {
+        ...pack,
+        forms: pack.forms.map((f) => ({ ...f, name: `${f.name}_${String(Date.now()).slice(-6)}` })),
+      }
+      const res = await templates.apply(tenantA, unique, 1, { withRecords: true })
+      expect(res.formIds.length, `${pack.key} 應建出 ${String(pack.forms.length)} 張`).toBe(
+        pack.forms.length,
+      )
+    }
+  }, 120_000)
+
+  /* OQ-TPL-8 = C:主軸是職能不是產業。
+     ⚠️ 這條看起來像在測資料,實際在測**定位** —— v0.1 的首發集四個裡三個是食品,
+     而 docs/04 v1.5 明文「多產業通用、非食品業垂直」。退化時沒有任何技術訊號。 */
+  it("🔴 通用職能範本必須多於產業範本(否則用範本庫把定位講反了)", () => {
+    const generic = TEMPLATE_PACKS.filter((p) => p.industry === undefined)
+    const industry = TEMPLATE_PACKS.filter((p) => p.industry !== undefined)
+    expect(generic.length).toBeGreaterThan(industry.length)
+  })
+})
+
+/* 🔴 同一個範本套第二次 —— **實走時抓到的真缺陷**。
+
+   原本會撞表單名唯一,而回給使用者的是「internal error」:
+   使用者的意圖通常是「我要再一份」(不同部門 / 不同年度),
+   而他得到的是一句什麼都沒說的錯誤。
+   改為自動加序號,**並把改了哪些名字回報出去** —— 靜默改名跟靜默不改一樣糟
+   (使用者會以為套用失敗了,因為找不到他預期的那個名字)。 */
+describe("重複套用同一個範本", () => {
+  it("🔴 第二次套用不失敗,同名自動加序號並回報", async () => {
+    const pack = templatePackSchema.parse({
+      key: "twice",
+      version: "1.0",
+      name: "重複",
+      description: "",
+      forms: [
+        {
+          ref: "a",
+          name: `重複表_${String(Date.now()).slice(-5)}`,
+          fields: [{ name: "甲", type: "text" }],
+        },
+      ],
+    })
+    const first = await templates.apply(tenantA, pack, 1)
+    expect(first.renamed).toEqual([])
+
+    const second = await templates.apply(tenantA, pack, 1)
+    expect(second.formIds).toHaveLength(1)
+    expect(second.renamed[0]).toContain("(2)")
   })
 })

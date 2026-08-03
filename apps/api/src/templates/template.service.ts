@@ -1,5 +1,8 @@
 import { Inject, Injectable, Logger, UnprocessableEntityException } from "@nestjs/common"
+import { AuthzRepository } from "../authz/authz.repository.js"
 import { DdlService } from "../form-engine/ddl/ddl.service.js"
+import { MetadataService } from "../form-engine/metadata/metadata.service.js"
+import { RecordService } from "../form-engine/records/record.service.js"
 import type { AddFieldSpec } from "../form-engine/specs/form-specs.js"
 import {
   type TemplateForm,
@@ -12,6 +15,8 @@ export interface ApplyResult {
   readonly formIds: readonly number[]
   /* ref → 實際建出來的 formId。呼叫端要導到主表時用得到 */
   readonly refMap: Readonly<Record<string, number>>
+  /* 因為同名而被加了序號的表 —— 呼叫端要講給使用者聽 */
+  readonly renamed: readonly string[]
 }
 
 /* 🔴 R1·TPL M1|套用範本包。
@@ -29,9 +34,22 @@ export interface ApplyResult {
 export class TemplateService {
   private readonly log = new Logger(TemplateService.name)
 
-  constructor(@Inject(DdlService) private readonly ddl: DdlService) {}
+  constructor(
+    @Inject(DdlService) private readonly ddl: DdlService,
+    @Inject(RecordService) private readonly records: RecordService,
+    @Inject(MetadataService) private readonly metadata: MetadataService,
+    @Inject(AuthzRepository) private readonly authz: AuthzRepository,
+  ) {}
 
-  async apply(tenantId: number, pack: TemplatePack, actorId?: number): Promise<ApplyResult> {
+  async apply(
+    tenantId: number,
+    pack: TemplatePack,
+    actorId?: number,
+    /* OQ-TPL-4=A:一個布林同時解掉「要不要帶範例資料」與「事後怎麼清」——
+       不帶就不用清。Airtable 一律帶再提供清除,而它自己踩了坑:
+       清除入口藏在一次性側欄,官方文件還得補一段 workaround。 */
+    opts?: { readonly withRecords?: boolean },
+  ): Promise<ApplyResult> {
     /* 建任何表**之前**先驗完 —— 建到一半才發現 ref 打錯,就得靠補償去收拾,
        而補償本身也可能失敗。這一步把可預期的錯誤擋在有副作用之前。 */
     const errors = validatePackRefs(pack)
@@ -49,6 +67,31 @@ export class TemplateService {
       })
     }
 
+    /* 🔴 同一個範本套第二次會撞表單名唯一,而錯誤訊息是「internal error」——
+       實走時抓到。使用者的意圖通常是「我要再一份」(不同部門 / 不同年度),
+       故**自動加序號**而不是拒絕;但**要講出來**(回 `renamed`),
+       靜默改名跟靜默不改一樣糟。 */
+    const taken = new Set((await this.metadata.listForms(tenantId)).map((f) => f.name))
+    const renamed: string[] = []
+    const uniqueName = (base: string): string => {
+      if (!taken.has(base)) {
+        taken.add(base)
+        return base
+      }
+      for (let n = 2; n < 100; n++) {
+        const candidate = `${base} (${String(n)})`
+        if (!taken.has(candidate)) {
+          taken.add(candidate)
+          renamed.push(candidate)
+          return candidate
+        }
+      }
+      throw new UnprocessableEntityException({
+        code: "TEMPLATE_NAME_EXHAUSTED",
+        message: `「${base}」已存在超過 99 份,請先整理既有表單`,
+      })
+    }
+
     const refMap: Record<string, number> = {}
     const created: number[] = []
     try {
@@ -56,7 +99,7 @@ export class TemplateService {
         const built = await this.ddl.createForm(
           tenantId,
           {
-            name: form.name,
+            name: uniqueName(form.name),
             ...(form.parentRef === undefined
               ? {}
               : { parentFormId: this.mustResolve(refMap, form.parentRef) }),
@@ -66,11 +109,48 @@ export class TemplateService {
         )
         refMap[form.ref] = built.form.id
         created.push(built.form.id)
+
+        if (opts?.withRecords === true && form.sampleRows.length > 0) {
+          await this.records.createManyRecords(
+            tenantId,
+            built.form.id,
+            form.sampleRows,
+            actorId ?? 0,
+          )
+        }
       }
-      return { formIds: created, refMap }
+      /* 分類最後套 —— 它不影響表能不能用,失敗不該讓整包回滾。
+         但**也不能靜默** ,故失敗時記 log(見 `assignCategory`)。 */
+      await this.assignCategory(tenantId, pack, created)
+      return { formIds: created, refMap, renamed }
     } catch (e) {
       await this.compensate(tenantId, created, actorId)
       throw e
+    }
+  }
+
+  /* 🔴 OQ-TPL-10 = A|分類是**建議值**:同名沿用,否則建立。
+
+     對碼發現 `form_categories` **沒有預設 seed** —— 也就是說範本帶進來的分類
+     會**實質決定租戶的分類體系**。強制建立(選項 B)會在客戶既有的分類樹裡
+     塞進陌生節點;不帶分類(選項 C)則讓範本一裝進來就散在未分類,
+     失去「打開就能用」的觀感,而那正是範本的價值。 */
+  private async assignCategory(
+    tenantId: number,
+    pack: TemplatePack,
+    formIds: readonly number[],
+  ): Promise<void> {
+    if (pack.categoryName === undefined) return
+    try {
+      const existing = (await this.authz.listCategories(tenantId)).find(
+        (c) => c.name === pack.categoryName,
+      )
+      const category = existing ?? (await this.authz.createCategory(tenantId, pack.categoryName))
+      for (const formId of formIds) await this.authz.setFormCategory(tenantId, formId, category.id)
+    } catch (err) {
+      /* 表已經建好且可用 —— 為了分類把整包回滾不划算。但不吞:
+         使用者會看到表出現在「未分類」,而他需要知道那不是設計如此。 */
+      this.log.error(`範本 ${pack.key} 的分類指派失敗,表單已建立但落在未分類`, err)
     }
   }
 
