@@ -503,6 +503,44 @@ export function useMyPendingApprovals() {
   })
 }
 
+/* 🔴 M4/M5|退回到指定關 · 臨時加簽 · 強制解鎖。
+   三者都會改變簽核狀態,故一律 invalidate 全部(與 decide 同做法)。 */
+export function useReturnApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { instanceId: number; targetStep: number; comment: string }) =>
+      engineFetch(`/approvals/${input.instanceId}/return`, approvalInstanceDtoSchema, {
+        method: "POST",
+        body: { targetStep: input.targetStep, comment: input.comment },
+      }),
+    onSuccess: () => void queryClient.invalidateQueries(),
+  })
+}
+
+export function useAddApprover() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { instanceId: number; actorId: number }) =>
+      engineFetch(`/approvals/${input.instanceId}/add-approver`, approvalInstanceDtoSchema, {
+        method: "POST",
+        body: { actorId: input.actorId },
+      }),
+    onSuccess: () => void queryClient.invalidateQueries(),
+  })
+}
+
+export function useUnlockApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { instanceId: number; comment: string }) =>
+      engineFetch(`/approvals/${input.instanceId}/unlock`, approvalInstanceDtoSchema, {
+        method: "POST",
+        body: { comment: input.comment },
+      }),
+    onSuccess: () => void queryClient.invalidateQueries(),
+  })
+}
+
 export function useDecideApproval() {
   const queryClient = useQueryClient()
   return useMutation({

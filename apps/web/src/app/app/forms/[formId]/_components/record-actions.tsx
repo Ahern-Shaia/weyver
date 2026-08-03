@@ -1,16 +1,10 @@
 "use client"
 
-import { CheckCircle2, CircleSlash, ExternalLink, Play, Send, Undo2 } from "lucide-react"
+import { ExternalLink, Play, Send } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
-import {
-  useButtons,
-  useDecideApproval,
-  useRecordApproval,
-  useRunButton,
-  useSubmitApproval,
-  useWithdrawApproval,
-} from "@/lib/engine/hooks"
+import { useButtons, useRecordApproval, useRunButton, useSubmitApproval } from "@/lib/engine/hooks"
+import { ApprovalPanel, ApprovalTrail } from "./approval-panel"
 import type { ApprovalInstanceDto, ButtonDto } from "@/lib/engine/schemas"
 
 /* R1·後續-1 M3 記錄頁動作區:自訂按鈕(確認 → 執行)+ 簽核(送簽 / 狀態章 / 步驟進度 / 決策)。
@@ -19,7 +13,8 @@ import type { ApprovalInstanceDto, ButtonDto } from "@/lib/engine/schemas"
 const STATUS_LABEL: Record<ApprovalInstanceDto["status"], string> = {
   pending: "簽核中",
   approved: "已核准",
-  rejected: "已退回",
+  /* M4 之後「退回」是退回到某一關;這個狀態是**駁回**(整單不成立) */
+  rejected: "已駁回",
   withdrawn: "已撤回",
 }
 
@@ -41,8 +36,6 @@ export function RecordActions({
   const { data: approval } = useRecordApproval(formId, recordId)
   const runButton = useRunButton(formId)
   const submitApproval = useSubmitApproval(formId)
-  const decide = useDecideApproval()
-  const withdraw = useWithdrawApproval()
   const [msg, setMsg] = useState<string | null>(null)
 
   const instance = approval?.instance ?? null
@@ -75,7 +68,11 @@ export function RecordActions({
   if (buttons.length === 0 && instance === null) return null
 
   return (
-    <div data-noprint className="border-b border-line bg-card px-4 py-2">
+    <div
+      data-noprint
+      data-testid="record-actions"
+      className="border-b border-line bg-card px-4 py-2"
+    >
       <div className="flex flex-wrap items-center gap-2">
         {instance !== null ? (
           <span
@@ -83,6 +80,11 @@ export function RecordActions({
           >
             {STATUS_LABEL[instance.status]}
             {instance.status === "pending" ? ` · 第 ${instance.currentStep} 關` : ""}
+            {/* 🔴 會簽進度要看得見 —— 否則第一個人簽完之後畫面毫無變化,
+                他會以為自己按了沒反應,然後再按一次。 */}
+            {instance.status === "pending" && instance.stepProgress.required > 1
+              ? ` · ${instance.stepProgress.approved}/${instance.stepProgress.required} 人已核准`
+              : ""}
           </span>
         ) : null}
 
@@ -100,6 +102,13 @@ export function RecordActions({
           </button>
         ))}
 
+        {instance !== null && instance.unlockedAt !== null ? (
+          /* 解鎖是繞過內控的狀態,必須在檯面上 —— 不顯示的話沒有人知道這筆現在可以改 */
+          <span className="inline-flex items-center gap-1 rounded-xs border border-warn-line bg-warn-t px-2 py-0.5 text-[12px] text-warn">
+            已強制解鎖
+          </span>
+        ) : null}
+
         {instance === null || instance.status !== "pending" ? (
           <button
             type="button"
@@ -116,75 +125,11 @@ export function RecordActions({
             送簽
           </button>
         ) : (
-          <>
-            <button
-              type="button"
-              onClick={() =>
-                decide.mutate(
-                  { instanceId: instance.id, decision: "approve" },
-                  {
-                    onSuccess: (r) =>
-                      setMsg(
-                        r.status === "approved" ? "簽核完成" : `已核准,進入第 ${r.currentStep} 關`,
-                      ),
-                    onError: (e) => setMsg(describeEngineError(e)),
-                  },
-                )
-              }
-              className="flex items-center gap-1 rounded-xs border border-ok-line px-2 py-1 text-[12px] text-ok hover:bg-ok-t"
-            >
-              <CheckCircle2 size={13} />
-              核准
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                decide.mutate(
-                  { instanceId: instance.id, decision: "reject" },
-                  {
-                    onSuccess: () => setMsg("已退回"),
-                    onError: (e) => setMsg(describeEngineError(e)),
-                  },
-                )
-              }
-              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t"
-            >
-              <CircleSlash size={13} />
-              退回
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                withdraw.mutate(instance.id, {
-                  onSuccess: () => setMsg("已撤回"),
-                  onError: (e) => setMsg(describeEngineError(e)),
-                })
-              }
-              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover"
-            >
-              <Undo2 size={13} />
-              撤回
-            </button>
-          </>
+          <ApprovalPanel instance={instance} onMessage={setMsg} />
         )}
       </div>
 
-      {instance !== null && instance.log.length > 0 ? (
-        <div className="mt-1.5 flex flex-wrap gap-2 font-mono text-[12px] text-ink-3">
-          {instance.log.map((l, i) => (
-            <span key={`${l.at}-${i}`}>
-              {l.decision === "submit"
-                ? "送簽"
-                : l.decision === "approve"
-                  ? "核准"
-                  : l.decision === "reject"
-                    ? "退回"
-                    : "撤回"}
-              ·#{l.actorId}·{l.at.slice(5, 16).replace("T", " ")}
-            </span>
-          ))}
-        </div>
-      ) : null}
+      {instance !== null ? <ApprovalTrail instance={instance} /> : null}
 
       {msg !== null ? <div className="mt-1.5 text-[12px] text-ink-2">{msg}</div> : null}
     </div>

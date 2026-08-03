@@ -361,9 +361,23 @@ export const actionResultSchema = z.object({
 })
 export type ActionResult = z.infer<typeof actionResultSchema>
 
+/* 對齊後端 `action-specs.ts`。**`approverRoleId` 是選配的** ——
+   動態關卡(送直屬主管)沒有靜態角色可指定;宣告成必填的話,
+   一收到動態關卡 zod 就整個 parse 失敗,而症狀會是「簽核區塊整塊不見」。 */
+export const APPROVER_RULES = [
+  "role",
+  "manager",
+  "managerOfManager",
+  "managerOfPrevApprover",
+] as const
+
 export const approvalStepSchema = z.object({
   stepNo: z.number().int(),
-  approverRoleId: z.number().int(),
+  approverRoleId: z.number().int().optional(),
+  approverRule: z.enum(APPROVER_RULES).default("role"),
+  /* 未填 = 任一人;數字 = 擇辦 N 人;"all" = 會簽全體 */
+  quorum: z.union([z.number().int(), z.literal("all")]).optional(),
+  returnableTo: z.array(z.number().int()).optional(),
   amountField: z.string().optional(),
   minAmount: z.number().optional(),
 })
@@ -387,6 +401,10 @@ export const approvalInstanceDtoSchema = z.object({
   currentStep: z.number().int(),
   status: z.enum(["pending", "approved", "rejected", "withdrawn"]),
   submittedBy: z.number().int(),
+  unlockedAt: z.string().nullable(),
+  /* 會簽進度由後端算(見 approval.service.stepProgress)—— 前端自己從 log 推導
+     就要重現「只算最後一次退回之後的核准」那條規則,那是兩份實作 */
+  stepProgress: z.object({ approved: z.number().int(), required: z.number().int() }),
   updatedAt: z.string(),
   steps: z.array(approvalStepSchema),
   log: z.array(
