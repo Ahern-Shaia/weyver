@@ -75,6 +75,32 @@
 
 **綜合設計結論**|本模組的 A2 重算引擎採 **HyperFormula 式架構**(增量 + SCC 循環偵測 + lazy),parser 採 **Teable ANTLR fork**(MIT,OQ-FML-1),Rollup 採 **Airtable 語意 + DLRS 三模式**,並**刻意修正 Salesforce 三個已知痛點**(刪除重算 / 多層 / 武斷上限)—— 這三點正好是差異化空間。
 
+> ⚠️ **上句「三個已知痛點」之逐字依據見 §2-bis.1(2026-08-03 補一手)。其中兩條經查證後強度不足,措辭須降級。**
+
+### 2-bis.1 · 三條 Salesforce 反面教材的一手查證(2026-08-03 補一手)
+
+> **背景**|§2-bis 表格的 Salesforce 欄列出三條「反面教材」,並由 §7 / OQ-FML-9 / FMEA F8 承接為差異化主張,但原文**無 URL、無查證日期**。依 AGENTS〈向上設計三條〉條件 ①(巨人明確停在那裡須有一手逐字依據)補查。
+> **查證日期**|2026-08-03。**查證者**|Claude Code。**方法**|Salesforce 官方 `help.salesforce.com` 檢索 + 直取;本地 `reference-materials/teable-docs`、`baserow-docs` 對照。
+> **技術限制(誠實標注)**|`help.salesforce.com/s/articleView?id=platform.fields_about_roll_up_summary_fields.htm` 為 JS 渲染之 SPA,直取只回導覽結構,**該頁正文逐字本次未取得**;能取得逐字者僅純文字 KB 文章(下表 ①③)。
+
+| # | §2-bis 原斷言 | 查證結果 | 強度 |
+|---|---|---|---|
+| ① | 「標準 rollup 刪子記錄**不自動重算**」 | **⚠️ 過度概化,須降級。** 官方可查得的敘述**僅限 campaign(行銷活動)roll-up summary 欄位**,非「標準 rollup」全稱:「Salesforce doesn't recalculate the value of campaign roll-up summary fields when a lead or contact is deleted」;另有「in some cases, there can be small numerical remainders after deletion or filtering of records when you use SUM as the roll-up type」與「Force a mass recalculation of this field」手動重算選項。**「一般 master-detail rollup 刪子記錄是否自動重算」本次未查證。** | 🟡 部分成立(範圍遠小於原文) |
+| ② | 「不支援 grandchild **多層** rollup」 | **⚠️ 未查證(官方逐字未取得)。** 檢索回傳之綜述稱 rollup 僅聚合直屬 detail 層、無法跨層;但其底層來源為 Trailblazer / Developer 社群討論串,**非官方 help 正文**。另查得官方確有**多層 master-detail**(自訂物件為 master 時可再有 3 層 subdetail),故「Salesforce 完全做不到多層彙總」之敘述**不得作為承重依據**。 | 🔴 未查證 |
+| ③ | 「**25 rollup/物件**武斷上限」 | **✅ 成立但數字須補完。** 官方 KB 逐字:「Default: 25 roll-up summary fields per object. Maximum: 40 roll-up summary fields per object — this is a hard-coded limit and **cannot** be increased above 40.」;提高至 40 須「Submit a limit increase request with Salesforce Support」。故正確敘述為「**預設 25、硬上限 40,25→40 須向原廠提申請**」,非單一數字 25。<br>出處:`https://help.salesforce.com/s/articleView?id=000386702&language=en_US&type=1`(查證 2026-08-03) | 🟢 一手逐字 |
+
+**對本模組裁定的影響(不改既有裁定,僅記錄建議)**
+
+| 承重位置 | 原本靠哪一條 | 補查後 |
+|---|---|---|
+| §7「刪 / 改子記錄必精準重算」+ FMEA F8「修 Salesforce 痛點」 | ① | 設計本身**不受影響** —— 讀時算天生即反映,其正當性來自正確性底線,不需要競品做不到來支撐。**建議重裁 OQ-FML-5 之措辭**(僅措辭,非選項):F8 敘述刪去「修 Salesforce 痛點」,改為「架構免疫:讀時算無 stale 窗口」 |
+| OQ-FML-9=A(多層鏈式 Rollup)裁定欄之「差異化勝 Salesforce」 | ② | ② 已降為未查證 → **建議重裁 OQ-FML-9 之措辭**:保留 A(依賴圖天生鏈式 + 深度 ≤5,獨立成立),但刪去「勝 Salesforce」之比較句,改為「多層為依賴圖之自然結果,無額外成本」 |
+| §2-bis「本模組不設武斷上限」 | ③ | 成立。且依 AGENTS 第一約束(**設定不得外包給顧問**),更具承重力的敘述不是「上限數字小」,而是「**提高上限須向原廠提申請**」—— 那是把設定外包出去。本模組以物化 + 依賴圖擴展,無此申請路徑 |
+
+**對照組缺口(誠實標注)**|`reference-materials/teable-docs`、`baserow-docs` 兩份本地鏡像經檢索(2026-08-03)**無 rollup 語意之專屬文件頁**(命中者僅 changelog 與 API reference)→ Teable / Baserow 之 rollup 上限與刪子重算行為**未查證**,不列入對照。
+
+**對外措辭提醒**|依 AGENTS〈第一約束〉之「對外措辭」條:上述三條**不得**寫進對外文案作「對手做不到」的敘述,尤其 ①② 強度不足。對外只講本模組做得到什麼。
+
 ---
 
 ## 3. 剩餘 scope 切分
@@ -292,6 +318,7 @@ formula_def
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-03 | v1.0(補一手)| **§2-bis.1 三條 Salesforce 反面教材補一手查證**(承 `_audit/giants-shoulders-audit-A.md` 行動 6)。結果:① 刪子不重算 → **降級**(官方敘述僅限 campaign rollup,非標準 rollup 全稱);② 不支援 grandchild → **標未查證**(官方 help 正文為 JS 渲染未取得逐字,現有依據僅社群討論串);③ 25 上限 → **成立但補完**(官方 KB 逐字:預設 25 / 硬上限 40 / 提高須向 Salesforce Support 提申請,附 URL + 查證日)。記錄「建議重裁 OQ-FML-5 / OQ-FML-9 之**措辭**」(選項不變,由決策方裁定);標注 teable-docs / baserow-docs 無 rollup 專屬文件頁故未列對照。**未修改任何既有裁定與程式碼** | Claude Code |
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
 | 2026-07-19 | v1.0 | **M6 前端 + SHIPPED**|設計器啟用 formula 欄(palette + options.expression)+ 填單 computeFormulaPreview 即時預覽(client 同引擎;數量 4→5 即 50→62.5)+ grid/資料唯讀顯示後端注入值;`e2e/formula.spec.ts` 固化;MCP 實走驗證。**狀態 → SHIPPED v1.0**(M0–M6 全達成;對外 prod 前提 F-2 auth)| Claude Code |
