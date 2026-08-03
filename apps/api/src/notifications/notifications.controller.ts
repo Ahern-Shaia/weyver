@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, UseGuards } from "@nestjs/common"
+import { Body, Controller, Delete, Get, HttpCode, Inject, Post, UseGuards } from "@nestjs/common"
 import { z } from "zod"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
@@ -29,6 +29,11 @@ const prefSchema = z.object({
     .array(z.enum(eventCodes as [string, ...string[]]))
     .max(20)
     .nullable(),
+})
+
+const clearPrefSchema = z.object({
+  scope: z.enum(["tenant", "category", "form"]),
+  scopeId: z.number().int().positive().nullable(),
 })
 
 const settingsSchema = z.object({
@@ -124,6 +129,25 @@ export class NotificationsController {
       scopeId: body.scopeId,
       level: body.level as NotificationLevel,
       customEvents: body.customEvents,
+    })
+  }
+
+  /* 🔴 恢復繼承。**授權邊界同本 controller 其餘端點**:只刪 `actorId` 自己那列,
+     所以不存在「清掉別人的偏好」的路徑,不需要額外的權限判斷。
+
+     ⚠️ 以 body 而非 query 傳 scope —— DELETE 帶 body 少見,但 scope+scopeId 是**一組**
+     複合鍵,拆成兩個 query 參數會讓「只帶其一」變成可表達的錯誤狀態。 */
+  @Delete("prefs")
+  @HttpCode(204)
+  async clearPref(
+    @Tenant() tenant: TenantContext,
+    @Body(new ZodValidationPipe(clearPrefSchema)) body: z.infer<typeof clearPrefSchema>,
+  ): Promise<void> {
+    await this.repo.clearPref({
+      tenantId: tenant.tenantId,
+      actorId: tenant.actorId,
+      scope: body.scope,
+      scopeId: body.scopeId,
     })
   }
 }

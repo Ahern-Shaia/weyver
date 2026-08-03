@@ -228,6 +228,29 @@ export class NotificationRepository {
       })
   }
 
+  /* 🔴 刪列 = **回到繼承**,不是「回到預設」。
+     解析時缺列就往上一層找(表單 → 分類 → 租戶,最具體者勝),
+     所以刪掉表單層那列,效果就是重新跟著上層走。
+
+     沒有這個端點時 `scope='form'` 是**單向**的:設了就再也回不去 ——
+     而畫面上寫著「未設定則繼承上層」,等於承諾了一個到不了的狀態。 */
+  async clearPref(input: {
+    tenantId: number
+    actorId: number
+    scope: string
+    scopeId: number | null
+  }): Promise<void> {
+    await this.db.delete(notificationPrefs).where(
+      and(
+        eq(notificationPrefs.tenantId, input.tenantId),
+        eq(notificationPrefs.actorId, input.actorId),
+        eq(notificationPrefs.scope, input.scope),
+        /* 租戶層以 0 為哨兵(見 schema 註解),故此處不可寫成 IS NULL */
+        eq(notificationPrefs.scopeId, input.scopeId ?? 0),
+      ),
+    )
+  }
+
   /* 缺列 = 全部預設(啟用 + 站內 + Email)→ 既有使用者零遷移。 */
   async listSettings(
     tenantId: number,

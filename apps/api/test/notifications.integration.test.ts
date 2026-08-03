@@ -9,6 +9,7 @@ import { roleMembers, roles, tenants, users } from "../src/db/schema.js"
 import type { NotificationDispatcher } from "../src/notifications/notification-dispatcher.service.js"
 import { LEVEL, NOTIFICATION_EVENTS } from "../src/notifications/notification-specs.js"
 import type { NotificationRepository } from "../src/notifications/notification.repository.js"
+import { resolveLevel } from "../src/notifications/notification.service.js"
 import type { NotificationService } from "../src/notifications/notification.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
@@ -318,6 +319,37 @@ describe("H-1 偏好唯讀性", () => {
     expect(tenantPref?.level).toBe(LEVEL.involved)
     /* 對外仍以 null 表達「無特定資源」 */
     expect(tenantPref?.scopeId).toBeNull()
+  })
+
+  it("**清除表單層偏好 = 回到繼承,不是回到系統預設** —— 沒有這條,scope='form' 是單向的", async () => {
+    await repo.setPref({
+      tenantId: tenantA,
+      actorId: approver,
+      scope: "tenant",
+      scopeId: null,
+      level: LEVEL.muted,
+      customEvents: null,
+    })
+    await repo.setPref({
+      tenantId: tenantA,
+      actorId: approver,
+      scope: "form",
+      scopeId: formId,
+      level: LEVEL.all,
+      customEvents: null,
+    })
+    const withOverride = (await repo.listPrefs(tenantA, [approver])).get(approver) ?? []
+    expect(resolveLevel(withOverride, null, formId).level).toBe(LEVEL.all)
+
+    await repo.clearPref({ tenantId: tenantA, actorId: approver, scope: "form", scopeId: formId })
+
+    const after = (await repo.listPrefs(tenantA, [approver])).get(approver) ?? []
+    /* 🔴 關鍵斷言:回到**租戶層的靜音**,而不是系統預設的「與我相關」。
+       若 clearPref 誤寫成 setPref(level=預設),這一行就會抓到。 */
+    expect(resolveLevel(after, null, formId).level).toBe(LEVEL.muted)
+    expect(after.some((p) => p.scope === "form" && p.scopeId === formId)).toBe(false)
+    /* 清表單層不得波及租戶層那一列 */
+    expect(after.some((p) => p.scope === "tenant")).toBe(true)
   })
 })
 
