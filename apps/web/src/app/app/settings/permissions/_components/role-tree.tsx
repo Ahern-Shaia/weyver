@@ -2,10 +2,20 @@
 
 import { type Role, useCreateRole } from "@/lib/engine/authz"
 import { Input } from "@weyver/ui/input"
-import { FolderTree, Plus, ShieldCheck, User } from "lucide-react"
+import { Plus, ShieldCheck, User, Users } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-/* 角色 / 部門樹(系統角色 + 自訂樹狀 + 建立)。權限管理頁左欄。 */
+/* 角色 / 部門清單(系統角色 + 自訂 + 建立)。權限管理頁左欄。
+
+   🔴 **刻意是平的**(authz 0-bis 項 1)。Salesforce 官方建議角色階層「越平越好、
+   3–4 層幾乎永遠夠」,而 **Airtable / Baserow / NocoDB / Ragic 根本沒有角色樹** ——
+   它們用的是資源層級的繼承(我方對應物 = 分類授權 → 表單繼承)。
+   客戶是行政兼職,理解成本才是瓶頸。
+
+   後端**有**完整的樹(`createRole` 收 `parentId`、`PATCH .../parent` 可改掛載點、
+   有深度上限),schema 成本已付、留著;但**預設 UI 不開那個入口**。
+   ⚠️ 因此本元件不得再用資料夾類圖示或無說明的縮排去暗示「這裡可以做出階層」——
+   那是承諾了做不到的事,而那正是本專案這一輪反覆在修的形態。 */
 export function RoleTree({
   roles,
   loading,
@@ -83,6 +93,12 @@ export function RoleTree({
             <RoleItem key={r.id} role={r} active={r.id === selectedId} onSelect={onSelect} />
           ))
         )}
+        {/* 只有真的存在階層時才解釋縮排 —— 平常不佔版面,也不去教一個這裡開不了的功能 */}
+        {custom.some((r) => r.depth > 0) ? (
+          <p className="px-2 pt-2 text-[12px] text-ink-3">
+            縮排代表既有的角色階層。此處不調整階層,權限請用分類授權與表單繼承設定。
+          </p>
+        ) : null}
       </div>
     </div>
   )
@@ -97,7 +113,9 @@ function RoleItem({
   readonly active: boolean
   readonly onSelect: (id: number) => void
 }): ReactNode {
-  const Icon = role.isSystem ? ShieldCheck : role.depth > 0 ? User : FolderTree
+  /* 系統角色 = 盾;其餘一律「一群人」。**不用資料夾圖示** ——
+     資料夾暗示「裡面裝得下別的角色」,而這個畫面做不到那件事。 */
+  const Icon = role.isSystem ? ShieldCheck : role.depth > 0 ? User : Users
   return (
     <button
       type="button"
