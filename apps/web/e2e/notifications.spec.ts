@@ -88,8 +88,9 @@ test("通知設定:三軸皆在,層級可改且持久化", async ({ page, reques
   // 裁定 ④:逾期例外必須明白告知
   await expect(page.getByText("簽核逾期提醒為例外", { exact: false })).toBeVisible()
 
-  // 表單選擇器預設即「全租戶預設」→ 層級寫在 tenant scope
-  await page.getByRole("button", { name: /^靜音/ }).click()
+  /* 軸 1 的上半是全租戶預設(表單那一層改為逐表單清單,見 form-tools.spec)。
+     ⚠️ 這裡是 `radio` 不是 `button` —— 單選清單的正確語意,選擇器要跟著語意走。 */
+  await page.getByRole("radio", { name: /^靜音/ }).click()
   await expect
     .poll(
       async () => {
@@ -102,5 +103,5 @@ test("通知設定:三軸皆在,層級可改且持久化", async ({ page, reques
     .toBe(0)
 
   // 還原為預設層級,不影響其他 spec
-  await page.getByRole("button", { name: /^與我相關/ }).click()
+  await page.getByRole("radio", { name: /^與我相關/ }).click()
 })

@@ -15,10 +15,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react"
    我們目前只有 11 項,硬分六組會出現只有一項的組。
    依**動作對象**分:資料進出 / 產出文件 / 對外連結。
 
-   ⚠️ **這是第一階段:入口聚合**。公開表單與通知設定的**面板本身**仍住在
-   設定中心(它們與收件匣 / 租戶級偏好混在同一頁,乾淨拆出是另一段重構),
-   此處帶著表單參數深連過去 —— 已消除「離開表單後還要把同一張表再選一次」,
-   但「不必離開表單」要等第二階段。**不是雙入口**:設定只有一份,這裡是捷徑。 */
+   ✅ **第二階段(2026-08-04)**:公開表單與通知的面板已搬進表單層,不再深連設定中心。
+   Ragic 設計手冊 doc/71 逐字「在列表頁的**工具**中找到」+「如此一來就不需要進到
+   修改設計中調整」;使用手冊 doc-user/12 逐字「表單個別通知 —— 在表單的**工具**
+   選單中的同步與通知選擇通知設定」。落點與形態皆有一手依據。 */
 
 interface ToolItem {
   readonly key: string
@@ -73,14 +73,22 @@ function ToolRow({
 
 export function FormToolsMenu({
   formId,
-  canDesign,
+  isAdmin,
   onImport,
   onExport,
+  onShare,
+  onNotify,
 }: {
   readonly formId: number
-  readonly canDesign: boolean
+  /* 🔴 公開表單**不是**表單級功能。後端逐字:「開放一張表單給外部人填寫是租戶級的
+     安全決定,不是表單級功能 → 限 admin」(`public-form-admin.controller.ts:48`)。
+     用設計權當閘門會讓有設計權而非管理員的人看到一個按下去 403 的入口 ——
+     那正是剛為 `canDesign` 修掉的「畫面說謊」,在上一層又犯一次。 */
+  readonly isAdmin: boolean
   readonly onImport: () => void
   readonly onExport?: (() => void) | undefined
+  readonly onShare: () => void
+  readonly onNotify: () => void
 }): ReactNode {
   const [open, setOpen] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -134,25 +142,18 @@ export function FormToolsMenu({
     },
     {
       title: "連外",
-      /* 🔴 OQ-IA-3 之權限硬約束(docs/33 P4):這兩項原本受設定中心的 admin 閘門
-         保護,搬到表單層之後必須改由**該表單的 design 權**把關 ——
-         否則任何看得到表單的人都看得到公開設定的入口。 */
-      items: canDesign
-        ? [
-            {
-              key: "public",
-              label: "公開表單設定",
-              icon: Share2,
-              href: `/app/settings/public-forms?form=${String(formId)}`,
-            },
-            {
-              key: "notify",
-              label: "此表單的通知設定",
-              icon: Radio,
-              href: `/app/settings/notifications?form=${String(formId)}`,
-            },
-          ]
-        : [],
+      /* 🔴 `docs/33` P4 原文要求兩項都改由該表單的 `design` 權把關 —— **P4 推導錯了**。
+         它假設「原本在 admin 頁面裡」就等於「該用設計權」,而真正的判準是
+         **這件事的粒度與擁有者**:租戶級安全決定 → admin;個人訂閱 → 本人。
+         詳見 `workspace-ia.md` §14.1 發現 3。 */
+      items: [
+        ...(isAdmin
+          ? [{ key: "public", label: "公開表單設定", icon: Share2, onSelect: onShare }]
+          : []),
+        /* 通知**不設閘門**:`notification_pref` 帶 actor_id,是個人訂閱不是表單設定。
+           擋在 design 之後等於一般使用者管不了自己的通知。 */
+        { key: "notify", label: "此表單的通知", icon: Radio, onSelect: onNotify },
+      ],
     },
   ].filter((g) => g.items.length > 0)
 

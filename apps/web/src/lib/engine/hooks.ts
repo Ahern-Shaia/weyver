@@ -895,6 +895,18 @@ export function useSaveNotificationSettings() {
   })
 }
 
+/* 🔴 恢復繼承(刪除該層的偏好列)。**與 save 分開而不是「存一個特殊值」** ——
+   「跟著上層走」和「明確設成某個層級」是兩種狀態,用哨兵值表達會在
+   上層日後改變時失真(那正是繼承的意義)。 */
+export function useClearNotificationPref() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { scope: "tenant" | "category" | "form"; scopeId: number | null }) =>
+      engineFetch("/notifications/prefs", z.unknown(), { method: "DELETE", body: input }),
+    onSuccess: () => invalidate([notificationKeys.settings]),
+  })
+}
+
 export function useSaveNotificationPref() {
   const invalidate = useInvalidate()
   return useMutation({
@@ -1076,6 +1088,17 @@ export function usePublicShares() {
     queryKey: publicFormKeys.shares,
     queryFn: () => engineFetch("/public-forms", z.object({ shares: z.array(publicShareSchema) })),
     staleTime: 15_000,
+  })
+}
+
+/* 🔴 可公開的欄位型別由**後端**回。前端不自己維護一份清單 ——
+   兩份會漂移,而漂移的症狀是使用者挑得到一個必定失敗的欄位。 */
+export function usePublicSafeTypes() {
+  return useQuery({
+    queryKey: ["public-forms", "safe-types"],
+    queryFn: () =>
+      engineFetch("/public-forms/safe-types", z.object({ types: z.array(z.string()) })),
+    staleTime: 300_000,
   })
 }
 

@@ -26,6 +26,8 @@ import { useParams } from "next/navigation"
 import { parseAsInteger, parseAsStringLiteral, useQueryState } from "nuqs"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { CollectionView } from "./collection-view"
+import { FormNotifyPanel } from "./form-notify-panel"
+import { FormSharePanel } from "./form-share-panel"
 import { FormToolsMenu } from "./form-tools-menu"
 import { ImportBatches, importBatchKey } from "./import-batches"
 import { ImportPanel } from "./import-panel"
@@ -104,7 +106,9 @@ export function FormWorkspace(): ReactNode {
     [workingConfig, q],
   )
   const [msg, setMsg] = useState<string | null>(null)
-  const [importing, setImporting] = useState(false)
+  /* 🔴 三個工具面板互斥 —— 單一 state 而非三個布林。
+     三個布林可以表達「同時開兩個」這種不存在的狀態,而那種狀態遲早會被寫出來。 */
+  const [tool, setTool] = useState<"import" | "share" | "notify" | null>(null)
   const invalidate = useInvalidate()
   const createView = useCreateView(formId)
   const updateView = useUpdateView(formId)
@@ -178,14 +182,14 @@ export function FormWorkspace(): ReactNode {
     })
   }
 
-  if (importing && form !== undefined) {
+  if (tool === "import" && form !== undefined) {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-auto">
         <ImportPanel
           formId={formId}
           formName={form.name}
           onDone={() => invalidate([formKeys.records(formId), importBatchKey(formId)])}
-          onClose={() => setImporting(false)}
+          onClose={() => setTool(null)}
         />
         {/* 匯入紀錄與撤銷:後端一直有 revert 端點卻沒有清單,等於撤銷不可用(#106) */}
         <div className="px-4 pb-4">
@@ -194,6 +198,25 @@ export function FormWorkspace(): ReactNode {
             onReverted={() => invalidate([formKeys.records(formId)])}
           />
         </div>
+      </div>
+    )
+  }
+
+  /* 🔴 R1·IA 第二階段:公開表單 / 通知的面板**開在表單上**,不再深連設定中心。
+     沿用 ImportPanel 的全接管形態 —— 同樣由「工具」開啟,不為此新增第三種面板語彙
+     (repo 內無 dialog 元件,全 repo 零個 `role="dialog"`;為這件事引入一套 modal
+     是新的相依)。 */
+  if (tool === "share" && form !== undefined) {
+    return (
+      <div className="h-full min-h-0 overflow-auto">
+        <FormSharePanel formId={formId} form={form} onClose={() => setTool(null)} />
+      </div>
+    )
+  }
+  if (tool === "notify" && form !== undefined) {
+    return (
+      <div className="h-full min-h-0 overflow-auto">
+        <FormNotifyPanel formId={formId} formName={form.name} onClose={() => setTool(null)} />
       </div>
     )
   }
@@ -221,11 +244,12 @@ export function FormWorkspace(): ReactNode {
               單顆按鈕,而標籤在設計器、公開設定在設定中心 —— 使用者得自己記住哪個在哪。 */}
           <FormToolsMenu
             formId={formId}
-            /* ✅ 2026-08-03:`/api/authz/me` 已落地,此處改吃真實能力。
-               原本寫死 `true` —— 後端有執法,但畫面會顯示按下去 403 的入口。
-               載入中回 `false`(見 `canOnForm`):寧可少顯示一個入口。 */
-            canDesign={canOnForm(caps.data, formId, "design")}
-            onImport={() => setImporting(true)}
+            /* ✅ 2026-08-03:`/api/authz/me` 已落地。載入中回 `false` ——
+               寧可少顯示一個入口,也不要顯示一個按下去 403 的入口。 */
+            isAdmin={caps.data?.isAdmin === true}
+            onImport={() => setTool("import")}
+            onShare={() => setTool("share")}
+            onNotify={() => setTool("notify")}
           />
           {/* 深連到**目前這張表**的設計模式(#109)。原本連到 builder 根目錄,
               使用者到了那裡還要自己在清單裡找回剛才那張表。 */}

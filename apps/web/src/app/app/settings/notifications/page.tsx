@@ -1,14 +1,18 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
-
 import {
+  useCategories,
+  useClearNotificationPref,
   useForms,
   useNotificationSettings,
   useSaveNotificationPref,
   useSaveNotificationSettings,
 } from "@/lib/engine/hooks"
+import { NOTIFICATION_LEVELS, resolveClientLevel } from "@/lib/engine/notification-levels"
+import { NotificationLevelPicker } from "@/components/notification-level-picker"
+import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
+import Link from "next/link"
 import { type ReactNode, useState } from "react"
 import { BusyBar, FirstLoad } from "@/components/busy-indicator"
 
@@ -19,14 +23,13 @@ import { BusyBar, FirstLoad } from "@/components/busy-indicator"
 
    軸 1 為**單一有序 enum** 而非獨立布林開關:GitHub / GitLab / Discourse / Zulip /
    Notion / Slack / Teams / Linear 無一例外皆如此,且查不到任何系統從 enum 退回
-   獨立開關。有序才可繼承(全域 → 分類 → 表單,最具體者勝)。 */
+   獨立開關。有序才可繼承(全域 → 分類 → 表單,最具體者勝)。
 
-const LEVELS = [
-  { value: 0, name: "靜音", desc: "完全不通知,包含我自己建立的資料" },
-  { value: 10, name: "與我相關", desc: "我建立的資料有變更時通知我", isDefault: true },
-  { value: 20, name: "新資料 + 與我相關", desc: "另加:有人新增資料時" },
-  { value: 30, name: "全部", desc: "任何人新增或修改任何一筆資料時" },
-] as const
+   🔴 **R1·IA 第二階段(2026-08-04)**:軸 1 的表單那一層原本是一個「選一張表單」的
+   下拉 —— 那正是 `docs/33 §2.1` 記載的 IA 錯位。現在改成**逐表單列出**,對齊
+   Ragic 使用手冊 doc-user/12 的「頁籤個別設定」(選頁籤 → 列出頁籤中的個別表單)。
+   單張表單的調整已可在表單的「工具 › 此表單的通知」就地完成;
+   留在這裡的是**清單才做得到、下拉做不到的事** —— 一次調整我對多張表單的訂閱。 */
 
 /* P0 只有 4 檔可選 + 繼承。研究建議的「只有被提及」需 @提及,而 Weyver
    尚無註解功能 —— 不做無法運作的檔位(同「不做假開關」原則)。
@@ -43,24 +46,36 @@ const EVENTS = [
 export default function NotificationSettingsPage(): ReactNode {
   const { data, isLoading } = useNotificationSettings()
   const { data: forms } = useForms()
+  const { data: categories } = useCategories()
   const saveSettings = useSaveNotificationSettings()
   const savePref = useSaveNotificationPref()
-  /* 🔴 R1·IA-1|接受 `?form=` 預選(docs/33 OQ-IA-3)。
-     表單層工具選單深連過來時,使用者已經選過表單了 ——
-     再讓他在這裡選一次正是那條 IA 錯位的具體症狀。 */
-  const preselected = useSearchParams().get("form")
-  const [formId, setFormId] = useState<string>(preselected ?? "")
+  const clearPref = useClearNotificationPref()
+  /* 🔴 dev 實走時這份清單有數十張表單,平鋪等於捲不完 —— 而這是**每個租戶
+     用久了都會到的狀態**,不是測試資料的特例。Ragic 用「先選頁籤」縮小範圍;
+     我們用分類分組 + 名稱篩選達到同一件事,而不再引入一個選一張表單的下拉。 */
+  const [q, setQ] = useState("")
 
   /* 只有「完全沒有資料可顯示」才佔位(同時讓 TS 收窄);
      後續重取由 BusyBar 表示,內容保留不塌陷 */
   if (data === undefined) return <FirstLoad />
 
   const enabled = data.enabled
-  const selectedForm = formId === "" ? null : Number(formId)
-  const formPref = data.prefs.find((p) => p.scope === "form" && p.scopeId === selectedForm)
-  const tenantPref = data.prefs.find((p) => p.scope === "tenant")
-  const effective = formPref?.level ?? tenantPref?.level ?? 10
-  const inherited = formPref === undefined
+  const tenantLevel = resolveClientLevel(data.prefs, null).level
+  const levelName = (v: number): string =>
+    NOTIFICATION_LEVELS.find((l) => l.value === v)?.name ?? String(v)
+
+  const keyword = q.trim()
+  const matched = (forms ?? []).filter((f) => keyword === "" || f.name.includes(keyword))
+  /* 有覆寫的排前面 —— 「我目前設了哪些」是這一段最常被問的問題;
+     其餘依分類分組,未分類者歸「未分類」。 */
+  const groups = [
+    ...(categories ?? []).map((c) => ({
+      key: `c${String(c.id)}`,
+      name: c.name,
+      forms: matched.filter((f) => f.categoryId === c.id),
+    })),
+    { key: "none", name: "未分類", forms: matched.filter((f) => (f.categoryId ?? null) === null) },
+  ].filter((g) => g.forms.length > 0)
 
   const emailOn = (code: string): boolean => {
     const chosen = data.channels?.[code]
@@ -111,71 +126,95 @@ export default function NotificationSettingsPage(): ReactNode {
         <div className="flex items-center gap-2 border-b border-line-2 bg-label px-2.5 py-2 text-[12px] font-semibold">
           <span className="font-mono text-[12px] text-ink-3">軸 1</span>通知層級
           <span className="ml-auto text-[12px] font-normal text-ink-3">
-            每張表單一個層級,未設定則繼承上層
+            每張表單一個層級,未設定則繼承全租戶預設
           </span>
         </div>
         <div className="p-2.5">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="text-[12px] text-ink-3">表單</span>
-            <Select
-              value={formId}
-              onChange={(e) => setFormId(e.target.value)}
-              disabled={!enabled}
-              className="h-7 w-56"
-              aria-label="選擇表單"
-            >
-              <option value="">全租戶預設</option>
-              {(forms ?? []).map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </Select>
+          <div className="mb-1.5 text-[12px] font-medium text-ink-2">全租戶預設</div>
+          <NotificationLevelPicker
+            value={tenantLevel}
+            disabled={!enabled}
+            onPick={(lv) =>
+              savePref.mutate({ scope: "tenant", scopeId: null, level: lv, customEvents: null })
+            }
+          />
+
+          {/* 🔴 逐表單列出,不是「選一張表單」的下拉。
+              對齊 Ragic「頁籤個別設定」;下拉一次只看得到一張,調不了多張。 */}
+          <div className="mt-4 mb-1.5 flex items-center gap-2 text-[12px] font-medium text-ink-2">
+            表單個別設定
+            <span className="font-normal text-ink-3">
+              未列出層級者即跟著上方的全租戶預設({levelName(tenantLevel)})
+            </span>
           </div>
-          {selectedForm !== null && inherited ? (
-            <div className="mb-2 border border-line-2 bg-field px-2.5 py-1.5 text-[12px] text-ink-3">
-              目前繼承上層設定 — 選擇下列任一項即為此表單單獨設定
+          {/* 名稱篩選:分組之後仍可能有幾十張表,而使用者通常心裡已經有一張 */}
+          <Input
+            className="mb-1.5 h-7"
+            aria-label="篩選表單"
+            placeholder="篩選表單名稱…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {groups.map((g) => (
+            <div key={g.key} className="mb-2">
+              <div className="mb-0.5 text-[12px] text-ink-3">{g.name}</div>
+              <ul className="flex flex-col">
+                {g.forms.map((f) => {
+                  const { level, inherited } = resolveClientLevel(data.prefs, f.id)
+                  return (
+                    <li
+                      key={f.id}
+                      className="flex items-center gap-2 border border-b-0 border-line-2 px-2.5 py-1.5 last:border-b"
+                    >
+                      <Link
+                        href={`/app/forms/${String(f.id)}`}
+                        className="min-w-0 flex-1 truncate text-[12px] text-ink hover:text-primary"
+                      >
+                        {f.name}
+                      </Link>
+                      {inherited ? null : (
+                        <span className="shrink-0 rounded-sm border border-primary px-1 py-px text-[12px] text-primary">
+                          已單獨設定
+                        </span>
+                      )}
+                      <Select
+                        className="h-6 w-36 shrink-0"
+                        aria-label={`${f.name} 的通知層級`}
+                        disabled={!enabled}
+                        value={inherited ? "" : String(level)}
+                        onChange={(e) => {
+                          /* 空字串 = 恢復繼承。**刪列而非存一個哨兵值** ——
+                             「跟著上層走」與「明確設成某層級」是兩種狀態。 */
+                          if (e.target.value === "") {
+                            clearPref.mutate({ scope: "form", scopeId: f.id })
+                            return
+                          }
+                          savePref.mutate({
+                            scope: "form",
+                            scopeId: f.id,
+                            level: Number(e.target.value),
+                            customEvents: null,
+                          })
+                        }}
+                      >
+                        <option value="">繼承({levelName(tenantLevel)})</option>
+                        {NOTIFICATION_LEVELS.map((lv) => (
+                          <option key={lv.value} value={lv.value}>
+                            {lv.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+          {groups.length === 0 ? (
+            <div className="border border-line-2 px-2.5 py-4 text-center text-[12px] text-ink-3">
+              {keyword === "" ? "還沒有表單。" : `沒有名稱含「${keyword}」的表單。`}
             </div>
           ) : null}
-          <div className="flex flex-col">
-            {LEVELS.map((lv) => (
-              <button
-                key={lv.value}
-                type="button"
-                disabled={!enabled}
-                onClick={() =>
-                  savePref.mutate({
-                    scope: selectedForm === null ? "tenant" : "form",
-                    scopeId: selectedForm,
-                    level: lv.value,
-                    customEvents: null,
-                  })
-                }
-                className={`flex items-start gap-2 border border-b-0 border-line-2 px-2.5 py-2 text-left last:border-b ${
-                  effective === lv.value ? "border-primary bg-primary-t" : ""
-                }`}
-              >
-                <span
-                  className={`mt-0.5 size-3 shrink-0 rounded-full border ${
-                    effective === lv.value ? "border-[1.5px] border-primary" : "border-line"
-                  }`}
-                >
-                  {effective === lv.value ? (
-                    <span className="m-[2.5px] block size-[5px] rounded-full bg-primary" />
-                  ) : null}
-                </span>
-                <span>
-                  <span className="block text-[12px] font-medium">
-                    {lv.name}
-                    {"isDefault" in lv ? (
-                      <span className="ml-1 font-normal text-ink-3">(預設)</span>
-                    ) : null}
-                  </span>
-                  <span className="mt-0.5 block text-[12px] text-ink-3">{lv.desc}</span>
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
       </section>
 
