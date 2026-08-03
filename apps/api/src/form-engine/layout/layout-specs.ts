@@ -115,6 +115,12 @@ export const formatConditionSchema = z
 
 export const formatEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("color"), tone: z.enum(FORMAT_TONES) }).strict(),
+  /* 🔴 C-2 純呈現效果。**與已出貨的靜態 `fields[].hidden` / `readonly` 同級** ——
+     兩者都只在前端生效,故本批不改變任何伺服器強制面(C-3 才會)。
+     ⚠️ 沿用 Ragic / Airtable 的明文警告:**隱藏不是權限**,
+     欄位級保護走權限設定(E-1 後端 assertWritable / maskRead)。 */
+  z.object({ kind: z.literal("hide") }).strict(),
+  z.object({ kind: z.literal("readonly") }).strict(),
 ])
 
 /* 🔴 OQ-CF-8 重裁 = 選項 C-1(2026-08-03):**規則的形狀現在定死,效果的覆蓋面分層補**。
