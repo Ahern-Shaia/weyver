@@ -1,5 +1,7 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
+
 import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
@@ -71,7 +73,11 @@ export default function PublicFormsPage(): ReactNode {
   const toggle = useShareToggle()
   const review = useReviewSubmission()
 
-  const [formId, setFormId] = useState<number | null>(null)
+  /* 🔴 R1·IA-1|接受 `?form=` 預選(docs/33 OQ-IA-3)—— 見 notifications 同一段註解 */
+  const preselected = Number(useSearchParams().get("form"))
+  const [formId, setFormId] = useState<number | null>(
+    Number.isSafeInteger(preselected) && preselected > 0 ? preselected : null,
+  )
   const [title, setTitle] = useState("")
   const [picked, setPicked] = useState<Set<number>>(new Set())
   const [issued, setIssued] = useState<string | null>(null)

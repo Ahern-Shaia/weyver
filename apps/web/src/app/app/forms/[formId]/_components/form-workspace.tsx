@@ -10,6 +10,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react"
 import { recordFormVisit } from "@/lib/recent-forms"
 import { useTenantScope } from "@/lib/use-tenant-scope"
 import { ImportBatches, importBatchKey } from "./import-batches"
+import { FormToolsMenu } from "./form-tools-menu"
 import { ImportPanel } from "./import-panel"
 import { Segmented } from "@weyver/ui/segmented"
 import { describeEngineError } from "@/lib/engine/client"
@@ -207,15 +208,18 @@ export function FormWorkspace(): ReactNode {
               className="h-7 w-56 rounded-xs border border-line bg-surface px-2.5 text-[12px] text-ink outline-none placeholder:text-ink-3 focus:border-primary"
             />
           ) : null}
-          {mode === "list" ? (
-            <button
-              type="button"
-              onClick={() => setImporting(true)}
-              className="shrink-0 rounded-xs px-2.5 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover"
-            >
-              匯入資料
-            </button>
-          ) : null}
+          {/* 🔴 R1·IA-1|表單層工具聚合入口(docs/33)。原本「匯入資料」是散在這裡的
+              單顆按鈕,而標籤在設計器、公開設定在設定中心 —— 使用者得自己記住哪個在哪。 */}
+          <FormToolsMenu
+            formId={formId}
+            /* ⚠️ **前端目前沒有能力來源**:`/me capabilities` 是 views-list 的 P1 殘留,
+               同一個檔案下方的 `isAdmin` 也是寫死 true。**權限由後端執法**
+               (`public-form-admin.controller` 檢查 `permissions.isAdmin`),
+               故此處放行不會放寬權限,只會讓無權者按下去拿到 403。
+               `/me` 一旦落地,改這一行即可 —— 刻意集中在單一處而不是散在選單內。 */
+            canDesign
+            onImport={() => setImporting(true)}
+          />
           {/* 深連到**目前這張表**的設計模式(#109)。原本連到 builder 根目錄,
               使用者到了那裡還要自己在清單裡找回剛才那張表。 */}
           <Link

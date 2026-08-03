@@ -1,5 +1,7 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
+
 import {
   useForms,
   useNotificationSettings,
@@ -43,7 +45,11 @@ export default function NotificationSettingsPage(): ReactNode {
   const { data: forms } = useForms()
   const saveSettings = useSaveNotificationSettings()
   const savePref = useSaveNotificationPref()
-  const [formId, setFormId] = useState<string>("")
+  /* 🔴 R1·IA-1|接受 `?form=` 預選(docs/33 OQ-IA-3)。
+     表單層工具選單深連過來時,使用者已經選過表單了 ——
+     再讓他在這裡選一次正是那條 IA 錯位的具體症狀。 */
+  const preselected = useSearchParams().get("form")
+  const [formId, setFormId] = useState<string>(preselected ?? "")
 
   /* 只有「完全沒有資料可顯示」才佔位(同時讓 TS 收窄);
      後續重取由 BusyBar 表示,內容保留不塌陷 */
