@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger, UnprocessableEntityException } from "@nestjs/common"
 import { AuthzRepository } from "../authz/authz.repository.js"
 import { DdlService } from "../form-engine/ddl/ddl.service.js"
+import { type Layout, layoutSchema } from "../form-engine/layout/layout-specs.js"
+import { LayoutService } from "../form-engine/layout/layout.service.js"
 import { MetadataService } from "../form-engine/metadata/metadata.service.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { AddFieldSpec } from "../form-engine/specs/form-specs.js"
@@ -38,6 +40,7 @@ export class TemplateService {
     @Inject(DdlService) private readonly ddl: DdlService,
     @Inject(RecordService) private readonly records: RecordService,
     @Inject(MetadataService) private readonly metadata: MetadataService,
+    @Inject(LayoutService) private readonly layouts: LayoutService,
     @Inject(AuthzRepository) private readonly authz: AuthzRepository,
   ) {}
 
@@ -110,6 +113,8 @@ export class TemplateService {
         refMap[form.ref] = built.form.id
         created.push(built.form.id)
 
+        await this.applyLayout(tenantId, built, form)
+
         if (opts?.withRecords === true && form.sampleRows.length > 0) {
           await this.records.createManyRecords(
             tenantId,
@@ -126,6 +131,44 @@ export class TemplateService {
     } catch (e) {
       await this.compensate(tenantId, created, actorId)
       throw e
+    }
+  }
+
+  /* 版面帶入(OQ-TPL-3 = B)。範本以**欄位顯示名**為 key,此處換成真實 id。
+
+     ⚠️ **對不到的欄位名直接略過而非拋錯** —— 範本改版時欄位可能改名,
+     為了一個排版問題讓整包回滾不划算(表已經建好且可用)。
+     但**略過要出聲**:記 log,否則就是靜默少做。 */
+  private async applyLayout(
+    tenantId: number,
+    built: { form: { id: number }; fields: readonly { id: number; name: string }[] },
+    form: TemplateForm,
+  ): Promise<void> {
+    if (form.layout === undefined) return
+    const idByName = new Map(built.fields.map((f) => [f.name, f.id]))
+    const fields: Layout["fields"] = {}
+    const missing: string[] = []
+    for (const [name, spec] of Object.entries(form.layout)) {
+      const id = idByName.get(name)
+      if (id === undefined) {
+        missing.push(name)
+        continue
+      }
+      fields[String(id)] = spec
+    }
+    if (missing.length > 0) {
+      this.log.warn(`範本 ${form.ref} 的版面有對不到的欄位名(已略過):${missing.join("、")}`)
+    }
+    try {
+      /* 走 zod 解析而不是 cast —— 版面 schema 有預設值與 `.strict()`,
+         手動組物件會漂移。解析失敗代表範本的版面本身寫錯,由下方 catch 記下。 */
+      await this.layouts.setLayout(
+        tenantId,
+        built.form.id,
+        layoutSchema.parse({ grid: { cols: form.gridCols ?? 12 }, fields }),
+      )
+    } catch (err) {
+      this.log.error(`範本 ${form.ref} 的版面套用失敗,表單已建立但為預設排版`, err)
     }
   }
 

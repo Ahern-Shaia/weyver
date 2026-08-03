@@ -199,3 +199,68 @@ describe("重複套用同一個範本", () => {
     expect(second.renamed[0]).toContain("(2)")
   })
 })
+
+/* 🔴 OQ-TPL-3 = B|範本要帶**版面**,不只欄位。
+
+   「只帶欄位」交付不出「打開就能用」的觀感,而那正是範本的價值 ——
+   套出來若是一排預設直排欄位,跟使用者自己建一張空白表沒兩樣。
+   版面在範本裡以**欄位顯示名**為 key(id 還不存在),此測試釘的是那層轉換。 */
+describe("版面帶入", () => {
+  it("🔴 範本的版面套用後以真實 field id 落在 form_def.layout", async () => {
+    const stamp = String(Date.now()).slice(-5)
+    const pack = templatePackSchema.parse({
+      key: "with-layout",
+      version: "1.0",
+      name: "帶版面",
+      description: "",
+      forms: [
+        {
+          ref: "a",
+          name: `版面表_${stamp}`,
+          fields: [
+            { name: "甲", type: "text" },
+            { name: "乙", type: "text" },
+          ],
+          layout: { 甲: { row: 0, col: 0, colSpan: 6 }, 乙: { row: 0, col: 6, colSpan: 6 } },
+        },
+      ],
+    })
+    const res = await templates.apply(tenantA, pack, 1)
+    const formId = res.formIds[0] ?? 0
+
+    const r = await pool.query("SELECT layout FROM form_def WHERE id = $1", [formId])
+    const layout = (r.rows[0] as { layout: { fields: Record<string, { col: number }> } }).layout
+    const ids = await pool.query(
+      "SELECT id, name FROM field_def WHERE form_id = $1 AND deleted_at IS NULL",
+      [formId],
+    )
+    const byName = new Map(
+      (ids.rows as { id: string; name: string }[]).map((x) => [x.name, String(x.id)]),
+    )
+    /* key 必須是**真實 id** 不是欄位名 —— 存欄位名的話 layout 讀取端一個也對不上,
+       而畫面看起來只是「排版沒生效」,指不到原因 */
+    expect(layout.fields[byName.get("甲") ?? ""]?.col).toBe(0)
+    expect(layout.fields[byName.get("乙") ?? ""]?.col).toBe(6)
+  })
+
+  /* 範本改版時欄位可能改名 —— 為了一個排版問題讓整包回滾不划算(表已建好且可用),
+     但略過要出聲(service 記 warn),不能靜默少做。 */
+  it("版面指到不存在的欄位名 → 略過該欄,不讓整包失敗", async () => {
+    const pack = templatePackSchema.parse({
+      key: "stale-layout",
+      version: "1.0",
+      name: "舊版面",
+      description: "",
+      forms: [
+        {
+          ref: "a",
+          name: `舊版面_${String(Date.now()).slice(-5)}`,
+          fields: [{ name: "甲", type: "text" }],
+          layout: { 甲: { row: 0, col: 0 }, 已改名的欄: { row: 1, col: 0 } },
+        },
+      ],
+    })
+    const res = await templates.apply(tenantA, pack, 1)
+    expect(res.formIds).toHaveLength(1)
+  })
+})

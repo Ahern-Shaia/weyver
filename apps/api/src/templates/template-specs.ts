@@ -35,6 +35,24 @@ export const templateFieldSchema = z.object({
   targetRef: refSchema.optional(),
 })
 
+/* 🔴 OQ-TPL-3 = B|範本要帶**版面**,不只欄位。
+
+   「範本涵蓋多少」是核心 OQ,而 A(只有欄位)交付不出「打開就能用」的觀感 ——
+   那正是範本的價值。只帶欄位的話,套出來是一排預設直排欄位,
+   跟使用者自己建一張空白表沒兩樣。
+
+   版面在範本裡以**欄位顯示名**為 key(id 還不存在),套用時換成真實 id。
+   條件式格式不必轉換 —— 它本來就以欄位名指涉(`targets` / `conditions.field`)。 */
+const templateFieldLayoutSchema = z.object({
+  row: z.number().int().min(0).max(999),
+  col: z.number().int().min(0).max(50),
+  colSpan: z.number().int().min(1).max(50).optional(),
+  help: z.string().max(1000).optional(),
+  placeholder: z.string().max(200).optional(),
+  readonly: z.boolean().optional(),
+  hidden: z.boolean().optional(),
+})
+
 export const templateFormSchema = z.object({
   ref: refSchema,
   name: z.string().min(1).max(100),
@@ -45,6 +63,9 @@ export const templateFormSchema = z.object({
      一個參數同時解掉「要不要帶」與「事後怎麼清」。
      Airtable 一律帶再提供清除,而它自己踩了坑:清除入口藏在一次性側欄。 */
   sampleRows: z.array(z.record(z.string(), z.unknown())).max(50).default([]),
+  /* key = 欄位**顯示名**(套用時換成 id);未列的欄位由 `effectiveLayout` 自動排 */
+  layout: z.record(z.string(), templateFieldLayoutSchema).optional(),
+  gridCols: z.number().int().min(1).max(50).optional(),
 })
 
 export const templatePackSchema = z.object({

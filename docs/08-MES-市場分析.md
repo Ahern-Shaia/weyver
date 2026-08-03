@@ -21,6 +21,9 @@
 > **MES(Manufacturing Execution System)是全方位的動態軟體系統,用於監控、追蹤、文件和控制製造商品的流程,從原料到成品,在企業資源規劃(ERP)與程序控制系統之間提供功能層。**
 > —— SAP 台灣 `www.sap.com/taiwan/resources/what-is-mes`
 
+> 🔵 **2026-08-03 補註(承 `docs/34 §2`)**|本節的 MESA-11 清單**仍然有效**,但作為**功能對照矩陣的座標軸已降為次軸**。主軸改用 **ISA-95 Part 3 的 4 domain × 8 activity 正交模型**(生產 / 維護 / 品質 / 庫存 × detailed scheduling / dispatching / execution management / resource management / definition management / tracking / data collection / analysis)—— 理由不只是它更嚴謹,而是「同一組活動語意套用在四個領域」與 Weyver「一個 substrate 承載多領域表單 app」**在結構上同構**。MESA-11 保留用於補 ISA-95 沒有的 **Document Control**(且 MESA WP#6 逐字把 ISO 文管與 CAPA 歸入該項,是「MES + ISO 織入同一 substrate」的一手依據)。
+> ⚠️ **並更正一則常見誤傳**|坊間所稱「c-MES 把 11 項壓成 8 項」**是錯的** —— MESA 官網從未宣告刪除功能;該「8 項」實為 **VDI 5600 的分組**,兩者被混為一談。
+
 MES 於 1997 年由 MESA(Manufacturing Enterprise Solutions Association)定義 **11 個核心功能**|
 
 1. 資源分配與狀態管理

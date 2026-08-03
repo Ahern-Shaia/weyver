@@ -45,6 +45,16 @@ const packs: unknown[] = [
             options: { choices: ["草稿", "簽核中", "已核准"] },
           },
         ],
+        /* 🔴 帶版面才有「打開就能用」的觀感(OQ-TPL-3=B)——
+           只帶欄位的話,套出來是一排預設直排欄位,跟自己建一張空白表沒兩樣。
+           單號 / 申請日 並排,供應商獨佔一列,用途說明放寬。 */
+        layout: {
+          單號: { row: 0, col: 0, colSpan: 6 },
+          申請日: { row: 0, col: 6, colSpan: 6 },
+          供應商: { row: 1, col: 0, colSpan: 6 },
+          狀態: { row: 1, col: 6, colSpan: 6 },
+          用途說明: { row: 2, col: 0, colSpan: 12 },
+        },
       },
       {
         ref: "request_lines",
@@ -141,6 +151,14 @@ const packs: unknown[] = [
           { name: "地址", type: "text" },
         ],
         sampleRows: [{ 客戶名稱: "示例客戶股份有限公司", 聯絡人: "陳小華", 電話: "04-2345-6789" }],
+        layout: {
+          客戶名稱: { row: 0, col: 0, colSpan: 8 },
+          統一編號: { row: 0, col: 8, colSpan: 4 },
+          聯絡人: { row: 1, col: 0, colSpan: 4 },
+          電話: { row: 1, col: 4, colSpan: 4 },
+          Email: { row: 1, col: 8, colSpan: 4 },
+          地址: { row: 2, col: 0, colSpan: 12 },
+        },
       },
     ],
   },
