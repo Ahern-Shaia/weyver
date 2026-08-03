@@ -71,6 +71,20 @@
 
 > docs/16 是 **OSS 同類**(Baserow/NocoDB/Teable)的實證;此節補上**企業級 metadata 平台**的對照,並把 Weyver 選「每表單真實表」這個**刻意架構分叉**與其 scaling 天花板明文化。
 
+> 🔴 **2026-08-03 稽核補:出處與查證日期(原本一條都沒有)。**
+> 下表三列的來源性質差異很大,混在同一張表裡看不出來,故先分清:
+>
+> | 列 | 來源性質 | 出處狀態 |
+> |---|---|---|
+> | Salesforce flex-column / `MT_Data` | 公開白皮書與開發者文件之**二手綜述** | ⚠️ **無 URL,未查證** —— 屬「業界常識級」描述,但本專案規則是**常識也要有出處**,故不得作為承重依據。要承重須補 Salesforce multitenant architecture 官方白皮書逐字 |
+> | Microsoft Dataverse「混合」 | 同上,且措辭更概括(「部分虛擬化」未指明何種) | ⚠️ **未查證** |
+> | PG table-count 天花板 ~1,000–2,000 | 二手引用 PlanetScale / Citus | ⚠️ **無 URL**,但**本專案已自行實測**(M1 spike:10,000 張表 catalog 近線性 ×1.22)—— **實測是比引用更強的依據**,故此列的結論改以自家實測承重,外部數字降為旁證 |
+>
+> **不影響既有裁定**:選「每表單真實表」的理由是**計算層需要真型別 / 索引 / 約束**(自家論據),
+> 不是靠上表任何一列成立。上表的作用是說明「另一條路長什麼樣」,而那一層用途容得下未查證。
+> 但依〈向上設計三條〉條件 ①,**未查證就不得升格為承重**,故明文標註。
+
+
 | 系統 | 動態 schema 手法 | 對 Weyver 的意義 |
 |---|---|---|
 | **Salesforce Force.com**(企業 metadata 平台典範)| **flex-column / EAV**:`MT_Objects` / `MT_Fields` metadata 表 + **單一共享 `MT_Data` 寬表**,自訂欄位映射到預留的泛型 flex 欄(非真實欄 / 真實表);型別、picklist、formula、master-detail 全存 metadata | **Weyver 選了相反路**:每表單一張**真實 PG 表**(Teable/Baserow pattern)。取捨↓ |

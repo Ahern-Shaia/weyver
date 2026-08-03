@@ -10,7 +10,14 @@
 >
 > 作者:Claude Code(草擬)
 > 版本:v0.1(2026-07-25)
-> 證據:docs/27 §3(D2 裁定 + P0/P1/P2 分級)、本地競品參照庫(Ragic doc/19·doc/38·doc-user/4·15·16、Airtable views/filter/shared-view-url-filters、Teable view/authority-matrix、Baserow filter-group)、現況盤點(records API filter/sort/cursor 白名單鏈、field-type-registry operator、maskRead 伺服器端強制、record-grid-panel Glide 可複用)
+> 證據:docs/27 §3(D2 裁定 + P0/P1/P2 分級)、**本地競品參照庫鏡像**(`reference-materials/`;Ragic `doc/19`·`doc/38`·`doc-user/4`·`15`·`16`、Airtable `views` / `filter` / `shared-view-url-filters`、Teable `view` / `authority-matrix`、Baserow `filter-group`)、現況盤點(records API filter/sort/cursor 白名單鏈、field-type-registry operator、maskRead 伺服器端強制、record-grid-panel Glide 可複用)
+>
+> 🔴 **2026-08-03 稽核補:查證日期與措辭收窄。** 上列引用**查證日 2026-07-25**(撰寫時),
+> 稽核於 **2026-08-03 複核 Airtable 部分,逐字相符**;Ragic / Teable / Baserow 部分**本次未逐條複核**。
+> 措辭收窄:原文以並列方式列出四家,讀起來像「四家都查過同一件事」——
+> 實際上各家查的面向不同(Airtable=分享檢視的 URL 篩選;Teable=權限矩陣;Baserow=篩選群組;
+> Ragic=檢視與報表)。**本模組的核心裁定(D2「Ragic 語意、Airtable 骨架」)承重於前兩家**,
+> Teable / Baserow 為旁證。授權面見 `AGENTS.md` 鐵則 5-bis。
 
 ---
 

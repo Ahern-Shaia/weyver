@@ -161,6 +161,31 @@ Figma / Linear = **fractional indexing**(字串任意精度)+ 週期 rebalance �
 **載入慣例**|[FullCalendar](https://fullcalendar.io/docs/events-json-feed):依可見範圍帶 `start`/`end`(ISO8601)+ `timeZone`,`lazyFetching` 預設 true。
 **每日上限**|Airtable date height 展開上限 **1000 筆/日**、compact 顯示 `+2 more`;NocoDB 亦為 `+N more`。
 
+### 0.7-bis 🔴 站②補記(2026-08-03 稽核):`@tanstack/react-table` 從未被評估
+
+原研究**只有「自家 repo」與「競品」兩站,沒有「自己的相依套件」那一站**。
+補查結果:
+
+| 事實 | 出處 |
+|---|---|
+| `@tanstack/react-table@8.21.3` **已安裝**(`apps/web` + `packages/ui` 皆列相依),且**已在用** | `packages/ui/src/components/list-view.tsx:10` —— 但只掛了 `getCoreRowModel` / `getSortedRowModel` |
+| 它內建 `getGroupedRowModel()` 與 `aggregationFns`(`BuiltInAggregationFn`) | `@tanstack/table-core/build/lib/features/ColumnGrouping.d.ts` |
+| **且內建 server-side 模式**,逐字:「Enables manual grouping. If this option is set to `true`, the table will not automatically group rows using `getGroupedRowModel()` and instead will expect you to manually group the rows before passing them to the table. **This is useful if you are doing server-side grouping and aggregation.**」 | 同上 L152(`manualGrouping`) |
+
+**這不推翻既有裁定,但它推翻了裁定的完整性。**
+「聚合在 DB 端算」是對的(§0.2,且 §0.3 的權限論據獨立成立),
+純 client-side 的 `getGroupedRowModel` 確實不適用 —— 它只看載入的列,
+與 keyset 分頁 + 後端 group-stats 天生衝突。
+
+**但沒被問到的是「渲染層」那一半**:`manualGrouping: true` 正是為
+「後端已經分好組、聚合也算好了」設計的,配 `getExpandedRowModel` 可直接得到
+群組標頭列與展開/折疊。而 M5 落地時**恰好偏離了 M0**(不在 Glide 網格插 header 列,
+改用可讀清單),理由記在 §4.7 —— 那個取捨在有 `manualGrouping` 的前提下會不會不同,
+**當時無從判斷,因為沒有人去看那個已經裝在專案裡的套件**。
+
+⚠️ 本節**不主張重做** —— 現行實作已 SHIPPED 且測試綠。
+記錄的目的是讓「當初評估過並否決」與「當初根本沒看」在日後分得出來(B8)。
+
 ### 0.7 誠實聲明:查不到的
 
 - Airtable kanban 每 stack 的載入筆數與 stack 數上限(官方未載)
