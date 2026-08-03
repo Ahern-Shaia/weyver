@@ -134,6 +134,11 @@ export interface ApprovalInstanceDto {
   readonly status: "pending" | "approved" | "rejected" | "withdrawn"
   readonly submittedBy: number
   readonly updatedAt: string
+  /* 非 null = 已被管理員強制解鎖(OQ-AP2-10):簽核照跑,但記錄暫時可改 */
+  readonly unlockedAt: string | null
+  /* 🔴 會簽進度。**由後端算**,不讓前端從 log 推導 ——
+     推導要重現「只算最後一次退回之後的核准」那條規則,等於兩份實作,遲早分岔。 */
+  readonly stepProgress: { readonly approved: number; readonly required: number }
   readonly steps: readonly ApprovalStep[]
   readonly log: readonly {
     stepNo: number

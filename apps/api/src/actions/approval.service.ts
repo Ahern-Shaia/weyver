@@ -427,10 +427,7 @@ export class ApprovalService {
 
        未填 = 任一人(既有行為);`"all"` = 全體。「全體」取**解析後的實際人數**
        而非設定裡的某個數字 —— 動態簽核人下,那一關有幾個人要到執行期才知道。 */
-    const eligible = await this.resolveApprovers(tenant.tenantId, step, {
-      submittedBy: instance.submittedBy,
-      instanceId,
-    })
+    const eligible = await this.effectiveApprovers(tenant.tenantId, step, instance)
     const approvedBy = await this.repo.approversWhoApproved(
       tenant.tenantId,
       instanceId,
@@ -646,6 +643,23 @@ export class ApprovalService {
      Salesforce 直接報錯、SAP 卡在 "No agent found"。但 Salesforce 是**在簽核人
      回應時**才炸(離職與空值同等對待),那時單子已經走到一半、申請人早就以為送出去了
      —— 所以我方改在**送簽當下就解析全部關卡並擋下**(見 `assertResolvable`)。 */
+  /* 🔴 **真的簽得了這一關的人** = 解析出的簽核人 **扣掉送簽者**。
+
+     送簽者永遠不能核准自己的單(SOX 自簽禁令),所以把他算進「全體同意」的分母
+     會讓那一關**永遠不可能通過** —— 瀏覽器實走時就撞到:角色 3 人、其中一人是
+     送簽者,畫面停在 2/3 然後永遠卡住,而且沒有任何錯誤訊息。 */
+  private async effectiveApprovers(
+    tenantId: number,
+    step: ApprovalStep,
+    instance: { id: number; submittedBy: number },
+  ): Promise<number[]> {
+    const all = await this.resolveApprovers(tenantId, step, {
+      submittedBy: instance.submittedBy,
+      instanceId: instance.id,
+    })
+    return all.filter((a) => a !== instance.submittedBy)
+  }
+
   private async resolveApprovers(
     tenantId: number,
     step: ApprovalStep,
@@ -729,6 +743,27 @@ export class ApprovalService {
     return { allowed: false, onBehalfOf: null }
   }
 
+  /* 🔴 會簽進度「已 N / 需 M」。**在後端算**,不讓前端從 log 推導 ——
+     推導要重現「只算最後一次退回之後的核准」那條規則,等於兩份實作,遲早分岔
+     (而分岔的表現會是「畫面說 2/2 了卻還沒過關」這種沒人查得出來的事)。 */
+  private async stepProgress(
+    tenantId: number,
+    instance: { id: number; currentStep: number; status: string; submittedBy: number },
+    steps: readonly ApprovalStep[],
+  ): Promise<{ approved: number; required: number }> {
+    const step = steps.find((s) => s.stepNo === instance.currentStep)
+    if (step === undefined || instance.status !== "pending") return { approved: 0, required: 0 }
+    const eligible = await this.effectiveApprovers(tenantId, step, instance)
+    const approved = await this.repo.approversWhoApproved(tenantId, instance.id, step.stepNo)
+    const required =
+      step.quorum === undefined
+        ? 1
+        : step.quorum === "all"
+          ? Math.max(1, eligible.length)
+          : step.quorum
+    return { approved: approved.length, required }
+  }
+
   private async toInstanceDto(
     tenant: TenantContext,
     instanceId: number,
@@ -747,6 +782,8 @@ export class ApprovalService {
       currentStep: instance.currentStep,
       status: instance.status,
       submittedBy: instance.submittedBy,
+      unlockedAt: instance.unlockedAt === null ? null : instance.unlockedAt.toISOString(),
+      stepProgress: await this.stepProgress(tenant.tenantId, instance, def?.steps ?? []),
       updatedAt: instance.updatedAt.toISOString(),
       steps: def?.steps ?? [],
       log,
