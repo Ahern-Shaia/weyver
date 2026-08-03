@@ -1,9 +1,8 @@
 "use client"
 
-import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { gridEditData, gridKind, isGridEditable } from "@/components/form/grid-cells"
+import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
-import { GroupedView } from "./grouped-view"
 import { describeEngineError } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { operatorNeedsValue } from "@/lib/engine/field-filters"
@@ -29,6 +28,9 @@ import {
 import { GridSheet } from "@weyver/ui/grid-sheet"
 import type { ChipTone } from "@weyver/ui/status-chip"
 import { type ReactNode, useMemo, useState } from "react"
+import { GroupedView } from "./grouped-view"
+import { PasteBanner } from "./paste-banner"
+import { useGridPaste } from "./use-grid-paste"
 
 const EMPTY_SELECTION: GridSelection = {
   columns: CompactSelection.empty(),
@@ -130,6 +132,18 @@ export function CollectionView({
   }
 
   const OPEN_COL = 0
+  /* 🔴 R1·GP M3/M4|貼上。`filtered` 決定能不能加列(OQ-GP-3 硬約束 ii)——
+     套著篩選時使用者看到的列不是全部,加列會加在他看不到的地方(Teable 踩過)。 */
+  const paste = useGridPaste({
+    formId,
+    fields: displayFields,
+    records,
+    /* ⚠️ 用真值判斷不是 `!== ""` —— `query.q` 未設時是 null 而非空字串,
+       寫成 `!== ""` 會**恆為 true**,把「沒有篩選」也判成有篩選,
+       於是永遠不給加列。同檔下方的空狀態訊息用的也是真值判斷。 */
+    filtered: Boolean(query.q) || query.filters.length > 0,
+    colOffset: 1,
+  })
   const columns: GridColumn[] = [
     { title: "", id: "__open__", width: 52 },
     ...displayFields.map((f) => ({
@@ -185,7 +199,11 @@ export function CollectionView({
         readonly: !editable,
       }
     }
-    const themeOverride = gridThemeOverride(tonesFor(row).get(field.name))
+    /* 不合法的格標紅(OQ-GP-5)。**優先於條件式格式的顏色** ——
+       「這格貼不進去」比「這格符合某條規則」更需要被看到。 */
+    const themeOverride = paste.isCellInvalid(row, col - 1)
+      ? gridThemeOverride("error")
+      : gridThemeOverride(tonesFor(row).get(field.name))
     if (kind === "number") {
       const n = gridEditData(field, value)
       return {
@@ -249,6 +267,7 @@ export function CollectionView({
           {error}
         </div>
       ) : null}
+      <PasteBanner paste={paste} />
       <div className="min-h-0 flex-1 p-3">
         {recordsQuery.isPending ? (
           <div className="flex h-full items-center justify-center text-[12px] text-ink-3">
@@ -281,6 +300,7 @@ export function CollectionView({
             columns={columns}
             rowCount={records.length}
             getCell={getCell}
+            onPaste={paste.onPaste}
             onCellEdited={onCellEdited}
             onCellClicked={onCellClicked}
             rowMarkers="both"

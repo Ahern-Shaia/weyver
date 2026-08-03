@@ -1,11 +1,11 @@
 "use client"
 
-import { Select } from "@weyver/ui/select"
-import { type ReactNode, useMemo, useState } from "react"
 import { useMemberNames } from "@/lib/engine/authz"
 import { type RecordQuery, useGroupStats, useInfiniteRecordsQuery } from "@/lib/engine/hooks"
 import type { FormDto } from "@/lib/engine/schemas"
-import { canStackBy, KanbanView } from "./kanban-view"
+import { Select } from "@weyver/ui/select"
+import { type ReactNode, useMemo, useState } from "react"
+import { KanbanView, canStackBy } from "./kanban-view"
 
 /* Kanban 容器:選分欄欄位 + 取數。
    **stack = 單欄 group-by 的一階特例** → 每欄總筆數直接用 M1 的 group-stats,

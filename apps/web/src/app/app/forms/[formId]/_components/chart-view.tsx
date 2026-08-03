@@ -1,10 +1,10 @@
 "use client"
 
-import { Select } from "@weyver/ui/select"
-import { type ReactNode, useMemo, useState } from "react"
 import { Chart, type ChartOption } from "@/components/chart"
 import { type RecordQuery, useGroupStats } from "@/lib/engine/hooks"
-import { GROUP_AGGREGATE_FNS, type FormDto } from "@/lib/engine/schemas"
+import { type FormDto, GROUP_AGGREGATE_FNS } from "@/lib/engine/schemas"
+import { Select } from "@weyver/ui/select"
+import { type ReactNode, useMemo, useState } from "react"
 
 /* 🔴 F-2 M3 檢視級圖表。
 

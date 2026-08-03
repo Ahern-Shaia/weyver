@@ -1,9 +1,9 @@
 "use client"
 
+import { useLabels } from "@/lib/engine/hooks"
 import { Download, Radio, Share2, Tags, Upload, Wrench } from "lucide-react"
 import Link from "next/link"
 import { type ReactNode, useEffect, useRef, useState } from "react"
-import { useLabels } from "@/lib/engine/hooks"
 
 /* 🔴 R1·IA-1|表單層「工具」聚合入口(docs/33,OQ-IA-1=A / OQ-IA-2=B)。
 

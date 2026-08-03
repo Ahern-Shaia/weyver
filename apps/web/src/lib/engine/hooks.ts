@@ -185,6 +185,25 @@ export function useCreateRecord(formId: number) {
   })
 }
 
+/* 🔴 R1·GP|貼上走的批次更新。**單一 tx 全成或全敗**(OQ-GP-1)——
+   逐格 PATCH 沒有原子性,第 300 格失敗時前 299 格已寫入,而那是正確性問題不是效能問題。
+   ⚠️ 刻意**不帶 expectedVersion**:一次貼上數百格,逐列版本不切實際
+   (與 saveWithLines 明細同一取捨)。兩人同時貼同一塊會後到者覆蓋而非撞版本衝突。 */
+export function useBulkUpdateRecords(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      rows: { recordId: number; values: Record<string, unknown> }[]
+    }): Promise<{ updated: number; skippedComputedCells: number }> =>
+      engineFetch(
+        `/forms/${formId}/records/bulk-update`,
+        z.object({ updated: z.number(), skippedComputedCells: z.number() }),
+        { method: "POST", body: { rows: input.rows } },
+      ),
+    onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
 export function useUpdateRecord(formId: number) {
   const invalidate = useInvalidate()
   return useMutation({

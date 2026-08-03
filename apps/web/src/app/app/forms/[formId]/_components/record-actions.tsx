@@ -1,11 +1,11 @@
 "use client"
 
-import { ExternalLink, Play, Send } from "lucide-react"
-import { type ReactNode, useState } from "react"
 import { describeEngineError } from "@/lib/engine/client"
 import { useButtons, useRecordApproval, useRunButton, useSubmitApproval } from "@/lib/engine/hooks"
-import { ApprovalPanel, ApprovalTrail } from "./approval-panel"
 import type { ApprovalInstanceDto, ButtonDto } from "@/lib/engine/schemas"
+import { ExternalLink, Play, Send } from "lucide-react"
+import { type ReactNode, useState } from "react"
+import { ApprovalPanel, ApprovalTrail } from "./approval-panel"
 
 /* R1·後續-1 M3 記錄頁動作區:自訂按鈕(確認 → 執行)+ 簽核(送簽 / 狀態章 / 步驟進度 / 決策)。
    簽核中記錄由後端 interceptor 鎖(409);此處僅呈現狀態與可用動作。 */
