@@ -1,6 +1,6 @@
 # R1·I-1|資料匯出(帶得走的完整副本)
 
-> **狀態**|🚧 **APPROVED(2026-08-01,OQ-EX-1..8 全採建議)** — 進 M1
+> **狀態**|✅ **SHIPPED v1.0(2026-08-03;M1–M5 + FMEA E1–E11)**
 >
 > **一句話**|讓客戶把**整個工作區的資料**下載成一份可離線保存、可被別的系統讀懂的封存檔 —— 不是畫面上那個「匯出 Excel」的放大版。
 >
@@ -168,8 +168,8 @@ export_job(
 | M1 ✅ | `export_job` + 佇列 worker + zip 產生(CSV + manifest,無附件)**+ 授權(提前自 M2)** | api |
 | M2 ✅ | ~~授權~~(已於 M1 完成)+ 唯讀豁免 + 頻率限制 + **端點**(controller)| api |
 | M3 ✅ | 下載(presign / 代理回退)+ 再認證 + 下載次數 + 到期清理排程 | api |
-| M4 | 設定中心「資料匯出」頁:請求 / 進度 / 下載 / 到期倒數 | web |
-| M5 | e2e + FMEA 收尾 | 兩側 |
+| M4 ✅ | 設定中心「資料匯出」頁:請求 / 進度 / 下載 / 到期倒數 | web |
+| M5 ✅ | e2e + FMEA 收尾 | 兩側 |
 
 > 🔴 **M5 的 e2e 必須涵蓋「請求匯出 → 等到 ready」**,而不只是畫面渲染。
 > 理由是 M2 實測踩到的:`archiver` 是 CJS,**vitest 與 tsx 的 interop 形狀不同** ——
@@ -180,10 +180,29 @@ export_job(
 
 ---
 
+## 12. 失效場景反思(FMEA)
+
+| # | 場景 | 處置 | Sev | 狀態 |
+|---|---|---|---|---|
+| **E1** | 🔴 **簽名分支只在 prod 執行,而它回 302 —— 瀏覽器拿不到檔案**。端點是 POST(要帶密碼)故前端只能用 `fetch`,而 fetch 跟隨重導後最終回應仍須通過 CORS 檢查,物件儲存桶預設不給 | M4 改回 **200 JSON `{url}`**,前端以導航去取(導航不受 CORS 管)。整合測臨時給 local driver 補一個 `presign` 來走那一半 —— 原本這條路徑**零覆蓋** | **P0** | ✅ |
+| E2 | 代理串流分支把整包資料讀進瀏覽器記憶體 | prod 走簽名 URL,位元組不經應用層也不經記憶體;只有 local / on-prem(無 presign)才代理。**on-prem 大租戶仍會撞到**,屆時的正解是讓該環境也具備簽名能力 | P1 | ⏳ |
+| E3 | 「有觸發下載」但拿到的是錯誤頁或空檔 | e2e 驗 zip 魔術數 `504b0304` 與位元組數,不只驗下載事件 | P1 | ✅ |
+| E4 | 一次點擊扣兩次額度 | 按鈕於 `isPending` 停用;e2e 斷言下載後是「剩 4 次」而非 3 —— 同時擋掉「送兩次」與「前端自己減」 | P1 | ✅ |
+| **E5** | 🔴 **再認證只在 prod 觸發,dev 無身分可驗 → 密碼欄可能根本沒接上而沒人發現** | 前端**不預判環境**:直接送,由後端回 `EXPORT_REAUTH_REQUIRED` 才顯示密碼欄。再認證發生在扣次數之前,故該次往返不消耗額度。**但這條路徑未於真實 session 實走** | P1 | ⏳ |
+| E6 | 使用者以為列表頁的「匯出」等於備份 | 頁面明說「列表頁的匯出只含畫面上已載入的資料」;e2e 固化該句 —— 這句話一旦被人「精簡」掉,承諾就破了 | P1 | ✅ |
+| E7 | 到期與剩餘次數不在檯面上 → 第 6 次按下去才發現,而那時唯一一份可能已刪 | 每列顯示到期倒數(<24 小時改以小時計)與剩餘次數 | P1 | ✅ |
+| E8 | **每日 10 次上限被自動化測試消耗** —— 同一天多跑幾次 e2e 就會紅;客戶遷移期反覆試也可能撞到 | e2e 刻意只用一個測試涵蓋整條路徑並在檔頭標注。**額度未區分自動化與人為**,亦無「剩幾次」的提示 | P1 | ⏳ |
+| E9 | 這一頁常駐輪詢打 API | `refetchInterval` 只在有 `queued`/`running` 時開,跑完即停 | P1 | ✅ |
+| E10 | 失敗原因把 SQL / 路徑 / 堆疊噴給使用者 | worker 已於 M1 轉譯成 `userFacingError`;前端直接顯示該欄,不自行加工 | P1 | ✅ |
+| **E11** | ⚠️ **開發期觀察到一筆無法解釋的 job 與一次下載計數增加**(2026-08-03 12:24 前後):`download_count` 在無人按下下載時 1→2,且 12:24:38 憑空多出一筆 job | **未解釋**。已排除:控制重現為「一次點擊 = 一個 POST = 一個 job,零下載增量」(以 `browser_network_requests` 逐筆核對)· 閒置 60 秒無任何變化 · React Query `refetchOnWindowFocus: false` 且 mutation 預設不重試 · worker 不建立 job。**若再現,先取瀏覽器網路紀錄再查後端** | P1 | ⏳ |
+
+---
+
 ## 13. 變更紀錄
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-03 | v1.0 | **M4 + M5 SHIPPED,模組收尾**。設定中心新增「資料匯出」頁(請求 / 附件 opt-in / 進度輪詢 / 下載 / 到期倒數 / 剩餘次數)+ `use-exports` 資料層 + `data-export.spec` 固化。**🔴 M4 推翻 M3 的下載回應形狀**:原本簽名分支回 `302 + Location`,那對 curl 成立、對瀏覽器不成立 —— 端點是 POST(要帶密碼)故前端只能用 `fetch`,而 fetch 跟隨重導後**最終回應仍須通過 CORS 檢查**,物件儲存桶預設不會對我方網域回 `Access-Control-Allow-Origin`。更糟的是這條路徑在 dev 與所有測試裡**完全不會執行**(local driver 無 `presign`),屬於「測試永遠綠、只有 prod 會壞」—— 本模組已經踩過同型兩次(`ZipArchive` 執行期不存在 / archiver 的 CJS interop)。改回 **200 JSON `{url}`** 讓前端以**導航**去取:導航不受 CORS 管,不必為此在儲存桶上開對外 CORS,且簽名本身已帶 `Content-Disposition: attachment`。整合測臨時替 local driver 補一個 `presign` 來覆蓋那一半(api 25 綠,+1)。**再認證不預判環境**:前端直接送,由後端回 `EXPORT_REAUTH_REQUIRED` 才顯示密碼欄 —— dev 無身分可驗、prod 一定要驗,前端不必各自知道自己在哪;再認證在扣次數之前,故該次往返不消耗額度。**e2e 自己先紅一次且是我方測試的錯**:按下建立到清單重抓之間有空窗,`.first()` 當時指的還是上一筆,對它斷言「可下載」會**立刻通過**、下一句才對著換過來的新列失敗 → 改為先等列數增加。e2e 驗 zip 魔術數與位元組數(只驗「有觸發下載」的話,錯誤頁與空檔一樣會通過)。**⚠️ 未解釋的觀察(FMEA E11)**:開發期出現一筆無人請求的 job 與一次無人按下的下載計數增加;控制重現(逐筆核對瀏覽器網路紀錄)為「一次點擊 = 一個 POST = 一個 job、零下載增量」,閒置 60 秒亦無變化,未能再現。**殘留**:E2 on-prem 代理下載走記憶體 / E5 再認證未於真實 session 實走 / E8 每日 10 次額度被 e2e 消耗 | Claude Code |
 | 2026-08-01 | v0.6 | **M3 SHIPPED**(#147)。`POST :id/download`(**POST 不是 GET** —— 要帶密碼,而密碼不能進 URL/歷史/Referer/存取日誌);形狀對齊既有檔案下載:能簽名就 302、不能就代理串流,一律 `no-store, private`。**下載次數以條件式 UPDATE 原子遞增**(`WHERE ... AND download_count < 5 RETURNING`)—— 先查再寫的話兩個分頁會各自看到「還剩 1 次」;0 列時回查給出精確原因(410 過期 / 410 次數用盡 / 404 未完成)。到期清理 `@Cron` 每小時:**刪 storage 物件、列留著標 expired**。**🔴 OQ-EX-5 的依據更換**:原記「Google Takeout 下載要求重新輸入密碼」,逐字複查該頁**復現不出那句話**(只有安全性理由敘述與「We only allow each archive to be downloaded 5 times」)→ 改以 **ASVS 5.0 §7.5.3** 逐字為據:「requires further authentication with at least one factor or secondary verification before performing **highly sensitive transactions or operations**」。再認證用 Better Auth 內建 `/verify-password`(不自己比對雜湊);dev 車道無 session 故略過,已註明。實作期被既有防線抓到:新 `@Cron` 未具名 → `schedule-registration` 測試轉紅(未具名者以 UUID 進 registry,重複註冊偵測不到),已具名 `export.expire` 並列入清單。dev server 實測下載:28573 bytes、`unzip -t` 無誤、114 張表、次數遞增為 1。api 969 全綠 | Claude Code |
 | 2026-08-01 | v0.5 | **🔴 M2 實測抓到 M1 的隱形缺陷**:`archiver` 為 CJS 而本專案是 ESM,`import * as m` 之後 `m.create` 在 **vitest 下存在、在 tsx(dev/prod 的實際執行方式)下是 undefined** —— 整個 `module.exports` 被塞進 `m.default`。表現是**單元測試 9 條全綠、瀏覽器一按匯出就失敗**,錯誤只出現在 dev server 的 stderr。改用 `createRequire`(Node 原生 CJS 載入,不經任何轉換器的 interop 詮釋)後兩個執行環境一致。同一個檔案在此已踩兩次(前一次是 `@types/archiver` 宣告的 `ZipArchive` 執行期不存在),註解記錄兩次的形狀。**M5 的 e2e 因此必須驗到 `ready` 而非只驗畫面** —— 這一類只有跑在 tsx 上才攔得住。dev server 實測:114 張表 / 343 筆 / 28KB / 7 天到期,manifest 帶回欄位型別 | Claude Code |
 | 2026-08-01 | v0.4 | **M2 SHIPPED**(#146)。端點 `api/exports`(POST/GET/GET :id)。**POST 回 202 而非 201** —— RFC 9110 §15.3.3 逐字:「the request has been accepted for processing, but the **processing has not been completed**」且「SHOULD include ... a **pointer to a status monitor**」,回應裡的 job 資源即該 monitor;回 201「已建立」會誤導,使用者真正在意的封存檔那時還不存在。🔴 **唯讀閘門豁免匯出**(設計文件 §7 第一條自我打臉):`TenantGuard` 對停權租戶擋掉所有 POST,而請求匯出正是 POST —— 不豁免的話停權客戶依然拿不到資料。採**白名單**而非「唯讀時放行所有 POST」,否則日後任何新 POST 都會意外取得豁免;整合測同時斷言「其他寫入照擋 403 TENANT_READ_ONLY」。三層限制各擋不同的東西:throttler 擋瞬間洪水 / 每日 10 次擋接力 / DB 部分唯一索引擋並行(409 而非約束錯誤)。**誠實標注證據缺口**:每日次數兩家巨人皆無可抄數字(Google 對組織匯出未載頻率限制;Salesforce 每 7 天已判定太嚴),此為我方自訂界線,理由記於 `export-specs.ts`。另:`formIds: []` 明確拒絕而非靜默當成「全部」。api 38 export 測綠 | Claude Code |
