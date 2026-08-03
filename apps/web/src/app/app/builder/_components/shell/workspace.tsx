@@ -2,11 +2,11 @@
 
 import dynamic from "next/dynamic"
 
+import { RecordFormPanel } from "@/app/app/builder/_components/records/form-panel"
+import { EditFormPanel } from "@/app/app/builder/_components/shell/edit-form"
+import { useForm, useRecords } from "@/lib/engine/hooks"
 import { Segmented } from "@weyver/ui/segmented"
 import { useState } from "react"
-import { useForm, useRecords } from "@/lib/engine/hooks"
-import { EditFormPanel } from "@/app/app/builder/_components/shell/edit-form"
-import { RecordFormPanel } from "@/app/app/builder/_components/records/form-panel"
 /* 🔴 Glide Data Grid 是 canvas 實作、體積可觀,而且**只有切到「表格」模式才用得到**。
    靜態匯入等於讓每個只是要設計欄位或填單的人先下載整套網格引擎。
    `ssr: false` —— 它本來就只能在瀏覽器跑。 */

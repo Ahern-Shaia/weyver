@@ -189,6 +189,46 @@ export function useCreateRecord(formId: number) {
    逐格 PATCH 沒有原子性,第 300 格失敗時前 299 格已寫入,而那是正確性問題不是效能問題。
    ⚠️ 刻意**不帶 expectedVersion**:一次貼上數百格,逐列版本不切實際
    (與 saveWithLines 明細同一取捨)。兩人同時貼同一塊會後到者覆蓋而非撞版本衝突。 */
+/* 🔴 R1·TPL M3|建表的第三條路(與空白、Excel 匯入並列)。
+   `formCount` 讓使用者在按下去之前就知道「這會建幾張表」——
+   範本的單位是**包**不是表,不講清楚會嚇到人。 */
+const templateSummarySchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  description: z.string(),
+  industry: z.string().optional(),
+  formCount: z.number().int(),
+})
+export type TemplateSummary = z.infer<typeof templateSummarySchema>
+
+export function useTemplates() {
+  return useQuery({
+    queryKey: ["templates"] as const,
+    queryFn: () => engineFetch("/templates", z.array(templateSummarySchema)),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useApplyTemplate() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      key: string
+      withRecords: boolean
+    }): Promise<{ formIds: number[]; refMap: Record<string, number>; renamed: string[] }> =>
+      engineFetch(
+        `/templates/${input.key}/apply`,
+        z.object({
+          formIds: z.array(z.number()),
+          refMap: z.record(z.string(), z.number()),
+          renamed: z.array(z.string()),
+        }),
+        { method: "POST", body: { withRecords: input.withRecords } },
+      ),
+    onSuccess: () => invalidate([formKeys.all, ["categories"]]),
+  })
+}
+
 export function useBulkUpdateRecords(formId: number) {
   const invalidate = useInvalidate()
   return useMutation({

@@ -31,11 +31,13 @@ export function FormListRail({
   onSelect,
   onNew,
   onImport,
+  onTemplate,
 }: {
   activeFormId: number | null
   onSelect: (formId: number) => void
   onNew: () => void
   onImport: () => void
+  onTemplate: () => void
 }) {
   const forms = useForms()
   const categories = useCategories()
@@ -61,10 +63,19 @@ export function FormListRail({
     <div className="flex w-[228px] shrink-0 flex-col border-r border-line bg-card">
       <div className="flex items-center gap-1.5 border-b border-line px-3 py-2">
         <span className="text-[14px] font-semibold text-ink">我的表單</span>
+        {/* 🔴 建表的三條路並列(OQ-TPL / docs/27 D3):範本 · Excel · 空白。
+            範本放最前面 —— 對第一次建表的人,「從範本開始」比空白畫布好下手。 */}
+        <button
+          type="button"
+          onClick={onTemplate}
+          className="ml-auto rounded-xs px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:bg-hover"
+        >
+          範本
+        </button>
         <button
           type="button"
           onClick={onImport}
-          className="ml-auto rounded-xs px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:bg-hover"
+          className="rounded-xs px-2 py-0.5 text-[12px] font-medium text-ink-2 hover:bg-hover"
         >
           匯入 Excel
         </button>

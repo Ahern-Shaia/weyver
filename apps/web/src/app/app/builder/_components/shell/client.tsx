@@ -1,13 +1,14 @@
 "use client"
 
+import { FormListRail } from "@/app/app/builder/_components/shell/form-list"
+import { NewFormPanel } from "@/app/app/builder/_components/shell/new-form"
+import { TemplatePicker } from "@/app/app/builder/_components/shell/template-picker"
+import { FormWorkspace } from "@/app/app/builder/_components/shell/workspace"
 import { Button } from "@weyver/ui/button"
 import { Table2 } from "lucide-react"
 import dynamic from "next/dynamic"
 import { parseAsInteger, useQueryState } from "nuqs"
 import { useState } from "react"
-import { FormListRail } from "@/app/app/builder/_components/shell/form-list"
-import { FormWorkspace } from "@/app/app/builder/_components/shell/workspace"
-import { NewFormPanel } from "@/app/app/builder/_components/shell/new-form"
 
 /* 匯入面板拉入 SheetJS(~380KB)→ 動態載入,不進 builder 主 bundle(僅點「匯入」才載)*/
 const ExcelImportPanel = dynamic(
@@ -25,19 +26,29 @@ export function BuilderClient() {
   const [newForm, setNewForm] = useState<NewFormState | null>(null)
   const [importing, setImporting] = useState(false)
 
+  const [pickingTemplate, setPickingTemplate] = useState(false)
   const select = (id: number) => {
     setNewForm(null)
     setImporting(false)
+    setPickingTemplate(false)
     void setFormId(id)
   }
   const startNew = () => {
     setNewForm({ parentFormId: null, parentName: null })
     setImporting(false)
+    setPickingTemplate(false)
     void setFormId(null)
   }
   const startImport = () => {
     setImporting(true)
     setNewForm(null)
+    setPickingTemplate(false)
+    void setFormId(null)
+  }
+  const startTemplate = () => {
+    setPickingTemplate(true)
+    setNewForm(null)
+    setImporting(false)
     void setFormId(null)
   }
   const startSubtable = (parentFormId: number, parentName: string) => {
@@ -54,10 +65,13 @@ export function BuilderClient() {
           onSelect={select}
           onNew={startNew}
           onImport={startImport}
+          onTemplate={startTemplate}
         />
 
         <div className="min-w-0 flex-1">
-          {importing ? (
+          {pickingTemplate ? (
+            <TemplatePicker onApplied={select} onCancel={() => setPickingTemplate(false)} />
+          ) : importing ? (
             <ExcelImportPanel onCreated={select} onCancel={() => setImporting(false)} />
           ) : newForm !== null ? (
             <NewFormPanel
