@@ -65,7 +65,11 @@ test("圖片欄:上傳 → 縮圖預覽 → 存檔 → 記錄頁顯示", async (
   await page.goto(`/app/builder?form=${formId}&tab=fill`)
   await page.getByRole("tab", { name: "填單" }).click()
 
-  await page.getByRole("textbox").first().fill("冷凍雞胸肉")
+  /* 🔴 收斂到填寫區塊 —— 整頁範圍的 `.first()` 會打到左欄的「搜尋表單」框。
+     那次改版之後這條就一直紅著,而失敗訊息是「已儲存沒出現」,指不到真因。
+     同一個形態 `builder.spec` 已修過一次(見該檔註解)。 */
+  const fill_7131187759429270136 = page.locator("section").filter({ hasText: "填寫" }).last()
+  await fill_7131187759429270136.getByRole("textbox").first().fill("冷凍雞胸肉")
   await page.setInputFiles('input[type="file"]', {
     name: "現場.png",
     mimeType: "image/png",
@@ -85,7 +89,11 @@ test("簽名欄:canvas 手寫 → 轉 PNG 上傳 → 記錄頁顯示簽名圖", 
   const formId = await createMediaForm(request)
   await page.goto(`/app/builder?form=${formId}&tab=fill`)
   await page.getByRole("tab", { name: "填單" }).click()
-  await page.getByRole("textbox").first().fill("簽收測試")
+  /* 🔴 收斂到填寫區塊 —— 整頁範圍的 `.first()` 會打到左欄的「搜尋表單」框。
+     那次改版之後這條就一直紅著,而失敗訊息是「已儲存沒出現」,指不到真因。
+     同一個形態 `builder.spec` 已修過一次(見該檔註解)。 */
+  const fill_3657651935504436147 = page.locator("section").filter({ hasText: "填寫" }).last()
+  await fill_3657651935504436147.getByRole("textbox").first().fill("簽收測試")
 
   const painted = await drawSignature(page)
   expect(painted).toBeGreaterThan(100)

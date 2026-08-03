@@ -67,12 +67,19 @@ test("權限矩陣:選具名預設一次設好整組動作,且組合不符時顯
   await page.goto("/app/settings/permissions")
   await page.getByRole("button", { name: "採購主管" }).first().click()
 
-  const picker = page.getByLabel("權限預設").first()
+  /* 🔴 先鎖定「哪一列」,再從那一列取控件 —— 反過來會壞:
+     `filter({ has: <帶 .first() 的定位器> })` 的內層是相對於每一列重新解析的,
+     `.first()` 在此無意義,結果是**每一列都命中**(28 = 7 列 × 4)。
+     矩陣只有一張表單時剛好看不出來,表單一多就整個失準。 */
+  const row = page
+    .locator("tbody tr")
+    .filter({ has: page.getByLabel("權限預設") })
+    .first()
+  const picker = row.getByLabel("權限預設")
   await expect(picker).toBeVisible({ timeout: 30_000 })
   await picker.selectOption("editor")
 
   /* 編輯者 = view / create / edit / export;delete / approve / design 不給 */
-  const row = page.locator("tbody tr").filter({ has: picker })
   await expect(row.getByRole("button", { name: /已授權/ })).toHaveCount(4)
 
   /* 逐格再勾一個 → 不再等於任何預設 → 退回「自訂」,不做「最接近」的模糊比對 */
