@@ -26,6 +26,8 @@ import {
   createApprovalDefBodySchema,
   addApproverBodySchema,
   decisionBodySchema,
+  returnBodySchema,
+  unlockBodySchema,
 } from "./action-specs.js"
 
 /* R1·後續-1 M2 簽核定義 + 送簽(表單範圍;薄 controller)。 */
@@ -132,6 +134,28 @@ export class ApprovalInboxController {
     body: z.infer<typeof addApproverBodySchema>,
   ): Promise<ApprovalInstanceDto> {
     return this.approvals.addApprover(tenant, instanceId, body.actorId)
+  }
+
+  /* 🔴 OQ-AP2-6/7/8|退回到指定關(與駁回分開:那是「不成立」,這是「改一改再來」)。 */
+  @Post(":instanceId/return")
+  @HttpCode(200)
+  async returnTo(
+    @Tenant() tenant: TenantContext,
+    @Param("instanceId", ParseIntPipe) instanceId: number,
+    @Body(new ZodValidationPipe(returnBodySchema)) body: z.infer<typeof returnBodySchema>,
+  ): Promise<ApprovalInstanceDto> {
+    return this.approvals.returnTo(tenant, instanceId, body.targetStep, body.comment)
+  }
+
+  /* 🔴 OQ-AP2-10|管理員強制解鎖:簽核照跑,記錄暫時可改。授權在 service 內。 */
+  @Post(":instanceId/unlock")
+  @HttpCode(200)
+  async unlock(
+    @Tenant() tenant: TenantContext,
+    @Param("instanceId", ParseIntPipe) instanceId: number,
+    @Body(new ZodValidationPipe(unlockBodySchema)) body: z.infer<typeof unlockBodySchema>,
+  ): Promise<ApprovalInstanceDto> {
+    return this.approvals.unlockRecord(tenant, instanceId, body.comment)
   }
 
   @Post(":instanceId/withdraw")

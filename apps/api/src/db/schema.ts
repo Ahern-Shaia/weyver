@@ -642,6 +642,11 @@ export const approvalInstances = pgTable(
     currentStep: integer("current_step").notNull().default(1),
     status: text("status").notNull().default("pending"),
     submittedBy: bigint("submitted_by", { mode: "number" }).notNull(),
+    /* 🔴 OQ-AP2-10|強制解鎖。**與 withdraw 不同**:withdraw 作廢整個簽核、要從頭送過;
+       解鎖是「簽核照跑,但這筆記錄暫時可以改」。沒有它,簽核人一離職記錄就永久鎖死,
+       唯一的解是作廢重來 —— 連帶丟掉已簽關卡的稽核意義。 */
+    unlockedAt: timestamp("unlocked_at", { withTimezone: true }),
+    unlockedByActorId: bigint("unlocked_by_actor_id", { mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -701,7 +706,7 @@ export const approvalStepLogs = pgTable(
   },
   (t) => [
     index("approval_step_log_instance_idx").on(t.instanceId),
-    check("approval_step_log_decision", sql`decision IN ('approve','reject','submit','withdraw','addApprover')`),
+    check("approval_step_log_decision", sql`decision IN ('approve','reject','submit','withdraw','addApprover','return','unlock')`),
   ],
 )
 

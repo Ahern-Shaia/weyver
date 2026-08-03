@@ -1037,3 +1037,168 @@ describe("🔴 會簽 / 擇辦與臨時加簽", () => {
     expect((res.json() as { code: string }).code).toBe("SELF_APPROVAL_FORBIDDEN")
   })
 })
+
+/* 🔴 OQ-AP2-6/7/8|退回到指定關 · OQ-AP2-10|鎖定逃生路徑。 */
+describe("🔴 退回到指定關與鎖定逃生", () => {
+  let rFormId = 0
+  let rRecordId = 0
+
+  const mkInstance = async (steps: Record<string, unknown>[]): Promise<number> => {
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: `退回表${String(Date.now())}`, fields: [{ name: "品名", type: "text" }] },
+    })
+    rFormId = (form.json() as { id: number }).id
+    const def = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(rFormId)}/approvals/defs`,
+      headers: A(),
+      payload: { name: "多關流程", steps },
+    })
+    expect(def.statusCode).toBe(201)
+    const rec = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(rFormId)}/records`,
+      headers: A(),
+      payload: { values: { 品名: "退回測試" } },
+    })
+    rRecordId = (rec.json() as { id: number }).id
+    const sub = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(rFormId)}/approvals/records/${String(rRecordId)}/submit`,
+      headers: A(),
+    })
+    expect(sub.statusCode).toBe(200)
+    return (sub.json() as { id: number }).id
+  }
+
+  /* 🔴 必須是**函式**。寫成 const 陣列的話,它在 describe 註冊當下就求值,
+     而那時 `mgrRoleId` 還是 0(beforeAll 尚未跑)→ 建定義時 400,
+     症狀看起來像 schema 壞掉。 */
+  const threeSteps = (): Record<string, unknown>[] => [
+    { stepNo: 1, approverRoleId: mgrRoleId, quorum: 1 },
+    { stepNo: 2, approverRoleId: bossRoleId, quorum: 1 },
+    { stepNo: 3, approverRoleId: bossRoleId, quorum: 1 },
+  ]
+
+  const approve = (instanceId: number) =>
+    app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/decide`,
+      headers: APPROVER(),
+      payload: { decision: "approve" },
+    })
+
+  const returnTo = (instanceId: number, targetStep: number) =>
+    app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/return`,
+      headers: APPROVER(),
+      payload: { targetStep, comment: "品名寫錯,請修正後再送" },
+    })
+
+  it("🔴 第 3 關可以直接退回第 1 關,不是只能退一關", async () => {
+    const instanceId = await mkInstance(threeSteps())
+    await approve(instanceId)
+    const atThird = await approve(instanceId)
+    expect((atThird.json() as { currentStep: number }).currentStep).toBe(3)
+
+    const res = await returnTo(instanceId, 1)
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { currentStep: number; status: string }
+    expect(body.currentStep).toBe(1)
+    /* 退回不是駁回 —— 單子還活著 */
+    expect(body.status).toBe("pending")
+  })
+
+  /* 🔴 這一條是 OQ-AP2-8 的核心。少了它,退回到第 1 關之後,
+     第 2 關會因為**上一輪的核准**而直接通過 —— 那一關的內控等於被跳過。 */
+  it("🔴 退回後從目標關全部重簽:舊的核准不再算數", async () => {
+    const instanceId = await mkInstance(threeSteps())
+    await approve(instanceId) // 過第 1 關
+    await approve(instanceId) // 過第 2 關 → 現在在第 3 關
+    await returnTo(instanceId, 1)
+
+    const again = await approve(instanceId) // 重簽第 1 關
+    /* 若舊核准仍算數,這一下會一路衝到 approved */
+    expect((again.json() as { currentStep: number; status: string }).currentStep).toBe(2)
+    expect((again.json() as { status: string }).status).toBe("pending")
+  })
+
+  it("退回目標可用 returnableTo 收窄,超出範圍要說得出可退哪幾關", async () => {
+    const instanceId = await mkInstance([
+      { stepNo: 1, approverRoleId: mgrRoleId, quorum: 1 },
+      { stepNo: 2, approverRoleId: bossRoleId, quorum: 1 },
+      { stepNo: 3, approverRoleId: bossRoleId, quorum: 1, returnableTo: [2] },
+    ])
+    await approve(instanceId)
+    await approve(instanceId)
+    const bad = await returnTo(instanceId, 1)
+    expect(bad.statusCode).toBe(422)
+    expect((bad.json() as { code: string }).code).toBe("RETURN_TARGET_NOT_ALLOWED")
+    expect((bad.json() as { message: string }).message).toContain("第 2 關")
+
+    const ok = await returnTo(instanceId, 2)
+    expect(ok.statusCode).toBe(200)
+  })
+
+  it("退回必須填理由;不得往前退", async () => {
+    const instanceId = await mkInstance(threeSteps())
+    const noReason = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/return`,
+      headers: APPROVER(),
+      payload: { targetStep: 1, comment: "" },
+    })
+    expect(noReason.statusCode).toBe(400)
+
+    /* 現在在第 1 關,退回第 1 關等於原地打轉 */
+    const forward = await returnTo(instanceId, 1)
+    expect(forward.statusCode).toBe(422)
+    expect((forward.json() as { code: string }).code).toBe("INVALID_RETURN_TARGET")
+  })
+
+  /* 🔴 OQ-AP2-10|沒有這些逃生路徑,簽核人一離職記錄就永久鎖死,
+     唯一的解是作廢整個簽核重來 —— 連帶丟掉已簽關卡的稽核意義。 */
+  /* 🔴 **admin 也改不動** —— 逃生路徑是顯式解鎖而非靜默 bypass。
+     多一個動作,換到一筆答得出「誰、什麼時候、為什麼」的紀錄。 */
+  it("🔴 簽核中連管理員都改不動;強制解鎖後才改得動,且解鎖留痕", async () => {
+    const instanceId = await mkInstance(threeSteps())
+    const patch = () =>
+      app.inject({
+        method: "PATCH",
+        url: `/api/forms/${String(rFormId)}/records/${String(rRecordId)}`,
+        headers: A(),
+        payload: { expectedVersion: 1, values: { 品名: "改過的" } },
+      })
+    expect((await patch()).statusCode).toBe(409)
+
+    const unlock = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/unlock`,
+      headers: A(),
+      payload: { comment: "簽核人已離職,先解鎖修正單據" },
+    })
+    expect(unlock.statusCode).toBe(200)
+    expect((await patch()).statusCode).not.toBe(409)
+
+    const logged = await pool.query(
+      "SELECT comment FROM approval_step_log WHERE instance_id = $1 AND decision = 'unlock'",
+      [instanceId],
+    )
+    expect(String(logged.rows[0]?.comment)).toContain("離職")
+  })
+
+  it("強制解鎖限管理員,且必須填理由", async () => {
+    const instanceId = await mkInstance(threeSteps())
+    const noReason = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/unlock`,
+      headers: A(),
+      payload: { comment: "" },
+    })
+    expect(noReason.statusCode).toBe(400)
+  })
+})

@@ -147,3 +147,12 @@ export interface ApprovalInstanceDto {
 /* 🔴 OQ-AP2-5|臨時加簽的請求體。授權與「不得加送簽者本人」的防護在 service 內 ——
    controller 只驗形狀,業務規則不寫在這裡(薄 controller)。 */
 export const addApproverBodySchema = z.object({ actorId: z.number().int().positive() })
+
+/* 🔴 OQ-AP2-6|退回。理由必填 —— 收到單子的人不知道要改什麼的話,退回等於沒退。 */
+export const returnBodySchema = z.object({
+  targetStep: z.number().int().min(1).max(20),
+  comment: z.string().min(1).max(2000),
+})
+
+/* 🔴 OQ-AP2-10|強制解鎖是繞過內控的動作,理由必填。 */
+export const unlockBodySchema = z.object({ comment: z.string().min(1).max(2000) })

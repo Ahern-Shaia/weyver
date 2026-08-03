@@ -59,10 +59,20 @@ export class ApprovalLockInterceptor implements NestInterceptor {
     if (!Number.isSafeInteger(formId) || !Number.isSafeInteger(recordId)) return next.handle()
 
     const active = await this.repo.getActiveInstance(tenant.tenantId, formId, recordId)
-    if (active !== null) {
+    if (active !== null && active.unlockedAt === null) {
+      /* 🔴 OQ-AP2-10|逃生路徑是**顯式解鎖**(`unlockedAt`),不是「管理員靜默通過」。
+
+         M0 原本建議「admin 永遠可編輯」(Salesforce 三條之一),實作時刪掉了:
+         它與同一題「解鎖必須留痕」自相矛盾 —— 靜默 bypass 不會留下任何一筆
+         「有人在簽核中改了這張單」的紀錄,而那正是這把鎖存在的理由。
+         既有兩條鎖測試當場轉紅也正好暴露了代價:dev 車道每個人都是 superadmin,
+         那條路等於把鎖整個關掉。
+
+         admin 想改 → 先按強制解鎖(要填理由、寫進 append-only log、串進 hash chain)。
+         多一個動作,換到一筆答得出「誰、什麼時候、為什麼」的紀錄。 */
       throw new ConflictException({
         code: "RECORD_LOCKED_BY_APPROVAL",
-        message: "此記錄簽核中,不可修改(請先撤回或完成簽核)",
+        message: "此記錄簽核中,不可修改(請先撤回、完成簽核,或請管理員強制解鎖)",
       })
     }
     return next.handle()

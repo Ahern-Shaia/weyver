@@ -139,6 +139,134 @@ export class ApprovalService {
   }
 
   /* 簽核決策。gate:操作者須為 current step 之 approverRole 成員(角色閉包)。 */
+  /* 🔴 OQ-AP2-6/7/8|退回到指定關。
+
+     與 reject 刻意分開:reject 是「這件事不成立」,return 是「改一改再來」——
+     後續動作、通知對象、稽核意義都不同,擠成同一個型別事後就分不出來。
+
+     **可退任意先前關卡,並可逐關以 `returnableTo` 收窄**(Kissflow 形態)。
+     只能退一關(Salesforce)對多關流程不夠用:第 4 關發現第 1 關填錯,
+     退給第 3 關的人毫無意義。
+
+     **退回後由該關重新解析簽核人**(OQ-AP2-7 = B),不指名原簽核人 ——
+     指名原簽核人在「那個人已離職」時直接卡死,而那正是我們要避免的形態。
+
+     **從目標關往後全部重簽**(OQ-AP2-8 = A):由 `approversWhoApproved` 只算
+     最後一次退回之後的核准來達成,不另存「這一輪誰簽過」的狀態。
+     業界無人做「只重簽受影響關卡」,連 Kissflow 都只能承認這是痛點。 */
+  async returnTo(
+    tenant: TenantContext,
+    instanceId: number,
+    targetStep: number,
+    comment: string,
+  ): Promise<ApprovalInstanceDto> {
+    const instance = await this.repo.getInstance(tenant.tenantId, instanceId)
+    if (instance === null) {
+      throw new NotFoundException({ code: "APPROVAL_NOT_FOUND", message: `instance ${instanceId}` })
+    }
+    if (instance.status !== "pending") {
+      throw new ConflictException({ code: "APPROVAL_CLOSED", message: "此簽核已結束" })
+    }
+    const def = await this.repo.getApprovalDef(tenant.tenantId, instance.defId)
+    const step = def?.steps.find((s) => s.stepNo === instance.currentStep)
+    if (step === undefined) {
+      throw new ConflictException({ code: "APPROVAL_STEP_MISSING", message: "步驟定義遺失" })
+    }
+    const me = await this.approverOf(tenant, step, {
+      submittedBy: instance.submittedBy,
+      instanceId,
+    })
+    if (!me.allowed) {
+      throw new ForbiddenException({ code: "FORBIDDEN", message: "非本步驟之簽核者" })
+    }
+    if (targetStep >= instance.currentStep || targetStep < 1) {
+      throw new UnprocessableEntityException({
+        code: "INVALID_RETURN_TARGET",
+        message: "只能退回到目前關卡之前的關卡",
+      })
+    }
+    /* 未設 `returnableTo` = 可退所有先前關卡(Kissflow:「When you disable this
+       option, items can be sent to all preceding steps.」) */
+    if (step.returnableTo !== undefined && !step.returnableTo.includes(targetStep)) {
+      throw new UnprocessableEntityException({
+        code: "RETURN_TARGET_NOT_ALLOWED",
+        message: `本關只能退回到第 ${step.returnableTo.join("、")} 關`,
+      })
+    }
+    /* 同 reject:退回一定要說為什麼,否則收到單子的人不知道要改什麼 */
+    if (comment.trim() === "") {
+      throw new BadRequestException({
+        code: "RETURN_REASON_REQUIRED",
+        message: "退回時必須填寫理由",
+      })
+    }
+
+    await this.repo.appendStepLog({
+      tenantId: tenant.tenantId,
+      instanceId,
+      stepNo: step.stepNo,
+      actorId: tenant.actorId,
+      onBehalfOfActorId: me.onBehalfOf,
+      decision: "return",
+      comment,
+    })
+    const won = await this.repo.updateInstance(
+      tenant.tenantId,
+      instanceId,
+      { currentStep: targetStep },
+      { status: "pending", currentStep: step.stepNo },
+    )
+    if (!won) throw raceLost()
+
+    const target = def?.steps.find((s) => s.stepNo === targetStep)
+    await this.notifyStep(
+      tenant,
+      instance.formId,
+      instance.recordId,
+      target?.approverRoleId ?? null,
+    )
+    return this.toInstanceDto(tenant, instanceId)
+  }
+
+  /* 🔴 OQ-AP2-10|管理員強制解鎖。**與 withdraw 不同**:withdraw 把整個簽核作廢、
+     要從頭送過,連帶丟掉已簽關卡的稽核意義;解鎖是「簽核照跑,但這筆暫時可以改」。
+
+     對應 Salesforce 的 Unlock action。沒有它,簽核人一離職記錄就永久鎖死,
+     而唯一的解是作廢重來。**不可逆且必須留痕** —— 解鎖是繞過內控的動作,
+     寫進 append-only log(且已串進 hash chain)。 */
+  async unlockRecord(
+    tenant: TenantContext,
+    instanceId: number,
+    comment: string,
+  ): Promise<ApprovalInstanceDto> {
+    const isAdmin =
+      tenant.isSuperAdmin === true ||
+      (await this.authz.isAdminActor(tenant.tenantId, tenant.actorId))
+    if (!isAdmin) {
+      throw new ForbiddenException({ code: "FORBIDDEN", message: "僅管理員可強制解鎖" })
+    }
+    const instance = await this.repo.getInstance(tenant.tenantId, instanceId)
+    if (instance === null || instance.status !== "pending") {
+      throw new NotFoundException({ code: "APPROVAL_NOT_FOUND", message: "無進行中簽核" })
+    }
+    if (comment.trim() === "") {
+      throw new BadRequestException({
+        code: "UNLOCK_REASON_REQUIRED",
+        message: "強制解鎖必須填寫理由 —— 這是繞過內控的動作",
+      })
+    }
+    await this.repo.appendStepLog({
+      tenantId: tenant.tenantId,
+      instanceId,
+      stepNo: instance.currentStep,
+      actorId: tenant.actorId,
+      decision: "unlock",
+      comment,
+    })
+    await this.repo.markUnlocked(tenant.tenantId, instanceId, tenant.actorId)
+    return this.toInstanceDto(tenant, instanceId)
+  }
+
   /* 🔴 OQ-AP2-5 = B|臨時加簽(Ragic 三種之中的「同一階增加新的簽核人」)。
 
      **只做這一種**:另外兩種(向前 / 向後加簽)會在執行期插入關卡,而 ServiceNow
@@ -170,8 +298,16 @@ export class ApprovalService {
       submittedBy: instance.submittedBy,
       instanceId,
     })
-    if (!me.allowed) {
-      throw new ForbiddenException({ code: "FORBIDDEN", message: "只有本關的簽核人可以加簽" })
+    /* 🔴 OQ-AP2-10 之第三條逃生路徑:**管理員可改派** ——
+       原簽核人離職時,admin 把單子加給接手的人,不必作廢整個簽核重送。 */
+    const isAdmin =
+      tenant.isSuperAdmin === true ||
+      (await this.authz.isAdminActor(tenant.tenantId, tenant.actorId))
+    if (!me.allowed && !isAdmin) {
+      throw new ForbiddenException({
+        code: "FORBIDDEN",
+        message: "只有本關的簽核人或管理員可以加簽",
+      })
     }
     if (instance.submittedBy !== null && targetActorId === instance.submittedBy) {
       throw new UnprocessableEntityException({

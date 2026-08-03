@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
 import {
   actionAudits,
@@ -42,6 +42,8 @@ export interface ApprovalInstanceRow {
   readonly currentStep: number
   readonly status: "pending" | "approved" | "rejected" | "withdrawn"
   readonly submittedBy: number
+  /* 非 null = 已被管理員強制解鎖:簽核照跑,但這筆記錄暫時可以改(OQ-AP2-10) */
+  readonly unlockedAt: Date | null
   readonly updatedAt: Date
 }
 
@@ -461,6 +463,11 @@ export class ActionsRepository {
     instanceId: number,
     stepNo: number,
   ): Promise<number[]> {
+    /* 🔴 OQ-AP2-8|**只算最後一次退回之後的核准**。
+       退回的語意是「從那一關重跑」,舊的核准不能繼續算數 —— 否則退回到第 1 關之後,
+       第 2 關會因為上一輪的核准而直接通過,等於那一關的內控被跳過了。
+       同樣由 log 推導,不另存「這一輪誰簽過」的狀態。 */
+    const lastReturn = await this.lastReturnLogId(tenantId, instanceId)
     const rows = await this.db
       .selectDistinct({ actorId: approvalStepLogs.actorId })
       .from(approvalStepLogs)
@@ -470,9 +477,35 @@ export class ActionsRepository {
           eq(approvalStepLogs.instanceId, instanceId),
           eq(approvalStepLogs.stepNo, stepNo),
           eq(approvalStepLogs.decision, "approve"),
+          ...(lastReturn === null ? [] : [gt(approvalStepLogs.id, lastReturn)]),
         ),
       )
     return rows.map((r) => Number(r.actorId))
+  }
+
+  private async lastReturnLogId(tenantId: number, instanceId: number): Promise<number | null> {
+    const rows = await this.db
+      .select({ id: approvalStepLogs.id })
+      .from(approvalStepLogs)
+      .where(
+        and(
+          eq(approvalStepLogs.tenantId, tenantId),
+          eq(approvalStepLogs.instanceId, instanceId),
+          eq(approvalStepLogs.decision, "return"),
+        ),
+      )
+      .orderBy(desc(approvalStepLogs.id))
+      .limit(1)
+    return rows[0]?.id ?? null
+  }
+
+  async markUnlocked(tenantId: number, instanceId: number, actorId: number): Promise<boolean> {
+    const rows = await this.db
+      .update(approvalInstances)
+      .set({ unlockedAt: new Date(), unlockedByActorId: actorId, updatedAt: new Date() })
+      .where(and(eq(approvalInstances.tenantId, tenantId), eq(approvalInstances.id, instanceId)))
+      .returning({ id: approvalInstances.id })
+    return rows.length > 0
   }
 
   /* 前一位真的做出決定的人(submit / withdraw 不算)—— `managerOfPrevApprover` 用。 */
@@ -578,6 +611,7 @@ function toInstanceRow(row: typeof approvalInstances.$inferSelect): ApprovalInst
     currentStep: row.currentStep,
     status: row.status as ApprovalInstanceRow["status"],
     submittedBy: row.submittedBy,
+    unlockedAt: row.unlockedAt,
     updatedAt: row.updatedAt,
   }
 }
