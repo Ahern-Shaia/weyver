@@ -79,11 +79,18 @@ export const approvalStepSchema = z
     /* 動態規則下沒有靜態角色可指定,故為選配 */
     approverRoleId: z.number().int().positive().optional(),
     approverRule: z.enum(APPROVER_RULES).default("role"),
-    /* 🔴 OQ-AP2-3|會簽 / 擇辦。**null(或未填)= 全體同意**。
-       採 Ragic 的退化式設計(官方逐字:「若將擇辦人數清空,則等同於會簽(All)」)——
-       All 是 N 的退化值,不是獨立模式。用 `mode` enum + 數字的話,
-       `mode:'all'` 卻帶 `quorum:2` 要信哪個永遠是個問題;這個形狀結構上不可能矛盾。 */
-    quorum: z.number().int().positive().nullable().optional(),
+    /* 🔴 OQ-AP2-3|會簽 / 擇辦。一個欄位三種意義,**全部顯式**:
+         未填    = 任一人即可(既有行為)
+         數字 N  = 擇辦,N 人同意
+         "all"   = 會簽,全體同意
+
+       ⚠️ **實作時推翻了 M0 原本的「未填 = 全體」(Ragic 退化式)**。
+       Ragic 那個設計成立,是因為它的簽核對象是**刻意挑出來的群組**;
+       我方的簽核對象是**角色**,而角色可能有 50 個人 —— 預設要求全簽既荒謬,
+       也會讓所有既有流程一夜之間卡住(整合測當場轉紅,就是這個)。
+       仍不採 `mode` enum + 數字:那會有「`mode:'all'` 卻帶 `quorum:2` 信哪個」的
+       矛盾空間;這個形狀結構上不可能矛盾。 */
+    quorum: z.union([z.number().int().positive(), z.literal("all")]).optional(),
     /* 🔴 OQ-AP2-6|可退回的關卡白名單;未填 = 所有先前關卡(Kissflow 形態) */
     returnableTo: z.array(z.number().int().min(1).max(20)).optional(),
     /* 條件:本記錄之 amountField 值 >= minAmount 時此步才啟用(缺省=恆啟用) */
@@ -136,3 +143,7 @@ export interface ApprovalInstanceDto {
     at: string
   }[]
 }
+
+/* 🔴 OQ-AP2-5|臨時加簽的請求體。授權與「不得加送簽者本人」的防護在 service 內 ——
+   controller 只驗形狀,業務規則不寫在這裡(薄 controller)。 */
+export const addApproverBodySchema = z.object({ actorId: z.number().int().positive() })

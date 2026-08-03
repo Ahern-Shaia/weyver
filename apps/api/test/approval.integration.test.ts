@@ -879,3 +879,161 @@ describe("🔴 動態簽核人(直屬主管,由 role tree 推導)", () => {
     expect(body.message).toContain("第 1 關")
   })
 })
+
+/* 🔴 OQ-AP2-3 / OQ-AP2-4 / OQ-AP2-5|會簽(N-of-M)與臨時加簽。 */
+describe("🔴 會簽 / 擇辦與臨時加簽", () => {
+  let coFormId = 0
+  let memberA = 0
+  let memberB = 0
+  let coRoleId = 0
+
+  const AS = (actorId: number): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorId),
+  })
+
+  beforeAll(async () => {
+    const db = createDrizzle(pool)
+    const r = await db
+      .insert(roles)
+      .values([{ tenantId: tenantA, key: "qa", name: "品保", depth: 0 }])
+      .returning()
+    coRoleId = r[0]?.id ?? 0
+    const u = await db
+      .insert(users)
+      .values([
+        { authUserId: "auth-co-a", email: "coa@weyver.test", name: "會簽甲" },
+        { authUserId: "auth-co-b", email: "cob@weyver.test", name: "會簽乙" },
+      ])
+      .returning()
+    memberA = u[0]?.id ?? 0
+    memberB = u[1]?.id ?? 0
+    await db.insert(roleMembers).values([
+      { tenantId: tenantA, roleId: coRoleId, actorId: memberA },
+      { tenantId: tenantA, roleId: coRoleId, actorId: memberB },
+    ])
+
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: "會簽表", fields: [{ name: "品名", type: "text" }] },
+    })
+    coFormId = (form.json() as { id: number }).id
+  })
+
+  /* 🔴 每個案例用**自己的表單**。同一張表上建第二個 active def 之後,
+     送簽會挑到最早的那個(`defs.find(d => d.active)`)—— 第一版就是這樣紅的,
+     而症狀是「擇辦設了 quorum=1 卻還要兩個人簽」,看起來像 quorum 壞掉。 */
+  const defWith = async (step: Record<string, unknown>): Promise<void> => {
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: `會簽表${String(Date.now())}`, fields: [{ name: "品名", type: "text" }] },
+    })
+    coFormId = (form.json() as { id: number }).id
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(coFormId)}/approvals/defs`,
+      headers: A(),
+      payload: { name: "流程", steps: [{ stepNo: 1, ...step }] },
+    })
+    expect(res.statusCode).toBe(201)
+  }
+
+  const submitOne = async (): Promise<number> => {
+    const rec = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(coFormId)}/records`,
+      headers: A(),
+      payload: { values: { 品名: "會簽測試" } },
+    })
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(coFormId)}/approvals/records/${String((rec.json() as { id: number }).id)}/submit`,
+      headers: A(),
+    })
+    expect(res.statusCode).toBe(200)
+    return (res.json() as { id: number }).id
+  }
+
+  const decideAs = (actorId: number, instanceId: number, decision: "approve" | "reject") =>
+    app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/decide`,
+      headers: { ...AS(actorId), "x-dev-real-authz": "1" },
+      payload: { decision, ...(decision === "reject" ? { comment: "不同意" } : {}) },
+    })
+
+  it("🔴 會簽(quorum: all):一人核准還不算過,兩人到齊才推進", async () => {
+    await defWith({ approverRoleId: coRoleId, quorum: "all" })
+    const instanceId = await submitOne()
+
+    const first = await decideAs(memberA, instanceId, "approve")
+    expect(first.statusCode).toBe(200)
+    /* 🔴 這一條是會簽的核心:一個人簽完**還在原地**,不是已核准 */
+    expect((first.json() as { status: string }).status).toBe("pending")
+
+    const second = await decideAs(memberB, instanceId, "approve")
+    expect((second.json() as { status: string }).status).toBe("approved")
+  })
+
+  it("未填 quorum = 任一人即可(既有行為不得因本批而改變)", async () => {
+    await defWith({ approverRoleId: coRoleId })
+    const instanceId = await submitOne()
+    const only = await decideAs(memberA, instanceId, "approve")
+    expect((only.json() as { status: string }).status).toBe("approved")
+  })
+
+  /* Power Automate 官方逐字:「run after all the approvers respond,
+   **or when a single rejection occurs**」—— 不等其他人。 */
+  it("🔴 會簽中有人拒絕 → 立刻整單否決,不等其他人", async () => {
+    await defWith({ approverRoleId: coRoleId, quorum: "all" })
+    const instanceId = await submitOne()
+    await decideAs(memberA, instanceId, "approve")
+    const no = await decideAs(memberB, instanceId, "reject")
+    expect((no.json() as { status: string }).status).toBe("rejected")
+  })
+
+  it("🔴 臨時加簽:被加的人才簽得了,且加簽本身進 append-only log", async () => {
+    await defWith({ approverRoleId: coRoleId, quorum: 1 })
+    const instanceId = await submitOne()
+
+    /* 加簽前:局外人簽不了 */
+    const before = await decideAs(approverId, instanceId, "approve")
+    expect(before.statusCode).toBe(403)
+
+    const add = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/add-approver`,
+      headers: { ...AS(memberA), "x-dev-real-authz": "1" },
+      payload: { actorId: approverId },
+    })
+    expect(add.statusCode).toBe(200)
+
+    const after = await decideAs(approverId, instanceId, "approve")
+    expect((after.json() as { status: string }).status).toBe("approved")
+
+    const logged = await pool.query(
+      "SELECT actor_id, added_by_actor_id FROM approval_step_log WHERE instance_id = $1 AND decision = 'addApprover'",
+      [instanceId],
+    )
+    /* 被加的人與加人的人分開存 —— 只記一個的話,事後看不出是誰擴大了簽核圈 */
+    expect(Number(logged.rows[0]?.actor_id)).toBe(approverId)
+    expect(Number(logged.rows[0]?.added_by_actor_id)).toBe(memberA)
+  })
+
+  it("🔴 不得把送簽者本人加為簽核人(那是自簽禁令的後門)", async () => {
+    await defWith({ approverRoleId: coRoleId, quorum: 1 })
+    const instanceId = await submitOne()
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/approvals/${String(instanceId)}/add-approver`,
+      headers: { ...AS(memberA), "x-dev-real-authz": "1" },
+      payload: { actorId: submitterId },
+    })
+    expect(res.statusCode).toBe(422)
+    expect((res.json() as { code: string }).code).toBe("SELF_APPROVAL_FORBIDDEN")
+  })
+})

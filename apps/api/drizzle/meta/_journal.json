@@ -344,6 +344,13 @@
       "when": 1785773604000,
       "tag": "0048_approval_log_hash_chain",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1785860004000,
+      "tag": "0049_approval_adhoc_approver",
+      "breakpoints": true
     }
   ]
 }

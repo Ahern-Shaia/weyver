@@ -437,6 +437,44 @@ export class ActionsRepository {
     return rows.map((r) => Number(r.actorId))
   }
 
+  /* 這一關被臨時加簽進來的人。加簽是 append-only 的事實,存在 log 裡而不是另一張表 —— 
+     「誰把誰拉進這一關」正是稽核要問的,不該放在可改的地方。 */
+  async adhocApproversOf(tenantId: number, instanceId: number, stepNo: number): Promise<number[]> {
+    const rows = await this.db
+      .select({ actorId: approvalStepLogs.actorId })
+      .from(approvalStepLogs)
+      .where(
+        and(
+          eq(approvalStepLogs.tenantId, tenantId),
+          eq(approvalStepLogs.instanceId, instanceId),
+          eq(approvalStepLogs.stepNo, stepNo),
+          eq(approvalStepLogs.decision, "addApprover"),
+        ),
+      )
+    return rows.map((r) => Number(r.actorId))
+  }
+
+  /* 這一關已經核准過的人(去重)。**quorum 由 log 推導,不另存計數欄** ——
+     計數欄與 log 是兩份真相,遲早分岔;而 log 本來就是 append-only 的那一份。 */
+  async approversWhoApproved(
+    tenantId: number,
+    instanceId: number,
+    stepNo: number,
+  ): Promise<number[]> {
+    const rows = await this.db
+      .selectDistinct({ actorId: approvalStepLogs.actorId })
+      .from(approvalStepLogs)
+      .where(
+        and(
+          eq(approvalStepLogs.tenantId, tenantId),
+          eq(approvalStepLogs.instanceId, instanceId),
+          eq(approvalStepLogs.stepNo, stepNo),
+          eq(approvalStepLogs.decision, "approve"),
+        ),
+      )
+    return rows.map((r) => Number(r.actorId))
+  }
+
   /* 前一位真的做出決定的人(submit / withdraw 不算)—— `managerOfPrevApprover` 用。 */
   async lastDecider(tenantId: number, instanceId: number): Promise<number | null> {
     const rows = await this.db
@@ -462,6 +500,7 @@ export class ActionsRepository {
     decision: string
     /* 非 NULL = 這是代理行為;稽核要答得出「為什麼是他批的」 */
     onBehalfOfActorId?: number | null
+    addedByActorId?: number | null
     comment?: string | undefined
   }): Promise<void> {
     await this.db.insert(approvalStepLogs).values({
@@ -471,6 +510,7 @@ export class ActionsRepository {
       actorId: input.actorId,
       decision: input.decision,
       onBehalfOfActorId: input.onBehalfOfActorId ?? null,
+      addedByActorId: input.addedByActorId ?? null,
       comment: input.comment ?? null,
     })
   }

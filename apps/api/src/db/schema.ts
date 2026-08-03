@@ -693,11 +693,15 @@ export const approvalStepLogs = pgTable(
        NULL = 這一列早於 chain 上線(0048 之前),不是竄改。 */
     prevHash: text("prev_hash"),
     hash: text("hash"),
+    /* 🔴 OQ-AP2-5|臨時加簽:`decision='addApprover'` 時 `actorId` 是**被加的人**,
+       這一欄是**加人的人**。兩者分開存,否則事後看不出是誰決定擴大簽核圈。
+       刻意不入 hash 算式 —— 改算式會讓所有既有列判定為 tampered。 */
+    addedByActorId: bigint("added_by_actor_id", { mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("approval_step_log_instance_idx").on(t.instanceId),
-    check("approval_step_log_decision", sql`decision IN ('approve','reject','submit','withdraw')`),
+    check("approval_step_log_decision", sql`decision IN ('approve','reject','submit','withdraw','addApprover')`),
   ],
 )
 

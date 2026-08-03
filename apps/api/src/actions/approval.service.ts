@@ -139,6 +139,58 @@ export class ApprovalService {
   }
 
   /* 簽核決策。gate:操作者須為 current step 之 approverRole 成員(角色閉包)。 */
+  /* 🔴 OQ-AP2-5 = B|臨時加簽(Ragic 三種之中的「同一階增加新的簽核人」)。
+
+     **只做這一種**:另外兩種(向前 / 向後加簽)會在執行期插入關卡,而 ServiceNow
+     社群對此有明確警告 ——「approvals aren't really designed to be added manually
+     in this way」,手動加的 approval 不會正確反應 rejection。同關加人只是擴充
+     這一關的 N-of-M 成員集合,那個結構本來就有,零額外狀態機風險。
+
+     ⚠️ **加簽會放寬這一關的簽核圈**,所以三件事一起做:限現任簽核人才能加、
+     被加的人不得是送簽者(否則加簽變成自簽的後門)、整件事寫進 append-only log。 */
+  async addApprover(
+    tenant: TenantContext,
+    instanceId: number,
+    targetActorId: number,
+  ): Promise<ApprovalInstanceDto> {
+    const instance = await this.repo.getInstance(tenant.tenantId, instanceId)
+    if (instance === null) {
+      throw new NotFoundException({ code: "APPROVAL_NOT_FOUND", message: `instance ${instanceId}` })
+    }
+    if (instance.status !== "pending") {
+      throw new ConflictException({ code: "APPROVAL_CLOSED", message: "此簽核已結束" })
+    }
+    const def = await this.repo.getApprovalDef(tenant.tenantId, instance.defId)
+    const step = def?.steps.find((s) => s.stepNo === instance.currentStep)
+    if (step === undefined) {
+      throw new ConflictException({ code: "APPROVAL_STEP_MISSING", message: "步驟定義遺失" })
+    }
+    /* 只有這一關現在簽得了的人才能加人 —— 否則任何人都能把自己的同夥塞進任何一關 */
+    const me = await this.approverOf(tenant, step, {
+      submittedBy: instance.submittedBy,
+      instanceId,
+    })
+    if (!me.allowed) {
+      throw new ForbiddenException({ code: "FORBIDDEN", message: "只有本關的簽核人可以加簽" })
+    }
+    if (instance.submittedBy !== null && targetActorId === instance.submittedBy) {
+      throw new UnprocessableEntityException({
+        code: "SELF_APPROVAL_FORBIDDEN",
+        message: "不得把送簽者本人加為簽核人 —— 那等於繞過自簽禁令",
+      })
+    }
+    await this.repo.appendStepLog({
+      tenantId: tenant.tenantId,
+      instanceId,
+      stepNo: step.stepNo,
+      /* actorId = 被加的人;addedBy = 加人的人。分開存,事後才看得出是誰擴大了簽核圈 */
+      actorId: targetActorId,
+      addedByActorId: tenant.actorId,
+      decision: "addApprover",
+    })
+    return this.toInstanceDto(tenant, instanceId)
+  }
+
   /* 🔴 OQ-AP2-9|簽核紀錄鏈完整性報告(21 CFR 11.10(e) 的「可偵測竄改」那一半)。
 
      **admin 限定**:斷點清單會透露哪些簽核實例存在、什麼時候被動過 ——
@@ -231,6 +283,33 @@ export class ApprovalService {
       )
       if (!won) throw raceLost()
       await this.notifySubmitter(tenant, instance, NOTIFICATION_EVENTS.approvalRejected)
+      return this.toInstanceDto(tenant, instanceId)
+    }
+
+    /* 🔴 OQ-AP2-3|會簽 / 擇辦。**達標與否由 log 推導**,不另存計數欄 ——
+       計數欄與 log 是兩份真相,遲早分岔,而 log 是 append-only 的那一份。
+
+       未填 = 任一人(既有行為);`"all"` = 全體。「全體」取**解析後的實際人數**
+       而非設定裡的某個數字 —— 動態簽核人下,那一關有幾個人要到執行期才知道。 */
+    const eligible = await this.resolveApprovers(tenant.tenantId, step, {
+      submittedBy: instance.submittedBy,
+      instanceId,
+    })
+    const approvedBy = await this.repo.approversWhoApproved(
+      tenant.tenantId,
+      instanceId,
+      step.stepNo,
+    )
+    /* 未填 = 任一人(既有行為);"all" = 全體(人數到執行期才知道,故取解析後的實際人數) */
+    const required =
+      step.quorum === undefined
+        ? 1
+        : step.quorum === "all"
+          ? Math.max(1, eligible.length)
+          : step.quorum
+    if (approvedBy.length < required) {
+      /* 還沒到門檻 → 這一關留在原地,不推進也不算完成。
+         回傳目前狀態讓畫面顯示「3 人中已有 1 人核准」。 */
       return this.toInstanceDto(tenant, instanceId)
     }
 
@@ -432,6 +511,18 @@ export class ApprovalService {
      回應時**才炸(離職與空值同等對待),那時單子已經走到一半、申請人早就以為送出去了
      —— 所以我方改在**送簽當下就解析全部關卡並擋下**(見 `assertResolvable`)。 */
   private async resolveApprovers(
+    tenantId: number,
+    step: ApprovalStep,
+    ctx: { submittedBy: number | null; instanceId: number | null },
+  ): Promise<number[]> {
+    const base = await this.baseApprovers(tenantId, step, ctx)
+    if (ctx.instanceId === null) return base
+    /* 臨時加簽的人與原本的簽核人是同一個集合 —— 加簽的語意就是「這一關多一個人能簽」 */
+    const adhoc = await this.repo.adhocApproversOf(tenantId, ctx.instanceId, step.stepNo)
+    return [...new Set([...base, ...adhoc])]
+  }
+
+  private async baseApprovers(
     tenantId: number,
     step: ApprovalStep,
     ctx: { submittedBy: number | null; instanceId: number | null },

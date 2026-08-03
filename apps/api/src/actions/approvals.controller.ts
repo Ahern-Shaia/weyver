@@ -24,6 +24,7 @@ import {
   type ApprovalDefDto,
   type ApprovalInstanceDto,
   createApprovalDefBodySchema,
+  addApproverBodySchema,
   decisionBodySchema,
 } from "./action-specs.js"
 
@@ -119,6 +120,18 @@ export class ApprovalInboxController {
     body: z.infer<typeof decisionBodySchema>,
   ): Promise<ApprovalInstanceDto> {
     return this.approvals.decide(tenant, instanceId, body.decision, body.comment, undefined)
+  }
+
+  /* 🔴 OQ-AP2-5|臨時加簽(同關加人)。授權與自簽後門的防護都在 service 內。 */
+  @Post(":instanceId/add-approver")
+  @HttpCode(200)
+  async addApprover(
+    @Tenant() tenant: TenantContext,
+    @Param("instanceId", ParseIntPipe) instanceId: number,
+    @Body(new ZodValidationPipe(addApproverBodySchema))
+    body: z.infer<typeof addApproverBodySchema>,
+  ): Promise<ApprovalInstanceDto> {
+    return this.approvals.addApprover(tenant, instanceId, body.actorId)
   }
 
   @Post(":instanceId/withdraw")
