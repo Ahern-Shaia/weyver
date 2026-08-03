@@ -14,6 +14,50 @@
 
 ---
 
+---
+
+## 0. 站在巨人的肩膀(2026-08-03 補;v0.1 完全缺這一節)
+
+> ⚠️ **v0.1 沒有研究節就直接進設計,而其他模組都有。**
+> 被 review 點出後補。缺的不只是競品 —— **連我們腳下這個套件本身都沒查**,
+> 而它恰恰決定了這個模組有多大。
+
+### 0.1 巨人一:自家 repo(v0.1 唯一做對的一層)
+
+見 §2 走查。最有價值的一條是「**有 bulk create,沒有 bulk update**」——
+它把「這是純前端」這個直覺當場推翻。
+
+### 0.2 🔴 巨人二:Glide Data Grid 本身 —— **它已經做掉一半**
+
+一手依據為**已安裝版本**(`@glideapps/glide-data-grid@6.0.3`)之型別註解逐字:
+
+| 能力 | 逐字 | 對本模組的意義 |
+|---|---|---|
+| **複製** | 「Used for copy/paste, **if unset copy will not work**」;傳 `true` 則「the data grid will internally use the `getCellContent` callback to provide a basic implementation」 | 我們**已經設了** `getCellsForSelection`(`grid-sheet.tsx:95`)→ **複製應已可用**,OQ-GP-7 的工作是實測不是實作 |
+| **貼上與 TSV 解析** | 「If `onPaste` evaluates to true the grid will attempt to **split the data by tabs and newlines and paste into available cells**」 | 🔴 **TSV 解析不必自己寫** —— §3.1「自寫剪貼簿解析」大部分不需要 |
+| **批次寫入的縫** | `onCellsEdited`:「provides all edits inbound as **a single batch**」 | 🔴 **一次貼上天然就是一批** —— 正好對上「一個 tx 的 bulk update」與「一步 undo」 |
+| **不會加列** | 「The grid **will not attempt to add additional rows** if more data is pasted then can fit. In that case it is advisable to simply **return false from onPaste and handle the paste manually**」 | 🔴 **OQ-GP-3(貼超出最後一列)是真正得手工做的那一塊**,而且套件官方就建議此時自行接管 |
+
+**結論:模組的形狀因此改變。** 原以為主要工程量在「解析剪貼簿 + 逐格寫入」,
+實際上那兩件套件都給了;**真正的工作是**:
+(a) 後端 bulk update(§2 的發現,不變)·
+(b) 把 `onCellsEdited` 的單一批次接到 (a) ·
+(c) **加列**(套件明說不做)·
+(d) 型別先驗與錯誤格標示 ·
+(e) 計算欄跳過 ·
+(f) 一步 undo。
+
+**這也是為什麼「巨人的肩膀」第二站必須是自己的相依套件** ——
+不查就會自己重寫一份它已經給你的東西,而且寫得比較差。
+
+### 0.3 巨人三:競品的行為決策(研究中)
+
+套件只決定「做得到什麼」,**做不到「該怎麼表現」** ——
+貼超出時要不要加列、上限多少、貼到計算欄怎麼講、錯誤格怎麼標,
+這些是產品決策,要看別人踩過什麼。**研究進行中,回填後再裁定 OQ-GP-2/3/4/5。**
+
+> ⚠️ **OQ-GP-2 的 1000 列是猜的**,本節回填前不得當成依據(見該題註記)。
+
 ## 1. 目標與範圍
 
 ### 1.1 目標
