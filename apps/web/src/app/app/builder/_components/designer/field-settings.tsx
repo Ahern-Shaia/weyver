@@ -131,6 +131,14 @@ export function FieldSettingsPanel({
       </div>
       <div className="flex-1 overflow-y-auto p-3">
         <div className="flex flex-col gap-3 text-[12px]">
+          {/* 🔴 OQ-IS-8=A′:簽名欄的能力邊界要讓**設計這張表的人**先知道 ——
+              他決定要不要拿它當驗收簽核用,而那個決定發生在這裡不是填單時。
+              次要文字級、不加警示色(見 signature-input.tsx 同條註解)。 */}
+          {field.type === "signature" ? (
+            <p className="border-line-2 border-l-2 pl-2 text-ink-3">
+              本欄儲存手寫簽名圖片,不含數位憑證。需具法律推定效力之簽署請改用合規電子簽章(尚未提供)。
+            </p>
+          ) : null}
           <label className="flex flex-col gap-1">
             <span className="text-ink-3">提示文字(placeholder)</span>
             <Input

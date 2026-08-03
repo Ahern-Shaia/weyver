@@ -206,6 +206,17 @@ export function SignatureInput({
         </button>
       </div>
       {error !== null ? <span className="text-[13px] text-er">{error}</span> : null}
+      {/* 🔴 OQ-IS-8=A′(2026-08-03 重裁):**不宣稱**之外還要**明示邊界**。
+
+          原裁定的「明文化」只落在 design doc 與元件註解 —— 使用者看不到,
+          而風險發生在使用者端。本平台定位是取代 ERP,簽名欄的自然場景就是
+          驗收單 / 領料單 / 點交單,把它當正式簽核憑證使用**是可預見的**。
+
+          刻意用次要文字級、無驚嘆號、無警示色、無彈窗 ——
+          那些會製造「有密碼學支撐」的錯覺,正是 OQ-IS-8 一開始就拒絕的東西。 */}
+      <span className="max-w-sm text-[12px] text-ink-3">
+        本欄儲存手寫簽名圖片,不含數位憑證。需具法律推定效力之簽署請改用合規電子簽章(尚未提供)。
+      </span>
     </div>
   )
 }
