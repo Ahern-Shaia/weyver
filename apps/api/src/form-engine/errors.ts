@@ -116,6 +116,22 @@ export class OptionInUseError extends DomainError {
   }
 }
 
+/* 🔴 PG 的 1600 欄是**一張表一生的加總上限**,不是同時存在的上限 ——
+   attnum 永不回收(本機實測:30 次 add/drop 後 `VACUUM FULL`,`max(attnum)` 仍是 31;
+   PG 核心開發者於 pgsql-hackers 明言「We just never recycle attnums」)。
+
+   既有的 `maxFieldsPerForm` 配額只數**活著的**欄位,所以一張反覆加欄刪欄的表
+   可以永遠通過配額,卻在某一天撞上 PG 的硬牆 —— 而那時使用者看到的會是
+   「tables can have at most 1600 columns」這種對他毫無意義的訊息。
+   在還有餘裕時先擋下來,並講清楚出路。 */
+export class FieldBudgetExhaustedError extends DomainError {
+  constructor(used: number, limit: number) {
+    super(
+      `這張表單一生可新增的欄位數即將用盡(已用 ${String(used)} / ${String(limit)})。資料庫不會因為刪除欄位而回收這個額度,所以需要以「複製到新表單」的方式重建才能繼續加欄。`,
+    )
+  }
+}
+
 export class InvalidTypeConversionError extends DomainError {
   constructor(from: string, to: string) {
     super(

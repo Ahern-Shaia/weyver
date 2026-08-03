@@ -136,6 +136,9 @@ export class TrashPurgeService {
           .where({ resource_type: "record", state: "trashed", form_id: formId })
           .whereIn("resource_id", victims)
           .update({ state: "purged", resolved_at: trx.fn.now() })
+        await this.orphanFiles(trx, (q) =>
+          q.where({ form_id: formId }).whereIn("record_id", victims),
+        )
         return victims.length
       })
       total += deleted
@@ -180,6 +183,7 @@ export class TrashPurgeService {
           await trx("trash_entry")
             .where({ resource_type: "field", resource_id: fieldId, state: "trashed" })
             .update({ state: "purged", resolved_at: trx.fn.now() })
+          await this.orphanFiles(trx, (q) => q.where({ field_id: fieldId }))
           await trx("ddl_audit").insert({
             tenant_id: Number(row.tenant_id),
             form_id: formId,
@@ -230,6 +234,7 @@ export class TrashPurgeService {
           await trx("field_def").where({ form_id: formId }).delete()
           await trx("view_def").where({ form_id: formId }).delete()
           await trx("form_def").where({ id: formId }).delete()
+          await this.orphanFiles(trx, (q) => q.where({ form_id: formId }))
           await trx("trash_entry")
             .where({ state: "trashed" })
             .where(function () {
@@ -254,6 +259,29 @@ export class TrashPurgeService {
       }
     }
     return done
+  }
+
+  /* 🔴 R8|硬刪時把附件交棒給孤兒回收器。
+
+     在此之前,記錄 / 欄位 / 表單真的被 DELETE 之後,`file_object` 仍是 `bound`,
+     而 `CleanupService.reclaimOrphanedFiles` 只撿 `orphaned` —— 於是檔案永遠不會被回收:
+     **DB 裡查不到、儲存體上還在、額度持續被佔**。對合規而言那等於沒刪。
+
+     **只標狀態,不在這裡刪位元組**:物件刪除不是交易性的,放進 tx 裡一旦回滾
+     就是「資料還在、檔案沒了」。交給既有回收器做,順帶拿到它的觀察期、
+     縮圖連帶刪、單檔失敗不中斷整批這三件已經寫好的事。
+     那條觀察期以 `created_at` 起算,對這些檔案早就過了 —— 30 天的保留期已經是觀察期。 */
+  private async orphanFiles(
+    trx: Knex,
+    scope: (q: Knex.QueryBuilder) => Knex.QueryBuilder,
+  ): Promise<void> {
+    const exists = await trx.raw<{ rows: { ok: boolean }[] }>(
+      "SELECT to_regclass('public.file_object') IS NOT NULL AS ok",
+    )
+    if (exists.rows[0]?.ok !== true) return
+    await scope(trx("file_object").whereNull("deleted_at").whereNot("status", "orphaned")).update({
+      status: "orphaned",
+    })
   }
 
   /* 其餘 Tier-1 metadata:純資料列,直接 DELETE。 */

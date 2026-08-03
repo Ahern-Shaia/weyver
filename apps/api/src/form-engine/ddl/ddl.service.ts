@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from "@nestjs/common"
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common"
 import { and, eq } from "drizzle-orm"
 import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
@@ -6,6 +6,7 @@ import { ddlAudits } from "../../db/schema.js"
 import { FormulaService } from "../formula/formula.service.js"
 import { QuotaService } from "../../reliability/quota.service.js"
 import {
+  FieldBudgetExhaustedError,
   FieldNotFoundError,
   FormNotPendingError,
   FormNotReadyError,
@@ -39,6 +40,14 @@ const DDL_LOCK_TIMEOUT = "3s"
 /* 與匯入撤銷保留期一致(OQ-IMP-1)。側表故不受 PG 1600 欄上限拘束。 */
 const CONVERSION_UNDO_DAYS = 30
 
+/* 🔴 H-2 R7|attnum 一生額度。PG 上限 1600 且**永不回收**(實測見 FieldBudgetExhaustedError)。
+   兩道線都留了餘裕:800 開始記錄壓力(讓維運看得到,而不是等撞牆才知道),
+   1400 拒絕再加(留 200 給重建作業本身與系統欄,且此時使用者還有時間處理)。
+   量測來源是 `pg_attribute` 的 `max(attnum)` —— 那是**真正的高水位**,
+   `field_def` 的列數不是(它只看得到活著的欄位)。 */
+const ATTNUM_PRESSURE = 800
+const ATTNUM_LIMIT = 1400
+
 /* dbFieldType → PG 型別。ALTER ... TYPE 需要真實型別名。 */
 const PG_TYPE: Readonly<Record<string, string>> = {
   text: "text",
@@ -58,6 +67,8 @@ const PG_TYPE: Readonly<Record<string, string>> = {
    失敗清理)→ 全程 ddl_audit。加欄一律 nullable 無 default(spike S2 禁 rewrite)。 */
 @Injectable()
 export class DdlService {
+  private readonly logger = new Logger(DdlService.name)
+
   constructor(
     @Inject(DDL_KNEX) private readonly knex: Knex,
     @Inject(DRIZZLE) private readonly db: DrizzleDb,
@@ -110,9 +121,15 @@ export class DdlService {
     const table = physicalTableName(form.id)
     const column = physicalColumnName(row.id)
     let executedSql = ""
+    let attnumUsed = 0
     try {
       await this.knex.transaction(async (trx) => {
         await this.acquireDdlLock(trx, form.id)
+        /* 鎖之後才量:同一張表的並行加欄已被 advisory lock 串行化,
+           在鎖外量到的高水位可能已經過期。 */
+        attnumUsed = await this.attnumHighWater(trx, table)
+        if (attnumUsed >= ATTNUM_LIMIT)
+          throw new FieldBudgetExhaustedError(attnumUsed, ATTNUM_LIMIT)
         const statements = trx.schema
           .withSchema(DATA_SCHEMA)
           .alterTable(table, (t) => {
@@ -128,13 +145,40 @@ export class DdlService {
         }
       })
       await this.metadata.bumpVersion(tenantId, formId)
-      await this.audit(tenantId, formId, "addField", spec, executedSql, "ok")
+      /* 越過壓力線才把用量寫進稽核 —— 平時不加噪音,接近上限時查 `ddl_audit`
+         就看得到是哪一張表、什麼時候開始逼近。目前沒有外部告警接收端
+         (GlitchTip 未接,docs/25 I 段),所以日誌與稽核就是告警面。 */
+      const pressured = attnumUsed >= ATTNUM_PRESSURE
+      if (pressured) {
+        this.logger.warn(
+          `form ${String(formId)} attnum high-water ${String(attnumUsed)}/${String(ATTNUM_LIMIT)} — 欄位額度不會因刪除而回收`,
+        )
+      }
+      await this.audit(
+        tenantId,
+        formId,
+        "addField",
+        pressured ? { ...spec, attnumUsed, attnumLimit: ATTNUM_LIMIT } : spec,
+        executedSql,
+        "ok",
+      )
       return row
     } catch (error) {
       await this.metadata.hardDeleteField(tenantId, row.id)
       await this.audit(tenantId, formId, "addField", spec, executedSql, "failed", error)
       throw error
     }
+  }
+
+  /* 🔴 這張表**一生**用掉的 attnum,不是現有欄位數。
+     `pg_attribute` 保留已刪欄位的列(`attisdropped`),`max(attnum)` 因此是高水位。
+     表還不存在(provision 中)時 `to_regclass` 回 NULL → 視為 0。 */
+  private async attnumHighWater(trx: Knex.Transaction, table: string): Promise<number> {
+    const result = await trx.raw<{ rows: { used: string | number | null }[] }>(
+      "SELECT max(attnum) AS used FROM pg_attribute WHERE attrelid = to_regclass(?) AND attnum > 0",
+      [`${DATA_SCHEMA}.${table}`],
+    )
+    return Number(result.rows[0]?.used ?? 0)
   }
 
   /* OQ-FEC-4 = A:白名單內 = 物理 no-op,純 metadata 變更;白名單外一律拒 */

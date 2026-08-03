@@ -13,6 +13,7 @@ import {
   BulkTooLargeError,
   BulkValidationError,
   DomainError,
+  FieldBudgetExhaustedError,
   FieldForbiddenError,
   FieldNotFoundError,
   FieldValueError,
@@ -72,6 +73,9 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof FormNotPendingError || error instanceof FormNotReadyError) {
     return { status: HttpStatus.CONFLICT, code: "FORM_STATE_CONFLICT" }
+  }
+  if (error instanceof FieldBudgetExhaustedError) {
+    return { status: HttpStatus.CONFLICT, code: "FIELD_BUDGET_EXHAUSTED" }
   }
   if (error instanceof InvalidTypeConversionError) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "UNSAFE_TYPE_CONVERSION" }

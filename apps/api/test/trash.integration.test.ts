@@ -399,6 +399,63 @@ describe("H-2 保留期硬刪", () => {
     await expect(records.hardDeleteRecord(tenantA, formId, rec.id)).rejects.toThrow()
   })
 
+  /* 🔴 R8|在此之前:記錄真的被 DELETE 了,`file_object` 卻還是 `bound`,
+     而孤兒回收器只撿 `orphaned` —— 於是 DB 裡查不到、儲存體上還在、額度持續被佔。
+     對合規而言那等於沒刪。 */
+  it("🔴 硬刪記錄後,附件被標為孤兒(否則檔案永遠不會被回收)", async () => {
+    const formId = await makeForm(tenantA, "帶附件的表")
+    const rec = await records.createRecord(tenantA, formId, { 品名: "有附件" }, ALICE)
+    const key = `t${String(tenantA)}/f${String(formId)}/purge-me.pdf`
+    await ddlKnex("file_object").insert({
+      key,
+      tenant_id: tenantA,
+      form_id: formId,
+      field_id: 1,
+      record_id: rec.id,
+      name: "驗收報告.pdf",
+      mime: "application/pdf",
+      size: 1024,
+      status: "bound",
+      created_by: ALICE,
+    })
+
+    await records.softDeleteRecord(tenantA, formId, rec.id, ALICE)
+    await ddlKnex
+      .withSchema("data")
+      .table(`t${String(formId)}`)
+      .where({ id: rec.id })
+      .update({ deleted_at: ddlKnex.raw("now() - interval '40 days'") })
+    expect(await purge.purgeRecords()).toBeGreaterThan(0)
+
+    const file = await ddlKnex("file_object").where({ key }).first<{ status: string }>()
+    expect(file?.status).toBe("orphaned")
+  })
+
+  it("🔴 硬刪整張表單時,該表所有附件一併標為孤兒", async () => {
+    const formId = await makeForm(tenantA, "整張刪的表")
+    const key = `t${String(tenantA)}/f${String(formId)}/whole-form.pdf`
+    await ddlKnex("file_object").insert({
+      key,
+      tenant_id: tenantA,
+      form_id: formId,
+      field_id: 1,
+      record_id: null,
+      name: "附件.pdf",
+      mime: "application/pdf",
+      size: 512,
+      status: "bound",
+      created_by: ALICE,
+    })
+    await ddl.dropForm(tenantA, formId, ALICE)
+    await ddlKnex("form_def")
+      .where({ id: formId })
+      .update({ deleted_at: ddlKnex.raw("now() - interval '40 days'") })
+
+    expect(await purge.purgeForms()).toBeGreaterThan(0)
+    const file = await ddlKnex("file_object").where({ key }).first<{ status: string }>()
+    expect(file?.status).toBe("orphaned")
+  })
+
   it("未逾期的不動", async () => {
     const formId = await makeForm(tenantA, "還在保留期")
     const rec = await records.createRecord(tenantA, formId, { 品名: "剛刪的" }, ALICE)

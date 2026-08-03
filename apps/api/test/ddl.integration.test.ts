@@ -6,7 +6,11 @@ import { createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/d
 import { runMigrations } from "../src/db/migrate.js"
 import { ddlAudits, tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
-import { FormNotPendingError, InvalidTypeConversionError } from "../src/form-engine/errors.js"
+import {
+  FieldBudgetExhaustedError,
+  FormNotPendingError,
+  InvalidTypeConversionError,
+} from "../src/form-engine/errors.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { addFieldSpecSchema, createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 
@@ -296,6 +300,59 @@ describe("A3 DDL service on real PG", () => {
     await expect(
       ddl.addField(tenantB, form.id, addFieldSpecSchema.parse({ name: "evil", type: "text" })),
     ).rejects.toThrow()
+  })
+
+  /* 🔴 H-2 R7|PG 的 1600 欄是**一生的加總上限**。attnum 永不回收 ——
+     本機實測 30 次 add/drop 後 `VACUUM FULL`,`max(attnum)` 仍是 31。
+     既有的欄位數配額只數活著的欄位,所以「加了又刪」的表可以永遠通過配額,
+     卻在某一天撞上 PG 的硬牆,而使用者看到的會是一句他看不懂的話。
+
+     測試用一句 ALTER TABLE 把高水位推上去(metadata-only,很快),
+     不真的跑 1400 次 add/drop。 */
+  async function padAttnum(formId: number, to: number): Promise<void> {
+    const clauses = Array.from({ length: to }, (_, i) => `ADD COLUMN pad_${String(i)} text`).join(
+      ", ",
+    )
+    await pool.query(`ALTER TABLE data.t${String(formId)} ${clauses}`)
+  }
+
+  it("🔴 attnum 逼近一生上限時擋下加欄,且訊息講得出出路", async () => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({ name: "欄位額度用盡", fields: [{ name: "x", type: "text" }] }),
+    )
+    await padAttnum(form.id, 1400)
+    await expect(
+      ddl.addField(tenantA, form.id, addFieldSpecSchema.parse({ name: "再一欄", type: "text" })),
+    ).rejects.toThrow(FieldBudgetExhaustedError)
+    /* 刪掉一堆欄位也救不回來 —— 這正是本檢查存在的理由 */
+    await pool.query(
+      `ALTER TABLE data.t${String(form.id)} ${Array.from({ length: 200 }, (_, i) => `DROP COLUMN pad_${String(i)}`).join(", ")}`,
+    )
+    await expect(
+      ddl.addField(tenantA, form.id, addFieldSpecSchema.parse({ name: "還是不行", type: "text" })),
+    ).rejects.toThrow(FieldBudgetExhaustedError)
+  })
+
+  it("越過壓力線仍可加欄,但用量寫進 ddl_audit(接近上限時查得到是哪張表)", async () => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({ name: "欄位額度吃緊", fields: [{ name: "x", type: "text" }] }),
+    )
+    await padAttnum(form.id, 900)
+    const added = await ddl.addField(
+      tenantA,
+      form.id,
+      addFieldSpecSchema.parse({ name: "還加得進去", type: "text" }),
+    )
+    expect(added.id).toBeGreaterThan(0)
+    const audits = await db.select().from(ddlAudits)
+    const row = audits.find(
+      (a) => a.formId === form.id && a.action === "addField" && a.result === "ok",
+    )
+    expect((row?.spec as { attnumUsed?: number } | undefined)?.attnumUsed).toBeGreaterThanOrEqual(
+      900,
+    )
   })
 
   it("writes ddl_audit rows for ok and failed operations", async () => {
