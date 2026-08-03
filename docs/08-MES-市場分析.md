@@ -5,6 +5,13 @@
 > **研究方法**|公開資訊(廠商官網、Fact Sheet、Gartner Peer Insights、產業分析報導、SAP 台灣資源頁)。
 > **版本**|2026-07-16 v1
 
+
+> 🔴 **2026-08-03 前提更正**|本文件多處以「**Weyver 路線 A = fork Odoo**」為前提撰寫,
+> 而該路線已於 **2026-07-16 否決**(docs/04 v2.0 / docs/11 v4:**全自研 TypeScript,不 fork Odoo**,
+> domain 學習限純合法來源 A16)。
+> **市場分析本體(vendor 能力、功能對照、定價)仍然有效** —— 過期的只是「我方怎麼用它」那一欄,
+> 已逐處改正。保留原文脈絡而非刪除,以便日後查得出當時為何那樣判斷。
+
 ---
 
 ## 1. MES 定義 & 標準
@@ -203,7 +210,7 @@ MES 位於 Level 3,**負責 Level 4(ERP)與 Level 2(SCADA)之間的資料橋接�
   - **Quality**|Quality Control Points(QCPs)+ ISO 9001 相容
 - **IoT 整合**|IoT Box|對接 barcode 印表機、自動化 quality 量測、機台設定
 - **架構優勢**|MRP + MES + PLM + Quality + Shop Floor + Maintenance **一個平台**
-- **優勢**|開源可 fork、Community 版免費、模組化擴充、國際社群活躍(Weyver 路線 A 之 Odoo fork 直接受益)
+- **優勢**|開源、Community 版免費、模組化擴充、國際社群活躍(⚠️ 原記「Weyver 路線 A 之 Odoo fork 直接受益」已失效 —— 不 fork,僅作為**功能對照基準**)
 - **劣勢**|SCADA / OPC-UA 深度整合弱(需自建 gateway 或整合 3rd-party)、Enterprise 版仍是每 user 訂閱
 - **來源**|`odoo.com/app/manufacturing`
 
@@ -281,7 +288,7 @@ MES 位於 Level 3,**負責 Level 4(ERP)與 Level 2(SCADA)之間的資料橋接�
 | **鼎新 TIPTOP MES** | **主要競爭(pipeline 17 家原本客群)** | 現存 pipeline 中已用 TIPTOP 的客戶,Weyver 是要**取代 vendor** |
 | 工研院 iMES / 鼎華 | **半競爭 / 半對接** | 若客戶已導入 iMES,Weyver Q 模組可對接;新客戶直接與 Weyver 選擇一 |
 | **Ignition + Sepasoft** | **⭐ 對接夥伴(Edge Gateway 選項)** | v1.6 A11 假設之 Edge Gateway 替代方案 |
-| **Odoo Manufacturing** | **⭐ 對接夥伴(路線 A fork 基礎)** | Weyver 路線 A 直接 fork Odoo Manufacturing 為 MES/MRP 基礎 |
+| **Odoo Manufacturing** | **對照基準**(⚠️ 原記「路線 A fork 基礎」已失效)| **不 fork**;T 模組全自研 TS,Odoo 僅作為 MES/MRP 的功能對照與 domain 學習來源(限公開文件,CC BY-SA)|
 
 ### 6.2 Weyver 差異化路徑
 
@@ -293,7 +300,7 @@ MES 位於 Level 3,**負責 Level 4(ERP)與 Level 2(SCADA)之間的資料橋接�
 | ERP 整合 | **綁自家 ERP** | **綁自家 ERP** | **N-way pluggable adapter** ⭐(核心差異化) |
 | 表單客製 | 需 SI 顧問 | 需 SI 顧問 | **Ragic-like self-service 表單引擎** ⭐(核心差異化) |
 | Cloud 原生度 | 部分(轉型中) | 弱 | **原生 Cloud + Edge hybrid** ⭐ |
-| 開源 / 可 fork | ❌ | ❌ | **✅(fork Odoo Manufacturing)** |
+| 開源 | ❌ | ❌ | **✅(全自研 TS,OSS-only 技術棧;⚠️ 非 fork Odoo)** |
 
 ### 6.3 對 v1.6 T 模組 spec 撰寫之具體借鑑
 

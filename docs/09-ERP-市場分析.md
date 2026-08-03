@@ -5,6 +5,13 @@
 > **研究方法**|公開資訊(廠商官網、Product Sheet、ERP Research、TEC、Gartner 摘要)。
 > **版本**|2026-07-16 v1
 
+
+> 🔴 **2026-08-03 前提更正**|本文件多處以「**Weyver 路線 A = fork Odoo**」為前提撰寫,
+> 而該路線已於 **2026-07-16 否決**(docs/04 v2.0 / docs/11 v4:**全自研 TypeScript,不 fork Odoo**,
+> domain 學習限純合法來源 A16)。
+> **市場分析本體(vendor 能力、功能對照、定價)仍然有效** —— 過期的只是「我方怎麼用它」那一欄,
+> 已逐處改正。保留原文脈絡而非刪除,以便日後查得出當時為何那樣判斷。
+
 ---
 
 ## 1. ERP 定義 & 演進
@@ -310,7 +317,7 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 | Microsoft Dynamics 365 | **參考架構(生態整合)** | Power Platform low-code 值得學習 |
 | Workday | **不直接競爭** | HCM/Fin 專業服務業客群 |
 | **SAP B1** | **⭐ 對接目標(Q 模組)** | v1.6 A1 假設之 3 家 pilot ERP 之一,SLD REST API 對接 |
-| **Odoo Enterprise** | **⭐ 對接夥伴 + 路線 A fork 基礎** | Weyver 路線 A 直接 fork Odoo ERP + Manufacturing 為 J-Q 基礎 |
+| **Odoo Enterprise** | **對照基準**(⚠️ 原記「路線 A fork 基礎」已失效)| **不 fork**;J–Q 全自研 TS,Odoo 僅作為功能對照與 domain 學習來源(限公開文件)|
 | **鼎新 TIPTOP GP / T100** | **⭐ 主要競爭 + Q 模組對接目標** | pipeline 17 家原客群、v1.6 Q 模組 pilot ERP 之一,DB view 對接 |
 | **正航 ERP** | **⭐ Q 模組對接目標** | v1.6 Q 模組 pilot ERP 之一,API 對接 |
 | 用友 Yonyou | **未來擴散市場** | 若台灣客戶跨陸子公司,需支援 |
@@ -327,7 +334,7 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 | **本地化** | 需 add-on | 母語支援 | **原生台灣本地化(電子發票 / 勞健保)** ✅ |
 | **多 ERP 對接** | ❌ 綁自家 | ❌ 綁自家 | **N-way pluggable adapter** ⭐(核心差異化) |
 | **客製化門檻** | 高(需顧問) | 高(需 4GL) | **Ragic self-service** ⭐(核心差異化) |
-| **開源 / 可 fork** | ❌ | ❌ | **✅(fork Odoo)** |
+| **開源** | ❌ | ❌ | **✅(全自研 TS,OSS-only 技術棧;⚠️ 非 fork Odoo)** |
 | **Cloud 原生** | 部分 | 弱 | **✅ 原生** ⭐ |
 
 ### 6.3 對 v1.6 J-Q 模組 spec 撰寫之具體借鑑
@@ -379,7 +386,7 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 
 - **首波|食品 / 團膳 客戶**|多用鼎新 TIPTOP / 正航,Weyver 走「保留現有 ERP + Weyver 上層 Q 對帳 + Ragic 表單」漸進 upsell 路徑
 - **不推翻現有 ERP**|Q 模組定位為「上層整合而非取代」,降低導入摩擦
-- **中期 Odoo 自建 ERP 替代**|若客戶願意換 ERP,提供 Weyver 基於 Odoo fork 的自研 ERP(路線 A 目標)
+- **中期 自建 ERP 替代**|若客戶願意換 ERP,提供 Weyver **全自研**的 ERP 核心(R2 計算層;⚠️ 原記「基於 Odoo fork」已失效)
 
 ---
 
