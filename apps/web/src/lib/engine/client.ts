@@ -1,7 +1,8 @@
 import type { z } from "zod"
 import { errorEnvelopeSchema, fileDtoSchema } from "./schemas"
 
-const BASE = "/api/engine"
+/* 匯出的下載自己組 fetch(POST + 兩種回應形狀),需要同一個前綴 —— 別各寫一份字面值 */
+export const BASE = "/api/engine"
 const DEV_TENANT_KEY = "weyver.devTenant"
 
 /* F-2 前的開發期租戶來源(換 JWT 時只改此檔) */

@@ -1,6 +1,7 @@
 import {
   BellRing,
   Building2,
+  HardDriveDownload,
   KeyRound,
   Radio,
   ShieldCheck,
@@ -81,6 +82,13 @@ export const SETTINGS_NAV: readonly SettingsNavItem[] = [
     label: "整合",
     desc: "Webhook 訂閱與 API 金鑰",
     icon: Webhook,
+    scope: "tenant",
+  },
+  {
+    href: "/app/settings/data-export",
+    label: "資料匯出",
+    desc: "把整個工作區的資料下載成一份完整副本",
+    icon: HardDriveDownload,
     scope: "tenant",
   },
   {
