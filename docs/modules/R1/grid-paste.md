@@ -50,13 +50,58 @@
 **這也是為什麼「巨人的肩膀」第二站必須是自己的相依套件** ——
 不查就會自己重寫一份它已經給你的東西,而且寫得比較差。
 
-### 0.3 巨人三:競品的行為決策(研究中)
+### 0.3 巨人三:競品的行為決策(2026-08-03 完成)
 
-套件只決定「做得到什麼」,**做不到「該怎麼表現」** ——
-貼超出時要不要加列、上限多少、貼到計算欄怎麼講、錯誤格怎麼標,
-這些是產品決策,要看別人踩過什麼。**研究進行中,回填後再裁定 OQ-GP-2/3/4/5。**
+套件只決定「做得到什麼」,決定不了「該怎麼表現」。以下逐字取自各家官方文件
+(Ragic / Airtable / Baserow / Teable 部分取自本機一手鏡像 `reference-materials/`)。
 
-> ⚠️ **OQ-GP-2 的 1000 列是猜的**,本節回填前不得當成依據(見該題註記)。
+**(a) 貼超出現有列數 —— 沒有共識,分兩派**
+
+| | 行為 | 逐字 |
+|---|---|---|
+| **AG Grid** | 🔴 **靜默丟棄** | 「any rows exceeding the total number of rows shown in the grid **will not be pasted**」;加列要自寫 `processDataFromClipboard`。FR #1820(2017)至今未成預設 |
+| Baserow | 自動加列,不問 | 「When your paste data exceeds available rows, Baserow **creates exactly the number of rows needed**」 |
+| **Airtable** | ⭐ **自動加列但先確認** | 「You may need to **"Expand the table"** by clicking **Continue** in the modal that appears after you paste」 |
+| Teable | 自動加列,**踩過坑** | changelog:「bulk paste **in a filtered view** could append new rows instead of updating visible ones」 |
+| Ragic | **未查證** | doc-kb/210 只寫可跨 Ragic/Excel 複製貼上,**未說明超量行為** |
+
+**(b) 上限 —— 終於有可引用的數字**
+
+| 數字 | 意義 | 出處 |
+|---|---|---|
+| **500 列 / 次** | 貼上硬上限(**唯一官方明文的列數**)| Smartsheet |
+| 200–300 筆 / 批 | 官方**建議**的安全批量 | Airtable |
+| 100,000 字元 / 記錄 | 貼上字元上限 | Airtable |
+| `Infinity` | Handsontable `rowsLimit` **預設**(等於沒設限)| Handsontable |
+| 10 步 | undo 堆疊預設深度;且**排序 / 篩選會清空堆疊** | AG Grid |
+
+⭐ **Airtable 另有一條貼上端的冪等保護值得抄**:大量貼上可能回
+「detected a duplicate submission of the same request and **blocked a second write** to prevent creating duplicate data」。
+
+**(c) 🔴 反面教材:超量就整批不做、而且不出聲 —— 四家四種形態**
+
+- **Ragic**(最嚴重,且是我們的對標):「公式重算上限為 **2000** 筆…**自動略過執行,所有相關表單資料都不會進行公式重算**」;
+  另一門檻「如超過 **3500** 筆,就不會寫入修改紀錄(**實際上資料有正常執行重算,只是不會顯示於修改紀錄**)」—— **稽核軌跡靜默消失**
+- **Teable**:「copy-paste **showing a success message while the cell content remained unchanged**」
+- **Airtable**:連結欄主要欄位為計算型時「unmatched values are **dropped**」(官方明文承認靜默丟棄)
+- **AG Grid**:超量列「will not be pasted」
+
+**共同點都是「使用者看到成功、系統其實少做了事」。**
+
+**(d) 🔴 Ragic 的一句自白,直指網格編輯的根本風險**
+
+> 「**有時候存在於表單頁的公式並不存在於列表頁,從列表頁編輯可能造成公式沒有重算**,
+> 因此如果想要避免使用者在列表頁手動編輯資料,可以…勾選**關閉列表頁編輯**。」(doc/139)
+
+**它的解法是把整個網格編輯關掉。** 對我方的硬約束:
+**貼上必須走與表單儲存同一條計算路徑**,否則就是複製這個問題。
+
+**(e) 「貼上前標紅問題格」—— 查無任何一家**
+
+Baserow 官方:「those cells **remain empty rather than showing error messages**」;
+Ragic 在匯入端有最完整的檢查分類(唯讀欄 / 必填 / 輸入檢查),**但全是可勾選的選項不是恆真的不變量**,
+且在**匯入端不是貼上端**。
+⚠️ 依〈向上設計三條〉條件 ①,此處標**未查證**(不等於沒有),但它是目前查到最大的空位。
 
 ## 1. 目標與範圍
 
@@ -156,12 +201,14 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 | # | 議題 | 選項 | 建議 |
 |---|---|---|---|
 | **OQ-GP-1** | 寫入的原子性 | A. **後端新增 bulk update,單一 tx,全成或全敗**<br>B. 前端逐格 PATCH<br>C. 分批 tx(每 100 列一個) | **A** —— B 沒有原子性(第 300 格失敗時前 299 格已寫入),那是**正確性問題**不是效能問題;且 500 個請求會打爆 throttler。C 的部分成功語意要跟使用者解釋「前 200 列進去了,後面沒有」,而使用者剛按的是**一個**動作 |
-| **OQ-GP-2** | 單次貼上上限 | A. **無上限**<br>B. **列數上限(建議 1000 列)+ 超過時明確拒絕並建議改用 Excel 匯入**<br>C. 靜默截斷 | **B** —— C 絕對不行(Ragic 的 2000 筆重算上限就是「靜默失效」的反例,見 docs/31)。上限值需**量測後定**,1000 是待驗證的起點,不是查得的 |
-| **OQ-GP-3** | 貼上超出最後一列 | A. **自動新增列**(Excel 語意)<br>B. 截斷到現有列<br>C. 詢問 | **A** —— 這是使用者從 Excel 帶來的預期;B 會靜默丟資料。⚠️ 但新增列必須套**建立權限**(有些人只能改不能新增) |
-| **OQ-GP-4** | 貼到計算欄(formula / rollup / lookup / autoNumber) | A. **跳過該欄並在結果中說明「N 格因為是計算欄未寫入」**<br>B. 整批拒絕<br>C. 靜默跳過 | **A** —— B 太嚴(使用者從 Excel 複製一整塊很自然會含計算欄);C 違反「不靜默」原則 |
-| **OQ-GP-5** | 型別轉不過去的格(例:文字貼進日期欄) | A. **前端先驗,標紅該格,整批不送**<br>B. 送出後由後端逐格報錯<br>C. 盡力而為,轉不過去的留空 | **A** —— 使用者在**貼上當下**就看到哪幾格有問題,而不是送出後才知道。C 會靜默改變資料 |
-| **OQ-GP-6** | undo 範圍 | A. **一次貼上 = 一步 undo**<br>B. 逐格 undo<br>C. 不支援 undo(靠回收桶) | **A** —— 使用者按的是一個動作,undo 就該還原一個動作 |
+| **OQ-GP-2** | 單次貼上上限 | A. 無上限<br>B. **列數上限 + 超過明確拒絕並導向 Excel 匯入**<br>C. 靜默截斷 | **B,上限取 500 列** —— ⚠️ **v0.1 的 1000 是猜的,已換成有出處的數字**:Smartsheet 官方明文「You can paste up to **500 rows** at a time」,是查到**唯一**官方明列的列數上限;Airtable 另建議「**200–300 records at a time**」為安全批量。取 500 並在 M5 以量測複核。C 絕對不行 —— §0.3(c) 四家四種靜默降級形態皆為反面教材 |
+| **OQ-GP-3** | 貼上超出最後一列 | A. 自動新增列不問<br>B. 截斷<br>C. **自動新增列,但先確認**(Airtable 形態)| **C(v0.1 原建議 A,依證據改)** —— B 出局(AG Grid 的「will not be pasted」是靜默丟資料)。A 是 Baserow 做法,但 **Airtable 有確認關卡**「Expand the table → **Continue**」而**加列是改變資料形狀不是改值**,值得一次明確同意;確認框天然也是顯示「將新增 N 列」的位置。⚠️ 兩條硬約束:(i) 新增列須套**建立權限**;(ii) **篩選檢視下貼上必須擋或明確處理** —— Teable 踩過「in a filtered view could append new rows instead of updating visible ones」,而我方有 view 篩選 |
+| **OQ-GP-4** | 貼到計算欄(formula / rollup / lookup / autoNumber)| A. **跳過並說明「N 格因為是計算欄未寫入」**<br>B. 整批拒絕<br>C. 靜默跳過 | **A(證據支持,且是向上點)** —— **C 正是主流**:AG Grid 擋住但文件未提任何提示;Airtable 明文承認「unmatched values are **dropped**」。Ragic 有最完整的檢查分類(唯讀 / 必填 / 輸入檢查)**但全是可勾選的選項、且在匯入端不是貼上端** → 我方應把這些做成**恆真的不變量**。B 太嚴:從 Excel 複製一整塊很自然會含計算欄 |
+| **OQ-GP-5** ⭐ | 型別轉不過去的格 | A. **前端先驗、標紅該格、整批不送**<br>B. 送出後後端逐格報錯<br>C. 轉不過去的留空 | **A —— 而且這是查到最大的空位**。**C 是 Baserow 的實際行為**:「those cells **remain empty rather than showing error messages**」(文字貼進數值欄 = 靜默變空)。**「貼上前標紅問題格」查無任何一家**(標未查證,非「沒有」)。這正好對上我方「所見即後果」的設計主張 |
+| **OQ-GP-6** | undo 範圍 | A. **一次貼上 = 一步 undo**<br>B. 逐格 undo<br>C. 不支援(靠回收桶)| **A** —— 使用者按的是一個動作。**沒有任何一家逐字定義粒度**(未查證);可用的參照是 AG Grid:undo 涵蓋 copy-paste、**預設 10 步**、且「**sorting, filtering and grouping will clear the undo / redo stacks**」。→ 我方須明確定義**切換檢視 / 改篩選後 undo 的行為**,不要留給使用者猜。對照組:**Ragic 沒有 Ctrl+Z**,只有「資料修改紀錄」層的還原,且明文「只有大量修改和匯入的紀錄可以被還原」「此動作一旦被執行便無法復原」 |
 | **OQ-GP-7** | 複製(網格 → 剪貼簿)要不要同批做 | A. ~~同批**做**~~ → 改為 **同批「實測 + 補齊」**<br>B. 另立 | **A(語意已修正)** —— ⚠️ **v0.1 假設複製要從零做,是錯的**:`getCellsForSelection` 已設 `true`,Glide 內建實作應已提供複製。故本項的工作**不是實作而是驗證**:實測貼回 Excel 的還原度(欄位分隔 / 含換行的儲存格 / 日期與數值格式),缺什麼補什麼。**M4 的內容因此縮小**,並改以實測結果決定要不要自訂 `getCellsForSelection` callback |
+| **OQ-GP-9** 🆕 | 重複送出的防護 | A. **貼上帶 idempotency key**<br>B. 靠前端 disable 按鈕 | **A** —— Airtable 官方就有這一層:「detected a duplicate submission … **blocked a second write** to prevent creating duplicate data」。貼上天生會被重試(網路慢、使用者再按一次),而**對 ERP 而言重試一次就是多開 200 張單**。本專案已有 `IdempotencyInterceptor`,成本只有帶一個 header |
+| **OQ-GP-10** 🆕 | 貼上要不要走與表單儲存同一條計算路徑 | A. **要**(公式 / rollup / 連動一律照跑)<br>B. 只寫值,計算之後再說 | **A,且視為硬約束不是選項** —— Ragic 官方自白(doc/139):「**從列表頁編輯可能造成公式沒有重算**」,而它的解法竟是**建議把列表頁編輯整個關掉**。B 就是複製這個問題:資料進去了但衍生值沒動,而使用者看不出來 |
 | **OQ-GP-8** | 剪貼簿格式支援範圍 | A. **TSV 為主 + HTML table 為輔**(含換行的儲存格)<br>B. 只做 TSV<br>C. 加做 CSV | **A** —— B 對「備註」這類含換行的欄位會壞掉,而那正是 ERP 單據常見的欄。C 沒有來源會產生(Excel 複製不給 CSV) |
 
 ---
@@ -183,5 +230,6 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 
 | 日期 | 版本 | 變更 |
 |---|---|---|
+| 2026-08-03 | v0.3 | **§0.3 競品研究完成,五條 OQ 建議依證據改寫,並新增兩條**。**OQ-GP-2 的 1000 列換成有出處的 500**(Smartsheet 官方明文「You can paste up to 500 rows at a time」,查到唯一官方明列的列數;Airtable 另建議 200–300 筆/批)。**OQ-GP-3 由「自動加列」改為「自動加列但先確認」** —— Airtable 有確認關卡而**加列是改變資料形狀不是改值**;並新增硬約束「篩選檢視下必須擋或明確處理」(Teable 踩過「in a filtered view could append new rows instead of updating visible ones」,而我方有 view 篩選)。**新增 OQ-GP-9 冪等**(Airtable 官方就有貼上端的 duplicate-block;對 ERP 而言重試一次就是多開 200 張單)與 **OQ-GP-10 貼上須走與表單儲存同一條計算路徑**(Ragic doc/139 自白「從列表頁編輯可能造成公式沒有重算」,而它的解法竟是建議把列表頁編輯整個關掉 —— B 選項就是複製這個問題,故視為硬約束非選項)。**最大的反面教材**:超量就整批不做且不出聲,四家四種形態(Ragic 2000 筆整批不重算 / 3500 筆連修改紀錄都不寫、Teable「success message while the cell content remained unchanged」、Airtable「unmatched values are dropped」、AG Grid「will not be pasted」),共同點是**使用者看到成功、系統其實少做了事**。**最大的空位**:「貼上前標紅問題格」查無任何一家(標未查證非「沒有」),正對上我方「所見即後果」 | Claude Code |
 | 2026-08-03 | v0.2 | **裁定前覆查,修正 v0.1 的一處現況誤述**。原寫「貼上相關 props 全無」,實際 `getCellsForSelection` **已設為 `true`** —— 依 Glide 型別註解逐字「Used for copy/paste, **if unset copy will not work**」,**複製很可能早就能用**。故 OQ-GP-7 的工作性質由「實作複製」改為「實測複製的還原度並補齊」,M4 範圍縮小。⚠️ 這是同一個形狀第三次:**寫現況時沒把那一行讀完**(前兩次見 approval-advanced v0.3)。貼上仍確實不可能(`onPaste` / `onCellsEdited` 未曝露),模組必要性不變 | Claude Code |
 | 2026-08-03 | v0.1 | M0 草擬。**起因**:review 裁定「先做功能,採用建議 #153」。走查發現關鍵事實 —— **有 bulk create,沒有 bulk update**,故本模組必然動後端,不是純前端(避免重演 UP-3c 誤判為「純前端渲染層」)。承 `grid-and-excel-import` v1.0(SHIPPED),貼上不在其 §1.3「不做的事」中,屬**新能力**故另立 M0 |
