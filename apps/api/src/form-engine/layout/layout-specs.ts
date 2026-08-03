@@ -138,11 +138,19 @@ export const layoutSchema = z
     /* 🔴 樂觀鎖(#109)。整表覆寫下,兩人同改後寫者會蓋掉整張版面。
        未帶時維持舊行為(既有呼叫端與測試不受影響)。 */
     expectedVersion: z.number().int().positive().optional(),
+    /* 🔴 2026-08-03 移除 `rowHeights` / `colWidths`(稽核 R2)。
+       兩者 schema 兩端俱全(含 min/max),但 **reader 0、writer 0** ——
+       沒有任何地方寫得進去,也沒有任何地方讀得出來,存在了就只是**陷阱**:
+       下一個人看到 schema 會以為做過了(已經發生過一次)。
+       維持現狀是三個選項裡最差的一個。
+
+       **真正有人要的那個功能歸別處**(R3):列表頁的欄寬調整走 `view_def`,
+       沿用 Glide 內建的 `onColumnResize`(全 repo 亦零使用)——
+       表單畫布的欄寬與列表頁的欄寬是兩件事,不共用資料。
+       表單畫布的寬度已由 `colSpan` 表達。 */
     grid: z
       .object({
         cols: z.number().int().min(1).max(50).default(12),
-        rowHeights: z.record(z.string(), z.number().int().min(16).max(400)).optional(),
-        colWidths: z.record(z.string(), z.number().int().min(40).max(800)).optional(),
       })
       .default({ cols: 12 }),
     // key = fieldId(字串);PUT 時驗 key ⊆ 該 form 現存 field_def id

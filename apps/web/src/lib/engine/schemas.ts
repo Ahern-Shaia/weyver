@@ -310,8 +310,6 @@ export type LayoutPrint = z.infer<typeof layoutPrintSchema>
 export const layoutSchema = z.object({
   grid: z.object({
     cols: z.number().int(),
-    rowHeights: z.record(z.string(), z.number()).optional(),
-    colWidths: z.record(z.string(), z.number()).optional(),
   }),
   fields: z.record(z.string(), fieldLayoutSchema),
   statics: z.array(staticElementSchema),
