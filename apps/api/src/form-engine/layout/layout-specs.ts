@@ -113,23 +113,58 @@ export const formatConditionSchema = z
   })
   .strict()
 
+export const formatEffectSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("color"), tone: z.enum(FORMAT_TONES) }).strict(),
+])
+
+/* 🔴 OQ-CF-8 重裁 = 選項 C-1(2026-08-03):**規則的形狀現在定死,效果的覆蓋面分層補**。
+
+   原模型是 `{ …, tone }` —— 一條規則恆等於「變一個顏色」,沒有判別欄。
+   而一手查證(§0.2,Ragic `doc/6`)顯示它對標的「條件式格式」整頁 17 節、
+   **效果類 10 項**(顯示/隱藏欄位、欄位值、敘述欄位、設定顏色、分段顯示隱藏上鎖、
+   顯示訊息、動作按鈕顯示隱藏上鎖、欄位唯讀、欄位必填、開始簽核),
+   且官方示範的**第一條規則是「顯示」、第二條才是「變色」——同一入口同一清單**。
+
+   **為什麼是現在改**:此刻 `conditionalFormats` 的持久化資料為零、引用僅 4 檔,
+   改形狀的成本接近改兩份 schema 定義;而另開第二份「條件式行為」清單的總成本
+   **嚴格較高**(多一次合併遷移),且分成兩份之後 Ragic 用一整節解釋的
+   「同一欄位被多條規則涵蓋時由上而下、後者覆蓋」在本產品裡**結構上表達不出來**。
+
+   **本步不新增任何伺服器強制面**,`effects` 目前只有 `color` 一種 ——
+   純呈現效果(hide / readonly / section / message)為 C-2,
+   需伺服器參與的三項(required / 動作按鈕 / 簽核按鈕)為 C-3 單獨排程。 */
 export const formatRuleSchema = z
   .object({
     combinator: z.enum(["and", "or"]).default("and"),
     conditions: z.array(formatConditionSchema).min(1).max(20),
     /* 套用到哪些欄位(顯示名);空 = 條件所涉之欄位 */
     targets: z.array(z.string().min(1).max(100)).max(50).default([]),
-    tone: z.enum(FORMAT_TONES),
+    effects: z.array(formatEffectSchema).min(1).max(10),
+    /* Ragic 的規則清單有這兩欄 —— 規則多起來之後,沒有註解就沒人敢動別人設的規則 */
+    note: z.string().max(200).optional(),
+    enabled: z.boolean().default(true),
   })
   .strict()
+
+/* 相容讀取器:既有 `{ …, tone }` 於解析時升級為 `{ effects: [{ kind: "color", tone }] }`。
+   目前並無此形態的持久化資料(改形狀選在資料為零時正是為此),
+   但 client 可能送舊形狀,且日後回讀舊備份也走這裡。 */
+export const formatRuleInputSchema = z.preprocess((raw) => {
+  if (typeof raw !== "object" || raw === null) return raw
+  const o = raw as Record<string, unknown>
+  if (o.effects !== undefined || o.tone === undefined) return raw
+  const { tone, ...rest } = o
+  return { ...rest, effects: [{ kind: "color", tone }] }
+}, formatRuleSchema)
 
 export const conditionalFormatsSchema = z
   .object({
-    record: z.array(formatRuleSchema).max(20).default([]),
-    list: z.array(formatRuleSchema).max(20).default([]),
+    record: z.array(formatRuleInputSchema).max(20).default([]),
+    list: z.array(formatRuleInputSchema).max(20).default([]),
   })
   .strict()
 
+export type FormatEffect = z.infer<typeof formatEffectSchema>
 export type FormatRule = z.infer<typeof formatRuleSchema>
 export type ConditionalFormats = z.infer<typeof conditionalFormatsSchema>
 
