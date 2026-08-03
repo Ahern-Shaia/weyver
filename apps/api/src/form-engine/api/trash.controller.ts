@@ -20,8 +20,8 @@ import { Tenant } from "../../http/tenant.decorator.js"
 import { RecordService } from "../records/record.service.js"
 import {
   type RestoreBlocker,
-  type TrashEntryRow,
   TRASH_RETENTION_DAYS,
+  type TrashEntryRow,
   TrashService,
 } from "../trash/trash.service.js"
 

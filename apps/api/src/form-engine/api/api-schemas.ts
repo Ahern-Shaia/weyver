@@ -1,8 +1,9 @@
 import { z } from "zod"
-import { aggregateSpecSchema } from "../records/record-specs.js"
+import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
 import { CELL_VALUE_TYPES } from "../field-types/field-type-registry.js"
-import { listQuerySchema } from "../records/record-specs.js"
 import type { FieldDefRow, FormWithFields } from "../metadata/metadata.service.js"
+import { aggregateSpecSchema } from "../records/record-specs.js"
+import { listQuerySchema } from "../records/record-specs.js"
 
 export const createRecordBodySchema = z.object({
   values: z.record(z.string(), z.unknown()),
@@ -122,14 +123,30 @@ export function toFieldDto(row: FieldDefRow): FieldDto {
   }
 }
 
-export function toFormDto(loaded: FormWithFields): FormDto {
+/* 🔴 OQ-PC-11 = A 之「設計期擋」那一半(`pivot-and-charts` §14.5b)。
+
+   在此之前 form DTO **回傳全部欄位,不過欄位級權限** —— 值有 `maskRead` 擋著不會外洩,
+   但**欄位名稱會**。而欄位名稱本身就是業務資訊(「離職原因」「毛利率」「客訴等級」
+   光是存在就說明了一件事)。
+
+   受影響的不只圖表軸:設計器、篩選面板、看板分欄、匯出欄位選單 —— 凡是列欄位的地方
+   都在列使用者無權看的欄位。而**執行期是 fail-closed 的**,所以使用者選得到一個
+   必定失敗的軸 —— 那正是 OQ-PC-11 引 Salesforce 時要避免的形態
+   (「讓使用者建得出一張永遠壞掉的圖」)。
+
+   `policy` 未帶時不過濾,維持既有呼叫端行為(dev 路徑與內部呼叫)。 */
+export function toFormDto(loaded: FormWithFields, policy?: FieldAccessPolicy): FormDto {
+  const fields =
+    policy === undefined
+      ? loaded.fields
+      : loaded.fields.filter((f) => policy.fieldVisibility(f.id, loaded.form.id) !== "hidden")
   return {
     id: loaded.form.id,
     name: loaded.form.name,
     provisionState: loaded.form.provisionState,
     version: loaded.form.version,
     parentFormId: loaded.form.parentFormId,
-    fields: loaded.fields.map(toFieldDto),
+    fields: fields.map(toFieldDto),
   }
 }
 

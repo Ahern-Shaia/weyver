@@ -14,6 +14,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common"
+import { Throttle } from "@nestjs/throttler"
 import type { FastifyRequest } from "fastify"
 import { TenantGuard } from "../../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../../authz/authz-effective.js"
@@ -21,39 +22,38 @@ import { Permissions, RequiresFormAction } from "../../authz/authz-http.js"
 import { PermissionGuard } from "../../authz/permission.guard.js"
 import type { TenantContext } from "../../http/tenant-context.js"
 import { Tenant } from "../../http/tenant.decorator.js"
-import { Throttle } from "@nestjs/throttler"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
+import { AccessPreviewService } from "../access/access-preview.service.js"
 import { DdlService } from "../ddl/ddl.service.js"
 import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
-import { AccessPreviewService } from "../access/access-preview.service.js"
 import { OptionService } from "../field-types/option.service.js"
-import { RelookupService } from "../relations/relookup.service.js"
-import { ImportService } from "../import/import.service.js"
 import { commitImportSchema, importPlanSchema } from "../import/import-specs.js"
+import { ImportService } from "../import/import.service.js"
 import { MAX_IMPORT_ROWS, parseSheet, sheetNames, suggestMapping } from "../import/workbook.js"
+import { RelookupService } from "../relations/relookup.service.js"
 
 /* 5 萬列的 xlsx 壓縮後約 5–10MB;20MB 留餘裕且與既有檔案上傳同量級 */
 const IMPORT_MAX_BYTES = 20 * 1024 * 1024
-import { LayoutService } from "../layout/layout.service.js"
+import { z } from "zod"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
+import { LayoutService } from "../layout/layout.service.js"
 import { MetadataService } from "../metadata/metadata.service.js"
 import {
-  addFieldSpecSchema,
-  createFormSpecSchema,
   type AddFieldSpec,
   type CreateFormSpec,
+  addFieldSpecSchema,
+  createFormSpecSchema,
 } from "../specs/form-specs.js"
 import {
+  type FieldDto,
+  type FormDto,
   alterFieldTypeBodySchema,
   convertFieldTypeBodySchema,
-  updateOptionsBodySchema,
   moveFieldBodySchema,
   toFieldDto,
   toFormDto,
-  type FieldDto,
-  type FormDto,
+  updateOptionsBodySchema,
 } from "./api-schemas.js"
-import { z } from "zod"
 
 /* 薄 controller(AGENTS 分層鐵則):只做 HTTP 形狀 ↔ service 呼叫,零業務邏輯 */
 @Controller("api/forms")
@@ -122,9 +122,12 @@ export class FormsController {
   @Get(":formId")
   async getForm(
     @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
     @Param("formId", ParseIntPipe) formId: number,
   ): Promise<FormDto> {
-    return toFormDto(await this.metadata.getForm(tenant.tenantId, formId))
+    /* 🔴 過欄位級權限:值有 maskRead 擋著,但**欄位名稱**原本照回。
+       名稱本身就是業務資訊,而下游(圖表軸 / 篩選面板 / 看板分欄)都在列它們。 */
+    return toFormDto(await this.metadata.getForm(tenant.tenantId, formId), permissions)
   }
 
   /* R1·UP-3 2D 設計器版面。GET=view;PUT=design(整表覆寫,純 metadata) */
