@@ -3,6 +3,7 @@
 import {
   DataEditor,
   type EditableGridCell,
+  type EditListItem,
   type GridCell,
   type GridColumn,
   type GridSelection,
@@ -19,6 +20,15 @@ export interface GridSheetProps {
   readonly rowCount: number
   readonly getCell: (cell: Item) => GridCell
   readonly onCellEdited?: (cell: Item, newValue: EditableGridCell) => void
+  /* Glide 原型是 `boolean | void`,此處收窄成 `boolean`:回 `true` 表示「這批我自己處理了,
+     grid 不要再套用預設寫入」。留 `void` 會讓呼叫端漏寫 return 而默默走進預設行為。 */
+  readonly onCellsEdited?: (edits: readonly EditListItem[]) => boolean
+  /* 🔴 回傳 `true` 以外的任何值都會讓 Glide 整批放棄(它比對的是 `!== true`)。
+     貼上要做先驗 / 加列 / 計算欄跳過,都必須由我們接管 → 一律回 `false`,
+     這也是套件型別註解自己建議的:「advisable to simply return false from onPaste
+     and handle the paste manually」。回 `true` 則 Glide 自己寫格,
+     且**超出列數的部分會靜默丟掉**(`if (row + targetRow >= rows) break`)。 */
+  readonly onPaste?: ((target: Item, values: readonly (readonly string[])[]) => boolean) | boolean
   readonly onCellClicked?: (cell: Item) => void
   readonly rowMarkers?: "number" | "checkbox" | "both" | "none"
   readonly gridSelection?: GridSelection
@@ -36,6 +46,8 @@ export function GridSheet({
   rowCount,
   getCell,
   onCellEdited,
+  onCellsEdited,
+  onPaste,
   onCellClicked,
   rowMarkers = "number",
   gridSelection,
@@ -83,6 +95,8 @@ export function GridSheet({
         rows={rowCount}
         getCellContent={getCell}
         {...(onCellEdited ? { onCellEdited } : {})}
+        {...(onCellsEdited ? { onCellsEdited } : {})}
+        {...(onPaste === undefined ? {} : { onPaste })}
         {...(onCellClicked ? { onCellClicked } : {})}
         {...(gridSelection ? { gridSelection } : {})}
         {...(onGridSelectionChange ? { onGridSelectionChange } : {})}
