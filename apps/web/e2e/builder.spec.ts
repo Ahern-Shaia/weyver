@@ -54,8 +54,13 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
   // 3) 填單:autoNumber 唯讀由後端產號
   await page.getByRole("tab", { name: "填單" }).click()
   await expect(page.getByText("儲存後自動產生")).toBeVisible()
-  await page.getByRole("textbox").first().fill("鑫豐農產品") // 供應商(單號唯讀)
-  await page.getByRole("textbox", { name: "0.0000" }).fill("128400.0000")
+  /* 🔴 收斂到填寫區塊。原本是整頁範圍的 `getByRole("textbox").first()` ——
+     2026-08-03 在左欄加了「搜尋表單」框之後,`.first()` 就打到搜尋框去了。
+     整頁範圍的 `.first()` 對任何版面改動都是脆的,而且它壞掉時的症狀
+     (「已儲存」沒出現)完全指不到真正的原因。 */
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  await fill.getByRole("textbox").first().fill("鑫豐農產品") // 供應商(單號唯讀)
+  await fill.getByRole("textbox", { name: "0.0000" }).fill("128400.0000")
   await page.getByRole("button", { name: "儲存" }).click()
   await expect(page.getByText(/已儲存:/)).toBeVisible()
 
@@ -78,11 +83,43 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
   // 6) 回父表單 → 填單 → 明細編輯器可加行並隨 header 一起存
   await page.getByRole("button", { name: new RegExp(formName) }).click()
   await page.getByRole("tab", { name: "填單" }).click()
-  await page.getByRole("textbox").first().fill("正大食材")
+  /* 同上:整頁 `.first()` 會打到左欄的搜尋框 */
+  await page
+    .locator("section")
+    .filter({ hasText: "填寫" })
+    .last()
+    .getByRole("textbox")
+    .first()
+    .fill("正大食材")
   await page.getByRole("button", { name: "加一行" }).click()
   const lineRow = page.locator("tbody tr").first()
   await lineRow.getByRole("textbox").nth(0).fill("冷凍雞腿")
   await lineRow.getByRole("textbox").nth(1).fill("10")
   await page.getByRole("button", { name: "儲存" }).click()
   await expect(page.getByText(/已儲存:/)).toBeVisible()
+})
+
+/* 🔴 OQ-FDW-14 = A|設計器左欄有搜尋與分類篩選。
+
+   釘住的不是「有一個輸入框」,而是**它真的把清單縮小了** ——
+   dev 租戶已有 80+ 張表,而這條軌是設計器唯一的導航。
+   退化時畫面完全正常(輸入框還在、還能打字),只是清單不動。 */
+test("設計器左欄:搜尋能把表單清單縮到剩相符的那張", async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-6)
+  const name = `搜尋標的_${stamp}`
+  await request.post("/api/engine/forms", {
+    headers: { "x-dev-tenant": "1", "content-type": "application/json" },
+    data: { name, fields: [{ name: "品名", type: "text" }] },
+  })
+
+  await page.goto("/app/builder")
+  const search = page.getByLabel("搜尋表單")
+  await expect(search).toBeVisible({ timeout: 30_000 })
+
+  await search.fill(name)
+  await expect(page.getByRole("button", { name: new RegExp(name) })).toHaveCount(1)
+
+  /* 「篩不出來」與「尚無表單」是兩件事 —— 講成同一句會讓人以為表不見了 */
+  await search.fill("zzz這個名字不存在")
+  await expect(page.getByText("沒有符合的表單。清除搜尋或改選分類。")).toBeVisible()
 })
