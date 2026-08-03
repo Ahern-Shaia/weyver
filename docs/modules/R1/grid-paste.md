@@ -114,7 +114,13 @@ Ragic 在匯入端有最完整的檢查分類(唯讀欄 / 必填 / 輸入檢查)
 
 ### 1.2 明確不做
 
-- ❌ **不做填滿把手(fill handle)拖曳** —— 另立(同屬 Ragic-parity,但互動與資料路徑不同)
+- ⚠️ **填滿把手(fill handle)—— 「另立」的理由已被推翻,改列本模組 P1**
+  🔴 v0.5 稽核發現:本檔 §0.2 才剛寫下「第二站是自己的相依套件」的教訓,
+  §1.2 就重犯一次。Glide 6.0.3 逐字有 `fillHandle: boolean`(一個開關)與
+  `onFillPattern`(「Emitted whenever the user initiats a pattern fill using the
+  fill handle… **can be prevented**」),且**與貼上共用 `onCellsEdited` 出口**,
+  repo 內兩者零使用。原判「互動與資料路徑不同」**資料路徑那半是錯的** ——
+  同一條路徑。剩餘工作只有互動與填充規則(遞增序列 / 複製),不足以另立模組。
 - ❌ **不做跨表單貼上**(A 表複製 → B 表貼上的欄位對映)—— 那是 `import-to-existing-form` 的範圍
 - ❌ **不做公式 / lookup / rollup / autoNumber 欄的貼入** —— 計算欄不可寫(見 OQ-GP-4)
 - ❌ **不改型別推斷** —— 沿用既有 heuristic(`grid-and-excel-import` A4)
@@ -242,6 +248,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 
 | 日期 | 版本 | 變更 |
 |---|---|---|
+| 2026-08-03 | v0.6 | 🔴 **稽核(`_audit/giants-shoulders-audit-B.md`)在本檔內抓到同型復發**:§0.2 才剛寫下「巨人第二站是自己的相依套件」,§1.2 就把填滿把手判為「互動與**資料路徑**不同 → 另立」而未查套件。覆驗:`fillHandle: boolean` 與 `onFillPattern` 都在 6.0.3,且**與貼上共用 `onCellsEdited`**,repo 內零使用 → **資料路徑那半是錯的**,改列本模組 P1。**教訓不是「又漏查一次」而是「寫下教訓不等於執行教訓」** —— §0 查了不代表 §1 的每個「不做」都查過,而「不做」的決定同樣承重 | Claude Code |
 | 2026-08-03 | v0.5 | **M2 SHIPPED,並更正 §3.1 的整段規劃。** 原訂「自寫剪貼簿解析(TSV + HTML,含引號換行)」——讀 `onPasteInternal` 原始碼後確認**一格都不用寫**:Glide 優先 `text/html` 走 `decodeHTML`,退回 `unquote()` 且後者是正規引號狀態機,`onPaste` 收到的已是 `string[][]`。§0.2 說「套件已做掉一半」還是低估了。**新發現一個上游資料正確性缺陷**:`unquote` 逐碼點迭代卻以碼元 slice,含 astral 字元整塊位移(`"🙂\tB\nC\tD"` → `[["\ud83d","\t"],["\n","\tD"]]`),處置為偵測落單代理碼元即整塊拒絕 —— 修不了上游就讓它可見,且上游修好後守衛自然失效。另修一個會讓 OQ-GP-3 確認框講錯話的細節:Excel 尾端換行會多吐一列空的。`onCellsEdited` 型別由 `boolean \| void` 收窄成 `boolean`(留 `void` 會讓呼叫端漏寫 return 而默默走進預設寫入)。web 184 綠 | Claude Code |
 | 2026-08-03 | v0.4 | **OQ-GP-1..10 全數裁定(全採建議),進 M1;M1 SHIPPED**。`updateManyRecords`:單一 tx 全成或全敗(GP-1)· 500 列上限走 zod 在入口就擋(GP-2,Smartsheet 出處)· 計算欄跳過並**回報跳過格數**而非靜默(GP-4)· **逐列走 `updateOne` 並在同 tx 維護事件與搜尋索引**(GP-10 硬約束 —— 為省事直接寫 SQL 會複製 Ragic doc/139 自承的「列表頁編輯造成公式沒重算」)· 冪等沿用既有 `IdempotencyInterceptor`(GP-9)。**誠實記錄一個取捨**:`expectedVersion` 傳 null(一次貼上數百格,逐列版本不切實際,`saveWithLines` 明細亦然)→ 兩人同時貼同一塊會後到者覆蓋而非撞版本衝突;租戶邊界仍由 RLS 與 `updateOne` 的 `tenant_id` 條件把關。api 1007 綠 | Claude Code |
 | 2026-08-03 | v0.3 | **§0.3 競品研究完成,五條 OQ 建議依證據改寫,並新增兩條**。**OQ-GP-2 的 1000 列換成有出處的 500**(Smartsheet 官方明文「You can paste up to 500 rows at a time」,查到唯一官方明列的列數;Airtable 另建議 200–300 筆/批)。**OQ-GP-3 由「自動加列」改為「自動加列但先確認」** —— Airtable 有確認關卡而**加列是改變資料形狀不是改值**;並新增硬約束「篩選檢視下必須擋或明確處理」(Teable 踩過「in a filtered view could append new rows instead of updating visible ones」,而我方有 view 篩選)。**新增 OQ-GP-9 冪等**(Airtable 官方就有貼上端的 duplicate-block;對 ERP 而言重試一次就是多開 200 張單)與 **OQ-GP-10 貼上須走與表單儲存同一條計算路徑**(Ragic doc/139 自白「從列表頁編輯可能造成公式沒有重算」,而它的解法竟是建議把列表頁編輯整個關掉 —— B 選項就是複製這個問題,故視為硬約束非選項)。**最大的反面教材**:超量就整批不做且不出聲,四家四種形態(Ragic 2000 筆整批不重算 / 3500 筆連修改紀錄都不寫、Teable「success message while the cell content remained unchanged」、Airtable「unmatched values are dropped」、AG Grid「will not be pasted」),共同點是**使用者看到成功、系統其實少做了事**。**最大的空位**:「貼上前標紅問題格」查無任何一家(標未查證非「沒有」),正對上我方「所見即後果」 | Claude Code |
