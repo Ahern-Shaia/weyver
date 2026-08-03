@@ -156,8 +156,20 @@ Ragic 在匯入端有最完整的檢查分類(唯讀欄 / 必填 / 輸入檢查)
 | 同上 | `text/html`(`<table>`) | **次要**,用於保留換行儲存格;TSV 對含換行的儲存格會壞掉 |
 | 純文字 | 單格 | 沿用既有單格編輯 |
 
-⚠️ **TSV 的已知陷阱**|儲存格內含換行時,Excel 會用**引號包起來**,而 `split("\n")` 會把它切成兩列。
-故 **必須解析引號**,不能單純 split。這是 CSV/TSV 解析的經典坑,不是邊角。
+🔴 **M2 更正:上表描述的解析工作,我們一格都不用寫。**
+讀 `onPasteInternal` 原始碼(2026-08-03)確認:Glide **優先讀 `text/html` 走 `decodeHTML`**,
+沒有才退回 `unquote(text)`,而 `unquote` 是**正規的引號狀態機** —— 含換行的儲存格、
+跳脫引號 `""`、CRLF 正規化全都處理了,`onPaste` 收到的已經是 `string[][]`。
+
+⚠️ **但上游有一個真缺陷,而且是資料正確性等級**:`unquote` 以 `for...of` 逐**碼點**
+迭代卻只把 index 加 1,`slice` 卻走**碼元** → 剪貼簿含 astral 字元(emoji 等)時整塊位移。
+實測 `"🙂\tB\nC\tD"` → `[["\ud83d","\t"],["\n","\tD"]]`。
+Excel / Google 試算表走 `text/html` 不受影響,**純文字來源才會踩到**。
+處置:偵測落單代理碼元即**整塊拒絕**(見 `paste-matrix.ts`)——
+修不了上游就讓它可見,靜默寫入壞值正是 §0.3(c) 的反面教材。上游修好後守衛自然不再觸發。
+
+另一個實測發現:Excel 複製一列會帶尾端換行,`unquote("a\tb\r\n")` → `[["a","b"],[]]`。
+**不砍掉這列,「貼 2 列」就會變成「將新增 1 列」的幽靈提示**(OQ-GP-3 的確認框會講錯話)。
 
 ### 3.2 寫入路徑(依 OQ-GP-1 裁定)
 
@@ -219,7 +231,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 |---|---|---|
 | **M0** | 本檔 → APPROVED(OQ-GP-1..8 裁定) | 用戶裁定 |
 | **M1** ✅ | 後端 bulk update(單一 tx + 欄位級權限 + 計算欄跳過並回報 + 500 列上限)| 整合測試 4 條:部分失敗**全 rollback**(第一列不得留下)· 計算欄跳過且回報格數 · **跨租戶 recordId 影響 0 列** · 超過 500 明確拒絕 |
-| **M2** | `GridSheet` 曝露 `onPaste` / `getCellsForSelection` / `onCellsEdited`;TSV + HTML 解析(含引號換行) | 單元測試:含換行 / 含引號 / 含定位字元的儲存格 |
+| **M2** ✅ | `GridSheet` 曝露 `onPaste` / `onCellsEdited`(`getCellsForSelection` 早已為 `true`);**解析交給套件**,本層只做正規化:砍尾端空列 / 補矩形 / 上限 / 偵測上游位移 | 單元測試 10 條(`paste-matrix.test.ts`),輸入取自對 `unquote()` 的實測輸出而非臆造 |
 | **M3** | 前端先驗 + 錯誤格標示 + 計算欄跳過說明 + 超出列數自動新增 | e2e:貼一塊 → 標紅 → 修正 → 成功 |
 | **M4** | 複製(網格 → TSV)+ 一次 undo | e2e:複製 → 貼回 → 值相同;貼上 → undo → 還原 |
 | **M5** | 量測(1000 格 / 5000 格)定上限 + FMEA + docs 回填 | 上限值有量測依據,不是猜的 |
@@ -230,6 +242,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 
 | 日期 | 版本 | 變更 |
 |---|---|---|
+| 2026-08-03 | v0.5 | **M2 SHIPPED,並更正 §3.1 的整段規劃。** 原訂「自寫剪貼簿解析(TSV + HTML,含引號換行)」——讀 `onPasteInternal` 原始碼後確認**一格都不用寫**:Glide 優先 `text/html` 走 `decodeHTML`,退回 `unquote()` 且後者是正規引號狀態機,`onPaste` 收到的已是 `string[][]`。§0.2 說「套件已做掉一半」還是低估了。**新發現一個上游資料正確性缺陷**:`unquote` 逐碼點迭代卻以碼元 slice,含 astral 字元整塊位移(`"🙂\tB\nC\tD"` → `[["\ud83d","\t"],["\n","\tD"]]`),處置為偵測落單代理碼元即整塊拒絕 —— 修不了上游就讓它可見,且上游修好後守衛自然失效。另修一個會讓 OQ-GP-3 確認框講錯話的細節:Excel 尾端換行會多吐一列空的。`onCellsEdited` 型別由 `boolean \| void` 收窄成 `boolean`(留 `void` 會讓呼叫端漏寫 return 而默默走進預設寫入)。web 184 綠 | Claude Code |
 | 2026-08-03 | v0.4 | **OQ-GP-1..10 全數裁定(全採建議),進 M1;M1 SHIPPED**。`updateManyRecords`:單一 tx 全成或全敗(GP-1)· 500 列上限走 zod 在入口就擋(GP-2,Smartsheet 出處)· 計算欄跳過並**回報跳過格數**而非靜默(GP-4)· **逐列走 `updateOne` 並在同 tx 維護事件與搜尋索引**(GP-10 硬約束 —— 為省事直接寫 SQL 會複製 Ragic doc/139 自承的「列表頁編輯造成公式沒重算」)· 冪等沿用既有 `IdempotencyInterceptor`(GP-9)。**誠實記錄一個取捨**:`expectedVersion` 傳 null(一次貼上數百格,逐列版本不切實際,`saveWithLines` 明細亦然)→ 兩人同時貼同一塊會後到者覆蓋而非撞版本衝突;租戶邊界仍由 RLS 與 `updateOne` 的 `tenant_id` 條件把關。api 1007 綠 | Claude Code |
 | 2026-08-03 | v0.3 | **§0.3 競品研究完成,五條 OQ 建議依證據改寫,並新增兩條**。**OQ-GP-2 的 1000 列換成有出處的 500**(Smartsheet 官方明文「You can paste up to 500 rows at a time」,查到唯一官方明列的列數;Airtable 另建議 200–300 筆/批)。**OQ-GP-3 由「自動加列」改為「自動加列但先確認」** —— Airtable 有確認關卡而**加列是改變資料形狀不是改值**;並新增硬約束「篩選檢視下必須擋或明確處理」(Teable 踩過「in a filtered view could append new rows instead of updating visible ones」,而我方有 view 篩選)。**新增 OQ-GP-9 冪等**(Airtable 官方就有貼上端的 duplicate-block;對 ERP 而言重試一次就是多開 200 張單)與 **OQ-GP-10 貼上須走與表單儲存同一條計算路徑**(Ragic doc/139 自白「從列表頁編輯可能造成公式沒有重算」,而它的解法竟是建議把列表頁編輯整個關掉 —— B 選項就是複製這個問題,故視為硬約束非選項)。**最大的反面教材**:超量就整批不做且不出聲,四家四種形態(Ragic 2000 筆整批不重算 / 3500 筆連修改紀錄都不寫、Teable「success message while the cell content remained unchanged」、Airtable「unmatched values are dropped」、AG Grid「will not be pasted」),共同點是**使用者看到成功、系統其實少做了事**。**最大的空位**:「貼上前標紅問題格」查無任何一家(標未查證非「沒有」),正對上我方「所見即後果」 | Claude Code |
 | 2026-08-03 | v0.2 | **裁定前覆查,修正 v0.1 的一處現況誤述**。原寫「貼上相關 props 全無」,實際 `getCellsForSelection` **已設為 `true`** —— 依 Glide 型別註解逐字「Used for copy/paste, **if unset copy will not work**」,**複製很可能早就能用**。故 OQ-GP-7 的工作性質由「實作複製」改為「實測複製的還原度並補齊」,M4 範圍縮小。⚠️ 這是同一個形狀第三次:**寫現況時沒把那一行讀完**(前兩次見 approval-advanced v0.3)。貼上仍確實不可能(`onPaste` / `onCellsEdited` 未曝露),模組必要性不變 | Claude Code |
