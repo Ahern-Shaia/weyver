@@ -1,5 +1,6 @@
 "use client"
 
+import { evaluateFieldStates, resolveFieldAttrs } from "@/lib/engine/conditional-format"
 import {
   FORM_COLS,
   FORM_COL_W,
@@ -25,10 +26,14 @@ import type { ReactElement, ReactNode } from "react"
 export function HeaderFields({
   fields,
   layout,
+  values,
   renderInput,
 }: {
   readonly fields: readonly FieldDto[]
   readonly layout: Layout | null
+  /* 🔴 C-2:條件式規則要吃當前填寫值 —— 隱藏 / 唯讀是**隨著使用者邊填邊變**的,
+     不是載入時算一次。傳當前 state 而非記錄快照。 */
+  readonly values: Record<string, unknown>
   /* 🔴 2026-08-03:第二參數是**唯讀**。設計器的「唯讀」勾選框自出貨以來零 reader,
      勾了照樣能改 —— 使用者以為欄位保護住了。
      刻意不把 readonly 當 prop 傳進 FieldInput:那要穿過二十幾個型別分支,
@@ -37,6 +42,12 @@ export function HeaderFields({
 }): ReactElement {
   const effective = effectiveLayout(fields, layout)
   const cols = layout?.grid.cols ?? FORM_COLS
+  /* 記錄頁的規則(非列表頁)—— 這是填單畫面 */
+  const states = evaluateFieldStates(
+    layout?.conditionalFormats?.record ?? [],
+    values,
+    fields.map((f) => f.name),
+  )
 
   return (
     <div
@@ -53,7 +64,10 @@ export function HeaderFields({
     >
       {fields.map((field) => {
         const fl = effective.fields[String(field.id)]
-        if (fl === undefined || fl.hidden === true) return null
+        if (fl === undefined) return null
+        /* S4 仲裁:靜態屬性 × 條件式規則(見 resolveFieldAttrs 之逐字依據) */
+        const attrs = resolveFieldAttrs(fl, states.get(field.name))
+        if (attrs.hidden) return null
         return (
           <div
             key={field.id}
@@ -67,9 +81,12 @@ export function HeaderFields({
               item={{
                 label: field.name,
                 /* 唯讀欄不標必填星號 —— 標了等於要求使用者填一個他填不了的欄 */
-                required: field.required && fl.readonly !== true,
+                /* 唯讀欄不標必填星號;**因條件式被隱藏者亦略過必填**
+                   —— 官方逐字:「當欄位因條件式格式被隱藏時,系統會略過檢查必填及輸入檢查」。
+                   要求使用者填一個看不見的欄位會讓他直接卡死。 */
+                required: field.required && !attrs.readonly && !attrs.skipValidation,
                 help: fl.help !== undefined && fl.help !== "" ? fl.help : false,
-                value: renderInput(field, fl.readonly === true, fl.placeholder),
+                value: renderInput(field, attrs.readonly, fl.placeholder),
               }}
             />
           </div>

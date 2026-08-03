@@ -42,9 +42,9 @@ import {
   reverseRelationGroupSchema,
   trashItemSchema,
   userNameSchema,
+  viewDtoSchema,
   webhookDeliverySchema,
   webhookEndpointSchema,
-  viewDtoSchema,
 } from "./schemas"
 import type { ViewGroup } from "./schemas"
 

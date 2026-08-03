@@ -164,6 +164,10 @@ export const formatConditionSchema = z.object({
    在稽核時被發現**沒有 `.strict()`**,未知欄位會被靜默剝除)。 */
 export const formatEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("color"), tone: z.enum(FORMAT_TONES) }),
+  /* C-2:純呈現效果,與已出貨的靜態 hidden / readonly 同級(皆前端生效)。
+     隱藏不是權限 —— 欄位級保護走 E-1。 */
+  z.object({ kind: z.literal("hide") }),
+  z.object({ kind: z.literal("readonly") }),
 ])
 export type FormatEffect = z.infer<typeof formatEffectSchema>
 

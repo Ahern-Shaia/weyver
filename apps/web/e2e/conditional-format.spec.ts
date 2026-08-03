@@ -119,3 +119,67 @@ test("設計器:改規則顏色 → 即時預覽同步", async ({ page, request 
   const previewDate = page.getByText("2026-07-20", { exact: true }).last()
   await expect(previewDate).toHaveCSS("color", "rgb(31, 95, 158)")
 })
+
+/* 🔴 C-2 純呈現效果(hide / readonly)+ S1 雙向邏輯。
+
+   S1 是 Ragic 官方用一整節〈問題排除〉在解釋的東西 ——
+   「條件成立時執行某動作,也同時代表條件不成立時**不執行**」。
+   對顏色這條恰好等價(未命中即無色),對隱藏**不等價**:
+   若求值改成增量更新,欄位藏了就再也回不來,而畫面看起來完全正常。
+   本測試的第二段(改值 → 欄位回來)盯的就是這個。 */
+test("填單:條件式隱藏即時生效,且條件不再成立時欄位會回來(S1 雙向邏輯)", async ({
+  page,
+  request,
+}) => {
+  const stamp = String(Date.now()).slice(-6)
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `條件隱藏_${stamp}`,
+      fields: [
+        { name: "單號", type: "text" },
+        { name: "備註", type: "text" },
+      ],
+    },
+  })
+  const form = (await res.json()) as { id: number; fields: { id: number; name: string }[] }
+  const idOf = (n: string): string => String(form.fields.find((f) => f.name === n)?.id ?? 0)
+
+  await request.patch(`/api/engine/forms/${String(form.id)}/layout`, {
+    headers: DEV,
+    data: {
+      grid: { cols: 12 },
+      fields: {
+        [idOf("單號")]: { row: 0, col: 0, colSpan: 6 },
+        [idOf("備註")]: { row: 1, col: 0, colSpan: 6 },
+      },
+      statics: [],
+      sections: [],
+      conditionalFormats: {
+        record: [
+          {
+            combinator: "and",
+            conditions: [{ field: "單號", op: "eq", value: "HIDE" }],
+            targets: ["備註"],
+            effects: [{ kind: "hide" }],
+          },
+        ],
+        list: [],
+      },
+    },
+  })
+
+  await page.goto(`/app/builder?form=${String(form.id)}&mode=fill`)
+  await page.getByRole("tab", { name: "填單" }).click()
+  const 單號 = page.getByRole("textbox").first()
+  await expect(單號).toBeVisible({ timeout: 30_000 })
+  /* 條件未成立 → 兩欄都在 */
+  await expect(page.getByRole("textbox")).toHaveCount(2)
+
+  await 單號.fill("HIDE")
+  await expect(page.getByRole("textbox")).toHaveCount(1) // 備註 隱藏
+
+  /* 🔴 S1:條件不再成立 → **主動還原**,不是維持隱藏 */
+  await 單號.fill("PO-001")
+  await expect(page.getByRole("textbox")).toHaveCount(2)
+})

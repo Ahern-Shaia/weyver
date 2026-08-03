@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { FieldDto } from "./schemas"
 import { chipValues, isChipField, optionTone } from "./option-tone"
+import type { FieldDto } from "./schemas"
 
 /* 🔴 這組測試存在的理由:#105 把選項結構從
      v1 `{ choices: string[], colors: Record<名, 色> }`

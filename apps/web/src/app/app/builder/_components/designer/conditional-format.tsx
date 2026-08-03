@@ -50,6 +50,16 @@ function toneOf(rule: FormatRule): ChipTone {
   return rule.effects.reduce<ChipTone>((acc, e) => (e.kind === "color" ? e.tone : acc), "neutral")
 }
 
+function toggleEffect(rule: FormatRule, kind: "hide" | "readonly"): Partial<FormatRule> {
+  const has = rule.effects.some((e) => e.kind === kind)
+  const next = has
+    ? rule.effects.filter((e) => e.kind !== kind)
+    : [...rule.effects, { kind } as const]
+  /* 規則至少要有一個效果(schema `min(1)`)—— 全關掉時退回無色的中性,
+     而不是送出一條會被後端擋下的規則 */
+  return { effects: next.length > 0 ? next : [{ kind: "color", tone: "neutral" }] }
+}
+
 function withTone(rule: FormatRule, tone: ChipTone): Partial<FormatRule> {
   const rest = rule.effects.filter((e) => e.kind !== "color")
   return { effects: [...rest, { kind: "color", tone }] }
@@ -320,6 +330,34 @@ export function ConditionalFormatPanel({
             </div>
 
             <div className="mt-3">
+              {/* 🔴 C-2:效果種類。**加 schema 的同一批就要加寫入端** ——
+                  否則就是又造一個「欄位存在、沒人寫得進去」的陷阱,
+                  而 form-designer-2d 的 colWidths 剛因為同一個理由被移除。 */}
+              <div className="mb-1 text-[12px] text-ink-3">效果(可複選)</div>
+              <div className="mb-2 flex flex-wrap gap-1">
+                {(["hide", "readonly"] as const).map((kind) => {
+                  const on = rule.effects.some((e) => e.kind === kind)
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => patch(selected, toggleEffect(rule, kind))}
+                      aria-pressed={on}
+                      className={`rounded-xs border px-2 py-0.5 text-[12px] ${
+                        on
+                          ? "border-primary bg-primary-t text-primary"
+                          : "border-line-2 bg-card text-ink-2 hover:bg-hover"
+                      }`}
+                    >
+                      {kind === "hide" ? "隱藏欄位" : "設為唯讀"}
+                    </button>
+                  )
+                })}
+              </div>
+              {/* 隱藏不是權限 —— Ragic / Airtable 官方都明文警告過,這裡照講 */}
+              <p className="mb-2 text-[12px] text-ink-3">
+                隱藏與唯讀為版面層效果,擋不住 API。欄位級保護請用權限設定。
+              </p>
               <div className="mb-1 text-[12px] text-ink-3">顏色(12 色受控色盤)</div>
               <div className="flex flex-wrap gap-1">
                 {CHIP_TONES.map((tone) => (

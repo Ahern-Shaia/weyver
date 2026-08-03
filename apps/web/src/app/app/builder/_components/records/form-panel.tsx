@@ -188,6 +188,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
           <HeaderFields
             fields={form.fields}
             layout={layoutQuery.data?.layout ?? null}
+            values={values}
             renderInput={(field, readonly, placeholder) => {
               const shown =
                 field.type === "formula" ? headerPreview[field.name] : values[field.name]

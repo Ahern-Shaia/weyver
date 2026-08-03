@@ -1,6 +1,11 @@
 import type { ChipTone } from "@weyver/ui/status-chip"
 import { describe, expect, it } from "vitest"
-import { evaluateFormats, matchesCondition } from "./conditional-format"
+import {
+  evaluateFieldStates,
+  evaluateFormats,
+  matchesCondition,
+  resolveFieldAttrs,
+} from "./conditional-format"
 import type { FormatRule } from "./schemas"
 
 /* R1·UP-3b 求值器單元測。重點:運算子語意、AND/OR、**後者覆蓋**、欄位缺失容錯。 */
@@ -208,5 +213,72 @@ describe("evaluateFormats", () => {
 
   it("無規則 → 空結果(零成本短路)", () => {
     expect(evaluateFormats([], values, FIELDS).size).toBe(0)
+  })
+})
+
+/* 🔴 OQ-CF-8 = C-2:純呈現效果(hide / readonly)+ S1 雙向邏輯 + S4 仲裁。
+
+   S1 與 S4 是 Ragic 官方**用一整節〈問題排除〉在解釋**的東西 ——
+   也就是說它們在真實使用中會被踩到,不是理論邊角。 */
+describe("C-2 hide / readonly 效果", () => {
+  const vals = { 單號: "PO-001", 交期: "2026-07-20", 狀態: "待審", 金額: "128400" }
+  const hideRule = {
+    combinator: "and",
+    conditions: [{ field: "狀態", op: "eq", value: "待審" }],
+    targets: ["金額"],
+    effects: [{ kind: "hide" }],
+    enabled: true,
+  } as unknown as FormatRule
+
+  it("命中時隱藏目標欄", () => {
+    const st = evaluateFieldStates([hideRule], vals, FIELDS)
+    expect(st.get("金額")?.hidden).toBe(true)
+  })
+
+  /* 🔴 S1 雙向邏輯(官方逐字):「當條件成立時執行某動作,也同時代表條件不成立時
+     **不執行**該動作」。對顏色這條恰好等價(未命中即無色),對隱藏**不等價** ——
+     若求值器改成增量更新,未命中就不會把欄位還原成顯示。 */
+  it("S1:未命中 → 不套用(欄位回到預設,不是維持上一次的結果)", () => {
+    const st = evaluateFieldStates([hideRule], { ...vals, 狀態: "已結案" }, FIELDS)
+    expect(st.get("金額")).toBeUndefined()
+  })
+
+  it("一條規則可同時帶多種效果", () => {
+    const r = {
+      ...hideRule,
+      effects: [{ kind: "readonly" }, { kind: "color", tone: "warn" }],
+    } as unknown as FormatRule
+    const st = evaluateFieldStates([r], vals, FIELDS)
+    expect(st.get("金額")).toEqual({ readonly: true, tone: "warn" })
+  })
+})
+
+describe("C-2 S4:靜態欄位屬性 × 條件式規則的仲裁", () => {
+  /* 官方逐字 (3):「欄位設為**唯讀**的情況,**條件式格式必會優先於**欄位屬性設定」 */
+  it("S4-3:唯讀由規則說了算(規則有講就聽規則)", () => {
+    expect(resolveFieldAttrs({ readonly: true }, { readonly: true }).readonly).toBe(true)
+    expect(resolveFieldAttrs({ readonly: false }, { readonly: true }).readonly).toBe(true)
+  })
+
+  it("規則沒講到唯讀時,回到靜態值 —— 不是一律覆蓋成 false", () => {
+    expect(resolveFieldAttrs({ readonly: true }, { tone: "warn" }).readonly).toBe(true)
+    expect(resolveFieldAttrs({ readonly: true }, undefined).readonly).toBe(true)
+  })
+
+  /* 官方逐字 (1):已設為隱藏的欄位,條件式格式**無法選擇**再把它顯示 */
+  it("S4-1:靜態隱藏為終局,規則不得把它顯示回來", () => {
+    expect(resolveFieldAttrs({ hidden: true }, undefined).hidden).toBe(true)
+    expect(resolveFieldAttrs({ hidden: true }, { readonly: true }).hidden).toBe(true)
+  })
+
+  /* 官方逐字:「當欄位因條件式格式被**隱藏**時,系統會**略過檢查必填及輸入檢查**」 */
+  it("因規則被隱藏 → 略過必填檢查(否則使用者卡死在看不見的欄位上)", () => {
+    expect(resolveFieldAttrs({}, { hidden: true }).skipValidation).toBe(true)
+  })
+
+  it("🔴 但**靜態**隱藏不觸發略過 —— 兩者成因不同,不可混為一談", () => {
+    /* 靜態隱藏是設計者一開始就決定這張表不填這欄,必填與否由他自己設定;
+       條件式隱藏是「此情境下不適用」,才需要連帶放掉必填。 */
+    expect(resolveFieldAttrs({ hidden: true }, undefined).skipValidation).toBe(false)
   })
 })
