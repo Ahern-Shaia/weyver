@@ -88,6 +88,36 @@ export type Resources = z.infer<typeof resourcesSchema>
 
 const defaultActionsSchema = z.object({ actions: z.array(z.enum(FORM_ACTIONS)) })
 
+/* 🔴 `/api/authz/me`|前端**唯一**的能力來源。
+   在此之前 `canDesign` 是寫死 `true` —— 後端有執法,但畫面說謊:
+   使用者看得到他按不動的入口。 */
+const myCapabilitiesSchema = z.object({
+  isAdmin: z.boolean(),
+  forms: z.record(z.string(), z.array(z.enum(FORM_ACTIONS))),
+})
+export type MyCapabilities = z.infer<typeof myCapabilitiesSchema>
+
+export function useMyCapabilities() {
+  return useQuery({
+    queryKey: ["authz", "me"] as const,
+    queryFn: () => engineFetch("/authz/me", myCapabilitiesSchema),
+    staleTime: 60_000,
+  })
+}
+
+/* admin 的 `forms` 刻意為空(見後端註解)—— 故必須先看 `isAdmin`,
+   否則管理員會被判成什麼都不能做。載入中一律回 `false`:
+   **寧可少顯示一個入口,也不要顯示一個按下去 403 的入口**。 */
+export function canOnForm(
+  caps: MyCapabilities | undefined,
+  formId: number,
+  action: FormAction,
+): boolean {
+  if (caps === undefined) return false
+  if (caps.isAdmin) return true
+  return caps.forms[String(formId)]?.includes(action) === true
+}
+
 const voidSchema = z.undefined().or(z.unknown().transform(() => undefined))
 
 export const authzKeys = {
