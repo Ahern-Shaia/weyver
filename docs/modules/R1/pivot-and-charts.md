@@ -276,7 +276,7 @@ pivot 走 `GROUPING SETS`(要小計),chart 走單一 `GROUP BY`(不要小計)—
 | **M1 pivot 引擎** | grouping set 產生器改笛卡兒積 · `date_trunc` 表達式物化成具名欄(§0.3 陷阱)· `/pivot` 端點回長表 · 欄軸 top-N · 洩漏測試 | 0.10 mo |
 | **M2 pivot 前端** | 交叉表呈現(稀疏→密集)· 軸設定 UI · 截斷提示 | 0.10 mo |
 | **M3 圖表** | 裝 ECharts(tree-shaken)+ client wrapper · chart view(繼承 view 篩選)· bar/line/pie/雙 Y 軸 | 0.10 mo |
-| **M4 小圖表** | `widget_def` + 可見群組 · 釘在列表頁/表單頁 | 0.08 mo |
+| **M4 小圖表** ✅ | `widget_def` + 可見群組 · 後端 CRUD + 三條裁定落地(見 §11-bis)。**前端渲染待接** | 0.08 mo |
 | **M5 收尾** | FMEA · e2e · doc v1.0 · MODULES · docs/25 回填 · **更正 docs/10 §131** | 0.04 mo |
 
 **合計 ≈ 0.42 mo**。前後端分開 commit。
@@ -410,6 +410,24 @@ OQ-PC-9 的裁定(widget 級 all-or-nothing)仍有效,實作時直接沿用。
 `GET /forms/:id` 帶入呼叫者的 `EffectivePermissions`。
 ⚠️ **未帶 `policy` 時不過濾** —— 這是刻意的向後相容(dev 路徑與內部呼叫),
 不是漏洞:對外端點一律帶。單元測試把三種情況都釘住。
+
+---
+
+## 11-bis. M4 小圖表:後端落地(2026-08-03)
+
+三條裁定各自對應一段實作,而**其中兩條若沒做會被靜默繞過**:
+
+| OQ | 落地 | 為什麼這條特別容易漏 |
+|---|---|---|
+| **10** 列表頁吃當下篩選 | `placement` 為語意欄;合併由**前端**在送查詢時做(「當下的使用者篩選」只有前端知道)。共用推導已由 `view-query.ts` 就位 | 表單頁 / 首頁**沒有中間那層**(Ragic doc/122 明列),兩者不能用同一條路 |
+| **11** 具名 fail-closed | 設計期那半由 `toFormDto` 過欄位權限達成(候選清單本來就選不到);執行期那半回 `unavailableReason` | **不能只回空白圖** —— 空白圖會被當成「沒資料」,而使用者會據此做決策。照 Salesforce 給具名訊息 |
+| **12** 可見群組候選先過來源表單權限 | `visibleRoleCandidates()` 逐角色檢查 direct + 分類繼承的 `view`;**建立時後端再驗一次** | 🔴 若只在前端過濾,直接打 API 就能把一個對來源表單沒權限的角色設成可檢視群組 —— **而那條路徑不會有任何錯誤訊息**。整合測試專釘這一條 |
+
+**`visible_role_ids` 空 = 依來源表單權限**(Ragic 語意),**不是**「所有人可見」——
+來源表單的權限由 `PermissionGuard` 在進到 service 之前就擋過了。
+
+⚠️ **未做**|前端渲染(把 widget 畫到列表頁 / 表單頁)。後端與權限面已完整,
+但**使用者目前看不到任何 widget** —— 這是刻意分段,不是遺漏,故在此明記。
 
 ---
 

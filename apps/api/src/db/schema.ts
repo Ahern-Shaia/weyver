@@ -430,6 +430,42 @@ export const categoryPermissions = pgTable(
    app 層 tenant scope,非 RLS(同 form_categories;view 是「存查詢」非 tenant 記錄資料)。
    config JSONB:{ fields:[fieldId], filter:{combinator,conditions[]}, sorts:[{field,dir}], search?, pageSize? }。
    forcedFilter 刻意不做進 view(OQ-VL-2:列級安全歸 authz 軸)。 */
+/* 🔴 F-2 M4|小圖表(widget)。採 Ragic 形態(doc/122):自身篩選 + 可見群組,
+   而可見群組為 **widget 級 all-or-nothing**(OQ-PC-9)——
+   部分遮蔽會讓聚合值本身變成推論管道(遮掉一格但總和還在,就能反推那一格)。 */
+export const widgetDefs = pgTable(
+  "widget_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => formDefs.id),
+    name: text("name").notNull(),
+    chartType: text("chart_type").notNull().default("bar"),
+    dimension: text("dimension").notNull(),
+    measureFn: text("measure_fn"),
+    measureField: text("measure_field"),
+    /* 列表頁優先序:固定篩選 > 使用者篩選 > **本欄**(OQ-PC-10 = A)。
+       本欄是最低優先,不是唯一來源。 */
+    ownFilter: jsonb("own_filter").notNull().default([]),
+    placement: text("placement").notNull().default("list"),
+    position: integer("position").notNull().default(0),
+    /* 空 = **依來源表單權限**(Ragic 語意),不是「所有人可見」 */
+    visibleRoleIds: bigint("visible_role_ids", { mode: "number" })
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::bigint[]`),
+    createdBy: bigint("created_by", { mode: "number" }).references((): AnyPgColumn => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [index("widget_def_form_idx").on(t.tenantId, t.formId, t.placement, t.position)],
+)
+
 export const viewDefs = pgTable(
   "view_def",
   {

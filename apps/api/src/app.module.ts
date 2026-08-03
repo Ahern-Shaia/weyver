@@ -14,6 +14,7 @@ import { DbModule } from "./db/db.module.js"
 import { ExportModule } from "./export/export.module.js"
 import { FilesModule } from "./files/files.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
+import { WidgetsModule } from "./form-engine/widgets/widgets.module.js"
 import { HealthModule } from "./health/health.module.js"
 import { DomainExceptionFilter } from "./http/domain-exception.filter.js"
 import { IntegrationsModule } from "./integrations/integrations.module.js"
@@ -43,6 +44,7 @@ import { ViewsModule } from "./views/views.module.js"
     ScheduleModule.forRoot(),
     ExportModule,
     TemplatesModule,
+    WidgetsModule,
     DbModule,
     /* F-8:@Global,須早於 AuthModule(TenantGuard 注入 EntitlementService)*/
     BillingModule,
