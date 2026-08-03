@@ -575,6 +575,31 @@ describe("🔴 M3 下載", () => {
     expect(after?.downloadCount).toBe(1)
   })
 
+  /* 🔴 M4 修正的形狀:driver 能簽名時,回的是 **200 JSON `{url}`** 而不是 302。
+
+     這條路徑在 dev 與其餘測試裡永遠不會執行(local driver 沒有 `presign`),
+     所以它原本是「測試永遠綠、只有 prod 會壞」—— 302 對 curl 成立,但前端只能用
+     `fetch`(POST 要帶密碼),而 fetch 跟隨重導後最終回應仍須通過 CORS 檢查,
+     物件儲存桶預設不會給。這裡臨時給 local driver 補一個 `presign` 來走那一半。 */
+  it("🔴 driver 能簽名時回 JSON 而非重導(prod 才會走到的分支)", async () => {
+    const id = await seedReady()
+    const { STORAGE_DRIVER } = await import("../src/storage/storage-driver.js")
+    const driver = app.get<{ presign?: unknown }>(STORAGE_DRIVER)
+    driver.presign = (key: string, opts: { filename: string }) =>
+      Promise.resolve(`https://storage.example.com/${key}?sig=x&name=${opts.filename}`)
+    try {
+      const res = await download(id)
+      expect(res.statusCode).toBe(200)
+      expect(res.headers.location).toBeUndefined()
+      expect((res.json() as { url: string }).url).toContain("https://storage.example.com/")
+      expect(String(res.headers["cache-control"])).toContain("no-store")
+      /* 交出簽名 URL 也算一次下載 —— 否則限次可被「只取 URL 不取檔」繞過 */
+      expect((await repo.getForTenant(tenantA, id))?.downloadCount).toBe(1)
+    } finally {
+      driver.presign = undefined
+    }
+  })
+
   /* 🔴 原子性。先查再寫的話,兩個同時進來的請求會各自看到「還剩 1 次」。 */
   it("🔴 併發下載不得突破次數上限", async () => {
     const id = await seedReady({ downloads: 4 })

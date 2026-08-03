@@ -49,7 +49,8 @@ export class ExportDownloadService {
     @Inject(AUTH) private readonly auth: Auth,
   ) {}
 
-  /* 回 presigned URL(driver 支援時)或可串流的位元組。呼叫端據此 302 或代理。 */
+  /* 回 presigned URL(driver 支援時)或可串流的位元組。
+     呼叫端據此回 JSON 讓瀏覽器導航過去,或代理串流(理由見 controller)。 */
   async authorize(
     tenant: TenantContext,
     request: RequestWithTenant,

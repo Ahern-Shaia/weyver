@@ -94,8 +94,22 @@ export class ExportsController {
 
   /* 🔴 下載是 **POST** 而非 GET —— 它要帶密碼(ASVS §7.5.3 的再認證),
      而密碼不能放在 URL 裡(會進瀏覽器歷史、存取日誌、Referer)。
-     形狀對齊既有的檔案下載:能簽名就 302 過去(位元組不經應用層),
-     不能就代理串流。 */
+     能簽名就把簽名 URL 交給呼叫端自己去取(位元組不經應用層),不能就代理串流。
+
+     ## 🔴 為什麼簽名分支回 200 JSON 而不是 302(M4 改)
+
+     M3 原本回 `302 + Location`。那對 curl 成立,對**瀏覽器**不成立:
+     這個端點是 POST(要帶密碼),故前端只能用 `fetch`,而 fetch 在 cors 模式下
+     跟隨重導之後,**最終回應仍必須通過 CORS 檢查** —— 物件儲存桶預設不會
+     對我方網域回 `Access-Control-Allow-Origin`,下載會直接失敗。
+
+     而這條路徑在 dev 與測試裡**完全不會執行**(local driver 無 `presign`),
+     所以它是一個「測試永遠綠、只有 prod 會壞」的形狀 —— 本模組已經踩過同型兩次
+     (`ZipArchive` 執行期不存在 / archiver 的 CJS interop)。
+
+     回 JSON 讓呼叫端改用**導航**(`window.location`)去取簽名 URL:
+     導航不受 CORS 管,不必為此在儲存桶上開一個對外的 CORS 設定,
+     且簽名本身已帶 `Content-Disposition: attachment`,瀏覽器會直接存檔。 */
   @Post(":id/download")
   @SelfService()
   @HttpCode(200)
@@ -106,13 +120,12 @@ export class ExportsController {
     @Res({ passthrough: true }) reply: FastifyReply,
     @Param("id", ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(downloadSchema)) body: z.infer<typeof downloadSchema>,
-  ): Promise<StreamableFile | undefined> {
+  ): Promise<StreamableFile | { url: string }> {
     const result = await this.downloads.authorize(tenant, request, id, body.password)
     if ("url" in result) {
-      reply.status(302).header("location", result.url)
       /* 簽名 URL 有時效且對應單一次授權結果 —— 絕不可被任何快取層留存 */
       reply.header("cache-control", "no-store, private")
-      return undefined
+      return { url: result.url }
     }
     reply.header("content-type", "application/zip")
     reply.header("content-disposition", `attachment; filename="${result.filename}"`)
