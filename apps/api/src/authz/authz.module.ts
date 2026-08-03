@@ -5,6 +5,7 @@ import { AuthzAdminService } from "./authz-admin.service.js"
 import { AuthzResourceController } from "./authz-resource.controller.js"
 import { AuthzRepository } from "./authz.repository.js"
 import { CategoriesController } from "./categories.controller.js"
+import { MeController } from "./me.controller.js"
 import { PermissionGuard } from "./permission.guard.js"
 import { PermissionService } from "./permission.service.js"
 import { UsersLookupController } from "./users-lookup.controller.js"
@@ -18,6 +19,7 @@ import { UsersLookupService } from "./users-lookup.service.js"
     AuthzAdminController,
     AuthzResourceController,
     CategoriesController,
+    MeController,
     UsersLookupController,
   ],
   providers: [

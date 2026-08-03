@@ -1,10 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { AuthzRepository } from "./authz.repository.js"
 import {
+  type EffectivePermissions,
   adminPermissions,
   buildEffectivePermissions,
-  type EffectivePermissions,
 } from "./authz-effective.js"
+import { AuthzRepository } from "./authz.repository.js"
 
 /* P0-4a M2 + uplift|授權決策服務。解析一名 actor 對某租戶的有效權限(deny-by-default)。
    admin 系統角色 → 全動作(不查每表)。否則分層解析:owner → 覆寫 → 分類繼承 → 預設 profile

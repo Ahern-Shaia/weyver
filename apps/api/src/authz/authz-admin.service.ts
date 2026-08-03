@@ -5,14 +5,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common"
+import type { FieldVisibility, FormAction } from "./authz-model.js"
+import { RoleCycleError, RoleTreeDepthError } from "./authz-tree.js"
 import {
   AuthzRepository,
   type CategoryRow,
   RoleParentError,
   type RoleRow,
 } from "./authz.repository.js"
-import type { FieldVisibility, FormAction } from "./authz-model.js"
-import { RoleCycleError, RoleTreeDepthError } from "./authz-tree.js"
 
 /* repo/tree 拋的角色錯 → HTTP。unique(tenant,key) 衝突(pg 23505)→ 409。 */
 function translateRoleError(error: unknown): never {

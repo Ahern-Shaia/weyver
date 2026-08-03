@@ -1,4 +1,4 @@
-import { createParamDecorator, type ExecutionContext, SetMetadata } from "@nestjs/common"
+import { type ExecutionContext, SetMetadata, createParamDecorator } from "@nestjs/common"
 import type { RequestWithTenant } from "../http/tenant-context.js"
 import type { EffectivePermissions } from "./authz-effective.js"
 import type { FormAction } from "./authz-model.js"

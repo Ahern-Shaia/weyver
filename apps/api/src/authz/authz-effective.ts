@@ -1,10 +1,10 @@
 import {
-  clampFieldToForm,
   DATA_ACTIONS,
-  defaultFieldVisibility,
+  FORM_ACTIONS,
   type FieldVisibility,
   type FormAction,
-  FORM_ACTIONS,
+  clampFieldToForm,
+  defaultFieldVisibility,
   maxFieldVisibility,
 } from "./authz-model.js"
 import type {
@@ -62,6 +62,16 @@ export class EffectivePermissions {
 
   hasAction(formId: number, action: FormAction): boolean {
     return this.formActions(formId).has(action)
+  }
+
+  /* 🔴 給 `/api/authz/me` 序列化用。**admin 回空物件**(而非把全租戶表單展開)——
+     admin 的 `isAdmin: true` 已經表達了一切,展開只會讓回應大小隨表單數線性成長,
+     且會把「這個租戶有哪些表」洩漏在一個不需要那份資訊的端點裡。 */
+  toFormActionMap(): Record<string, FormAction[]> {
+    if (this.isAdmin) return {}
+    const out: Record<string, FormAction[]> = {}
+    for (const [formId, actions] of this.forms) out[String(formId)] = [...actions]
+    return out
   }
 
   canRead(formId: number): boolean {

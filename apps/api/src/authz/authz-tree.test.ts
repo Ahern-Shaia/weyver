@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
-  depthForParent,
   MAX_ROLE_TREE_DEPTH,
-  resolveRoleClosure,
   RoleTreeDepthError,
+  depthForParent,
+  resolveRoleClosure,
   wouldCreateCycle,
 } from "./authz-tree.js"
 

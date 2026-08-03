@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  type FormAction,
   clampFieldToForm,
   defaultFieldVisibility,
-  type FormAction,
   isFormAction,
   maxFieldVisibility,
   requiredActionForMethod,

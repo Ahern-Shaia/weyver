@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { buildEffectivePermissions, type EffectivePermissionsInput } from "./authz-effective.js"
+import { type EffectivePermissionsInput, buildEffectivePermissions } from "./authz-effective.js"
 import type { FormAction } from "./authz-model.js"
 import type {
   CategoryPermissionRow,
@@ -230,5 +230,70 @@ describe("readableFormIds(舊 list 過濾)", () => {
     })
     expect(p.readableFormIds([5, 6, 7])).toEqual([5])
     expect(build({ isAdmin: true }).readableFormIds([5, 6, 7])).toEqual([5, 6, 7])
+  })
+})
+
+/* 🔴 OQ-ARI-9|**分類管理員** = 在分類層授予 `design`。
+
+   一手依據(§10-ter):Ragic 以「群組頁籤 + 群組管理員」提供容器層的設計權下放,
+   而本模組原本只有「租戶 admin」或「逐表 design 授權」兩種。
+   對碼後確認**容器層授 design 本來就走得通**(分類繼承不過濾任何動作)——
+   缺的是前端沒有能力來源,授了也看不到入口(見 `/api/authz/me`)。
+
+   這幾條把「走得通」釘住,免得日後有人為了收緊而在繼承層加上動作過濾,
+   一加就會把分類管理員這個角色靜默廢掉。 */
+describe("OQ-ARI-9 分類管理員(容器層 design)", () => {
+  it("分類層授 design → 該分類內的表單繼承得到 design", () => {
+    const p = build({
+      roleIds: [1],
+      categoryRows: [cp(1, 9, ["view", "edit", "design"])],
+      formMeta: [meta(5, { categoryId: 9 }), meta(6)],
+    })
+    expect(p.hasAction(5, "design")).toBe(true)
+    /* 不在該分類的表單不受影響 —— 容器層授權的邊界就是那個容器 */
+    expect(p.hasAction(6, "design")).toBe(false)
+  })
+
+  it("🔴 敏感表不吃分類繼承 —— 分類管理員也拿不到(OQ-ARI-5 之邊界)", () => {
+    const p = build({
+      roleIds: [1],
+      categoryRows: [cp(1, 9, ["view", "design"])],
+      formMeta: [meta(7, { categoryId: 9, isSensitive: true })],
+    })
+    expect(p.hasAction(7, "design")).toBe(false)
+  })
+
+  it("逐表覆寫是絕對集,會蓋掉分類給的 design(層 2 優先於層 3)", () => {
+    const p = build({
+      roleIds: [1],
+      categoryRows: [cp(1, 9, ["view", "design"])],
+      formRows: [fp(1, 5, ["view"])],
+      formMeta: [meta(5, { categoryId: 9 })],
+    })
+    expect(p.hasAction(5, "design")).toBe(false)
+    expect(p.hasAction(5, "view")).toBe(true)
+  })
+})
+
+/* `/api/authz/me` 的序列化。前端唯一的能力來源,回錯就是畫面說謊。 */
+describe("toFormActionMap(/api/authz/me)", () => {
+  it("非 admin:逐表列出實際動作", () => {
+    const p = build({
+      roleIds: [1],
+      formRows: [fp(1, 5, ["view", "design"])],
+      formMeta: [meta(5), meta(6)],
+    })
+    const map = p.toFormActionMap()
+    expect(map["5"]).toEqual(expect.arrayContaining(["view", "design"]))
+    /* 沒有任何動作的表**不出現在 map 裡** —— 回一個空陣列與「沒這個 key」語意相同,
+       但少送一筆就少洩漏一張表的存在 */
+    expect(map["6"]).toBeUndefined()
+  })
+
+  it("🔴 admin 回空物件 —— `isAdmin: true` 已表達一切", () => {
+    /* 展開全租戶表單會讓回應大小隨表單數線性成長,
+       且把「這個租戶有哪些表」洩漏在一個不需要那份資訊的端點裡。
+       ⚠️ 因此前端**必須先看 isAdmin**,否則管理員會被判成什麼都不能做。 */
+    expect(build({ isAdmin: true }).toFormActionMap()).toEqual({})
   })
 })

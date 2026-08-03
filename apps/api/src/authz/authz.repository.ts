@@ -13,7 +13,7 @@ import {
   users,
 } from "../db/schema.js"
 import { type FieldVisibility, type FormAction, isFormAction } from "./authz-model.js"
-import { depthForParent, RoleCycleError, wouldCreateCycle } from "./authz-tree.js"
+import { RoleCycleError, depthForParent, wouldCreateCycle } from "./authz-tree.js"
 
 /* P0-4a authz Tier-1 資料存取(特權 DRIZZLE 車道,如 IdentityService)。
    授權表非 RLS;每查詢以 tenant_id 綁定 + app 層 scope。docs/modules/R1/authz.md §4/§7。 */

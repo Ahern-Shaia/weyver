@@ -6,9 +6,9 @@ import {
   Injectable,
 } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
-import { adminPermissions, type EffectivePermissions } from "./authz-effective.js"
+import { type EffectivePermissions, adminPermissions } from "./authz-effective.js"
+import { REQUIRED_FORM_ACTION, type RequestWithPermissions, SELF_SERVICE } from "./authz-http.js"
 import { type FormAction, requiredActionForMethod } from "./authz-model.js"
-import { REQUIRED_FORM_ACTION, SELF_SERVICE, type RequestWithPermissions } from "./authz-http.js"
 import { PermissionService } from "./permission.service.js"
 
 /* P0-4a M3|表單級授權守衛。掛在 TenantGuard 之後(需 request.tenantContext)。
