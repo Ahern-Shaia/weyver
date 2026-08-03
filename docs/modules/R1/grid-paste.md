@@ -39,7 +39,8 @@
 |---|---|---|
 | 網格元件 | `GridSheet`(Glide 封裝,99 行) | `packages/ui/src/components/grid-sheet.tsx` |
 | 對外介面 | `onCellEdited` / `onCellClicked` / `gridSelection` / `onGridSelectionChange` | 同上 L17-28 |
-| **貼上相關 props** | 🔴 **全無**(`onPaste` / `getCellsForSelection` / `onCellsEdited` 未曝露) | 同上 |
+| **貼上相關 props** | 🔴 `onPaste` / `onCellsEdited` **未曝露**(貼上確實不可能)| 同上 |
+| **複製** | ⚠️ **v0.1 寫錯**:`getCellsForSelection` **已設為 `true`**(L95)。Glide 型別註解逐字:「Used for copy/paste, **if unset copy will not work**」、傳 `true` 則「the data grid will internally use the `getCellContent` callback to provide a basic implementation」→ **複製很可能已經可用,待實測確認** | `grid-sheet.tsx:95` |
 | 單格編輯 | `onCellEdited` → `useUpdateRecord`(逐格一個請求) | `records/grid-panel.tsx:88,107` |
 | 批次**新增** | ✅ `POST /forms/:id/records/bulk` → `createManyRecords`,**單一 tx** | `records.controller.ts:156` · `record.service.ts:993` |
 | 批次**更新** | 🔴 **不存在** | 只有 `@Patch(":recordId")` 單筆 |
@@ -116,7 +117,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 | **OQ-GP-4** | 貼到計算欄(formula / rollup / lookup / autoNumber) | A. **跳過該欄並在結果中說明「N 格因為是計算欄未寫入」**<br>B. 整批拒絕<br>C. 靜默跳過 | **A** —— B 太嚴(使用者從 Excel 複製一整塊很自然會含計算欄);C 違反「不靜默」原則 |
 | **OQ-GP-5** | 型別轉不過去的格(例:文字貼進日期欄) | A. **前端先驗,標紅該格,整批不送**<br>B. 送出後由後端逐格報錯<br>C. 盡力而為,轉不過去的留空 | **A** —— 使用者在**貼上當下**就看到哪幾格有問題,而不是送出後才知道。C 會靜默改變資料 |
 | **OQ-GP-6** | undo 範圍 | A. **一次貼上 = 一步 undo**<br>B. 逐格 undo<br>C. 不支援 undo(靠回收桶) | **A** —— 使用者按的是一個動作,undo 就該還原一個動作 |
-| **OQ-GP-7** | 複製(網格 → 剪貼簿)要不要同批做 | A. **同批做**(貼上與複製是一組;只做貼上等於單向)<br>B. 另立 | **A** —— 客戶的實際流程是 Excel ⇄ 系統雙向搬。只做貼上,他仍得手動重打才能拿回 Excel。且複製是唯讀,風險遠低於貼上,同批做的邊際成本小 |
+| **OQ-GP-7** | 複製(網格 → 剪貼簿)要不要同批做 | A. ~~同批**做**~~ → 改為 **同批「實測 + 補齊」**<br>B. 另立 | **A(語意已修正)** —— ⚠️ **v0.1 假設複製要從零做,是錯的**:`getCellsForSelection` 已設 `true`,Glide 內建實作應已提供複製。故本項的工作**不是實作而是驗證**:實測貼回 Excel 的還原度(欄位分隔 / 含換行的儲存格 / 日期與數值格式),缺什麼補什麼。**M4 的內容因此縮小**,並改以實測結果決定要不要自訂 `getCellsForSelection` callback |
 | **OQ-GP-8** | 剪貼簿格式支援範圍 | A. **TSV 為主 + HTML table 為輔**(含換行的儲存格)<br>B. 只做 TSV<br>C. 加做 CSV | **A** —— B 對「備註」這類含換行的欄位會壞掉,而那正是 ERP 單據常見的欄。C 沒有來源會產生(Excel 複製不給 CSV) |
 
 ---
@@ -138,4 +139,5 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 
 | 日期 | 版本 | 變更 |
 |---|---|---|
+| 2026-08-03 | v0.2 | **裁定前覆查,修正 v0.1 的一處現況誤述**。原寫「貼上相關 props 全無」,實際 `getCellsForSelection` **已設為 `true`** —— 依 Glide 型別註解逐字「Used for copy/paste, **if unset copy will not work**」,**複製很可能早就能用**。故 OQ-GP-7 的工作性質由「實作複製」改為「實測複製的還原度並補齊」,M4 範圍縮小。⚠️ 這是同一個形狀第三次:**寫現況時沒把那一行讀完**(前兩次見 approval-advanced v0.3)。貼上仍確實不可能(`onPaste` / `onCellsEdited` 未曝露),模組必要性不變 | Claude Code |
 | 2026-08-03 | v0.1 | M0 草擬。**起因**:review 裁定「先做功能,採用建議 #153」。走查發現關鍵事實 —— **有 bulk create,沒有 bulk update**,故本模組必然動後端,不是純前端(避免重演 UP-3c 誤判為「純前端渲染層」)。承 `grid-and-excel-import` v1.0(SHIPPED),貼上不在其 §1.3「不做的事」中,屬**新能力**故另立 M0 |
