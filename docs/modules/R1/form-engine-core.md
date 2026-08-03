@@ -59,6 +59,16 @@
 
 ## 2-bis. 巨人的肩膀:企業級 metadata 平台做法對照(2026-07-19 web 研究,retrospective 補)
 
+> ⚠️ **2026-08-03 稽核附註|本節是 retrospective 自評,結論的可靠度結構性偏高。**
+> 同日(2026-07-19)以相同形態補寫的 §2-bis 共四份
+> (`form-engine-core` / `form-designer-ui` / `grid-and-excel-import` / `formula-and-linkload`),
+> 其中兩份的結論已被後續的 0-bis 推翻。**成因不是不用功,是問題設錯了** ——
+> 第一輪 retrospective 問的是「我當初選對了嗎」,而那個問題的答案幾乎必然是「對」。
+> 該問的是「**這個套件 / 這個競品在這一題附近還給了什麼我沒用到的**」。
+> 依 `_template.md` §0.4:**禁寫「無向上缺口」這類終局結論。**
+> 稽核見 `docs/modules/_audit/giants-shoulders-audit-A.md`。
+
+
 > docs/16 是 **OSS 同類**(Baserow/NocoDB/Teable)的實證;此節補上**企業級 metadata 平台**的對照,並把 Weyver 選「每表單真實表」這個**刻意架構分叉**與其 scaling 天花板明文化。
 
 | 系統 | 動態 schema 手法 | 對 Weyver 的意義 |

@@ -53,6 +53,16 @@
 
 ## 2-bis. 巨人的肩膀:企業級公式 / Rollup 引擎做法參考(2026-07-19 web 研究)
 
+> ⚠️ **2026-08-03 稽核附註|本節是 retrospective 自評,結論的可靠度結構性偏高。**
+> 同日(2026-07-19)以相同形態補寫的 §2-bis 共四份
+> (`form-engine-core` / `form-designer-ui` / `grid-and-excel-import` / `formula-and-linkload`),
+> 其中兩份的結論已被後續的 0-bis 推翻。**成因不是不用功,是問題設錯了** ——
+> 第一輪 retrospective 問的是「我當初選對了嗎」,而那個問題的答案幾乎必然是「對」。
+> 該問的是「**這個套件 / 這個競品在這一題附近還給了什麼我沒用到的**」。
+> 依 `_template.md` §0.4:**禁寫「無向上缺口」這類終局結論。**
+> 稽核見 `docs/modules/_audit/giants-shoulders-audit-A.md`。
+
+
 > 除 docs/16 的 OSS 同類(Teable/Baserow/NocoDB)外,對照企業級 / 業界標竿的實證架構,把「計算引擎內構」與「Rollup at scale」做對。
 
 | 系統 | 類型 / 授權 | 借鏡到本模組(不採其實作,採其架構經驗)|

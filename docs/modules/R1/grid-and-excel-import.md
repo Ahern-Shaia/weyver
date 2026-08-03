@@ -57,6 +57,16 @@
 
 ## 2-bis. 巨人的肩膀:企業級 data grid + Excel 匯入做法對照(2026-07-19 web 研究,retrospective 補)
 
+> ⚠️ **2026-08-03 稽核附註|本節是 retrospective 自評,結論的可靠度結構性偏高。**
+> 同日(2026-07-19)以相同形態補寫的 §2-bis 共四份
+> (`form-engine-core` / `form-designer-ui` / `grid-and-excel-import` / `formula-and-linkload`),
+> 其中兩份的結論已被後續的 0-bis 推翻。**成因不是不用功,是問題設錯了** ——
+> 第一輪 retrospective 問的是「我當初選對了嗎」,而那個問題的答案幾乎必然是「對」。
+> 該問的是「**這個套件 / 這個競品在這一題附近還給了什麼我沒用到的**」。
+> 依 `_template.md` §0.4:**禁寫「無向上缺口」這類終局結論。**
+> 稽核見 `docs/modules/_audit/giants-shoulders-audit-A.md`。
+
+
 > 兩招牌各對照企業級標竿:網格對 data grid 三雄、Excel 匯入對專業匯入 UX(flatfile 式)。
 
 | 領域 | 標竿 | 對 Weyver 的意義 |
@@ -66,7 +76,19 @@
 | | **Handsontable**:試算表 + 內建公式 + Excel 編輯,**但 GPL/商用** | 授權排除;公式走自建 P0-3(fork Teable MIT) |
 | **Excel 匯入 UX** | **flatfile.com**(專業匯入 SaaS)模式:**parse → 型別推斷 → 欄位對映 / 校正 → 驗證 → commit** | **Weyver ExcelImportPanel 正是此流程**(SheetJS parse → heuristic 推斷 → 預覽校正 → bulk;M3 已 SHIPPED)✅ 已對齊 |
 
-**結論**|網格選 Glide(canvas + OSS + 捲動效能)在三雄取捨中站對(AG Grid 卡商用、Handsontable 卡 GPL);Excel 匯入的「解析→推斷→校正→灌入」流程與專業匯入 SaaS(flatfile)同構。皆 ✅ 已對齊,無向上缺口。
+**結論**|網格選 Glide(canvas + OSS + 捲動效能)在三雄取捨中站對(AG Grid 卡商用、Handsontable 卡 GPL);Excel 匯入的「解析→推斷→校正→灌入」流程與專業匯入 SaaS(flatfile)同構。~~皆 ✅ 已對齊,無向上缺口。~~
+
+🔴 **2026-08-03 作廢後半句。** 「無向上缺口」已證實為錯:同一個 Glide 版本的型別檔逐字寫著
+`onPaste` 會「split the data by tabs and newlines and paste into available cells」、
+`onCellsEdited`「provides all edits inbound as **a single batch**」,
+而 `packages/ui/src/components/grid-sheet.tsx` 當時只設了 `getCellsForSelection`,
+兩者全 repo 零命中 → **從 Excel 貼一整塊資料進網格是不可能的**。
+而「一一複製貼上極度耗時」正是客戶離開 Excel 的第一理由。
+缺口延誤約六週,直到 2026-08-03 才另立 `grid-paste` 模組補。
+
+**本句錯的方式值得記住**:選型(Glide vs AG Grid vs Handsontable)確實選對了,
+研究也做了 —— 但只查到「這個套件該不該選」就停,沒查「選了之後它給了什麼我沒接」。
+前半句「Glide 站對」仍然成立,**錯的是把選型正確當成能力已用盡**。
 
 ---
 

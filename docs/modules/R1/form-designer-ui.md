@@ -57,6 +57,16 @@
 
 ## 2-bis. 巨人的肩膀:schema-driven UI 企業級做法對照(2026-07-19 web 研究,retrospective 補)
 
+> ⚠️ **2026-08-03 稽核附註|本節是 retrospective 自評,結論的可靠度結構性偏高。**
+> 同日(2026-07-19)以相同形態補寫的 §2-bis 共四份
+> (`form-engine-core` / `form-designer-ui` / `grid-and-excel-import` / `formula-and-linkload`),
+> 其中兩份的結論已被後續的 0-bis 推翻。**成因不是不用功,是問題設錯了** ——
+> 第一輪 retrospective 問的是「我當初選對了嗎」,而那個問題的答案幾乎必然是「對」。
+> 該問的是「**這個套件 / 這個競品在這一題附近還給了什麼我沒用到的**」。
+> 依 `_template.md` §0.4:**禁寫「無向上缺口」這類終局結論。**
+> 稽核見 `docs/modules/_audit/giants-shoulders-audit-A.md`。
+
+
 > 表單設計器 / 填單皆為 **metadata-driven UI**(由 `field_def` 生成)。對照企業級 schema-driven form 做法,驗證模式並記下可借鏡的分層。
 
 | 系統 / 模式 | 做法 | 對 Weyver 的意義 |
