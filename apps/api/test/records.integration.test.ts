@@ -142,6 +142,72 @@ describe("A4 record DML on real PG", () => {
     expect(after.records.length).toBe(before.records.length) // 全 rollback,前兩列也沒進
   })
 
+  /* 🔴 grid-paste M1|批次更新(網格貼上的寫入端)。
+     貼上到既有列 = 大量 update,而此前只有單筆 PATCH。 */
+  it("🔴 updateManyRecords:單一 tx 全成或全敗 —— 中間一列壞不得留下半套", async () => {
+    const a = await records.createRecord(tenantA, poFormId, { 供應商: "改前A" }, ACTOR)
+    const b = await records.createRecord(tenantA, poFormId, { 供應商: "改前B" }, ACTOR)
+
+    const error = await records
+      .updateManyRecords(
+        tenantA,
+        poFormId,
+        [
+          { recordId: a.id, values: { 供應商: "改後A" } },
+          /* 金額為 money,給 float 會被驗證擋下 —— 用它當「中間一列壞掉」 */
+          { recordId: b.id, values: { 供應商: "改後B", 金額: 3.5 } },
+        ],
+        ACTOR,
+      )
+      .catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(Error)
+
+    /* 🔴 第一列不得留下來。逐格 PATCH 的世界裡它會 —— 那正是本方法存在的理由 */
+    const after = await records.getRecord(tenantA, poFormId, a.id)
+    expect(after.values.供應商).toBe("改前A")
+  })
+
+  it("updateManyRecords:計算欄跳過而不是整批拒絕,且回報跳過幾格", async () => {
+    const rec = await records.createRecord(tenantA, poFormId, { 供應商: "含計算欄" }, ACTOR)
+    /* 單號是 autoNumber(systemManaged)—— 從 Excel 複製一整塊很自然會含它 */
+    const result = await records.updateManyRecords(
+      tenantA,
+      poFormId,
+      [{ recordId: rec.id, values: { 供應商: "改過了", 單號: "PO-9999" } }],
+      ACTOR,
+    )
+    expect(result.updated).toBe(1)
+    expect(result.skippedComputedCells).toBe(1)
+    const after = await records.getRecord(tenantA, poFormId, rec.id)
+    expect(after.values.供應商).toBe("改過了")
+    /* 自動編號沒有被貼上的值蓋掉 */
+    expect(after.values.單號).not.toBe("PO-9999")
+  })
+
+  it("🔴 updateManyRecords:跨租戶的 recordId 影響 0 列(不是報錯,是根本改不到)", async () => {
+    const mine = await records.createRecord(tenantA, poFormId, { 供應商: "A 的資料" }, ACTOR)
+    await records
+      .updateManyRecords(
+        tenantB,
+        poFormId,
+        [{ recordId: mine.id, values: { 供應商: "B 想改 A 的" } }],
+        ACTOR,
+      )
+      .catch(() => undefined)
+    const after = await records.getRecord(tenantA, poFormId, mine.id)
+    expect(after.values.供應商).toBe("A 的資料")
+  })
+
+  it("updateManyRecords:超過 500 列明確拒絕(不靜默截斷)", async () => {
+    const rows = Array.from({ length: 501 }, (_, i) => ({
+      recordId: i + 1,
+      values: { 供應商: "x" },
+    }))
+    await expect(records.updateManyRecords(tenantA, poFormId, rows, ACTOR)).rejects.toThrow(
+      BulkTooLargeError,
+    )
+  })
+
   it("createManyRecords: rejects over-limit batches", async () => {
     const rows = Array.from({ length: 5001 }, () => ({ 供應商: "x" }))
     await expect(records.createManyRecords(tenantA, poFormId, rows, ACTOR)).rejects.toThrow(

@@ -29,6 +29,7 @@ import {
 } from "../relations/reverse-relation.service.js"
 import {
   bulkRecordsBodySchema,
+  bulkUpdateRecordsBodySchema,
   createRecordBodySchema,
   groupStatsBodySchema,
   saveWithLinesBodySchema,
@@ -166,6 +167,29 @@ export class RecordsController {
       tenant.tenantId,
       formId,
       body.rows.map((r) => r.values),
+      tenant.actorId,
+      permissions,
+    )
+  }
+
+  /* 🔴 grid-paste M1|批次**更新**(網格貼上到既有列)。
+     單一 tx 全成或全敗;計算欄跳過並回報格數,由前端說給使用者聽。
+     冪等由既有 `IdempotencyInterceptor` 以 header 處理(OQ-GP-9)——
+     貼上天生會被重試,而對 ERP 來說重試一次就是多寫 200 筆。 */
+  @Post("bulk-update")
+  @HttpCode(200)
+  @RequiresFormAction("edit")
+  async bulkUpdate(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Body(new ZodValidationPipe(bulkUpdateRecordsBodySchema))
+    body: z.infer<typeof bulkUpdateRecordsBodySchema>,
+  ): Promise<{ updated: number; skippedComputedCells: number }> {
+    return this.records.updateManyRecords(
+      tenant.tenantId,
+      formId,
+      body.rows,
       tenant.actorId,
       permissions,
     )

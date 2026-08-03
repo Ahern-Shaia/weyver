@@ -56,6 +56,21 @@ export const bulkRecordsBodySchema = z.object({
   rows: z.array(z.object({ values: z.record(z.string(), z.unknown()) })).max(5000),
 })
 
+/* 🔴 grid-paste M1|批次**更新**(貼上到既有列)。500 列上限為 OQ-GP-2 裁定,
+   出處 Smartsheet 官方「You can paste up to 500 rows at a time」。
+   超過在此就被 zod 擋下並回 400,**不進到服務層才發現**。 */
+export const bulkUpdateRecordsBodySchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        recordId: z.number().int().positive(),
+        values: z.record(z.string(), z.unknown()),
+      }),
+    )
+    .min(1)
+    .max(500),
+})
+
 export const saveWithLinesBodySchema = z.object({
   childFormId: z.number().int().positive(),
   header: z.object({

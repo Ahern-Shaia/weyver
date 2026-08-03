@@ -212,6 +212,13 @@ function normalizeEmpty(raw: unknown): unknown {
 
 const BULK_MAX_ROWS = 5000
 
+/* 🔴 grid-paste OQ-GP-2 = 500 列。**唯一查到官方明列列數上限的先例**:
+   Smartsheet「You can paste up to 500 rows at a time」(Airtable 另建議 200–300 筆/批)。
+   超過**明確拒絕並導向 Excel 匯入**,絕不靜默截斷 —— 四家競品的靜默降級
+   (Ragic 2000 筆整批不重算 / Teable 顯示成功卻沒寫入 / Airtable dropped /
+   AG Grid will not be pasted)共同點都是「使用者看到成功、系統其實少做了事」。 */
+const BULK_MAX_UPDATE_ROWS = 500
+
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`)
 }
@@ -1051,6 +1058,88 @@ export class RecordService {
       })
       return { created: rows.length }
     })
+  }
+
+  /* 🔴 R1·P0-2 殘留 M1|**批次更新**(網格貼上的寫入端;grid-paste OQ-GP-1 = A)。
+
+     ## 為什麼非有不可
+
+     此前只有 `@Patch(":recordId")` 單筆。貼上一塊 Excel 到既有列 = 大量 update,
+     逐格發 PATCH 的話貼 500 格就是 500 個請求,而且**沒有原子性** ——
+     第 300 格失敗時前 299 格已經寫進去了。**那是正確性問題不是效能問題。**
+
+     ## OQ-GP-10:走與表單儲存同一條路
+
+     Ragic 官方自白(doc/139):「**從列表頁編輯可能造成公式沒有重算**」,
+     而它給的解法竟是「勾選關閉列表頁編輯」。本方法因此**逐列走 `updateOne`**
+     並在同一 tx 內維護事件與搜尋索引 —— 與單筆更新完全同一條路徑。
+     為了省事直接寫 SQL 會複製 Ragic 那個問題:資料進去了但衍生值沒動,而使用者看不出來。
+
+     ## OQ-GP-4:計算欄跳過而不是整批拒絕
+
+     使用者從 Excel 複製一整塊,很自然會含公式欄。整批拒絕太嚴;
+     **靜默跳過則是主流的錯**(Airtable 官方自承 unmatched values are dropped)。
+     故:跳過 + **回報跳過了幾格**,由呼叫端說給使用者聽。 */
+  async updateManyRecords(
+    tenantId: number,
+    formId: number,
+    rows: readonly { readonly recordId: number; readonly values: RecordValues }[],
+    actorId: number,
+    policy?: FieldAccessPolicy,
+  ): Promise<{ updated: number; skippedComputedCells: number }> {
+    if (rows.length > BULK_MAX_UPDATE_ROWS) throw new BulkTooLargeError(BULK_MAX_UPDATE_ROWS)
+    if (rows.length === 0) return { updated: 0, skippedComputedCells: 0 }
+    const resolved = await this.resolveForm(tenantId, formId)
+
+    /* 計算欄先剝掉(OQ-GP-4)。`virtual` 涵蓋 lookup / rollup / createdBy…,
+       `systemManaged` 涵蓋 autoNumber 與公式 —— 兩者都不可寫。 */
+    let skippedComputedCells = 0
+    const prepared = rows.map((row) => {
+      const values: RecordValues = {}
+      for (const [name, value] of Object.entries(row.values)) {
+        const field = resolved.byName.get(name)
+        if (field === undefined) continue
+        const def = fieldType(field.type)
+        if (def.virtual === true || def.systemManaged === true) {
+          skippedComputedCells += 1
+          continue
+        }
+        values[name] = value
+      }
+      return { recordId: row.recordId, values }
+    })
+
+    for (const row of prepared) this.assertWritable(resolved, formId, row.values, policy)
+
+    await this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        for (const row of prepared) {
+          if (Object.keys(row.values).length === 0) continue
+          /* expectedVersion 傳 null:一次貼上涵蓋數百格,要求逐列版本不切實際
+             (`saveWithLines` 的明細更新亦然)。**代價誠實記錄**:兩人同時貼同一塊
+             會後到者覆蓋,而非撞版本衝突。租戶邊界仍由 RLS 與 `updateOne` 的
+             `tenant_id` 條件把關,跨租戶的 recordId 影響 0 列。 */
+          await this.updateOne(trx, tenantId, resolved, row.recordId, null, row.values, actorId)
+          await this.events?.emitInTx(trx, {
+            tenantId,
+            type: EVENT_TYPES.recordUpdated,
+            formId,
+            recordId: row.recordId,
+            actorId,
+          })
+          await this.searchIndex?.upsertInTx(trx, {
+            tenantId,
+            formId,
+            recordId: row.recordId,
+            fields: toIndexable(resolved.fields),
+            values: row.values,
+          })
+        }
+      },
+      { actorId, own: policy?.isScopedToOwn?.(formId, "edit") === true },
+    )
+    return { updated: prepared.length, skippedComputedCells }
   }
 
   /* F-6 M2 配額用:單次 count(僅 bulk 路徑呼叫,非每列)。

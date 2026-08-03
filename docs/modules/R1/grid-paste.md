@@ -1,6 +1,6 @@
 # grid-paste.md — [R1·P0-2 殘留] 網格貼上 Excel 區塊
 
-> ⏳ **狀態:M0 草擬,待裁定(OQ-GP-1..8)**
+> 🚧 **狀態:APPROVED(2026-08-03,OQ-GP-1..10 全採建議)— 進 M1**
 >
 > **一句話**|客戶離開 Excel 的**第一理由**是「一一複製貼上,極度耗時且容易出錯」,
 > 而我們的網格**貼不進一整塊 Excel 資料**。實測 `onPaste` / `getCellsForSelection` / `onCellsEdited`
@@ -196,7 +196,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 
 ---
 
-## 6. 開放問題(OQ-GP-N)
+## 6. 開放問題(OQ-GP-N)— ✅ **已裁定 2026-08-03(全採建議)**
 
 | # | 議題 | 選項 | 建議 |
 |---|---|---|---|
@@ -218,7 +218,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 | M | 內容 | 驗收 |
 |---|---|---|
 | **M0** | 本檔 → APPROVED(OQ-GP-1..8 裁定) | 用戶裁定 |
-| **M1** | 後端 bulk update(單一 tx + 欄位級權限 + 逐筆驗租戶 + idempotency) | 整合測試:部分失敗全 rollback · **跨租戶 recordId 被拒** · 無權限欄位被拒 |
+| **M1** ✅ | 後端 bulk update(單一 tx + 欄位級權限 + 計算欄跳過並回報 + 500 列上限)| 整合測試 4 條:部分失敗**全 rollback**(第一列不得留下)· 計算欄跳過且回報格數 · **跨租戶 recordId 影響 0 列** · 超過 500 明確拒絕 |
 | **M2** | `GridSheet` 曝露 `onPaste` / `getCellsForSelection` / `onCellsEdited`;TSV + HTML 解析(含引號換行) | 單元測試:含換行 / 含引號 / 含定位字元的儲存格 |
 | **M3** | 前端先驗 + 錯誤格標示 + 計算欄跳過說明 + 超出列數自動新增 | e2e:貼一塊 → 標紅 → 修正 → 成功 |
 | **M4** | 複製(網格 → TSV)+ 一次 undo | e2e:複製 → 貼回 → 值相同;貼上 → undo → 還原 |
@@ -230,6 +230,7 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 
 | 日期 | 版本 | 變更 |
 |---|---|---|
+| 2026-08-03 | v0.4 | **OQ-GP-1..10 全數裁定(全採建議),進 M1;M1 SHIPPED**。`updateManyRecords`:單一 tx 全成或全敗(GP-1)· 500 列上限走 zod 在入口就擋(GP-2,Smartsheet 出處)· 計算欄跳過並**回報跳過格數**而非靜默(GP-4)· **逐列走 `updateOne` 並在同 tx 維護事件與搜尋索引**(GP-10 硬約束 —— 為省事直接寫 SQL 會複製 Ragic doc/139 自承的「列表頁編輯造成公式沒重算」)· 冪等沿用既有 `IdempotencyInterceptor`(GP-9)。**誠實記錄一個取捨**:`expectedVersion` 傳 null(一次貼上數百格,逐列版本不切實際,`saveWithLines` 明細亦然)→ 兩人同時貼同一塊會後到者覆蓋而非撞版本衝突;租戶邊界仍由 RLS 與 `updateOne` 的 `tenant_id` 條件把關。api 1007 綠 | Claude Code |
 | 2026-08-03 | v0.3 | **§0.3 競品研究完成,五條 OQ 建議依證據改寫,並新增兩條**。**OQ-GP-2 的 1000 列換成有出處的 500**(Smartsheet 官方明文「You can paste up to 500 rows at a time」,查到唯一官方明列的列數;Airtable 另建議 200–300 筆/批)。**OQ-GP-3 由「自動加列」改為「自動加列但先確認」** —— Airtable 有確認關卡而**加列是改變資料形狀不是改值**;並新增硬約束「篩選檢視下必須擋或明確處理」(Teable 踩過「in a filtered view could append new rows instead of updating visible ones」,而我方有 view 篩選)。**新增 OQ-GP-9 冪等**(Airtable 官方就有貼上端的 duplicate-block;對 ERP 而言重試一次就是多開 200 張單)與 **OQ-GP-10 貼上須走與表單儲存同一條計算路徑**(Ragic doc/139 自白「從列表頁編輯可能造成公式沒有重算」,而它的解法竟是建議把列表頁編輯整個關掉 —— B 選項就是複製這個問題,故視為硬約束非選項)。**最大的反面教材**:超量就整批不做且不出聲,四家四種形態(Ragic 2000 筆整批不重算 / 3500 筆連修改紀錄都不寫、Teable「success message while the cell content remained unchanged」、Airtable「unmatched values are dropped」、AG Grid「will not be pasted」),共同點是**使用者看到成功、系統其實少做了事**。**最大的空位**:「貼上前標紅問題格」查無任何一家(標未查證非「沒有」),正對上我方「所見即後果」 | Claude Code |
 | 2026-08-03 | v0.2 | **裁定前覆查,修正 v0.1 的一處現況誤述**。原寫「貼上相關 props 全無」,實際 `getCellsForSelection` **已設為 `true`** —— 依 Glide 型別註解逐字「Used for copy/paste, **if unset copy will not work**」,**複製很可能早就能用**。故 OQ-GP-7 的工作性質由「實作複製」改為「實測複製的還原度並補齊」,M4 範圍縮小。⚠️ 這是同一個形狀第三次:**寫現況時沒把那一行讀完**(前兩次見 approval-advanced v0.3)。貼上仍確實不可能(`onPaste` / `onCellsEdited` 未曝露),模組必要性不變 | Claude Code |
 | 2026-08-03 | v0.1 | M0 草擬。**起因**:review 裁定「先做功能,採用建議 #153」。走查發現關鍵事實 —— **有 bulk create,沒有 bulk update**,故本模組必然動後端,不是純前端(避免重演 UP-3c 誤判為「純前端渲染層」)。承 `grid-and-excel-import` v1.0(SHIPPED),貼上不在其 §1.3「不做的事」中,屬**新能力**故另立 M0 |
