@@ -6,10 +6,9 @@ import {
   NotFoundException,
 } from "@nestjs/common"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
-import { RecordService } from "../form-engine/records/record.service.js"
 import type { RecordRow, RecordValues } from "../form-engine/records/record-specs.js"
+import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
-import { ActionsRepository, type ButtonRow } from "./actions.repository.js"
 import type {
   ButtonConfig,
   ButtonDto,
@@ -17,6 +16,7 @@ import type {
   UpdateButtonBody,
   ValueSource,
 } from "./action-specs.js"
+import { ActionsRepository, type ButtonRow } from "./actions.repository.js"
 
 /* R1·後續-1 M1 按鈕動作執行器。docs/22 載重不變量:
  **封閉 allowlist 動作 → config 確定性編譯(非 eval)→ 權限 gate → 冪等 key → audit**。 */

@@ -70,6 +70,12 @@ export const APPROVER_RULES = [
   "manager",
   "managerOfManager",
   "managerOfPrevApprover",
+  /* 🔴 OQ-AP2-9 = C|簽核人 = **這筆記錄上某個 member 欄位**所指的人。
+     為 Ragic 遷移而生:Ragic 的「直屬主管」本來就住在表單的欄位裡,
+     此規則讓它**原地留著**,遷移轉換退化成「指定是哪一欄」——
+     不必把它翻譯成組織結構(那會生出一堆機器命名的角色,而且客戶事後調不動)。
+     與 `manager` 並存:組織關係穩定的租戶用 `manager`(單一真實來源)。 */
+  "fieldRef",
 ] as const
 export type ApproverRule = (typeof APPROVER_RULES)[number]
 
@@ -79,6 +85,10 @@ export const approvalStepSchema = z
     /* 動態規則下沒有靜態角色可指定,故為選配 */
     approverRoleId: z.number().int().positive().optional(),
     approverRule: z.enum(APPROVER_RULES).default("role"),
+    /* `fieldRef` 專用:member 欄位的**顯示名**(與 record values 的 key 一致)。
+       🔴 該欄應以 E-1 欄位級權限設為**申請人唯讀** —— 否則申請人可以把主管
+       改成自己的下屬來繞過核可。此約束同時寫進遷移 SOP,不能只留在型別註解裡。 */
+    approverField: z.string().min(1).max(100).optional(),
     /* 🔴 OQ-AP2-3|會簽 / 擇辦。一個欄位三種意義,**全部顯式**:
          未填    = 任一人即可(既有行為)
          數字 N  = 擇辦,N 人同意
@@ -100,6 +110,10 @@ export const approvalStepSchema = z
   .refine((s) => s.approverRule !== "role" || s.approverRoleId !== undefined, {
     message: "靜態角色簽核必須指定 approverRoleId",
     path: ["approverRoleId"],
+  })
+  .refine((s) => s.approverRule !== "fieldRef" || s.approverField !== undefined, {
+    message: "依欄位指定簽核人時必須指定 approverField",
+    path: ["approverField"],
   })
 export type ApprovalStep = z.infer<typeof approvalStepSchema>
 

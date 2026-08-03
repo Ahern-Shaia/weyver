@@ -9,10 +9,11 @@ import {
 } from "@nestjs/common"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { AuthzRepository } from "../authz/authz.repository.js"
-import { NOTIFICATION_EVENTS } from "../notifications/notification-specs.js"
-import { NotificationService } from "../notifications/notification.service.js"
+import { RecordNotFoundError } from "../form-engine/errors.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
+import { NOTIFICATION_EVENTS } from "../notifications/notification-specs.js"
+import { NotificationService } from "../notifications/notification.service.js"
 import type {
   ApprovalDefDto,
   ApprovalInstanceDto,
@@ -114,7 +115,10 @@ export class ApprovalService {
     }
     /* 🔴 OQ-AP2-2|**送簽當下就把每一關解析一遍**,解析不出人就擋在這裡。
        Salesforce 是等簽核人回應時才炸,那時單子已經走到一半、申請人早就以為送出去了。 */
-    await this.assertResolvable(tenant.tenantId, def.steps, tenant.actorId)
+    await this.assertResolvable(tenant.tenantId, def.steps, tenant.actorId, {
+      formId,
+      recordId,
+    })
 
     const instance = await this.repo.createInstance({
       tenantId: tenant.tenantId,
@@ -174,6 +178,7 @@ export class ApprovalService {
     const me = await this.approverOf(tenant, step, {
       submittedBy: instance.submittedBy,
       instanceId,
+      record: { formId: instance.formId, recordId: instance.recordId },
     })
     if (!me.allowed) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "非本步驟之簽核者" })
@@ -296,6 +301,7 @@ export class ApprovalService {
     const me = await this.approverOf(tenant, step, {
       submittedBy: instance.submittedBy,
       instanceId,
+      record: { formId: instance.formId, recordId: instance.recordId },
     })
     /* 🔴 OQ-AP2-10 之第三條逃生路徑:**管理員可改派** ——
        原簽核人離職時,admin 把單子加給接手的人,不必作廢整個簽核重送。 */
@@ -375,6 +381,7 @@ export class ApprovalService {
     const approver = await this.approverOf(tenant, step, {
       submittedBy: instance.submittedBy,
       instanceId,
+      record: { formId: instance.formId, recordId: instance.recordId },
     })
     if (!approver.allowed) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "非本步驟之簽核者" })
@@ -573,6 +580,7 @@ export class ApprovalService {
               await this.resolveApprovers(tenant.tenantId, step, {
                 submittedBy: inst.submittedBy,
                 instanceId: inst.id,
+                record: { formId: inst.formId, recordId: inst.recordId },
               })
             ).includes(tenant.actorId))
       if (mine) {
@@ -650,11 +658,12 @@ export class ApprovalService {
   private async effectiveApprovers(
     tenantId: number,
     step: ApprovalStep,
-    instance: { id: number; submittedBy: number },
+    instance: { id: number; submittedBy: number; formId: number; recordId: number },
   ): Promise<number[]> {
     const all = await this.resolveApprovers(tenantId, step, {
       submittedBy: instance.submittedBy,
       instanceId: instance.id,
+      record: { formId: instance.formId, recordId: instance.recordId },
     })
     return all.filter((a) => a !== instance.submittedBy)
   }
@@ -662,7 +671,12 @@ export class ApprovalService {
   private async resolveApprovers(
     tenantId: number,
     step: ApprovalStep,
-    ctx: { submittedBy: number | null; instanceId: number | null },
+    ctx: {
+      submittedBy: number | null
+      instanceId: number | null
+      /* `fieldRef` 需要讀這筆記錄的欄位值;其餘規則用不到,故為選配 */
+      record?: { formId: number; recordId: number } | undefined
+    },
   ): Promise<number[]> {
     const base = await this.baseApprovers(tenantId, step, ctx)
     if (ctx.instanceId === null) return base
@@ -674,7 +688,12 @@ export class ApprovalService {
   private async baseApprovers(
     tenantId: number,
     step: ApprovalStep,
-    ctx: { submittedBy: number | null; instanceId: number | null },
+    ctx: {
+      submittedBy: number | null
+      instanceId: number | null
+      /* `fieldRef` 需要讀這筆記錄的欄位值;其餘規則用不到,故為選配 */
+      record?: { formId: number; recordId: number } | undefined
+    },
   ): Promise<number[]> {
     switch (step.approverRule) {
       case "role":
@@ -690,6 +709,32 @@ export class ApprovalService {
         const prev = await this.repo.lastDecider(tenantId, ctx.instanceId)
         return prev === null ? [] : this.repo.managersOf(tenantId, prev, 1)
       }
+      /* 🔴 OQ-AP2-9 = C|讀這筆記錄上指定 member 欄位的值。
+
+         **系統層讀取,不帶呼叫者的權限** —— 簽核人是誰不該因為「誰在問」而改變;
+         若帶呼叫者權限,一個看不到該欄的人會得到「這關沒人能簽」,那是錯的答案。
+
+         欄位不存在 / 被改成非 member 型別 / 值為空 → 回空陣列,
+         由 `assertResolvable` 在**送簽當下**擋下並指名是哪一關。
+         **絕不靜默跳過該關** —— 跳過一關簽核是權限事故,不是體驗問題。 */
+      case "fieldRef": {
+        if (step.approverField === undefined || ctx.record === undefined) return []
+        /* 記錄被刪 / 表單被刪 → 這一關解析不出人,由 assertResolvable 擋。
+           **只吞 NotFound,不吞其他例外** —— 一律 catch 會把真正的故障
+           偽裝成「這關沒人能簽」,而那是查不出來的那種錯。 */
+        const record = await this.records
+          .getRecord(tenantId, ctx.record.formId, ctx.record.recordId)
+          .catch((e: unknown) => {
+            if (e instanceof RecordNotFoundError) return null
+            throw e
+          })
+        /* 🔴 `member` 欄存的是 `bigint`,而 pg 的 int8 **預設回字串**。
+           原本只收 `typeof raw === "number"` → 永遠解析不出人,
+           而且型別檢查與單元測試都不會抱怨(真 PG 整合測試才抓得到)。 */
+        const raw = record?.values[step.approverField]
+        const id = typeof raw === "number" || typeof raw === "string" ? Number(raw) : Number.NaN
+        return Number.isInteger(id) && id > 0 ? [id] : []
+      }
       default:
         return []
     }
@@ -701,12 +746,14 @@ export class ApprovalService {
     tenantId: number,
     steps: readonly ApprovalStep[],
     submittedBy: number,
+    record: { formId: number; recordId: number },
   ): Promise<void> {
     for (const step of steps) {
       if (step.approverRule === "managerOfPrevApprover") continue // 依賴執行期,送簽時無從解析
       const actors = await this.resolveApprovers(tenantId, step, {
         submittedBy,
         instanceId: null,
+        record,
       })
       const usable = actors.filter((a) => a !== submittedBy)
       if (usable.length === 0) {
@@ -726,7 +773,12 @@ export class ApprovalService {
   private async approverOf(
     tenant: TenantContext,
     step: ApprovalStep,
-    ctx: { submittedBy: number | null; instanceId: number | null },
+    ctx: {
+      submittedBy: number | null
+      instanceId: number | null
+      /* `fieldRef` 需要讀這筆記錄的欄位值;其餘規則用不到,故為選配 */
+      record?: { formId: number; recordId: number } | undefined
+    },
   ): Promise<{ allowed: boolean; onBehalfOf: number | null }> {
     if (tenant.isSuperAdmin === true) return { allowed: true, onBehalfOf: null }
     const eligible = new Set(await this.resolveApprovers(tenant.tenantId, step, ctx))
@@ -747,7 +799,14 @@ export class ApprovalService {
      (而分岔的表現會是「畫面說 2/2 了卻還沒過關」這種沒人查得出來的事)。 */
   private async stepProgress(
     tenantId: number,
-    instance: { id: number; currentStep: number; status: string; submittedBy: number },
+    instance: {
+      id: number
+      currentStep: number
+      status: string
+      submittedBy: number
+      formId: number
+      recordId: number
+    },
     steps: readonly ApprovalStep[],
   ): Promise<{ approved: number; required: number }> {
     const step = steps.find((s) => s.stepNo === instance.currentStep)

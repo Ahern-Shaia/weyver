@@ -880,6 +880,101 @@ describe("🔴 動態簽核人(直屬主管,由 role tree 推導)", () => {
   })
 })
 
+/* 🔴 OQ-AP2-9 = C|`fieldRef`:簽核人 = 這筆記錄上某個 member 欄位所指的人。
+
+   為 Ragic 遷移而生 —— Ragic 的「直屬主管」本來就住在表單的欄位裡,
+   此規則讓它原地留著,遷移轉換退化成「指定是哪一欄」。 */
+describe("🔴 依欄位指定簽核人(Ragic 主管欄遷移)", () => {
+  let frFormId = 0
+  let frSubmitter = 0
+  let frBoss = 0
+
+  const AS = (actorId: number): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorId),
+  })
+
+  beforeAll(async () => {
+    const db = createDrizzle(pool)
+    const u = await db
+      .insert(users)
+      .values([
+        { authUserId: "auth-fr-sub", email: "frsub@weyver.test", name: "申請人" },
+        { authUserId: "auth-fr-boss", email: "frboss@weyver.test", name: "指定主管" },
+      ])
+      .returning()
+    frSubmitter = u[0]?.id ?? 0
+    frBoss = u[1]?.id ?? 0
+
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: "請購單_欄位簽核",
+        fields: [
+          { name: "品名", type: "text" },
+          { name: "主管", type: "member" },
+        ],
+      },
+    })
+    frFormId = (form.json() as { id: number }).id
+    const def = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(frFormId)}/approvals/defs`,
+      headers: A(),
+      payload: {
+        name: "送欄位上的主管",
+        steps: [{ stepNo: 1, approverRule: "fieldRef", approverField: "主管" }],
+      },
+    })
+    expect(def.statusCode).toBe(201)
+  })
+
+  const submitWith = async (boss: number | null) => {
+    const rec = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(frFormId)}/records`,
+      headers: AS(frSubmitter),
+      payload: { values: { 品名: "文具", 主管: boss } },
+    })
+    return app.inject({
+      method: "POST",
+      url: `/api/forms/${String(frFormId)}/approvals/records/${String((rec.json() as { id: number }).id)}/submit`,
+      headers: AS(frSubmitter),
+    })
+  }
+
+  it("欄位指到誰,誰就是這一關的簽核人", async () => {
+    const res = await submitWith(frBoss)
+    expect(res.statusCode).toBe(200)
+    const pending = await app.inject({
+      method: "GET",
+      url: "/api/approvals/pending",
+      headers: { ...AS(frBoss), "x-dev-real-authz": "1" },
+    })
+    expect((pending.json() as unknown[]).length).toBeGreaterThan(0)
+  })
+
+  /* 🔴 這是 fieldRef **最大的風險**:申請人可以自己改那個欄位。
+     把主管改成自己就等於自簽核可。送簽當下必須擋,不能等單子走到一半。
+     (真正的緩解是把該欄以 E-1 設為申請人唯讀,但那是設定,程式這一層也要守。) */
+  it("🔴 欄位指到申請人自己 → 送簽當下就擋,不得自簽", async () => {
+    const res = await submitWith(frSubmitter)
+    expect(res.statusCode).toBe(422)
+    const body = res.json() as { code: string; message: string }
+    expect(body.code).toBe("APPROVER_UNRESOLVED")
+    expect(body.message).toContain("本人")
+  })
+
+  /* 欄位沒填 → 解析不出人。**絕不靜默跳過該關** —— 跳過一關簽核是權限事故。 */
+  it("🔴 欄位為空 → 送簽被擋並指名是哪一關,不靜默跳關", async () => {
+    const res = await submitWith(null)
+    expect(res.statusCode).toBe(422)
+    expect((res.json() as { message: string }).message).toContain("第 1 關")
+  })
+})
+
 /* 🔴 OQ-AP2-3 / OQ-AP2-4 / OQ-AP2-5|會簽(N-of-M)與臨時加簽。 */
 describe("🔴 會簽 / 擇辦與臨時加簽", () => {
   let coFormId = 0

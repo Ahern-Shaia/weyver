@@ -18,17 +18,17 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import { SkipApprovalLock } from "./approval-lock.interceptor.js"
-import { ApprovalService } from "./approval.service.js"
 import {
   type ApprovalDefDto,
   type ApprovalInstanceDto,
-  createApprovalDefBodySchema,
   addApproverBodySchema,
+  createApprovalDefBodySchema,
   decisionBodySchema,
   returnBodySchema,
   unlockBodySchema,
 } from "./action-specs.js"
+import { SkipApprovalLock } from "./approval-lock.interceptor.js"
+import { ApprovalService } from "./approval.service.js"
 
 /* R1·後續-1 M2 簽核定義 + 送簽(表單範圍;薄 controller)。 */
 @Controller("api/forms/:formId/approvals")

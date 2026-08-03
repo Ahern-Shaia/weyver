@@ -19,8 +19,8 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import { type ActionResult, ButtonService } from "./button.service.js"
 import { type ButtonDto, createButtonBodySchema, updateButtonBodySchema } from "./action-specs.js"
+import { type ActionResult, ButtonService } from "./button.service.js"
 
 /* R1·後續-1 M1 按鈕 CRUD + 執行(薄 controller)。
    定義(建/改/刪)= design 權;執行 = edit 權(動作副作用另由 RecordService 權限兜底)。 */
