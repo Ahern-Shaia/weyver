@@ -19,8 +19,18 @@ let taskFormId = 0
 let buttonId = 0
 let mgrRoleId = 0
 let bossRoleId = 0
+/* 🔴 送簽者與簽核者是**真的 users 列 + 真的 role_members**,不是憑空的數字 actor id。
+   原本兩者是寫死的 "7" / "8",而角色**從來沒有加成員** —— 測試之所以會過,
+   是因為 dev 車道一律 superAdmin,`approverOf` 第一行就放行了,
+   角色成員這條路從頭到尾沒被走過(順帶製造了滿版的 notification FK 錯誤日誌)。
+   動態簽核人上線後「這一關到底有沒有人簽得了」變成真問題,fixture 必須是真的。 */
+let submitterId = 0
+let approverId = 0
 
-const A = (): Record<string, string> => ({ "x-dev-tenant": String(tenantA), "x-dev-actor": "7" })
+const A = (): Record<string, string> => ({
+  "x-dev-tenant": String(tenantA),
+  "x-dev-actor": String(submitterId),
+})
 
 interface InstanceDto {
   id: number
@@ -49,6 +59,23 @@ beforeAll(async () => {
     .returning()
   mgrRoleId = rrows[0]?.id ?? 0
   bossRoleId = rrows[1]?.id ?? 0
+
+  const urows = await db
+    .insert(users)
+    .values([
+      { authUserId: "auth-submitter", email: "submitter@weyver.test", name: "送簽者" },
+      { authUserId: "auth-approver", email: "approver@weyver.test", name: "簽核者" },
+    ])
+    .returning()
+  submitterId = urows[0]?.id ?? 0
+  approverId = urows[1]?.id ?? 0
+  /* 送簽者**也**放進 mgr —— 「禁止自簽」要證明的正是「即使你在該關角色內也不准簽自己的單」,
+     他不在角色裡的話那條測試就變成在測角色檢查,不是在測自簽防護。 */
+  await db.insert(roleMembers).values([
+    { tenantId: tenantA, roleId: mgrRoleId, actorId: submitterId },
+    { tenantId: tenantA, roleId: mgrRoleId, actorId: approverId },
+    { tenantId: tenantA, roleId: bossRoleId, actorId: approverId },
+  ])
 
   process.env.DATABASE_URL = container.getConnectionUri()
   process.env.APP_DATABASE_URL = container.getConnectionUri()
@@ -120,7 +147,7 @@ const submit = (recordId: number) =>
 
 /* 簽核者刻意用**與送簽者不同**的 actor —— 追溯稽核後禁止自簽(SOX),
    同一人送簽又核准會回 403 SELF_APPROVAL_FORBIDDEN。 */
-const APPROVER = (): Record<string, string> => ({ ...A(), "x-dev-actor": "8" })
+const APPROVER = (): Record<string, string> => ({ ...A(), "x-dev-actor": String(approverId) })
 
 const decide = (instanceId: number, decision: "approve" | "reject") =>
   app.inject({
@@ -746,5 +773,109 @@ describe("🔴 簽核紀錄 hash chain(可偵測竄改)", () => {
     const body = res.json() as { breaks: unknown[]; checkedAt: string }
     expect(Array.isArray(body.breaks)).toBe(true)
     expect(Number.isNaN(Date.parse(body.checkedAt))).toBe(false)
+  })
+})
+
+/* 🔴 OQ-AP2-1 / OQ-AP2-2|動態簽核人解析(直屬主管)。
+
+   對齊 Ragic 官方的三種解析,但**主管由 role tree 推導**而非另存一份組織關係
+   —— 兩份組織結構必然分岔(「權限樹改了、簽核流沒跟著改」)。
+   誠實代價:這裡的「主管」是一組人不是一個人。 */
+describe("🔴 動態簽核人(直屬主管,由 role tree 推導)", () => {
+  let staffRoleId = 0
+  let staffId = 0
+  let lonerRoleId = 0
+  let lonerId = 0
+  let dynFormId = 0
+
+  const AS_ACTOR = (actorId: number): Record<string, string> => ({
+    "x-dev-tenant": String(tenantA),
+    "x-dev-actor": String(actorId),
+  })
+
+  beforeAll(async () => {
+    const db = createDrizzle(pool)
+    const r = await db
+      .insert(roles)
+      .values([
+        /* 課員掛在課長底下 → 課員的「直屬主管」= 課長角色的成員 */
+        { tenantId: tenantA, key: "staff", name: "課員", parentId: mgrRoleId, depth: 1 },
+        /* 沒有父角色 → 解析不出主管,用來驗硬失敗 */
+        { tenantId: tenantA, key: "loner", name: "無主管部門", depth: 0 },
+      ])
+      .returning()
+    staffRoleId = r[0]?.id ?? 0
+    lonerRoleId = r[1]?.id ?? 0
+    const u = await db
+      .insert(users)
+      .values([
+        { authUserId: "auth-staff", email: "staff@weyver.test", name: "課員" },
+        { authUserId: "auth-loner", email: "loner@weyver.test", name: "沒有主管的人" },
+      ])
+      .returning()
+    staffId = u[0]?.id ?? 0
+    lonerId = u[1]?.id ?? 0
+    await db.insert(roleMembers).values([
+      { tenantId: tenantA, roleId: staffRoleId, actorId: staffId },
+      { tenantId: tenantA, roleId: lonerRoleId, actorId: lonerId },
+    ])
+
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: "動態簽核表", fields: [{ name: "品名", type: "text" }] },
+    })
+    dynFormId = (form.json() as { id: number }).id
+    const def = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(dynFormId)}/approvals/defs`,
+      headers: A(),
+      payload: { name: "送主管", steps: [{ stepNo: 1, approverRule: "manager" }] },
+    })
+    expect(def.statusCode).toBe(201)
+  })
+
+  const submitAs = async (actorId: number) => {
+    const rec = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(dynFormId)}/records`,
+      headers: AS_ACTOR(actorId),
+      payload: { values: { 品名: "動態測試" } },
+    })
+    return app.inject({
+      method: "POST",
+      url: `/api/forms/${String(dynFormId)}/approvals/records/${String((rec.json() as { id: number }).id)}/submit`,
+      headers: AS_ACTOR(actorId),
+    })
+  }
+
+  it("課員送簽 → 解析到課長角色的成員,而不是要求指定角色", async () => {
+    const res = await submitAs(staffId)
+    expect(res.statusCode).toBe(200)
+    expect((res.json() as { currentStep: number }).currentStep).toBe(1)
+  })
+
+  /* 🔴 這條是動態簽核人**真的有用**的證明:沒有它,「送給直屬主管」的單子
+     永遠不會出現在主管的待簽匣裡,功能等於不存在。 */
+  it("🔴 該單出現在主管的待簽匣(靜態角色比對抓不到動態關卡)", async () => {
+    await submitAs(staffId)
+    const pending = await app.inject({
+      method: "GET",
+      url: "/api/approvals/pending",
+      headers: { ...AS_ACTOR(approverId), "x-dev-real-authz": "1" },
+    })
+    expect(pending.statusCode).toBe(200)
+    expect((pending.json() as unknown[]).length).toBeGreaterThan(0)
+  })
+
+  /* 🔴 OQ-AP2-2|業界一致硬失敗。但 Salesforce 是**簽核人回應時**才炸,
+     那時單子已經走到一半;我方改在送簽當下就擋,而且要指名是哪一關。 */
+  it("🔴 解析不出主管 → 送簽當下就擋,訊息指名是哪一關", async () => {
+    const res = await submitAs(lonerId)
+    expect(res.statusCode).toBe(422)
+    const body = res.json() as { code: string; message: string }
+    expect(body.code).toBe("APPROVER_UNRESOLVED")
+    expect(body.message).toContain("第 1 關")
   })
 })

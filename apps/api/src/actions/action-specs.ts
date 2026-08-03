@@ -57,13 +57,43 @@ export interface ButtonDto {
 }
 
 /* 簽核定義:順序多步(OQ-AA-3=A 階層);金額條件由 ZEN 決策(minAmount + amountField)。 */
-export const approvalStepSchema = z.object({
-  stepNo: z.number().int().min(1).max(20),
-  approverRoleId: z.number().int().positive(),
-  /* 條件:本記錄之 amountField 值 >= minAmount 時此步才啟用(缺省=恆啟用) */
-  amountField: z.string().max(100).optional(),
-  minAmount: z.number().optional(),
-})
+/* 🔴 OQ-AP2-1|簽核人怎麼決定。`role` 為既有行為(靜態角色),其餘三種是執行期解析。
+
+   三種動態解析對齊 Ragic 官方(逐字):「選擇**直屬主管**的話,系統就會送簽給發起簽核
+   的使用者的直屬主管;選擇**直屬主管的主管**…;選擇**前一簽核人的主管**…」——
+   這是 parity 基準線不是進階功能:沒有它,行政人員得為每個部門各建一組 role + 一份
+   approval_def,維護不了。
+
+   「主管」由 role tree 推導(見 `ActionsRepository.managersOf`),不引入第二份組織關係。 */
+export const APPROVER_RULES = [
+  "role",
+  "manager",
+  "managerOfManager",
+  "managerOfPrevApprover",
+] as const
+export type ApproverRule = (typeof APPROVER_RULES)[number]
+
+export const approvalStepSchema = z
+  .object({
+    stepNo: z.number().int().min(1).max(20),
+    /* 動態規則下沒有靜態角色可指定,故為選配 */
+    approverRoleId: z.number().int().positive().optional(),
+    approverRule: z.enum(APPROVER_RULES).default("role"),
+    /* 🔴 OQ-AP2-3|會簽 / 擇辦。**null(或未填)= 全體同意**。
+       採 Ragic 的退化式設計(官方逐字:「若將擇辦人數清空,則等同於會簽(All)」)——
+       All 是 N 的退化值,不是獨立模式。用 `mode` enum + 數字的話,
+       `mode:'all'` 卻帶 `quorum:2` 要信哪個永遠是個問題;這個形狀結構上不可能矛盾。 */
+    quorum: z.number().int().positive().nullable().optional(),
+    /* 🔴 OQ-AP2-6|可退回的關卡白名單;未填 = 所有先前關卡(Kissflow 形態) */
+    returnableTo: z.array(z.number().int().min(1).max(20)).optional(),
+    /* 條件:本記錄之 amountField 值 >= minAmount 時此步才啟用(缺省=恆啟用) */
+    amountField: z.string().max(100).optional(),
+    minAmount: z.number().optional(),
+  })
+  .refine((s) => s.approverRule !== "role" || s.approverRoleId !== undefined, {
+    message: "靜態角色簽核必須指定 approverRoleId",
+    path: ["approverRoleId"],
+  })
 export type ApprovalStep = z.infer<typeof approvalStepSchema>
 
 export const createApprovalDefBodySchema = z.object({

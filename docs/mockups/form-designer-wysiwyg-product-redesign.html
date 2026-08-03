@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weyver · 表單設計器產品定位重設 mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --base-brand:#22568a;
+  --base-ink:#16191f;
+  --primary:var(--base-brand);
+  --primary-d:color-mix(in srgb,var(--base-brand),#000 22%);
+  --primary-t:color-mix(in srgb,var(--base-brand),#fff 90%);
+  --surface:#f6f7f9;
+  --card:#fff;
+  --head:#f1f3f5;
+  --label:#f4f6f8;
+  --field:#fafbfc;
+  --ink:var(--base-ink);
+  --ink-2:#3d4753;
+  --ink-3:#606c7b;
+  --ink-disabled:#9aa4b1;
+  --line:#e3e6ea;
+  --line-2:#eef0f3;
+  --cell:#e7eaee;
+  --input-line:#8d8d8d;
+  --link:#0b5cab;
+  --fx:#0b6b5d;
+  --fx-t:#e9f3f0;
+  --rel:#5b3fa8;
+  --rel-t:#eeeaf8;
+  --ok:#1a7a43;
+  --ok-t:#e8f2eb;
+  --ok-l:#bfdcc9;
+  --wn:#9a5b00;
+  --wn-t:#f7efdf;
+  --wn-l:#e4cfa6;
+  --er:#b3261e;
+  --er-t:#f7e9e8;
+  --er-l:#e7c4c1;
+  --c1:#715b10;
+  --c1-t:#f4eedf;
+  --c1-l:#ded1a9;
+  --c2:#275f64;
+  --c2-t:#e4f0f1;
+  --c2-l:#b8d7da;
+  --c3:#684c75;
+  --c3-t:#f0eaf3;
+  --c3-l:#d7c5df;
+  --r-xs:3px;
+  --r-sm:4px;
+  --r-md:6px;
+  --font:"IBM Plex Sans","IBM Plex Sans TC",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",monospace;
+  --fast:120ms cubic-bezier(.2,0,0,1);
+}
+*{box-sizing:border-box}
+html{min-height:100%}
+body{
+  margin:0;
+  min-height:100dvh;
+  background:var(--surface);
+  color:var(--ink);
+  font-family:var(--font);
+  font-size:14px;
+  line-height:20px;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font:inherit}
+button{cursor:default}
+svg{display:block;flex:0 0 auto}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.page{max-width:1480px;margin:0 auto;padding:24px}
+.brief{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:24px;
+  align-items:end;
+  margin-bottom:12px;
+}
+.brief h1{
+  margin:0;
+  font-size:24px;
+  line-height:32px;
+  font-weight:600;
+  letter-spacing:0;
+  text-wrap:balance;
+}
+.brief p{
+  margin:4px 0 0;
+  max-width:82ch;
+  color:var(--ink-3);
+  font-size:14px;
+  line-height:20px;
+}
+.brief .meta{
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+  text-align:right;
+}
+.app{
+  min-height:820px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:184px minmax(0,1fr);
+  grid-template-rows:42px minmax(0,1fr) 26px;
+}
+.rail{
+  grid-row:1 / 4;
+  background:var(--head);
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.brand{
+  height:42px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 12px;
+  border-bottom:1px solid var(--line);
+  background:var(--card);
+}
+.mark{
+  width:22px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  border-radius:var(--r-xs);
+  background:var(--primary);
+  color:#fff;
+  font-weight:700;
+  font-size:12px;
+}
+.brand b{font-size:14px;font-weight:600}
+.brand span{display:block;color:var(--ink-3);font-size:12px;line-height:16px}
+.rail-section{
+  padding:12px;
+  border-bottom:1px solid var(--line);
+}
+.rail-title{
+  margin-bottom:12px;
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+  font-weight:500;
+}
+.nav-list{display:grid;gap:4px}
+.nav-item{
+  min-height:32px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 8px;
+  border-radius:var(--r-sm);
+  color:var(--ink-2);
+  text-decoration:none;
+  transition:background var(--fast),color var(--fast);
+}
+.nav-item svg{width:15px;height:15px;color:var(--ink-3)}
+.nav-item:hover{background:var(--line-2)}
+.nav-item.on{
+  background:var(--primary-t);
+  color:var(--primary-d);
+  font-weight:500;
+}
+.nav-item.on svg{color:var(--primary)}
+.rail-fill{flex:1}
+.tenant{
+  padding:12px;
+  border-top:1px solid var(--line);
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+}
+.tenant b{display:block;color:var(--ink-2);font-weight:500}
+.topbar{
+  grid-column:2;
+  height:42px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 16px;
+  border-bottom:1px solid var(--line);
+  background:var(--card);
+  min-width:0;
+}
+.crumb{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--ink-3);
+  font-size:13px;
+  white-space:nowrap;
+}
+.crumb b{color:var(--ink-2);font-weight:500}
+.search{
+  width:min(340px,34vw);
+  height:28px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 10px;
+  margin-left:auto;
+  border:1px solid var(--line);
+  border-radius:var(--r-sm);
+  color:var(--ink-3);
+  background:var(--field);
+  font-size:13px;
+}
+.search svg{width:14px;height:14px}
+.search kbd{
+  margin-left:auto;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-3);
+  border:1px solid var(--line);
+  border-radius:var(--r-xs);
+  padding:0 4px;
+  background:var(--card);
+}
+.avatar{
+  height:28px;
+  min-width:28px;
+  display:grid;
+  place-items:center;
+  border-radius:var(--r-sm);
+  background:var(--primary);
+  color:#fff;
+  font-size:12px;
+  font-weight:600;
+}
+.content{
+  grid-column:2;
+  min-height:0;
+  overflow:auto;
+  background:var(--surface);
+}
+.toolbar{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 16px;
+  background:var(--card);
+  border-bottom:1px solid var(--line);
+  position:sticky;
+  top:0;
+  z-index:5;
+}
+.title-block{min-width:0;margin-right:8px}
+.title-block h2{
+  margin:0;
+  font-size:20px;
+  line-height:26px;
+  font-weight:600;
+}
+.title-block span{
+  display:block;
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+}
+.tool-spacer{flex:1}
+.btn{
+  height:30px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:0 10px;
+  border:1px solid var(--line);
+  border-radius:var(--r-sm);
+  background:var(--card);
+  color:var(--ink-2);
+  font-size:13px;
+  line-height:18px;
+  transition:background var(--fast),border-color var(--fast),color var(--fast),transform var(--fast);
+  white-space:nowrap;
+}
+.btn svg{width:14px;height:14px}
+.btn:hover{background:var(--head);border-color:var(--cell)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:500}
+.btn.primary:hover{background:var(--primary-d)}
+.btn.mode{background:var(--primary-t);border-color:color-mix(in srgb,var(--primary),#fff 64%);color:var(--primary-d);font-weight:500}
+.workspace{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 316px;
+  gap:12px;
+  padding:12px;
+}
+.main-stack{display:grid;gap:12px;min-width:0}
+.start-panel,.designer,.inspector,.template-panel,.status-panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+}
+.start-panel{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:226px}
+.start-input{
+  padding:16px;
+  border-right:1px solid var(--line);
+  background:var(--field);
+}
+.panel-label{
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+  font-weight:500;
+  margin-bottom:12px;
+}
+.start-input textarea{
+  width:100%;
+  height:96px;
+  resize:none;
+  border:1px solid var(--input-line);
+  border-radius:var(--r-sm);
+  background:var(--card);
+  color:var(--ink);
+  padding:8px 10px;
+  font-size:14px;
+  line-height:20px;
+}
+.start-input textarea:focus{outline:2px solid color-mix(in srgb,var(--primary),#fff 65%);outline-offset:1px}
+.entry-actions{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+.entry-btn{
+  min-height:38px;
+  display:grid;
+  grid-template-columns:22px minmax(0,1fr);
+  align-items:center;
+  gap:8px;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:var(--r-sm);
+  background:var(--card);
+  color:var(--ink-2);
+  text-align:left;
+  transition:background var(--fast),border-color var(--fast);
+}
+.entry-btn:hover{background:var(--head);border-color:var(--cell)}
+.entry-btn svg{width:16px;height:16px;color:var(--primary)}
+.entry-btn b{display:block;font-size:13px;line-height:18px;font-weight:500;color:var(--ink)}
+.entry-btn span{display:block;font-size:12px;line-height:16px;color:var(--ink-3)}
+.blueprint{
+  padding:16px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+  align-content:start;
+}
+.blueprint h3{
+  grid-column:1 / -1;
+  margin:0;
+  font-size:16px;
+  line-height:22px;
+  font-weight:600;
+}
+.blueprint-box{
+  border:1px solid var(--line);
+  border-radius:var(--r-sm);
+  overflow:hidden;
+  background:var(--card);
+}
+.blueprint-box header{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 10px;
+  background:var(--head);
+  border-bottom:1px solid var(--line);
+  color:var(--ink-2);
+  font-weight:500;
+  font-size:13px;
+}
+.blueprint-box header svg{width:14px;height:14px;color:var(--primary)}
+.row-list{display:grid}
+.mini-row{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 10px;
+  border-bottom:1px solid var(--line-2);
+  color:var(--ink-2);
+  font-size:13px;
+}
+.mini-row:last-child{border-bottom:0}
+.mini-row .muted{color:var(--ink-3);font-size:12px}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  height:19px;
+  padding:0 6px;
+  border:1px solid var(--line);
+  border-radius:var(--r-xs);
+  background:var(--head);
+  color:var(--ink-2);
+  font-size:12px;
+  line-height:16px;
+  white-space:nowrap;
+}
+.badge.ok{color:var(--ok);background:var(--ok-t);border-color:var(--ok-l)}
+.badge.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-l)}
+.badge.rel{color:var(--rel);background:var(--rel-t);border-color:#d8c9ee}
+.badge.c1{color:var(--c1);background:var(--c1-t);border-color:var(--c1-l)}
+.badge.c2{color:var(--c2);background:var(--c2-t);border-color:var(--c2-l)}
+.badge.c3{color:var(--c3);background:var(--c3-t);border-color:var(--c3-l)}
+.designer{overflow:hidden}
+.designer-head{
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:8px 12px;
+  background:var(--card);
+  border-bottom:1px solid var(--line);
+}
+.designer-head h3{margin:0;font-size:16px;line-height:22px;font-weight:600}
+.designer-head .sub{color:var(--ink-3);font-size:12px;line-height:16px}
+.designer-head .right{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:12px}
+.view-tabs{
+  display:flex;
+  gap:2px;
+  margin-left:4px;
+}
+.view-tabs button{
+  height:26px;
+  padding:0 10px;
+  border:0;
+  border-radius:var(--r-sm);
+  background:transparent;
+  color:var(--ink-3);
+  font-size:13px;
+}
+.view-tabs button.on{background:var(--primary);color:#fff;font-weight:500}
+.canvas{
+  padding:16px;
+  overflow:auto;
+}
+.sheet{
+  min-width:820px;
+  border:1px solid var(--line);
+  background:var(--card);
+}
+.sheet-title{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  padding:12px;
+  border-bottom:1px solid var(--line);
+}
+.sheet-title h4{margin:0;font-size:20px;line-height:26px;font-weight:600}
+.sheet-title .mono{color:var(--primary);font-weight:600}
+.sheet-title .meta{margin-left:auto;color:var(--ink-3);font-size:12px}
+.section-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  background:var(--primary);
+  color:#fff;
+  font-size:12px;
+  line-height:16px;
+  font-weight:600;
+}
+.section-bar .right{margin-left:auto;font-weight:400}
+.fgrid{
+  display:grid;
+  grid-template-columns:116px minmax(160px,1fr) 116px minmax(160px,1fr);
+}
+.cell{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:6px 10px;
+  border-right:1px solid var(--cell);
+  border-bottom:1px solid var(--cell);
+  font-size:14px;
+  line-height:20px;
+}
+.cell:nth-child(4n){border-right:0}
+.cell.label{
+  justify-content:flex-end;
+  text-align:right;
+  background:var(--label);
+  color:var(--ink-2);
+  font-size:13px;
+  line-height:18px;
+}
+.cell.value{background:var(--card)}
+.cell.value.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cell.req::before{
+  content:"*";
+  color:var(--er);
+  font-weight:600;
+}
+.cell.selected{
+  position:relative;
+  box-shadow:inset 0 0 0 2px var(--primary);
+  z-index:2;
+}
+.cell.computed{
+  color:var(--fx);
+  background:var(--fx-t);
+  font-family:var(--mono);
+  font-weight:500;
+}
+.subtable table{width:100%;border-collapse:collapse}
+.subtable th,.subtable td{
+  height:34px;
+  padding:6px 10px;
+  border:1px solid var(--cell);
+  font-size:13px;
+  line-height:18px;
+  text-align:left;
+}
+.subtable th{
+  background:var(--head);
+  color:var(--ink-2);
+  font-weight:600;
+}
+.subtable th:first-child,.subtable td:first-child{width:42px;text-align:center;color:var(--ink-3);background:var(--head)}
+.subtable .num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.subtable .sum td{background:var(--fx-t);color:var(--fx);font-weight:600}
+.inspector{
+  min-height:0;
+  align-self:start;
+  position:sticky;
+  top:60px;
+  overflow:hidden;
+}
+.inspector-head{
+  padding:14px;
+  border-bottom:1px solid var(--line);
+  background:var(--field);
+}
+.inspector-head .small{color:var(--ink-3);font-size:12px;line-height:16px}
+.inspector-head h3{margin:4px 0 0;font-size:20px;line-height:26px;font-weight:600}
+.tabs{
+  display:flex;
+  gap:0;
+  padding:0 12px;
+  border-bottom:1px solid var(--line);
+}
+.tabs button{
+  height:36px;
+  padding:0 10px;
+  border:0;
+  border-bottom:2px solid transparent;
+  background:transparent;
+  color:var(--ink-3);
+  font-size:13px;
+}
+.tabs button.on{
+  color:var(--primary);
+  border-bottom-color:var(--primary);
+  font-weight:500;
+}
+.field-props{display:grid;gap:12px;padding:14px}
+.form-row label{
+  display:block;
+  margin-bottom:4px;
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+  font-weight:500;
+}
+.input-like,.select-like{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  width:100%;
+  border:1px solid var(--input-line);
+  border-radius:var(--r-sm);
+  background:var(--card);
+  padding:5px 8px;
+  color:var(--ink);
+}
+.select-like svg{width:14px;height:14px;color:var(--ink-3)}
+.toggle-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:28px;
+  color:var(--ink-2);
+}
+.switch{
+  width:28px;
+  height:16px;
+  border-radius:999px;
+  background:var(--primary);
+  position:relative;
+}
+.switch::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  right:2px;
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:#fff;
+}
+.rule-table{
+  width:100%;
+  border-collapse:collapse;
+  border:1px solid var(--line);
+}
+.rule-table th,.rule-table td{
+  padding:7px 8px;
+  border-bottom:1px solid var(--line-2);
+  text-align:left;
+  vertical-align:top;
+  font-size:12px;
+  line-height:16px;
+}
+.rule-table th{background:var(--head);color:var(--ink-2);font-weight:600}
+.rule-table tr:last-child td{border-bottom:0}
+.impact{
+  display:grid;
+  gap:4px;
+}
+.impact-row{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  min-height:28px;
+  padding:4px 0;
+  color:var(--ink-2);
+  font-size:13px;
+}
+.impact-row svg{width:14px;height:14px;color:var(--ink-3);margin-top:2px}
+.impact-row.warn{color:var(--wn)}
+.impact-row.warn svg{color:var(--wn)}
+.template-panel{overflow:hidden}
+.template-head{
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.template-head h3{margin:0;font-size:16px;line-height:22px;font-weight:600}
+.template-list{display:grid}
+.template-row{
+  display:grid;
+  grid-template-columns:116px minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+  min-height:44px;
+  padding:8px 14px;
+  border-bottom:1px solid var(--line-2);
+}
+.template-row:last-child{border-bottom:0}
+.template-row b{font-weight:500}
+.template-row span{display:block;color:var(--ink-3);font-size:12px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-panel{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;
+  overflow:hidden;
+}
+.status-cell{
+  padding:10px 12px;
+  border-right:1px solid var(--line);
+  min-width:0;
+}
+.status-cell:last-child{border-right:0}
+.status-cell span{display:block;color:var(--ink-3);font-size:12px;line-height:16px}
+.status-cell b{display:block;margin-top:2px;color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.statusbar{
+  grid-column:2;
+  height:26px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:0 16px;
+  border-top:1px solid var(--line);
+  background:var(--head);
+  color:var(--ink-3);
+  font-size:12px;
+  line-height:16px;
+}
+.statusbar .dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.statusbar b{color:var(--ink-2);font-weight:500}
+.statusbar .spacer{flex:1}
+.note{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  background:var(--card);
+  color:var(--ink-3);
+  font-size:13px;
+  line-height:18px;
+}
+.note b{color:var(--ink);font-weight:500}
+@media (max-width:1100px){
+  .app{grid-template-columns:64px minmax(0,1fr)}
+  .brand{justify-content:center;padding:0}
+  .brand b,.brand span,.nav-item span,.rail-title,.tenant{display:none}
+  .nav-item{justify-content:center;padding:8px}
+  .workspace{grid-template-columns:1fr}
+  .inspector{position:static}
+  .start-panel{grid-template-columns:1fr}
+  .start-input{border-right:0;border-bottom:1px solid var(--line)}
+  .blueprint{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .page{padding:12px}
+  .brief{grid-template-columns:1fr}
+  .brief .meta{text-align:left}
+  .app{min-height:100dvh;grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr) auto}
+  .rail{grid-row:1;grid-column:1;flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .brand{width:58px;flex:0 0 58px;border-bottom:0;border-right:1px solid var(--line)}
+  .rail-section{display:flex;align-items:center;gap:4px;padding:6px;border-bottom:0;border-right:1px solid var(--line)}
+  .nav-list{display:flex}
+  .rail-fill,.tenant{display:none}
+  .topbar{grid-column:1;grid-row:2;flex-wrap:wrap;height:auto;min-height:42px;padding:8px 12px}
+  .search{order:5;width:100%;margin-left:0}
+  .content{grid-column:1;grid-row:3}
+  .toolbar{position:static;align-items:flex-start;flex-wrap:wrap}
+  .tool-spacer{display:none}
+  .workspace{padding:8px}
+  .designer-head{flex-wrap:wrap;align-items:flex-start}
+  .designer-head .right{width:100%;margin-left:0;flex-wrap:wrap}
+  .view-tabs{margin-left:0;flex-wrap:wrap}
+  .statusbar{
+    grid-column:1;
+    grid-row:4;
+    height:auto;
+    min-height:26px;
+    flex-wrap:wrap;
+    gap:8px 12px;
+    padding:5px 12px;
+    white-space:normal;
+    overflow:visible;
+  }
+  .status-panel{grid-template-columns:1fr 1fr}
+  .status-cell{border-bottom:1px solid var(--line)}
+  .template-row{grid-template-columns:88px minmax(0,1fr)}
+  .template-row .btn{grid-column:1 / -1;justify-self:start}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="brief">
+    <div>
+      <h1>表單設計器重設：從資料與流程需求直接長成可用系統</h1>
+      <p>新增稿。保留「設計即所見」的單據畫布，將產品描述裡的 ERP、Excel、長尾流程與個人資料管理，收斂成設計器的三個入口：Excel、範本、需求描述。</p>
+    </div>
+    <div class="meta mono">mockup · 2026-08-03<br>不修改原 form-designer-wysiwyg.html</div>
+  </div>
+
+  <main class="app" aria-label="Weyver form designer mockup">
+    <aside class="rail">
+      <div class="brand">
+        <div class="mark">W</div>
+        <div><b>Weyver</b><span>織雲</span></div>
+      </div>
+      <div class="rail-section">
+        <div class="rail-title">工作區</div>
+        <nav class="nav-list" aria-label="Main">
+          <a class="nav-item on" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg><span>我的表單</span>
+          </a>
+          <a class="nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z"/><path d="M8 7h6M8 11h8M8 15h5"/></svg><span>範本庫</span>
+          </a>
+          <a class="nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18M7 4v16M17 4v16M3 20h18"/><path d="M9 9h6M9 13h6"/></svg><span>資料網格</span>
+          </a>
+          <a class="nav-item" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg><span>待我處理</span>
+          </a>
+        </nav>
+      </div>
+      <div class="rail-section">
+        <div class="rail-title">分類</div>
+        <nav class="nav-list" aria-label="Categories">
+          <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v20M18 2v20M3 6h18M3 18h18"/></svg><span>採購與庫存</span></a>
+          <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V7l8-4 8 4v12"/><path d="M8 19v-6h8v6"/></svg><span>生產與品保</span></a>
+          <a class="nav-item on" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h9"/><path d="M17 16l2 2 4-4"/></svg><span>行政流程</span></a>
+          <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg><span>個人資料</span></a>
+        </nav>
+      </div>
+      <div class="rail-fill"></div>
+      <div class="tenant"><b>鮮勇食品</b>資料庫版本 <span class="mono">R1.42</span></div>
+    </aside>
+
+    <header class="topbar">
+      <div class="crumb">工作區 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m9 18 6-6-6-6"/></svg> <b>行政流程</b></div>
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單、記錄、欄位<kbd>⌘K</kbd></div>
+      <div class="avatar">陳</div>
+    </header>
+
+    <section class="content">
+      <div class="toolbar">
+        <div class="title-block">
+          <h2>新增表單系統</h2>
+          <span>從一張表單開始，資料、關聯、流程與權限一起設計。</span>
+        </div>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>從 Excel 匯入</button>
+        <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>套用範本</button>
+        <div class="tool-spacer"></div>
+        <button class="btn mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計中</button>
+        <button class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>發布表單</button>
+      </div>
+
+      <div class="workspace">
+        <div class="main-stack">
+          <section class="start-panel" aria-label="Start from requirement">
+            <div class="start-input">
+              <div class="panel-label">需求描述</div>
+              <textarea>員工每天 10:30 前填餐點，行政統計數量，月底匯出對帳。供應商只看今日訂單，不看員工備註。</textarea>
+              <div class="entry-actions">
+                <button class="entry-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7Z"/></svg>
+                  <span><b>依描述生成</b><span>欄位、子表、流程草稿</span></span>
+                </button>
+                <button class="entry-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18"/></svg>
+                  <span><b>貼上試算表</b><span>保留資料列與欄位型別</span></span>
+                </button>
+              </div>
+            </div>
+            <div class="blueprint">
+              <h3>訂便當系統 · 生成草稿</h3>
+              <div class="blueprint-box">
+                <header><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18"/></svg>資料結構</header>
+                <div class="row-list">
+                  <div class="mini-row"><span>每日訂餐單</span><span class="badge c2">主表</span></div>
+                  <div class="mini-row"><span>訂餐明細</span><span class="badge rel">子表</span></div>
+                  <div class="mini-row"><span>餐點主檔</span><span class="badge">關聯</span></div>
+                  <div class="mini-row"><span>員工主檔</span><span class="badge">帶入</span></div>
+                </div>
+              </div>
+              <div class="blueprint-box">
+                <header><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h11M4 18h7"/><path d="m16 17 2 2 4-4"/></svg>流程</header>
+                <div class="row-list">
+                  <div class="mini-row"><span>10:30 鎖單</span><span class="badge wn">排程</span></div>
+                  <div class="mini-row"><span>送出後通知行政</span><span class="badge ok">通知</span></div>
+                  <div class="mini-row"><span>月底匯出對帳</span><span class="badge">報表</span></div>
+                  <div class="mini-row"><span>異常金額標示</span><span class="badge c1">規則</span></div>
+                </div>
+              </div>
+              <div class="blueprint-box">
+                <header><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.8"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg>角色</header>
+                <div class="row-list">
+                  <div class="mini-row"><span>員工</span><span class="muted">填自己</span></div>
+                  <div class="mini-row"><span>行政</span><span class="muted">看全部</span></div>
+                  <div class="mini-row"><span>供應商</span><span class="muted">只看彙總</span></div>
+                  <div class="mini-row"><span>主管</span><span class="muted">審核例外</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="designer" aria-label="WYSIWYG designer">
+            <div class="designer-head">
+              <div>
+                <h3>每日訂餐單</h3>
+                <div class="sub mono">draft · ORD-LUNCH · v0.4</div>
+              </div>
+              <div class="view-tabs" aria-label="Views">
+                <button class="on">表單</button>
+                <button>網格</button>
+                <button>流程</button>
+                <button>報表</button>
+              </div>
+              <div class="right"><span class="badge ok">自動儲存 09:42:16</span><span class="badge wn">3 項待核准</span></div>
+            </div>
+            <div class="canvas">
+              <div class="sheet">
+                <div class="sheet-title">
+                  <h4>每日訂餐單</h4>
+                  <span class="mono">LUNCH-20260803-018</span>
+                  <span class="meta">建立者 陳美玲 · 最後更新 2026/08/03 09:42</span>
+                </div>
+                <div class="section-bar">基本資料 <span class="right">員工填寫區</span></div>
+                <div class="fgrid">
+                  <div class="cell label req">訂餐日期</div>
+                  <div class="cell value mono">2026-08-03</div>
+                  <div class="cell label req">員工</div>
+                  <div class="cell value">王小明 <span class="badge rel">帶入部門</span></div>
+                  <div class="cell label req">餐點</div>
+                  <div class="cell value selected">雞腿便當 <span class="badge rel">連結餐點主檔</span></div>
+                  <div class="cell label">部門</div>
+                  <div class="cell value">生產一課</div>
+                  <div class="cell label">備註</div>
+                  <div class="cell value">飯少，青菜多</div>
+                  <div class="cell label">狀態</div>
+                  <div class="cell value"><span class="badge wn">待統計</span></div>
+                </div>
+                <div class="section-bar">訂餐明細 <span class="right">行政可批次貼上 Excel 區塊</span></div>
+                <div class="subtable">
+                  <table>
+                    <thead>
+                      <tr><th>#</th><th>餐點</th><th>供應商</th><th class="num">單價</th><th class="num">數量</th><th class="num">小計</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>1</td><td>雞腿便當</td><td>南門飯盒</td><td class="num">95</td><td class="num">18</td><td class="num">1,710</td></tr>
+                      <tr><td>2</td><td>素食便當</td><td>南門飯盒</td><td class="num">90</td><td class="num">4</td><td class="num">360</td></tr>
+                      <tr><td>3</td><td>牛肉燴飯</td><td>福記餐館</td><td class="num">110</td><td class="num">6</td><td class="num">660</td></tr>
+                      <tr class="sum"><td></td><td colspan="4">fx = sum(小計)</td><td class="num">2,730</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="section-bar">月底對帳 <span class="right">由規則與報表產生</span></div>
+                <div class="fgrid">
+                  <div class="cell label">扣款月份</div>
+                  <div class="cell value mono">2026-08</div>
+                  <div class="cell label">應扣總額</div>
+                  <div class="cell value computed">2,730</div>
+                  <div class="cell label">匯出格式</div>
+                  <div class="cell value">Excel / PDF</div>
+                  <div class="cell label">稽核</div>
+                  <div class="cell value">欄位變更與匯出紀錄保留</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="template-panel" aria-label="Template library">
+            <div class="template-head">
+              <h3>同一個設計器可起的表單系統</h3>
+              <span class="badge c2">資料管理</span>
+              <span class="badge c3">流程管理</span>
+            </div>
+            <div class="template-list">
+              <div class="template-row">
+                <span class="badge c2">ERP</span>
+                <div><b>採購單與收貨單</b><span>供應商、明細、簽核、月底對帳</span></div>
+                <button class="btn">套用</button>
+              </div>
+              <div class="template-row">
+                <span class="badge c3">長尾流程</span>
+                <div><b>借還書系統</b><span>借閱人、到期提醒、逾期規則、庫存狀態</span></div>
+                <button class="btn">套用</button>
+              </div>
+              <div class="template-row">
+                <span class="badge c1">行政</span>
+                <div><b>訂便當系統</b><span>每日填寫、統計、供應商彙總、月底扣款</span></div>
+                <button class="btn primary">使用中</button>
+              </div>
+              <div class="template-row">
+                <span class="badge rel">個人</span>
+                <div><b>看病紀錄</b><span>日期、醫師、用藥、附件、下次回診提醒</span></div>
+                <button class="btn">套用</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="status-panel" aria-label="System status">
+            <div class="status-cell"><span>資料表</span><b>4 張 · 23 欄位</b></div>
+            <div class="status-cell"><span>流程</span><b>3 條規則 · 1 個排程</b></div>
+            <div class="status-cell"><span>權限</span><b>4 個角色 · 外部供應商唯讀</b></div>
+            <div class="status-cell"><span>發布前檢查</span><b>無錯誤 · 2 個建議</b></div>
+          </section>
+        </div>
+
+        <aside class="inspector" aria-label="Field inspector">
+          <div class="inspector-head">
+            <div class="small mono">欄位 A3:B3</div>
+            <h3>餐點</h3>
+          </div>
+          <div class="tabs">
+            <button class="on">欄位</button>
+            <button>規則</button>
+            <button>關聯</button>
+            <button>發布</button>
+          </div>
+          <div class="field-props">
+            <div class="form-row">
+              <label>欄位名稱</label>
+              <div class="input-like">餐點</div>
+            </div>
+            <div class="form-row">
+              <label>欄位種類</label>
+              <div class="select-like">連結其他表單 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div>
+            </div>
+            <div class="form-row">
+              <label>連結資料表</label>
+              <div class="select-like">餐點主檔 <span class="badge rel">Link & Load</span></div>
+            </div>
+            <div class="toggle-line"><span class="switch"></span><span>必填</span></div>
+            <div class="toggle-line"><span class="switch"></span><span>選餐點後帶入供應商與單價</span></div>
+            <div class="form-row">
+              <label>不用寫程式的規則</label>
+              <table class="rule-table">
+                <thead><tr><th>當</th><th>就</th></tr></thead>
+                <tbody>
+                  <tr><td>時間超過 10:30</td><td>鎖定填寫</td></tr>
+                  <tr><td>供應商開啟外部連結</td><td>只顯示今日彙總</td></tr>
+                  <tr><td>單價高於 120</td><td>標示給主管覆核</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="form-row">
+              <label>改這欄會影響</label>
+              <div class="impact">
+                <div class="impact-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h7"/></svg><span>2 個欄位會自動帶入：供應商、單價</span></div>
+                <div class="impact-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M8 12h8M12 8v8"/></svg><span>1 張報表會重算：月底扣款表</span></div>
+                <div class="impact-row warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg><span>供應商看不到員工備註，欄位權限已套用</span></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <footer class="statusbar">
+      <span class="dot"></span><span>已連線</span><span>租戶 <b>鮮勇食品</b></span><span>設計版本 <b class="mono">v0.4</b></span><span class="spacer"></span><span>最後同步 <b class="mono">2026-08-03 09:42:16</b></span>
+    </footer>
+  </main>
+
+  <div class="note">
+    <b>設計取向：</b>把「Weyver 可以做 ERP、Excel 替代、企業長尾流程與個人資料管理」變成範本與建表入口；把「為什麼不同」落在關聯資料、子表、規則、權限、流程與報表同屏可見。原檔未修改。
+  </div>
+</div>
+</body>
+</html>

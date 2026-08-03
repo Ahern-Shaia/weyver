@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common"
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
 import {
   actionAudits,
@@ -7,6 +7,8 @@ import {
   approvalInstances,
   approvalStepLogs,
   buttonDefs,
+  roleMembers,
+  roles,
 } from "../db/schema.js"
 import type { ApprovalStep, ButtonConfig } from "./action-specs.js"
 
@@ -389,6 +391,67 @@ export class ActionsRepository {
       createdAt: new Date(r.created_at).toISOString(),
       reason: r.reason as ApprovalChainBreak["reason"],
     }))
+  }
+
+  /* 🔴 OQ-AP2-1 = A|「直屬主管」由 **role tree 推導**,不引入第二份組織關係。
+
+     定義:申請人**直接所屬角色**的父角色的成員(排除他自己)。
+     `levels=2` 即再往上一層(直屬主管的主管)。
+
+     為什麼不新增 `actors.manager_actor_id`(Salesforce / Ragic 的做法):
+     role tree 已經是權限繼承的真實來源,再加一份組織關係就是兩份,
+     而兩份組織結構必然分岔 —— 「權限樹改了、簽核流沒跟著改」是日常不是意外。
+     誠實代價:這裡的「主管」是**一組人**不是一個人,故 N-of-M 是必需品而非選配。
+
+     ⚠️ 與 `resolveActorRoleIds` 不同:那支是往上收集**所有**祖先(權限繼承要的),
+     這裡要的是**恰好一層**的父角色 —— 收集全部祖先會讓「直屬主管」包含最高層,
+     那不是直屬。 */
+  async managersOf(tenantId: number, actorId: number, levels: 1 | 2): Promise<number[]> {
+    const result = await this.db.execute<{ actor_id: string | number }>(sql`
+      WITH RECURSIVE mine AS (
+        SELECT r.id, r.parent_id, 0 AS lvl
+          FROM ${roleMembers} rm
+          JOIN ${roles} r ON r.id = rm.role_id
+         WHERE rm.tenant_id = ${tenantId} AND rm.actor_id = ${actorId}
+        UNION ALL
+        SELECT p.id, p.parent_id, m.lvl + 1
+          FROM ${roles} p
+          JOIN mine m ON p.id = m.parent_id
+         WHERE m.lvl < ${levels}
+      )
+      SELECT DISTINCT rm2.actor_id
+        FROM mine
+        JOIN ${roleMembers} rm2 ON rm2.role_id = mine.id
+       WHERE mine.lvl = ${levels}
+         AND rm2.tenant_id = ${tenantId}
+         AND rm2.actor_id <> ${actorId}
+    `)
+    return result.rows.map((r) => Number(r.actor_id))
+  }
+
+  async actorsInRole(tenantId: number, roleId: number): Promise<number[]> {
+    const rows = await this.db
+      .select({ actorId: roleMembers.actorId })
+      .from(roleMembers)
+      .where(and(eq(roleMembers.tenantId, tenantId), eq(roleMembers.roleId, roleId)))
+    return rows.map((r) => Number(r.actorId))
+  }
+
+  /* 前一位真的做出決定的人(submit / withdraw 不算)—— `managerOfPrevApprover` 用。 */
+  async lastDecider(tenantId: number, instanceId: number): Promise<number | null> {
+    const rows = await this.db
+      .select({ actorId: approvalStepLogs.actorId })
+      .from(approvalStepLogs)
+      .where(
+        and(
+          eq(approvalStepLogs.tenantId, tenantId),
+          eq(approvalStepLogs.instanceId, instanceId),
+          inArray(approvalStepLogs.decision, ["approve", "reject"]),
+        ),
+      )
+      .orderBy(desc(approvalStepLogs.id))
+      .limit(1)
+    return rows[0]?.actorId ?? null
   }
 
   async appendStepLog(input: {

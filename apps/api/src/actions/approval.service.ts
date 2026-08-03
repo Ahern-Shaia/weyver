@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from "@nestjs/common"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { AuthzRepository } from "../authz/authz.repository.js"
@@ -112,6 +113,10 @@ export class ApprovalService {
         message: "依條件無任何簽核步驟啟用",
       })
     }
+    /* 🔴 OQ-AP2-2|**送簽當下就把每一關解析一遍**,解析不出人就擋在這裡。
+       Salesforce 是等簽核人回應時才炸,那時單子已經走到一半、申請人早就以為送出去了。 */
+    await this.assertResolvable(tenant.tenantId, def.steps, tenant.actorId)
+
     const instance = await this.repo.createInstance({
       tenantId: tenant.tenantId,
       defId: def.id,
@@ -129,7 +134,7 @@ export class ApprovalService {
     })
     /* H-1:通知該關卡的簽核者。**旁路呼叫,失敗不影響送簽**(非關鍵路徑)。
        這是本模組存在的理由 —— 簽核流程原本無任何機制告知下一關的人。 */
-    await this.notifyStep(tenant, formId, recordId, firstStep.approverRoleId)
+    await this.notifyStep(tenant, formId, recordId, firstStep.approverRoleId ?? null)
     return this.toInstanceDto(tenant, instance.id)
   }
 
@@ -180,7 +185,10 @@ export class ApprovalService {
     if (step === undefined) {
       throw new ConflictException({ code: "APPROVAL_STEP_MISSING", message: "步驟定義遺失" })
     }
-    const approver = await this.approverOf(tenant, step)
+    const approver = await this.approverOf(tenant, step, {
+      submittedBy: instance.submittedBy,
+      instanceId,
+    })
     if (!approver.allowed) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "非本步驟之簽核者" })
     }
@@ -242,7 +250,7 @@ export class ApprovalService {
         { status: "pending", currentStep: step.stepNo },
       )
       if (!won) throw raceLost()
-      await this.notifyStep(tenant, instance.formId, instance.recordId, next.approverRoleId)
+      await this.notifyStep(tenant, instance.formId, instance.recordId, next.approverRoleId ?? null)
       return this.toInstanceDto(tenant, instanceId)
     }
 
@@ -344,7 +352,19 @@ export class ApprovalService {
       const def = await this.repo.getApprovalDef(tenant.tenantId, inst.defId)
       const step = def?.steps.find((s) => s.stepNo === inst.currentStep)
       if (step === undefined) continue
-      if (tenant.isSuperAdmin === true || roleIds.has(step.approverRoleId)) {
+      /* 靜態關卡沿用角色比對(便宜);動態關卡必須真的解析一次 ——
+         否則「送給直屬主管」的單子永遠不會出現在主管的待簽匣裡。 */
+      const mine =
+        tenant.isSuperAdmin === true ||
+        (step.approverRule === "role"
+          ? step.approverRoleId !== undefined && roleIds.has(step.approverRoleId)
+          : (
+              await this.resolveApprovers(tenant.tenantId, step, {
+                submittedBy: inst.submittedBy,
+                instanceId: inst.id,
+              })
+            ).includes(tenant.actorId))
+      if (mine) {
         out.push(await this.toInstanceDto(tenant, inst.id))
       }
     }
@@ -358,8 +378,11 @@ export class ApprovalService {
     tenant: TenantContext,
     formId: number,
     recordId: number,
-    approverRoleId: number,
+    approverRoleId: number | null,
   ): Promise<void> {
+    /* 動態關卡沒有靜態角色 —— 通知對象由呼叫端另行解析後傳入。
+       這裡拿 null 就代表「這一關的收件人不是一個角色」,直接跳過角色查詢。 */
+    if (approverRoleId === null) return
     const approvers = await this.authz.listRoleMembers(tenant.tenantId, approverRoleId)
     /* 代理人也要收到 —— Ragic 的設定名稱就叫「啟用及**通知**代理人」。
        通知不到的話,代理人得自己想到去翻待簽匣,而請假期間沒有人會這樣做。 */
@@ -399,21 +422,82 @@ export class ApprovalService {
 
      順序有意義:**先看本人**。若本人就在該關角色內,那是親自核准不是代理,
      不該在日誌裡誤記成代理行為。 */
+  /* 🔴 OQ-AP2-1 / OQ-AP2-2|把一個關卡解析成**實際的簽核人集合**。
+
+     動態規則(直屬主管 / 主管的主管 / 前一簽核人的主管)在此展開;
+     `role` 維持既有行為。回空集合 = 這一關現在沒有人簽得了。
+
+     **解析失敗一律硬失敗**(OQ-AP2-2 = A)。業界一致如此,沒有人做 fallback:
+     Salesforce 直接報錯、SAP 卡在 "No agent found"。但 Salesforce 是**在簽核人
+     回應時**才炸(離職與空值同等對待),那時單子已經走到一半、申請人早就以為送出去了
+     —— 所以我方改在**送簽當下就解析全部關卡並擋下**(見 `assertResolvable`)。 */
+  private async resolveApprovers(
+    tenantId: number,
+    step: ApprovalStep,
+    ctx: { submittedBy: number | null; instanceId: number | null },
+  ): Promise<number[]> {
+    switch (step.approverRule) {
+      case "role":
+        return step.approverRoleId === undefined
+          ? []
+          : this.repo.actorsInRole(tenantId, step.approverRoleId)
+      case "manager":
+        return ctx.submittedBy === null ? [] : this.repo.managersOf(tenantId, ctx.submittedBy, 1)
+      case "managerOfManager":
+        return ctx.submittedBy === null ? [] : this.repo.managersOf(tenantId, ctx.submittedBy, 2)
+      case "managerOfPrevApprover": {
+        if (ctx.instanceId === null) return []
+        const prev = await this.repo.lastDecider(tenantId, ctx.instanceId)
+        return prev === null ? [] : this.repo.managersOf(tenantId, prev, 1)
+      }
+      default:
+        return []
+    }
+  }
+
+  /* 送簽當下就把每一關解析一遍,解析不出人就擋 —— 不讓單子走到一半才發現沒人能簽。
+     訊息要指名是哪一關、為什麼:「第 2 關找不到簽核人」比「送簽失敗」有用得多。 */
+  private async assertResolvable(
+    tenantId: number,
+    steps: readonly ApprovalStep[],
+    submittedBy: number,
+  ): Promise<void> {
+    for (const step of steps) {
+      if (step.approverRule === "managerOfPrevApprover") continue // 依賴執行期,送簽時無從解析
+      const actors = await this.resolveApprovers(tenantId, step, {
+        submittedBy,
+        instanceId: null,
+      })
+      const usable = actors.filter((a) => a !== submittedBy)
+      if (usable.length === 0) {
+        throw new UnprocessableEntityException({
+          code: "APPROVER_UNRESOLVED",
+          message:
+            actors.length === 0
+              ? `第 ${String(step.stepNo)} 關找不到簽核人,請先確認該關的角色有成員、或申請人已設有主管`
+              : /* 唯一人選就是送簽者本人 —— 比照 Odoo Exclusive Approval 明確擋下,
+                   不靜默跳關(跳關等於這一關的內控從未發生過) */
+                `第 ${String(step.stepNo)} 關唯一可簽的人就是送簽者本人,不得自簽;請調整簽核設定`,
+        })
+      }
+    }
+  }
+
   private async approverOf(
     tenant: TenantContext,
     step: ApprovalStep,
+    ctx: { submittedBy: number | null; instanceId: number | null },
   ): Promise<{ allowed: boolean; onBehalfOf: number | null }> {
     if (tenant.isSuperAdmin === true) return { allowed: true, onBehalfOf: null }
-    const roleIds = await this.authz.resolveActorRoleIds(tenant.tenantId, tenant.actorId)
-    if (roleIds.includes(step.approverRoleId)) return { allowed: true, onBehalfOf: null }
+    const eligible = new Set(await this.resolveApprovers(tenant.tenantId, step, ctx))
+    if (eligible.has(tenant.actorId)) return { allowed: true, onBehalfOf: null }
 
     /* 代理:操作者是某人的有效代理,而**那個人**在該關角色內。
        🔴 **只查一層,不遞移** —— A 代 B、B 代 C 不使 A 得到 C 的簽核權。
        代理鏈會讓實際權限無人能一眼算出,那正是內控最怕的東西。 */
     const principals = await this.delegates.activeDelegatorsOf(tenant.tenantId, tenant.actorId)
     for (const principal of principals) {
-      const theirRoles = await this.authz.resolveActorRoleIds(tenant.tenantId, principal)
-      if (theirRoles.includes(step.approverRoleId)) return { allowed: true, onBehalfOf: principal }
+      if (eligible.has(principal)) return { allowed: true, onBehalfOf: principal }
     }
     return { allowed: false, onBehalfOf: null }
   }

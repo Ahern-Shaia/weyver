@@ -84,7 +84,13 @@ export class ApprovalDelegateService {
         message: "代理人不可以是本人",
       })
     }
-    const startsAt = input.startsAt === undefined ? null : new Date(input.startsAt)
+    /* 🔴 未指定起始時間時**用應用時鐘寫死**,不留給 DB 的 `now()` 預設。
+
+       `active` 的判定是「`startsAt <= 應用時鐘的現在`」,而 DB 的 `now()` 是**另一個時鐘**
+       (且是交易開始時間)。兩者不同步時會出現「剛建立好的代理人顯示為未生效」——
+       非確定性、只在時序湊巧時出現,是最難查的那一種。
+       通知模組已經踩過同一個形狀(去抖動因為兩個時鐘不一致而永不到期)。 */
+    const startsAt = input.startsAt === undefined ? new Date() : new Date(input.startsAt)
     const endsAt = input.endsAt === undefined ? null : new Date(input.endsAt)
     if (endsAt !== null && endsAt.getTime() <= (startsAt?.getTime() ?? Date.now())) {
       throw new BadRequestException({
