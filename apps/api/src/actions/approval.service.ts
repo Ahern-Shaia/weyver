@@ -1,4 +1,3 @@
-import { evaluateExpressionSync } from "@gorules/zen-engine"
 import {
   BadRequestException,
   ConflictException,
@@ -29,7 +28,7 @@ import { ApprovalDelegateRepository } from "./approval-delegate.repository.js"
 import { ButtonService } from "./button.service.js"
 
 /* R1·後續-1 M2 簽核狀態機(OQ-AA-1=A:DB pending step 由 approve 推進,無 DBOS)。
-   金額條件走 **ZEN 表達式**(OQ-AA-4;expression 由結構化 config 確定性組出,非使用者任意字串)。
+   金額條件由結構化 config(`amountField` / `minAmount`)直接比較 —— 2026-08-03 稽核移除 ZEN,見 `stepEnabled`。
    人核准為 gate(承 authz `approve` + 該步角色成員);完成 → 觸發 onComplete 按鈕(冪等)。 */
 @Injectable()
 export class ApprovalService {
@@ -792,7 +791,7 @@ export class ApprovalService {
 }
 
 /* 下一個「啟用」步驟:序號 > afterStep 且條件成立者之最小步。
-   條件由結構化 config 確定性組成 ZEN 表達式(非使用者任意字串);評估失敗 → 視為不啟用(fail-closed)。 */
+   條件來自結構化 config(`amountField` / `minAmount`),非使用者任意字串。 */
 function nextActiveStep(
   steps: readonly ApprovalStep[],
   afterStep: number,
@@ -811,17 +810,16 @@ function stepEnabled(step: ApprovalStep, values: Record<string, unknown>): boole
   const raw = values[step.amountField]
   const amount = typeof raw === "number" ? raw : Number(raw)
   if (!Number.isFinite(amount)) return false
-  try {
-    // ZEN 表達式(OQ-AA-4):amount >= minAmount;參數以 context 傳入,不字串拼接值
-    return (
-      evaluateExpressionSync("amount >= threshold", {
-        amount,
-        threshold: step.minAmount,
-      }) === true
-    )
-  } catch {
-    return false // fail-closed
-  }
+  /* 🔴 2026-08-03 稽核:此處原本呼叫 `evaluateExpressionSync("amount >= threshold", …)`。
+     那個表達式是**寫死的字串常量**,兩個運算元在上面幾行已經是驗證過的 `number` ——
+     為了一個 `>=` 背了 `@gorules/zen-engine` 與每平台 10MB 的原生二進位。
+     原本的 try/catch fail-closed 也只是因為 ZEN 會 throw,直接比較不會。
+
+     **這不是放棄 docs/20 選 ZEN 的決策**:那個決策要的是它的 no-code 決策表編輯器
+     (docs/04 v2.4 列 R1「C ZEN 規則編輯器」3 人月,尚未動工),而編輯器產出的 JDM
+     確實需要 `ZenEngine` 執行。**要用的時候再裝回來是一行的事**,在那之前不需要
+     為未來的能力先付原生相依的供應鏈與映像檔成本(AGENTS 供應鏈鐵則)。 */
+  return amount >= step.minAmount
 }
 
 function toDefDto(row: ApprovalDefRow): ApprovalDefDto {

@@ -90,8 +90,22 @@
 ### 4.3 簽核完自動執行（M2）
 - `approval_def.onComplete?: buttonId` → 簽核完成於同一收尾 tx 執行該按鈕動作（冪等 key = instance);失敗 rollback + 標記(不半過帳)。
 
-### 4.4 ZEN 整合（M2;OQ-AA-4）
-- 裝 `@gorules/zen-engine`(MIT,in-process,注入 NestJS,docs/20)。金額/條件路由 = per-tenant JDM JSON 存 PG,runtime 載入。ZEN **只算決策**(哪步啟用 / 誰簽),side effect（推進/過帳）由 Weyver 確定性程式執行 + audit。QuickJS 函數節點 timeout 兜底。
+### 4.4 ZEN 整合（M2;OQ-AA-4）—— 🔴 **2026-08-03 已移除,原文保留作對照**
+
+> ~~裝 `@gorules/zen-engine`(MIT,in-process,注入 NestJS,docs/20)。金額/條件路由 = per-tenant JDM JSON 存 PG,runtime 載入。ZEN **只算決策**(哪步啟用 / 誰簽),side effect(推進/過帳)由 Weyver 確定性程式執行 + audit。QuickJS 函數節點 timeout 兜底。~~
+
+**實際落地的與上面這段的距離,是本次稽核最值得記的一件事。**
+規劃寫的是「per-tenant JDM JSON 存 PG、runtime 載入、決策表」;
+實際寫出來的是 `evaluateExpressionSync("amount >= threshold", { amount, threshold })`
+—— **沒有 JDM、沒有決策表、沒有 per-tenant 規則,表達式是寫死的字串常量**。
+`ZenEngine` / `ZenDecision` 從未被 import。
+
+規劃與落地之間沒有任何一步發出訊號:測試綠(它確實算對 `>=`)、
+型別過、文件說「ZEN 整合」而程式碼裡確實 import 了 `@gorules/zen-engine`。
+**「有 import 該套件」被當成了「有做到該規劃」。**
+
+現況:相依已移除,`stepEnabled` 直接比較。R1「C ZEN 規則編輯器」(docs/04 v2.4,3 人月)
+動工時再裝回,屆時 JDM 執行確實需要 `ZenEngine`。
 
 ### 4.5 前端（M3/M4）
 - 按鈕:記錄頁動作列 + 清單欄;確認 dialog;執行結果 toast + audit。
@@ -159,7 +173,7 @@ Input validation：button/approval def config 全 Zod + `z.infer`;動作型別�
 | **OQ-AA-1** | 簽核流程引擎 | A. **DB 狀態機**（`approval_instance` pending step,由 approve 動作推進;無 DBOS）<br>B. DBOS durable workflow（掛起等人）| **A** — 簽核「等數天」是 pending DB 狀態非掛起函式,不需 durable execution;大幅降 M0 複雜度、零新 infra。DBOS 僅「簽核完連鎖多步過帳」等長副作用鏈才需 → P1。**證據**:docs/20 DBOS 用途列「長簽核」但那指 crash-resume 之自動鏈;人工簽核等待用狀態機更簡 |
 | **OQ-AA-2** | 按鈕動作 P0 allowlist | A. **updateSelf + pushTo + openUrl**（零外部依賴)<br>B. 含 Email/SMS/更新他表/合併 | **A** — Email/SMS 依通知 infra(P0-4b 未建);更新他表/合併按鈕(一鍵多動作)= P1。updateSelf(更新本表)+ pushTo(資料拋轉)為 ERP 單據核心 + 零外部依賴。**證據**:docs/27 §4 按鈕 7 類;P0-4b 通知未建 |
 | **OQ-AA-3** | 簽核路由模型 | A. **順序多步(階層)+ 金額條件(ZEN)**;會簽(全簽)/擇辦(任一)/加簽 P1<br>B. 全含並簽 | **A** — 階層順序簽 = Ragic/ERP 最常見 + 復用角色樹;並簽(parallel step 需全/任一判定 + 動態)複雜 → P1。**證據**:docs/27 §4 簽核框(階層/會簽擇辦/金額條件);階層為 80% 場景 |
-| **OQ-AA-4** | 規則引擎 | A. **裝 GoRules ZEN**(金額/條件路由決策,in-process,per-tenant JDM)<br>B. 自研簡易條件判斷 | **A** — docs/20 已定 ADOPT ZEN(MIT、決策表 no-code、多租戶天然);金額路由正是決策表形狀;避免自研條件 DSL。ZEN 只算決策,side effect 仍 Weyver 確定性執行 + audit。**證據**:docs/20 §2 |
+| **OQ-AA-4** | 規則引擎 | A. ~~**裝 GoRules ZEN**~~<br>B. 自研簡易條件判斷 | 🔴 **2026-08-03 稽核後改判為「裝了但沒用起來,先移除」**。原裁定 A 的理由(docs/20 定 ADOPT ZEN:MIT、**決策表 no-code**、多租戶天然)**至今成立**,但 M2 落地時實際寫成的是 `evaluateExpressionSync("amount >= threshold", …)` —— **表達式是寫死的字串常量**,兩個運算元在前幾行已是驗證過的 `number`。全 API 唯一使用點。等於為一個 `>=` 背了 `@gorules/zen-engine` 與每平台 10MB 的原生二進位;原本的 `try/catch` fail-closed 也只是因為 ZEN 會 throw。**OQ-AA-4 承諾的「決策表 no-code」一項未兌現**,而那正是 docs/20 選它的理由。<br>**處置**:移除執行期相依,改直接比較;**`docs/04 v2.4` 列 R1「C ZEN 規則編輯器」3 人月動工時再裝回來**(編輯器產出的 JDM 確實需要 `ZenEngine`,而重新加相依是一行的事)。不為未來的能力先付原生相依的供應鏈與映像檔成本。 |
 | **OQ-AA-5** | 定義表車道（button_def/approval_def）| A. **authz Tier-1 DRIZZLE 車道 + app tenant scope**（同 view_def;定義為 metadata)<br>B. RLS 車道 | **A** — 定義是 metadata（如 view_def/form_categories）;instance/log(記錄類)走 RLS 車道。一致既定模式。**證據**:view_def/authz 表既定 |
 | **OQ-AA-6** | 記錄鎖粒度 | A. **簽核 pending → 整筆 update 拒**（僅簽核流程內動作可改)<br>B. 欄位級鎖 | **A** — 整筆鎖簡單 + 對齊 docs/22「已鎖不得過帳」;欄位級鎖(部分可改)複雜 → P1。**證據**:docs/22 傳票不可變原則 |
 | **OQ-AA-7** | P0 範圍確認 | A. **採 §1.1 五項為 P0**(按鈕 3 動作 + 順序簽核 + 金額路由 + 簽核完自動執行 + ZEN);Email/SMS·並簽·durable·留言@提及·合併列印 → P1/後續<br>B. 縮小(如簽核完自動執行延後)| **A** — 覆蓋 Ragic 單據縱深核心(拋轉 + 階層簽);維持後續模組時程 band。若吃緊,「簽核完自動執行」為首選延後件(簽核仍可用,人工按拋轉鈕) |
