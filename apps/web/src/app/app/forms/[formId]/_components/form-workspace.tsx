@@ -32,6 +32,7 @@ import { ImportPanel } from "./import-panel"
 import { ListControls } from "./list-controls"
 import { ObjectPage } from "./object-page"
 import { RecordList } from "./record-list"
+import { WidgetStrip } from "./widget-strip"
 
 /* 🔴 **次要視圖延後載入**。預設是列表模式,而看板 / 行事曆 / 樞紐 / 圖表
    各自帶著自己的相依(圖表還多一份繪圖庫)—— 靜態匯入等於讓每個只是來看列表的人
@@ -260,6 +261,10 @@ export function FormWorkspace(): ReactNode {
                 {msg}
               </div>
             ) : null}
+            {/* 🔴 F-2 M4:小圖表釘在列表頁,且**吃當下檢視的篩選**(OQ-PC-10 = A)。
+                放在網格上方而非側欄 —— Ragic 官方逐字「依據表單中的位置,從左到右、
+                從上到下依序排列」,不是可拖曳的儀表板(docs/10 §131 記載有誤)。 */}
+            <WidgetStrip formId={formId} viewQuery={viewQuery} placement="list" />
             <CollectionView
               formId={formId}
               form={form}

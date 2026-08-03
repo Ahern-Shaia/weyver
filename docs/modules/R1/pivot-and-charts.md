@@ -276,7 +276,7 @@ pivot 走 `GROUPING SETS`(要小計),chart 走單一 `GROUP BY`(不要小計)—
 | **M1 pivot 引擎** | grouping set 產生器改笛卡兒積 · `date_trunc` 表達式物化成具名欄(§0.3 陷阱)· `/pivot` 端點回長表 · 欄軸 top-N · 洩漏測試 | 0.10 mo |
 | **M2 pivot 前端** | 交叉表呈現(稀疏→密集)· 軸設定 UI · 截斷提示 | 0.10 mo |
 | **M3 圖表** | 裝 ECharts(tree-shaken)+ client wrapper · chart view(繼承 view 篩選)· bar/line/pie/雙 Y 軸 | 0.10 mo |
-| **M4 小圖表** ✅ | `widget_def` + 可見群組 · 後端 CRUD + 三條裁定落地(見 §11-bis)。**前端渲染待接** | 0.08 mo |
+| **M4 小圖表** ✅ | `widget_def` + 可見群組 · 後端 CRUD + **前端渲染**,三條裁定全數落地(見 §11-bis)| 0.08 mo |
 | **M5 收尾** | FMEA · e2e · doc v1.0 · MODULES · docs/25 回填 · **更正 docs/10 §131** | 0.04 mo |
 
 **合計 ≈ 0.42 mo**。前後端分開 commit。
@@ -426,8 +426,20 @@ OQ-PC-9 的裁定(widget 級 all-or-nothing)仍有效,實作時直接沿用。
 **`visible_role_ids` 空 = 依來源表單權限**(Ragic 語意),**不是**「所有人可見」——
 來源表單的權限由 `PermissionGuard` 在進到 service 之前就擋過了。
 
-⚠️ **未做**|前端渲染(把 widget 畫到列表頁 / 表單頁)。後端與權限面已完整,
-但**使用者目前看不到任何 widget** —— 這是刻意分段,不是遺漏,故在此明記。
+✅ **前端已接**(2026-08-03 同日)|`widget-strip.tsx` 釘在列表頁網格上方。
+每個 widget 各自送查詢(維度與自身篩選都不同);widget 數量是設計者手動釘的個位數,
+不是隨資料量成長的那種 N+1。**不做拖曳排版** —— `docs/10 §131` 的「拖拉排版」已查明有誤,
+Ragic 官方逐字「依據表單中的位置,從左到右、從上到下依序排列」。
+
+🔴 **接前端時抓到一個不只影響 widget 的缺陷**:`Chart` 元件的 `ariaLabel` prop
+**被 ECharts 靜默吃掉** —— 它啟用 `aria` 後會覆寫容器的 `aria-label`,
+換成自動產生的資料描述,於是**每一張圖的無障礙名稱都一樣**,而呼叫端以為自己命名了它。
+⚠️ 中途試過改用 `aria.label.description` 塞名稱,但那是**取代**整段描述不是附加
+—— 名稱回來了、資料描述沒了。最後改為**不跟它搶同一個節點**:
+外層 `role="figure"` 帶名稱,內層讓 ECharts 提供資料描述,**兩者都在**。
+
+⚠️ **仍未做**|widget 的**建立 / 編輯 UI**(目前只能打 API)。設計期的欄位候選
+與可見群組候選端點都已就位,缺的是設定面板。
 
 ---
 

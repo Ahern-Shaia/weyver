@@ -43,6 +43,7 @@ import {
   trashItemSchema,
   userNameSchema,
   viewDtoSchema,
+  viewFilterConditionSchema,
   webhookDeliverySchema,
   webhookEndpointSchema,
 } from "./schemas"
@@ -226,6 +227,30 @@ export function useApplyTemplate() {
         { method: "POST", body: { withRecords: input.withRecords } },
       ),
     onSuccess: () => invalidate([formKeys.all, ["categories"]]),
+  })
+}
+
+/* 🔴 F-2 M4 小圖表。`unavailableReason` 非 null 時**顯示原因而不是空白圖** ——
+   空白圖會被當成「沒資料」,而使用者會據此做決策(OQ-PC-11,照 Salesforce)。 */
+const widgetSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  chartType: z.enum(["bar", "line", "pie"]),
+  dimension: z.string(),
+  measure: z.object({ fn: z.string(), field: z.string() }).nullable(),
+  ownFilter: z.array(viewFilterConditionSchema).default([]),
+  placement: z.enum(["list", "form"]),
+  visibleRoleIds: z.array(z.number().int()),
+  unavailableReason: z.string().nullable(),
+})
+export type Widget = z.infer<typeof widgetSchema>
+
+export function useWidgets(formId: number, placement: "list" | "form") {
+  return useQuery({
+    queryKey: ["forms", formId, "widgets", placement] as const,
+    queryFn: () =>
+      engineFetch(`/forms/${formId}/widgets?placement=${placement}`, z.array(widgetSchema)),
+    staleTime: 60_000,
   })
 }
 

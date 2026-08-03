@@ -158,11 +158,18 @@ export function Chart({
   }, [option])
 
   return (
-    <div
-      ref={ref}
-      role="img"
-      aria-label={ariaLabel}
-      style={{ height: `${String(height)}px`, width: "100%" }}
-    />
+    /* 🔴 **外層帶名稱,內層讓 ECharts 自己管**。
+
+       ECharts 啟用 `aria` 後會**覆寫容器的 `aria-label`**,換成自動產生的資料描述
+       (「這是一個圖表,圖表類型是圓餅圖。資料為 —— 南區 為 1」)——
+       也就是說呼叫端傳的 `ariaLabel` 會被**靜默吃掉**,每張圖的無障礙名稱都一樣。
+
+       ⚠️ 試過改用 `aria.label.description` 把名稱塞進去,但那是**取代**整段描述
+       不是附加 —— 名稱回來了、資料描述沒了,兩害相權。
+       改為不跟它搶同一個節點:外層 `figure` 是人看得懂的名稱,
+       內層由 ECharts 提供資料描述,兩者都在。 */
+    <div role="figure" aria-label={ariaLabel} style={{ width: "100%" }}>
+      <div ref={ref} style={{ height: `${String(height)}px`, width: "100%" }} />
+    </div>
   )
 }

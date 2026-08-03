@@ -196,17 +196,26 @@ test("看板:純鍵盤即可換欄,且一次按鍵跳一整欄", async ({ page, 
   await expect(page.getByLabel("看板分欄依據")).toBeVisible({ timeout: 30_000 })
 
   /* 聚焦卡片本身(外層 draggable),不點內層開啟記錄的按鈕 */
-  /* ⚠️ 先等畫面穩下來再 focus。dnd-kit 的鍵盤感測器靠 `document.activeElement`,
-     而卡片載入後還會因 group-stats 回來再重繪一次 —— 焦點會被吃掉,
-     Space 就變成什麼都沒發生(而畫面完全正常)。等三欄的計數都出現代表已定案。 */
+  /* ⚠️ dnd-kit 的鍵盤感測器靠 `document.activeElement`,而卡片載入後還會因
+     group-stats 回來再重繪 —— 焦點被吃掉時 Space 就什麼都沒發生(畫面完全正常)。
+
+     🔴 先前用 `waitForLoadState("networkidle")` 等,**不夠**:這個應用有輪詢
+     (通知鈴鐺等),networkidle 本來就不可靠,而測試會在最後的 DB 斷言才失敗 ——
+     那個位置指不到真正的原因。
+     改為**拿起後立刻斷言 dnd-kit 的 live region**:沒拿起來就壞在這裡,一眼看得出來。 */
   const card = page.locator('[data-stack="甲欄"]').getByRole("button").first()
   await expect(card).toBeVisible()
   await expect(page.locator('[data-stack="乙欄"]')).toBeVisible()
-  await page.waitForLoadState("networkidle")
 
-  await card.focus()
-  await expect(card).toBeFocused()
-  await page.keyboard.press("Space") // 拿起
+  /* 🔴 用 `locator.press()` 而不是 `focus()` + `keyboard.press()` ——
+     前者會**先聚焦再送鍵**,是原子的,沒有中間讓 React 重繪把焦點吃掉的空隙。
+
+     ⚠️ 更重要的是**不能用重試迴圈包 Space**:Space 是**切換鍵**(拿起 / 放下),
+     重試等於立刻把卡片放下。我第一版就是這樣寫的,結果單獨跑會過、
+     整檔跑會偶爾失敗 —— 而失敗的樣子跟「功能壞了」一模一樣。 */
+  const live = page.locator('[role="status"]')
+  await card.press("Space") // 拿起
+  await expect(live).toContainText("甲欄")
   await page.keyboard.press("ArrowRight") // 一次 = 一欄
   await page.keyboard.press("Space") // 放下
 

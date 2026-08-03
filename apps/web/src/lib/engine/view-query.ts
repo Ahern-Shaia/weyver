@@ -37,3 +37,30 @@ export function buildRecordQuery(input: {
 export function isNarrowed(query: RecordQuery): boolean {
   return (query.filters?.length ?? 0) > 0 || (query.q ?? "") !== ""
 }
+
+/* 🔴 OQ-PC-10 = A|小圖表的篩選優先序(Ragic doc/122 逐字):
+
+   | 位置 | 優先序 |
+   |---|---|
+   | **列表頁** | 固定篩選 > **自訂篩選及共通篩選** > 小圖表本身的篩選 |
+   | 表單頁 / 首頁 | 固定篩選 > 小圖表本身的篩選(**沒有中間那層**)|
+
+   「優先序」不是「全部 AND」——**同一個欄位上,高優先者取代低優先者**。
+   全部 AND 的話「檢視篩南區、圖自己篩北區」會得到空集合,
+   而使用者看到的是一張空圖,他不會知道那是兩層條件打架。
+
+   ⚠️ 不同欄位仍然一起套用(兩者都成立才顯示)—— 那不是衝突,是疊加。 */
+type FilterCondition = NonNullable<RecordQuery["filters"]>[number]
+
+export function mergeWidgetFilter(
+  viewQuery: RecordQuery,
+  ownFilter: readonly FilterCondition[],
+  placement: "list" | "form",
+): RecordQuery {
+  /* 表單頁沒有「使用者篩選」那一層 → 只留 widget 自己的(連快速搜尋都不吃) */
+  if (placement === "form") return { ...viewQuery, filters: [...ownFilter], q: undefined }
+
+  const higherFields = new Set((viewQuery.filters ?? []).map((f) => f.field))
+  const kept = ownFilter.filter((c) => !higherFields.has(c.field))
+  return { ...viewQuery, filters: [...(viewQuery.filters ?? []), ...kept] }
+}

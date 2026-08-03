@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { ViewConfig } from "./schemas"
-import { buildRecordQuery, isNarrowed } from "./view-query"
+import { buildRecordQuery, isNarrowed, mergeWidgetFilter } from "./view-query"
 
 const view = (o: Partial<ViewConfig> = {}): ViewConfig =>
   ({
@@ -72,5 +72,48 @@ describe("isNarrowed", () => {
     expect(isNarrowed({ filters: [], combinator: "and", sort: [{ field: "a", dir: "asc" }] })).toBe(
       false,
     )
+  })
+})
+
+/* 🔴 OQ-PC-10 = A|小圖表的篩選優先序(Ragic doc/122)。
+
+   「優先序」不是「全部 AND」—— 同一個欄位上,高優先者**取代**低優先者。
+   全部 AND 的話「檢視篩南區、圖自己篩北區」會得到空集合,
+   而使用者看到一張空圖,他不會知道那是兩層條件打架。 */
+describe("mergeWidgetFilter", () => {
+  const base = {
+    combinator: "and" as const,
+    sort: [],
+  }
+  const cond = (field: string, value: string) => ({ field, op: "eq" as const, value })
+
+  it("🔴 同欄位衝突時,檢視的篩選勝過 widget 自己的", () => {
+    const merged = mergeWidgetFilter(
+      { ...base, filters: [cond("區域", "南區")] },
+      [cond("區域", "北區")],
+      "list",
+    )
+    expect(merged.filters).toEqual([cond("區域", "南區")])
+  })
+
+  /* 不同欄位不是衝突,是疊加 —— 兩者都成立才顯示 */
+  it("不同欄位兩者都套用", () => {
+    const merged = mergeWidgetFilter(
+      { ...base, filters: [cond("區域", "南區")] },
+      [cond("狀態", "已結案")],
+      "list",
+    )
+    expect(merged.filters).toHaveLength(2)
+  })
+
+  /* 表單頁 / 首頁**沒有中間那層**(Ragic 明列)—— 不能與列表頁共用一條路 */
+  it("🔴 表單頁不吃使用者的篩選與搜尋,只吃 widget 自己的", () => {
+    const merged = mergeWidgetFilter(
+      { ...base, filters: [cond("區域", "南區")], q: "關鍵字" },
+      [cond("狀態", "已結案")],
+      "form",
+    )
+    expect(merged.filters).toEqual([cond("狀態", "已結案")])
+    expect(merged.q).toBeUndefined()
   })
 })

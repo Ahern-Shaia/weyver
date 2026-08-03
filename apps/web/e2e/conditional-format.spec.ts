@@ -171,15 +171,19 @@ test("填單:條件式隱藏即時生效,且條件不再成立時欄位會回來
 
   await page.goto(`/app/builder?form=${String(form.id)}&mode=fill`)
   await page.getByRole("tab", { name: "填單" }).click()
-  const 單號 = page.getByRole("textbox").first()
+  /* 🔴 收斂到「填寫」區塊。整頁範圍的 textbox 計數對**任何**版面改動都是脆的 ——
+     2026-08-03 左欄加了「搜尋表單」框之後,這類斷言全部多算一個,
+     而失敗訊息(「應該 1 個卻有 2 個」)完全指不到原因。同型第三次。 */
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  const 單號 = fill.getByRole("textbox").first()
   await expect(單號).toBeVisible({ timeout: 30_000 })
   /* 條件未成立 → 兩欄都在 */
-  await expect(page.getByRole("textbox")).toHaveCount(2)
+  await expect(fill.getByRole("textbox")).toHaveCount(2)
 
   await 單號.fill("HIDE")
-  await expect(page.getByRole("textbox")).toHaveCount(1) // 備註 隱藏
+  await expect(fill.getByRole("textbox")).toHaveCount(1) // 備註 隱藏
 
   /* 🔴 S1:條件不再成立 → **主動還原**,不是維持隱藏 */
   await 單號.fill("PO-001")
-  await expect(page.getByRole("textbox")).toHaveCount(2)
+  await expect(fill.getByRole("textbox")).toHaveCount(2)
 })

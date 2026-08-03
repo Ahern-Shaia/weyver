@@ -106,7 +106,11 @@ test("版面屬性在填單頁生效:唯讀不給編輯器、說明文字取得�
   /* 唯讀欄**根本不渲染編輯器** —— 不是 disabled 屬性,是沒有這個元素。
      刻意如此:readonly 若當成 prop 穿過二十幾個型別分支,漏一支就破功。
      全頁只該有「備註」一個 textbox;「單號」若冒出編輯器,這裡會變成 2。 */
-  await expect(page.getByRole("textbox")).toHaveCount(1)
+  /* 🔴 收斂到「填寫」區塊。整頁範圍的 textbox 計數對**任何**版面改動都是脆的 ——
+     2026-08-03 左欄加了「搜尋表單」框之後,這類斷言全部多算一個,
+     而失敗訊息(「應該 1 個卻有 2 個」)完全指不到原因。同型第三次。 */
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  await expect(fill.getByRole("textbox")).toHaveCount(1)
 
   /* 說明文字要取得到,不能只是一個 `?` */
   await expect(page.getByLabel("說明:由系統自動編號")).toBeVisible()
