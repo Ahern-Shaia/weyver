@@ -1,9 +1,5 @@
 "use client"
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, X } from "lucide-react"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
-import type { ReactNode } from "react"
 import { ConvertTypePanel } from "@/app/app/builder/_components/designer/convert-type"
 import { OptionsEditorPanel } from "@/app/app/builder/_components/designer/options-editor"
 import { RelookupPanel } from "@/app/app/builder/_components/designer/relookup"
@@ -14,6 +10,10 @@ import {
   type FieldLayout,
   type StaticElement,
 } from "@/lib/engine/schemas"
+import { Input } from "@weyver/ui/input"
+import { Select } from "@weyver/ui/select"
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, X } from "lucide-react"
+import type { ReactNode } from "react"
 
 /* R1·UP-3 M3 欄位設定面板(placeholder/help/readonly/hidden/colSpan/預設值)。編輯 layout 草稿;
    hidden 為排版層(≠權限 D4)。預設值變數對映 M1 後端 create-time 解析。 */
@@ -168,7 +168,9 @@ export function FieldSettingsPanel({
               onChange={(e) => onChange({ readonly: e.target.checked || undefined })}
               className="accent-(--color-primary)"
             />
-            <span className="text-ink-2">唯讀</span>
+            {/* 與「隱藏」同一條誠實標示:排版層的可用性約束,擋不住 API。
+                真正的欄位級權限在 E-1(後端 assertWritable)。 */}
+            <span className="text-ink-2">唯讀(排版層,非權限)</span>
           </label>
           <label className="flex items-center gap-1.5">
             <input

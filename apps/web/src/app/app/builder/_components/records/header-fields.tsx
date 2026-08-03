@@ -1,15 +1,15 @@
 "use client"
 
-import { FieldCellPair } from "@weyver/ui/field-grid"
-import type { ReactElement, ReactNode } from "react"
 import {
+  FORM_COLS,
+  FORM_COL_W,
+  FORM_ROW_H,
   cellPosition,
   effectiveLayout,
-  FORM_COL_W,
-  FORM_COLS,
-  FORM_ROW_H,
 } from "@/lib/engine/form-geometry"
 import type { FieldDto, Layout } from "@/lib/engine/schemas"
+import { FieldCellPair } from "@weyver/ui/field-grid"
+import type { ReactElement, ReactNode } from "react"
 
 /* 🔴 R1·UP-3c M1|填單表頭吃**設計器排的版面**。
 
@@ -29,7 +29,11 @@ export function HeaderFields({
 }: {
   readonly fields: readonly FieldDto[]
   readonly layout: Layout | null
-  readonly renderInput: (field: FieldDto) => ReactNode
+  /* 🔴 2026-08-03:第二參數是**唯讀**。設計器的「唯讀」勾選框自出貨以來零 reader,
+     勾了照樣能改 —— 使用者以為欄位保護住了。
+     刻意不把 readonly 當 prop 傳進 FieldInput:那要穿過二十幾個型別分支,
+     任何一支忽略它就又破功。改成**唯讀時根本不渲染編輯控制項**,沒有分支能繞過。 */
+  readonly renderInput: (field: FieldDto, readonly: boolean, placeholder?: string) => ReactNode
 }): ReactElement {
   const effective = effectiveLayout(fields, layout)
   const cols = layout?.grid.cols ?? FORM_COLS
@@ -62,9 +66,10 @@ export function HeaderFields({
               flush
               item={{
                 label: field.name,
-                required: field.required,
-                help: fl.help !== undefined && fl.help !== "",
-                value: renderInput(field),
+                /* 唯讀欄不標必填星號 —— 標了等於要求使用者填一個他填不了的欄 */
+                required: field.required && fl.readonly !== true,
+                help: fl.help !== undefined && fl.help !== "" ? fl.help : false,
+                value: renderInput(field, fl.readonly === true, fl.placeholder),
               }}
             />
           </div>

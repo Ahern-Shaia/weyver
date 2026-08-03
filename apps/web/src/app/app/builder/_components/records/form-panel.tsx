@@ -1,5 +1,8 @@
 "use client"
 
+import { FieldInput } from "@/components/form/field-input"
+import { useGridKeyboard } from "@/components/form/use-grid-keyboard"
+import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { describeEngineError } from "@/lib/engine/client"
 import { isStubType } from "@/lib/engine/field-types"
 import { type FormulaFieldSpec, computeFormulaPreview } from "@/lib/engine/formula-preview"
@@ -9,10 +12,7 @@ import { toText } from "@weyver/formula"
 import { Button } from "@weyver/ui/button"
 import { Plus, Trash2 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { FieldInput } from "@/components/form/field-input"
 import { HeaderFields } from "./header-fields"
-import { useGridKeyboard } from "@/components/form/use-grid-keyboard"
-import { toSubmitValue } from "@/components/form/value"
 
 /* 公式欄即時預覽:以填單當前值 client 端算(與後端同引擎);循環 / 錯誤時各欄回 —,不炸整表 */
 function computeHeaderPreview(
@@ -188,14 +188,28 @@ export function RecordFormPanel({ formId }: { formId: number }) {
           <HeaderFields
             fields={form.fields}
             layout={layoutQuery.data?.layout ?? null}
-            renderInput={(field) => (
-              <FieldInput
-                field={field}
-                formId={formId}
-                value={field.type === "formula" ? headerPreview[field.name] : values[field.name]}
-                onChange={(v) => set(field.name, v)}
-              />
-            )}
+            renderInput={(field, readonly, placeholder) => {
+              const shown =
+                field.type === "formula" ? headerPreview[field.name] : values[field.name]
+              /* 版面唯讀 = **介面層的可用性約束,不是權限**。真正的欄位級權限在 E-1
+                 (後端 assertWritable)。此處刻意只做「不給編輯器」,不假裝它擋得住 API。 */
+              if (readonly) {
+                return (
+                  <span className="px-2.5 py-[5px] text-[13px] text-ink-2">
+                    {formatFieldValue(field, shown)}
+                  </span>
+                )
+              }
+              return (
+                <FieldInput
+                  field={field}
+                  formId={formId}
+                  value={shown}
+                  onChange={(v) => set(field.name, v)}
+                  placeholder={placeholder}
+                />
+              )
+            }}
           />
         </section>
 

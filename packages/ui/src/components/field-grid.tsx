@@ -6,7 +6,10 @@ export interface FieldItem {
   readonly label: ReactNode
   readonly value: ReactNode
   readonly required?: boolean
-  readonly help?: boolean
+  /* 傳字串 = 把說明文字掛在 `?` 上(title + aria-label);傳 `true` = 只有記號沒有內容。
+     🔴 2026-08-03:原本只收 boolean —— 設計器讓使用者打了說明文字,填單卻只渲染
+     一個點不出東西的 `?`。**有記號沒內容比沒有記號更糟**,使用者會一直找那段說明。 */
+  readonly help?: boolean | string
   readonly mono?: boolean
   readonly note?: ReactNode
 }
@@ -107,7 +110,12 @@ function Cells({
         {item.required ? <span className="font-semibold text-er">*</span> : null}
         {item.label}
         {item.help ? (
-          <span className="inline-flex size-3 items-center justify-center rounded-full border border-line-2 text-[12px] text-ink-3">
+          <span
+            className="inline-flex size-3 cursor-help items-center justify-center rounded-full border border-line-2 text-[12px] text-ink-3"
+            {...(typeof item.help === "string"
+              ? { title: item.help, "aria-label": `說明:${item.help}` }
+              : {})}
+          >
             ?
           </span>
         ) : null}

@@ -35,12 +35,18 @@ export function FieldInput({
   formId,
   value,
   onChange,
+  placeholder,
 }: {
   field: FieldDto
   /* F-5:附件欄上傳需表單 id(header 用主表、明細列用子表)*/
   formId: number
   value: unknown
   onChange: (value: unknown) => void
+  /* 🔴 2026-08-03:版面層 `placeholder`。設計器有一格就叫「提示文字(placeholder)」,
+     但它自出貨以來只在設計畫布的預覽裡看得到,填單的輸入框從來沒收到過。
+     只接文字類與數值類 —— 其餘型別的控制項沒有可放提示文字的位置,
+     硬塞會變成「設了沒反應」的另一種形態。 */
+  placeholder?: string | undefined
 }) {
   if (isStubType(field.type)) {
     return <span className="text-[12px] text-ink-3">(此型別即將推出,暫不可填)</span>
@@ -112,6 +118,7 @@ export function FieldInput({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
+          {...(placeholder === undefined ? {} : { placeholder })}
           /* resize-y:橫向拉會撐破格線,縱向可拉是使用者真的需要的 */
           className={cn(baseInputClass, "h-auto resize-y py-1.5")}
         />
@@ -128,7 +135,7 @@ export function FieldInput({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           inputMode={inputMode}
-          placeholder={field.type === "money" ? "0.0000" : ""}
+          placeholder={placeholder ?? (field.type === "money" ? "0.0000" : "")}
         />
       )
     }
@@ -229,6 +236,7 @@ export function FieldInput({
             className={baseInputClass}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
+            {...(placeholder === undefined ? {} : { placeholder })}
           />
           {sym === null ? null : <BarcodeView value={value} symbology={sym} size={64} />}
         </div>
