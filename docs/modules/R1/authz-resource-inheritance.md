@@ -265,6 +265,7 @@ Input validation:分類 `name`(trim / max 長度 / 非空 / tenant 內唯一);`a
 | **OQ-ARI-6** | 新表預設分類 | A. **未分類**(走預設 profile;builder 可選)<br>B. 部門預設分類<br>C. 強制選 | **A 未分類** — 最低摩擦;owner 保證建立者可用,他人可見由預設 profile 決定。B 需部門↔分類對映(尚無)、C 打斷快速建表。§10-bis D4 | ✅ **A** |
 | **OQ-ARI-7** | 分類級欄位授權 | A. **不做**(欄位收斂於表單動作集)<br>B. 分類級欄位預設 | **A 不做** — 欄位跨表語意不通,無自然對映;維持現行 clamp。(無外部反證)| ✅ **A** |
 | **OQ-ARI-8** ⭐新 | 無權表單:隱藏 vs 顯示鎖定 | A. **隱藏**(現行 authz.md G4:連存在都不知)<br>B. **顯示但鎖定 + 申請存取**(Drive 模式)<br>C. **折衷** | **Google Drive** 破繼承後「看得到但打不開 + request access」緩解遷移期「東西不見了」;但與「不洩漏存在」安全立場相衝。§10-bis D1/D4 | ✅ **折衷** — 非敏感/未分類/遷移期走 B(顯示鎖定+申請存取);**敏感表恆 A**(隱藏,守 authz.md G4 不洩漏存在)|
+| **OQ-ARI-9** 🆕 **2026-08-03** | **分類管理員角色** | A. **引入**:對指定分類內的表單具 design + 使用者管理<br>B. 不做,design 權維持「租戶 admin」或「逐表授權」兩種 | ✅ **A(裁定 2026-08-03)** — 一手補查(§10-ter)發現的 **Ragic-parity 真缺口**:Ragic 以**群組頁籤 + 群組管理員**提供了「把 design 權下放到**容器層**給指定人」的路徑,本模組沒有對應物。<br>**不做的代價不是少一個功能,是撞命門**:大型租戶的 design 權會全部壓在租戶 admin 身上 —— 而「要找管理員才能改表單」正是 `AGENTS.md` 第一約束所禁的「設定外包」的變體。<br>🔴 **採納時的硬約束(Ragic 官方自列的風險,§10-ter.2 末段)**:容器層設計權會讓該管理員**經動作按鈕影響其無權限的目標表單** → **動作 / 拋轉路徑必須補目標表單的權限檢查**,否則這個角色就是提權管道。<br>⚠️ 落地排程未定,列 P1;本裁定只確立方向與該硬約束 |
 
 ---
 
@@ -475,6 +476,7 @@ WHERE f.tenant_id = :tenantId AND f.deleted_at IS NULL;
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-03 | v1.1 | **OQ-ARI-9 裁定 = A(引入分類管理員角色)**。理由不是補齊競品功能表,而是**不做會撞第一約束** —— design 權全壓在租戶 admin 身上等於「要改表單得找管理員」,那是設定外包的變體。同時把 Ragic 官方自列的風險寫成硬約束:容器層設計權可經動作按鈕影響**無權限的目標表單** → 動作 / 拋轉路徑須補目標表單權限檢查。落地排 P1 | Claude Code |
 | 2026-08-03 | v1.0(補一手)| **§10-ter Ragic 存取權限一手補查**(承 `_audit/giants-shoulders-audit-A.md` 行動 10;結清 §10-bis 明載之 Ragic 證據缺口)。出處更正:待查路徑 `doc/11/access-rights` 不存在,實為 **`doc/32/access-rights`** + `doc/0/user-groups`。逐字補入:五級表單權限 · **多群組「較寬鬆勝」且為維度 lattice join**(問卷式 ∪ 僅閱覽 → 佈告欄式)· 個別使用者覆寫 · Everyone(**含未登入者**)· 欄位三態且「只會對有表單存取權限的群組有作用」· 表單權限外溢報表 · SYSAdmin / 群組管理員 · **群組頁籤 = 唯一容器層授予**。關鍵事實:**全鏡像 582 頁「繼承」命中 0**。重新裁決 §10-bis 三條 Ragic claim:「無容器繼承」**部分推翻**(有群組頁籤,但為 all-or-nothing 設計權、無子層覆寫)· 「schema 權集中 SYSAdmin」**部分推翻**(群組管理員亦可改設計)· 「Everyone」**證實**。既有裁定**全數維持**;OQ-2 / 跨角色聯集 / 欄位 clamp 三處由「無外部依據」升為**一手佐證**;記錄 **建議新增 OQ-ARI-9**(分類管理員角色,對齊 Ragic 群組管理員之容器層設計權下放,含其官方自列之動作按鈕越權風險)+ OQ-8 / OQ-3 之遷移張力提醒。§10-ter.6 誠實聲明。**clean-room:僅讀公開文件。未修改既有裁定與程式碼** | Claude Code |
 | 2026-07-23 | v0.1 | 初版 DRAFT — 資源軸繼承(分類授權層 + owner 短路 + 敏感旗標 + 租戶預設 profile);既有 `form_permissions` 重新定位為覆寫層;OQ-ARI-1..7 待裁定。承 authz.md P0-4a。UI 對照 `permissions-resource-inheritance.html` | Claude Code |
 | 2026-07-24 | v0.2 | **向上設計研究錨定**(deep-research 22 來源/19 confirmed;§10-bis)。**OQ-ARI-4 翻案 A→B**:Notion("No more database accidents")+ Salesforce(record owner vs Customize Application)一致證明「用資料 ≠ 改結構」→ owner 得全資料動作但 design 除外;§1.1/§4.2/§5.1 同步。OQ-3(Salesforce OWD 範式)/OQ-5(Purview 容器 label 不繼承 + admin-only)/OQ-1·2(Drive 破繼承旗標 + Notion 雙向覆寫)證據強化。新增 **OQ-ARI-8**(無權表單 隱藏 vs 顯示鎖定 + 申請存取,Drive 模式)。誠實標注 Ragic/Airtable/Odoo 證據缺口 | Claude Code |

@@ -69,7 +69,7 @@
 |---|---|---|
 | **HyperFormula**(Handsontable)| Excel 級計算引擎 · GPL/商用(**不採碼,只借架構**)| **A1/A2 計算引擎黃金內構**:`Parser(→AST) → DependencyGraph(有向圖,vertex=cell/range)→ Interpreter`;**增量重算(只算受影響 cell)**;**循環偵測 = 強連通分量 SCC 分解(Tarjan)**,非樸素 DFS;**lazy computation**;range 為一等 vertex |
 | **Airtable** | 專有(借 UX 語意)| **A3/A4 語意分類**:`rollup = lookup + formula`;**條件式 rollup**(篩選哪些子記錄計入,如「只加已核准明細」)→ OQ-FML-10;即時重算 |
-| **Salesforce Roll-Up Summary + DLRS** | 標準功能 + DLRS 開源 | **A2/A5 三種重算模式**:**Realtime(同步)/ Scheduled(背景)/ Bulk-API(初始 backfill·全重算)**;**⚠️ 反面教材(本模組必修正)**:①標準 rollup 刪子記錄**不自動重算**→ 本模組刪/改子必精準重算(7-bis.3 硬需求);②不支援 grandchild **多層** rollup → OQ-FML-9;③25 rollup/物件**武斷上限** → 本模組不設武斷上限,以物化 + 依賴圖擴展 |
+| **Salesforce Roll-Up Summary + DLRS** | 標準功能 + DLRS 開源 | **A2/A5 三種重算模式**:**Realtime(同步)/ Scheduled(背景)/ Bulk-API(初始 backfill·全重算)**;**⚠️ 反面教材(本模組必修正)**:①標準 rollup 刪子記錄**不自動重算**→ 本模組刪/改子必精準重算(7-bis.3 硬需求);②不支援 grandchild **多層** rollup → OQ-FML-9;③25 rollup/物件上限 → **一手查證後更正**(§2-bis.1):實為**預設 25 / 硬上限 40 / 提高須向 Salesforce Support 提申請**。**承重力不在數字小,在「提高上限得外包給原廠」** —— 依 AGENTS 第一約束,設定不得外包。本模組以物化 + 依賴圖擴展,無此申請路徑 |
 | **Notion** | 專有(借模型)| rollup 擴充 relation;背景自動重算;函數集 SUM/AVG/COUNT/MIN/MAX/MEDIAN/RANGE/percent-empty(對映 A1 聚合函數)|
 | **Teable / Baserow / NocoDB** | Teable `packages/*` MIT(**可 fork**)| docs/16:parser fork Teable ANTLR `Formula.g4`;求值**混合式**(讀時算 + 物化 PG generated column);canvas grid |
 
@@ -171,7 +171,7 @@ formula_def
 - **Lookup**|即時從關聯記錄拉一欄(唯讀;來源變動即反映)。與 Load 差異:Lookup 不快照、恆為來源現值。
 - **Rollup**|對子表明細 / 一對多關聯做聚合(訂單合計 = SUM 明細金額;COUNT / AVG / MIN / MAX / MEDIAN / RANGE;函數集對映 Notion)。
 - **條件式 Rollup(Airtable 式,OQ-FML-10)**|可篩選哪些子記錄計入(如「只加狀態=已核准的明細」)。
-- **多層鏈式 Rollup(OQ-FML-9;修 Salesforce 不支援 grandchild)**|Rollup 欄本身可被上層 Rollup 依賴(訂單→明細→批次遞迴)—— 依賴圖天生支援鏈式,設**深度上限**防爆炸。此為差異化(Salesforce 至今不支援)。
+- **多層鏈式 Rollup(OQ-FML-9)**|Rollup 欄本身可被上層 Rollup 依賴(訂單→明細→批次遞迴)—— 依賴圖天生支援鏈式,設**深度上限**防爆炸。**多層為依賴圖之自然結果,無額外成本**。<br>⚠️ 2026-08-03:原文括號內「修 Salesforce 不支援 grandchild」與句末「此為差異化(Salesforce 至今不支援)」**已刪** —— 該斷言未查證(§2-bis.1)。
 - **刪 / 改子記錄必精準重算(修 Salesforce 標準 rollup 之已知痛點)**|子記錄刪除 / 修改 → 依賴圖精準失效 → 只重算受影響父列 Rollup。**非選項,是正確性底線**(7-bis.3)。
 - **N+1 防護(AGENTS 明列瓶頸)**|
   - 列表 / grid 載入 N 列且各含 Lookup/Rollup → **dataloader 批次**(一次 IN 查詢)或**正確 join**,禁逐列查。
@@ -260,7 +260,7 @@ formula_def
 | **M1** A1 | 公式 parser(fork Teable ANTLR)+ 函數庫 + 型別推斷 + formula_def | ✅ **完成**|`packages/formula`(parser vendored + evaluate + ~28 函數 Decimal 禁 float + infer + 參照收集;28 tests;CLEANROOM MIT 鏈)+ apps/api `formula_def` 表(RLS+grants)+ `FormulaService.defineFormula`(parse→名稱解析成 field id→型別推斷→存;unknown/自我參照/語法錯設計期擋;7 整合測試真 PG)|
 | **M2** A2 | 依賴圖 + 循環偵測 + 重算引擎(讀時算 / 物化混合)| ✅ **核心完成**|`packages/formula/graph.ts`(**Tarjan SCC 循環偵測 + 拓樸求值序**,HyperFormula 式,11 tests)+ `FormulaService` 定義期循環檢查(FormulaCycleError 帶欄名鏈)+ `computeRecord` **讀時重算**(拓樸序鏈式,真 PG 9 整合測)· 物化 / Scheduled / Bulk 三模式為後續優化(OQ-FML-8/2) |
 | **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ✅ **後端核心完成**|link 欄儲存(bigint 目標 id + options.targetFormId)已由 form-engine 型別系統落地;`RelationService`.registerRelation(寫 relation_def,idempotent)+ **load 帶入**(讀目標記錄指定欄值,採購單→供應商 帶入 地址/電話);6 整合測(真 PG)· **選記錄 UI(前端)+ M2M junction 續** |
-| **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ✅ **後端核心完成**|`RollupService`(子表聚合 SUM/COUNT/AVERAGE/MIN/MAX + **條件式**(OQ-FML-10)+ **rollupBatch N+1 安全**(一次 whereIn 撈全部子列 app 層分組)+ **讀時算故刪子即反映**(修 Salesforce 痛點))+ `RecordService.listByParents` + `RelationService.lookup`(即時單欄);6 整合測(真 PG)· 多層鏈式由依賴圖串接 · 物化為後續 |
+| **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ✅ **後端核心完成**|`RollupService`(子表聚合 SUM/COUNT/AVERAGE/MIN/MAX + **條件式**(OQ-FML-10)+ **rollupBatch N+1 安全**(一次 whereIn 撈全部子列 app 層分組)+ **讀時算故刪子即反映**(架構免疫,無 stale 窗口))+ `RecordService.listByParents` + `RelationService.lookup`(即時單欄);6 整合測(真 PG)· 多層鏈式由依賴圖串接 · 物化為後續 |
 | **M5** A5 | 前端共享求值即時預覽 + 後端權威重算一致性 | ✅ **共享引擎完成**|apps/web 依賴同一 `@weyver/formula`(parser/求值/依賴圖 by construction 一致,OQ-FML-7=A)+ `computeFormulaPreview` 前端即時預覽 util(拓樸序鏈式 + 循環偵測 + Decimal 精度)+ 5 web 單元測;後端為權威。**渲染進填單 UI(formula 欄唯讀顯示)於 M6 隨設計器啟用** |
 | **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | ✅ **SHIPPED**|後端 createForm 自動 defineFormula + 讀時算注入(88 api tests 零回歸)+ 前端設計器啟用 formula 欄(palette + 運算式)+ 填單即時預覽(computeFormulaPreview)+ grid 唯讀 + `e2e/formula.spec.ts` 固化(建欄→預覽 50→存→資料檢視)+ §14 FMEA(P0 全清)|
 
@@ -278,7 +278,7 @@ formula_def
 | **OQ-FML-6** | 函數集 MVP 範圍 | A. math/logic/text/date/聚合 核心 ~30 函數 <br> B. 對齊 Ragic/Airtable 全集 <br> C. 極簡僅四則 + IF | **A** — 覆蓋 80% 場景;其餘(財務函數 / 進階文字 / 正則)P1-I 逐一加 registry。避免一次做全集 |
 | **OQ-FML-7** | 前後端求值一致 | A. 同 ANTLR 文法編譯到 JS(前端預覽)+ 後端(權威),共享語意 <br> B. 前端另寫一套 <br> C. 前端不預覽,一律後端 | **A** — 單一文法來源避免前後端漂移;後端恆為權威,前端僅即時預覽(docs/14) |
 | **OQ-FML-8** | 物化 vs 讀時算 選擇準則 | A. 依 fan-in(被多少下游依賴)+ 讀寫比 + 是否跨表聚合 自動 / 半自動決定 <br> B. 一律讓用戶手選 <br> C. 全預設讀時算,超標才物化 | **A** — 預設規則自動分流(跨表 Rollup / 高讀寫比 → 物化;同列輕量 → 讀時算),進階可覆寫;不逼用戶懂物化 |
-| **OQ-FML-9** | 多層鏈式 Rollup(grandchild)| A. 支援(依賴圖天生鏈式 + 深度上限)<br> B. 只單層 | **A** — MVP 支援,深度上限 ≤5 防爆炸;差異化勝 Salesforce(2026-07-19 裁定)|
+| **OQ-FML-9** | 多層鏈式 Rollup(grandchild)| A. 支援(依賴圖天生鏈式 + 深度上限)<br> B. 只單層 | **A** — MVP 支援,深度上限 ≤5 防爆炸。**多層是依賴圖的自然結果,無額外成本**。<br>⚠️ **2026-08-03 措辭重裁**:原文寫「差異化勝 Salesforce」,而「Salesforce 不支援 grandchild」已降為**未查證**(官方 help 為 JS 渲染未取得逐字,現有依據僅社群討論串)。**選項不變,刪去比較句** —— A 本來就獨立成立,不需要靠競品做不到來撐 |
 | **OQ-FML-10** | 條件式 Rollup(篩選子記錄)| A. MVP 就做 <br> B. P1-I 再補 | **A** — MVP 做(Airtable 標配「只加已核准明細」);與 Rollup 同期邊際成本低(2026-07-19 裁定)|
 
 ---
@@ -304,7 +304,7 @@ formula_def
 | F5 | 除零 / 未知函數 / 型別錯 | P1 | typed `FormulaEvalError`/`FormulaDefinitionError` fail-closed,不靜默。✅ |
 | F6 | 列表逐列 computeRecord → N+1 | P1 | `hasFormula` 短路(非公式表零額外查詢);公式表每列一次 computeRecord。⚠️ **已知**:批次預載 defs / 物化為優化,列大時再做;pilot 頁 ≤200 可忍 |
 | F7 | 被引用欄被刪 → 公式讀時算得壞值(非崩)| P1 | depends_on 存 id(**改名不壞**,已驗);**刪除保護未強制**(OQ-FML-3 治本:破壞性 DDL 前檢查 formula_def 引用)。⚠️ 已知殘留 |
-| F8 | Rollup 刪/改子列值 stale | — | **讀時算(無物化)→ 天生即反映**(修 Salesforce 痛點,已驗 180→150)。✅ 架構免疫 |
+| F8 | Rollup 刪/改子列值 stale | — | **讀時算(無物化)→ 天生即反映**(已驗 180→150)。✅ **架構免疫:讀時算無 stale 窗口**。<br>⚠️ 2026-08-03 措辭重裁:原寫「修 Salesforce 痛點」,而該斷言查證後**僅涵蓋 campaign rollup**、非標準 rollup 全稱。本項的正當性來自**正確性底線**,不需要競品做不到來支撐 |
 | F9 | 前後端顯示不一致 | P1 | 前後端共用**同一** `@weyver/formula`(by construction 一致);後端為權威。✅ |
 | F10 | Rollup 巨聚合拖垮(大子表)| P2 | 一次 whereIn 撈子列 + app 聚合;超大子表掃描上限 / 物化為後續。⚠️ MVP 可忍 |
 
@@ -318,6 +318,7 @@ formula_def
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-03 | v1.1 | **採納 §2-bis.1 之措辭重裁**(決策方 2026-08-03 裁定):OQ-FML-9 刪「差異化勝 Salesforce」、FMEA F8 刪「修 Salesforce 痛點」改「架構免疫:讀時算無 stale 窗口」、§(A4/M4)同步、§2-bis Salesforce 欄第③條改以「提高上限須向原廠提申請」為承重點。**選項與設計一律不變,只改承重來源** —— 從「競品做不到」改為「我方架構本來就如此」,後者不會因競品改版而失效 | Claude Code |
 | 2026-08-03 | v1.0(補一手)| **§2-bis.1 三條 Salesforce 反面教材補一手查證**(承 `_audit/giants-shoulders-audit-A.md` 行動 6)。結果:① 刪子不重算 → **降級**(官方敘述僅限 campaign rollup,非標準 rollup 全稱);② 不支援 grandchild → **標未查證**(官方 help 正文為 JS 渲染未取得逐字,現有依據僅社群討論串);③ 25 上限 → **成立但補完**(官方 KB 逐字:預設 25 / 硬上限 40 / 提高須向 Salesforce Support 提申請,附 URL + 查證日)。記錄「建議重裁 OQ-FML-5 / OQ-FML-9 之**措辭**」(選項不變,由決策方裁定);標注 teable-docs / baserow-docs 無 rollup 專屬文件頁故未列對照。**未修改任何既有裁定與程式碼** | Claude Code |
 | 2026-07-19 | v0.1 | 初版 DRAFT — P0-3 公式引擎(C)+ Link&Load(D)合一;A1–A6 切分 + OQ-FML-1..8(含承 OQ-FEC-7 之 fork Teable packages/formula 決策);上游 = form-engine-core v1.0 + docs/16 Teable MIT fork 分析;N+1(Link&Load + Lookup/Rollup)標為頭號風險;求值混合式(讀時算 + 物化)| Claude Code |
 | 2026-07-19 | v0.2 | OQ-FML-1..8 全採建議裁定;狀態 DRAFT → APPROVED;**OQ-FEC-7 拍板 fork Teable `packages/formula`(MIT,逐檔驗 + clean-room log)**;進 M1(parser + 函數庫)| Claude Code |
