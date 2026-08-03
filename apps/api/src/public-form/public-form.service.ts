@@ -33,6 +33,12 @@ const PUBLIC_SAFE_TYPES = new Set([
   "percent",
 ])
 
+/* 🔴 前端挑選器據此過濾候選(`GET /api/public-forms/safe-types`)。
+   **不在前端各寫一份** —— 兩份清單會漂移,而漂移的症狀是使用者挑得到一個
+   必定失敗的欄位(同 OQ-PC-11 的設計期擋)。執法仍在 `create()`,此處只是讓
+   畫面不要提供一個做不到的選項。 */
+export const publicSafeTypes = (): readonly string[] => [...PUBLIC_SAFE_TYPES]
+
 /* 🔴 一律不得公開。理由各異但都是「給匿名者看等於洩漏或失控」:
    - link:候選清單會列舉來源表(Airtable 實證的最大破口)
    - lookup / rollup / formula:值來自別處,公開它等於公開來源

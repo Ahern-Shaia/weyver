@@ -21,7 +21,7 @@ import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import { PublicFormService } from "./public-form.service.js"
+import { PublicFormService, publicSafeTypes } from "./public-form.service.js"
 
 /* G-2|公開表單的**內部**管理面。與訪客路徑分開成兩個 controller,
    因為兩者的守衛完全不同 —— 混在一起遲早會有人把 admin 端點漏掉守衛。 */
@@ -50,6 +50,15 @@ export class PublicFormAdminController {
     if (!permissions.isAdmin) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "公開表單設定需要管理員權限" })
     }
+  }
+
+  /* 可公開的欄位型別。**由後端回**,前端不自己維護一份 ——
+     兩份清單會漂移,而症狀是使用者挑得到一個必定失敗的欄位。
+     不含權限資訊,但仍走 admin 閘門與其餘端點一致。 */
+  @Get("safe-types")
+  safeTypes(@Permissions() permissions: EffectivePermissions): { types: readonly string[] } {
+    this.assertAdmin(permissions)
+    return { types: publicSafeTypes() }
   }
 
   @Get()
