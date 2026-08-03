@@ -49,6 +49,9 @@ export interface IndexableField {
 /* 單值上限 —— 長備註沒必要整篇進索引;GIN 寫入放大與此成正比(FMEA S6) */
 const MAX_VALUE_LEN = 2000
 
+/* PG 單句綁定參數上限 65535,一列 6 欄 → 理論上限約 10900 列。取一半留餘裕。 */
+const INSERT_CHUNK = 5000
+
 @Injectable()
 export class SearchIndexService {
   /* 無建構子依賴 —— 一律在**呼叫端的 tx** 內寫入,不自己取連線。
@@ -56,6 +59,22 @@ export class SearchIndexService {
 
   static isSearchable(type: string): boolean {
     return SEARCHABLE.has(type)
+  }
+
+  /* 🔴 這筆記錄**寫得出任何索引列嗎**。
+
+     可搜欄位全為空的記錄(例如只有一個 barcode 欄而它沒填)本來就不該有索引列。
+     對帳若只看「有沒有索引列」,這種記錄會被永遠當成缺漏 —— 補寫完立刻又報一次。
+     那會讓對帳變成恆紅的假警報,而真正的缺漏就藏在那片噪音裡。
+
+     與 `upsertInTx` 共用 `normalize`,兩邊對「什麼算有內容」不可能分岔。 */
+  static hasIndexableContent(
+    fields: readonly IndexableField[],
+    values: Readonly<Record<string, unknown>>,
+  ): boolean {
+    return fields.some(
+      (f) => SearchIndexService.isSearchable(f.type) && normalize(values[f.name]) !== null,
+    )
   }
 
   /* 在**呼叫端的 tx 內**寫入 —— 不自己開 tx。 */
@@ -110,6 +129,60 @@ export class SearchIndexService {
       .insert(rows)
       .onConflict(["tenant_id", "form_id", "record_id", "field_id"])
       .merge(["field_name", "value_text", "updated_at"])
+  }
+
+  /* 🔴 R4|**批次建立**專用。此前 `createManyRecords` 完全沒有寫索引 ——
+     Excel 匯進來的資料一筆都搜不到,而那對遷移中的客戶就是他的全部資料。
+     沒有任何錯誤訊息,只有「搜尋看起來好好的」。
+
+     **只給建立用**:不處理「值被清空要刪索引列」,因為新記錄沒有舊索引可清。
+     更新路徑(含 `saveWithLines` 的既有列)一律走逐筆的 `upsertInTx`。
+
+     分段送是必要的不是保險:PG 單句上限 65535 個綁定參數,一列 6 欄 →
+     一次最多約 10900 列;5000 筆記錄 × 數個可搜欄位輕易就超過。 */
+  async upsertManyInTx(
+    trx: Knex.Transaction,
+    input: {
+      readonly tenantId: number
+      readonly formId: number
+      readonly fields: readonly IndexableField[]
+      readonly records: readonly {
+        readonly recordId: number
+        readonly values: Readonly<Record<string, unknown>>
+      }[]
+    },
+  ): Promise<void> {
+    const searchable = input.fields.filter((f) => SearchIndexService.isSearchable(f.type))
+    if (searchable.length === 0) return
+
+    const rows: {
+      tenant_id: number
+      form_id: number
+      record_id: number
+      field_id: number
+      field_name: string
+      value_text: string
+    }[] = []
+    for (const record of input.records) {
+      for (const f of searchable) {
+        const text = normalize(record.values[f.name])
+        if (text === null) continue
+        rows.push({
+          tenant_id: input.tenantId,
+          form_id: input.formId,
+          record_id: record.recordId,
+          field_id: f.id,
+          field_name: f.name,
+          value_text: text.slice(0, MAX_VALUE_LEN),
+        })
+      }
+    }
+    for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+      await trx("search_doc")
+        .insert(rows.slice(i, i + INSERT_CHUNK))
+        .onConflict(["tenant_id", "form_id", "record_id", "field_id"])
+        .merge(["field_name", "value_text", "updated_at"])
+    }
   }
 
   /* 記錄刪除(含 soft delete)→ 移出索引。

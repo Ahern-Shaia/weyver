@@ -146,7 +146,9 @@ export class SearchBackfillService {
             fields: searchable,
             values,
           })
-          indexed += 1
+          /* 🔴 只數**真的寫出索引列**的那些。可搜欄位全空的記錄寫不出任何列,
+             把它算進「補寫 N 筆」會讓日誌宣稱做了事,而下一次對帳照樣報同一批。 */
+          if (SearchIndexService.hasIndexableContent(searchable, values)) indexed += 1
         }
       })
     }
@@ -197,10 +199,24 @@ export class SearchBackfillService {
       const fields = await this.knex("field_def")
         .where({ form_id: formId })
         .whereNull("deleted_at")
-        .select<{ cell_value_type: string }[]>("cell_value_type")
+        .select<{ id: number | string; name: string; cell_value_type: string }[]>(
+          "id",
+          "name",
+          "cell_value_type",
+        )
       if (!fields.some((f) => SearchIndexService.isSearchable(f.cell_value_type))) continue
 
-      const rows = await this.knex
+      /* 🔴 不能只數「沒有索引列的記錄」—— 可搜欄位全空的記錄本來就寫不出索引列,
+         那樣數會讓對帳恆紅:補寫完立刻又報同一批(dev 實測 form #12 只有一個
+         barcode 欄且三筆全空,補寫→對帳→再補寫,永遠不會歸零)。
+         恆紅的檢查等於沒有檢查,真正的缺漏會藏在那片噪音裡。
+
+         故取出候選列後,用**與寫入端同一段判斷**(`hasIndexableContent`)過濾。
+         只選可搜欄位,不 `select *`。 */
+      const searchable = fields
+        .map((f) => ({ id: Number(f.id), name: f.name, type: f.cell_value_type }))
+        .filter((f) => SearchIndexService.isSearchable(f.type))
+      const candidates = await this.knex
         .withSchema(DATA_SCHEMA)
         .table(form.physical_table)
         .where({ tenant_id: tenantId })
@@ -213,9 +229,13 @@ export class SearchBackfillService {
             .andWhere("search_doc.tenant_id", tenantId)
             .andWhere("search_doc.form_id", formId),
         )
-        .count<{ count: string }[]>({ count: "*" })
+        .select<Record<string, unknown>[]>(searchable.map((f) => physicalColumnName(f.id)))
 
-      const missing = Number(rows[0]?.count ?? 0)
+      const missing = candidates.filter((row) => {
+        const values: Record<string, unknown> = {}
+        for (const f of searchable) values[f.name] = row[physicalColumnName(f.id)]
+        return SearchIndexService.hasIndexableContent(searchable, values)
+      }).length
       if (missing > 0) out.push({ formId, formName: form.name, missing })
     }
     return out

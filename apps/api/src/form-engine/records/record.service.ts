@@ -1029,15 +1029,26 @@ export class RecordService {
       }
       if (failures.length > 0) throw new BulkValidationError(failures)
 
+      const indexed: { recordId: number; values: RecordValues }[] = []
       for (const [index, values] of prepared.entries()) {
         try {
-          await this.insertOne(trx, tenantId, resolved, values, actorId, null, null)
+          const created = await this.insertOne(trx, tenantId, resolved, values, actorId, null, null)
+          indexed.push({ recordId: created.id, values })
         } catch (error) {
           /* 走到這裡多為 DB 層約束(如唯一鍵)—— 交易已中止,無法續驗其餘列 */
           if (error instanceof DomainError) throw new BulkRowError(index, error.message)
           throw error
         }
       }
+      /* 🔴 H-3 R4|批次匯入此前**完全沒有寫索引** —— Excel 匯進來的資料一筆都搜不到,
+         而那對遷移中的客戶就是他的全部資料。沒有錯誤訊息,只有「搜尋看起來好好的」。
+         走批次版而非逐筆:一次 5000 列 × 數個可搜欄位,逐筆會是數萬次往返。 */
+      await this.searchIndex?.upsertManyInTx(trx, {
+        tenantId,
+        formId,
+        fields: toIndexable(resolved.fields),
+        records: indexed,
+      })
       return { created: rows.length }
     })
   }
@@ -1529,6 +1540,29 @@ export class RecordService {
           await this.updateOne(trx, tenantId, child, line.id, null, line.values, actorId, lineNo)
           savedLines.push({ id: line.id, values: line.values })
         }
+      }
+      /* 🔴 H-3 R4|主檔與明細此前**都沒有寫索引** —— 採購單存了卻搜不到單號。
+         走逐筆版而非批次版:明細會被更新,值清空時要連帶刪掉舊索引列,
+         而批次版刻意不處理那件事(它只給純新增用)。明細數量是十位數級,不成本問題。 */
+      await this.searchIndex?.upsertInTx(trx, {
+        tenantId,
+        formId: parentFormId,
+        recordId: id,
+        fields: toIndexable(parent.fields),
+        values: header.values,
+      })
+      for (const line of savedLines) {
+        await this.searchIndex?.upsertInTx(trx, {
+          tenantId,
+          formId: childFormId,
+          recordId: line.id,
+          fields: toIndexable(child.fields),
+          values: line.values,
+        })
+      }
+      /* 被移除的明細列要移出索引,否則刪掉的品項仍然搜得到 */
+      for (const removedId of removed) {
+        await this.searchIndex?.removeInTx(trx, tenantId, childFormId, removedId)
       }
       return id
     })

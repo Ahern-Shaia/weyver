@@ -132,6 +132,14 @@ export class FieldBudgetExhaustedError extends DomainError {
   }
 }
 
+/* 搜尋逾時。這不是壞掉,是這句查詢對現在的資料量太貴了 ——
+   所以訊息要給使用者做得了的事,而不是「請稍後再試」(再試一次還是一樣慢)。 */
+export class SearchTimeoutError extends DomainError {
+  constructor() {
+    super("搜尋花的時間太長了,請把關鍵字打長一點或更具體一些。")
+  }
+}
+
 export class InvalidTypeConversionError extends DomainError {
   constructor(from: string, to: string) {
     super(

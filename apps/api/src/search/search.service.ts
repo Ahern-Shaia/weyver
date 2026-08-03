@@ -3,6 +3,7 @@ import type { Knex } from "knex"
 import { APP_KNEX } from "../db/db.module.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { MetadataService } from "../form-engine/metadata/metadata.service.js"
+import { SearchTimeoutError } from "../form-engine/errors.js"
 
 /* 🔴 R1·H-3 M3|跨表搜尋查詢。
 
@@ -25,6 +26,16 @@ import { MetadataService } from "../form-engine/metadata/metadata.service.js"
 
 const RESULT_CAP = 1000
 
+/* 🔴 R2|搜尋路徑的 `statement_timeout`。2 字門檻與 1000 筆上限擋掉了**輸入端**的
+   失控,但擋不住**資料端** —— 同一句查詢在租戶長大之後會愈來愈慢,而搜尋是
+   使用者一邊打字一邊觸發的:一個慢查詢會被連續放大成很多個。
+
+   逾時是取捨而不是錯誤,所以要轉成使用者做得了的事(把關鍵字打長一點),
+   不能讓 PG 的 `canceling statement due to statement timeout` 冒到前端。 */
+const SEARCH_STATEMENT_TIMEOUT = "5s"
+/* PG 逾時取消查詢時的 SQLSTATE */
+const QUERY_CANCELED = "57014"
+
 export interface SearchHit {
   readonly formId: number
   readonly formName: string
@@ -32,6 +43,13 @@ export interface SearchHit {
   readonly fieldName: string
   readonly snippet: string
   readonly score: number
+}
+
+interface SearchRow {
+  readonly form_id: unknown
+  readonly record_id: unknown
+  readonly field_name: unknown
+  readonly value_text: unknown
 }
 
 export interface SearchResult {
@@ -82,9 +100,7 @@ export class SearchService {
     /* 🔴 必須在設好 `app.tenant_id` 的交易內查 —— `search_doc` 有 RLS FORCE。
        漏掉的話:app 車道回空(壞掉但安全),而 dev 若回落到特權連線就會回**全部租戶**
        的資料(靜默洩漏)。兩種結局都不拋錯,所以非測不可(見 search.integration 端到端段)。 */
-    const rows = await this.knex.transaction(async (trx) => {
-      await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
-
+    const rows = await this.runSearch(tenantId, async (trx) => {
       let builder = trx("search_doc")
         .select("form_id", "record_id", "field_name", "value_text")
         .where("tenant_id", tenantId)
@@ -114,6 +130,26 @@ export class SearchService {
       .sort((a, b) => b.score - a.score || a.formId - b.formId || a.recordId - b.recordId)
 
     return { hits, truncated }
+  }
+
+  /* 交易 + 租戶 GUC + 逾時,三件事綁在一起 —— 分開放的話漏掉任何一件都不會拋錯:
+     漏 GUC 是靜默洩漏(見上),漏逾時是靜默變慢。 */
+  private async runSearch(
+    tenantId: number,
+    run: (trx: Knex.Transaction) => PromiseLike<SearchRow[]>,
+  ): Promise<SearchRow[]> {
+    try {
+      return await this.knex.transaction(async (trx) => {
+        await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
+        await trx.raw(`SET LOCAL statement_timeout = '${SEARCH_STATEMENT_TIMEOUT}'`)
+        return run(trx)
+      })
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error) {
+        if ((error as { code: unknown }).code === QUERY_CANCELED) throw new SearchTimeoutError()
+      }
+      throw error
+    }
   }
 }
 

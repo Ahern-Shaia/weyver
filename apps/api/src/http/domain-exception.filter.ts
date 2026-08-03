@@ -30,6 +30,7 @@ import {
   RecordApprovalLockedError,
   RecordNotFoundError,
   RequiredFieldError,
+  SearchTimeoutError,
   SystemManagedFieldError,
   UnknownFieldError,
   VersionConflictError,
@@ -73,6 +74,11 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof FormNotPendingError || error instanceof FormNotReadyError) {
     return { status: HttpStatus.CONFLICT, code: "FORM_STATE_CONFLICT" }
+  }
+  /* 逾時不是伺服器壞掉(服務仍在),也不是請求格式錯 —— 是這句查詢對現在的資料量
+     太貴。使用者做得了的事是「把關鍵字更具體」,故走「語意上處理不了」這一類。 */
+  if (error instanceof SearchTimeoutError) {
+    return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "SEARCH_TIMEOUT" }
   }
   if (error instanceof FieldBudgetExhaustedError) {
     return { status: HttpStatus.CONFLICT, code: "FIELD_BUDGET_EXHAUSTED" }

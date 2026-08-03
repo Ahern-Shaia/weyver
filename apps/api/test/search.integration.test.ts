@@ -12,6 +12,7 @@ import { CELL_VALUE_TYPES } from "../src/form-engine/field-types/field-type-regi
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { SearchBackfillService } from "../src/search/search-backfill.service.js"
 import { SearchIndexService } from "../src/search/search-index.service.js"
 import { SearchService } from "../src/search/search.service.js"
 
@@ -164,6 +165,48 @@ describe("索引寫入", () => {
     const rows = await asTenant(1, (trx) => trx("search_doc").where({ record_id: 100 }).select("*"))
     expect(rows).toHaveLength(0)
   })
+
+  /* 🔴 R4|批次版。真正的破口是 `createManyRecords` 從來沒呼叫過索引寫入
+     (見 record.service 整合測),這裡釘住批次版本身的語意。 */
+  it("批次版一次寫入多筆,且只收可搜欄位", async () => {
+    await asTenant(1, (trx) =>
+      index.upsertManyInTx(trx, {
+        tenantId: 1,
+        formId: 10,
+        fields: FIELDS,
+        records: [
+          { recordId: 201, values: { 品名: "鮮勇冷凍雞胸", 備註: "整箱", 數量: 5 } },
+          { recordId: 202, values: { 品名: "鮮勇雞腿排", 備註: null, 數量: 8 } },
+        ],
+      }),
+    )
+    const rows = await asTenant(1, (trx) =>
+      trx("search_doc").whereIn("record_id", [201, 202]).select("record_id", "field_id"),
+    )
+    /* 201 兩欄、202 只有品名(備註為 null 不進索引) */
+    expect(rows).toHaveLength(3)
+    expect(rows.filter((r) => Number(r.record_id) === 202).map((r) => Number(r.field_id))).toEqual([
+      501,
+    ])
+  })
+
+  it("批次版可重跑(同一批再寫一次不重複也不失敗)", async () => {
+    const write = (): Promise<void> =>
+      asTenant(1, (trx) =>
+        index.upsertManyInTx(trx, {
+          tenantId: 1,
+          formId: 10,
+          fields: FIELDS,
+          records: [{ recordId: 203, values: { 品名: "重跑測試" } }],
+        }),
+      )
+    await write()
+    await write()
+    const rows = await asTenant(1, (trx) =>
+      trx("search_doc").where({ record_id: 203 }).select("field_id"),
+    )
+    expect(rows).toHaveLength(1)
+  })
 })
 
 /* 🔴 S1(P0)|跨租戶隔離 */
@@ -295,6 +338,7 @@ describe("🔴 SearchService 端到端(建表 → 建記錄 → 搜尋)", () => 
   let records: RecordService
   let search: SearchService
   let drizzle: DrizzleDb
+  let privilegedKnex: Knex
   let tenantA = 0
   let tenantB = 0
   const cleanup: (() => Promise<void>)[] = []
@@ -311,6 +355,7 @@ describe("🔴 SearchService 端到端(建表 → 建記錄 → 搜尋)", () => 
     const metadata = new MetadataService(drizzle, new TenantDb(drizzle))
     const uri = container.getConnectionUri()
     const ddlKnex = createDdlKnex(uri)
+    privilegedKnex = ddlKnex
     cleanup.push(() => ddlKnex.destroy())
     ddl = new DdlService(ddlKnex, drizzle, metadata)
 
@@ -407,5 +452,97 @@ describe("🔴 SearchService 端到端(建表 → 建記錄 → 搜尋)", () => 
     await records.softDeleteRecord(tenantA, formId, recId, 1)
     const after = await search.search(tenantA, "待刪除", admin)
     expect(after.hits).toHaveLength(0)
+  })
+
+  /* 🔴 R4|**批次匯入此前完全沒有寫索引** —— Excel 匯進來的資料一筆都搜不到,
+     而那對遷移中的客戶就是他的全部資料。沒有錯誤訊息,只有「搜尋看起來好好的」:
+     用表單新建的搜得到,匯入的搜不到。
+
+     這個破口躲了這麼久,正是因為單筆與批次共用 `insertOne` 卻**不共用索引寫入**,
+     而沒有任何一條測試對批次路徑斷言過搜尋結果。dev DB 實跑 backfill --check
+     也證實了它:未索引的表單名清一色是 `E2E匯入` 與子表主檔明細。 */
+  it("🔴 批次建立的記錄搜得到(Excel 匯入走這條)", async () => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: "端到端批次表",
+        fields: [{ name: "品名", type: "text" }],
+      }),
+      1,
+    )
+    await records.createManyRecords(
+      tenantA,
+      form.id,
+      [{ 品名: "批次匯入的冷凍蝦仁" }, { 品名: "批次匯入的冷凍花枝" }],
+      1,
+    )
+    const r = await search.search(tenantA, "批次匯入", admin)
+    expect(r.hits).toHaveLength(2)
+  })
+
+  /* 🔴 對帳的假警報。可搜欄位全空的記錄本來就寫不出索引列,但對帳原本只看
+     「有沒有索引列」→ 補寫完立刻又報同一批,永遠不會歸零。
+     dev 實測就是這樣:form #12 只有一個 barcode 欄且三筆全空,
+     `--check` 恆紅、CLI 恆 exit 1。恆紅的檢查等於沒有檢查。 */
+  it("🔴 可搜欄位全空的記錄不算缺漏(否則對帳永遠歸不了零)", async () => {
+    const backfill = new SearchBackfillService(privilegedKnex, index)
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: "端到端空值表",
+        fields: [
+          { name: "數量", type: "number" },
+          { name: "條碼", type: "barcode" },
+        ],
+      }),
+      1,
+    )
+    /* 條碼(唯一的可搜欄位)留空 —— 這筆記錄不該有索引列,也不該被當成缺漏 */
+    await records.createRecord(tenantA, form.id, { 數量: 3 }, 1)
+    const missing = await backfill.countMissing(tenantA)
+    expect(missing.map((m) => m.formId)).not.toContain(form.id)
+  })
+
+  it("🔴 主檔與明細(saveWithLines)都搜得到,移除的明細則消失", async () => {
+    const parent = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({ name: "端到端主檔", fields: [{ name: "單號", type: "text" }] }),
+      1,
+    )
+    const child = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: "端到端明細",
+        parentFormId: parent.form.id,
+        fields: [{ name: "品項", type: "text" }],
+      }),
+      1,
+    )
+    const saved = await records.saveWithLines(
+      tenantA,
+      parent.form.id,
+      child.form.id,
+      { values: { 單號: "訂單編號測試甲" } },
+      [{ values: { 品項: "明細品項甲" } }, { values: { 品項: "明細品項乙" } }],
+      1,
+    )
+    expect((await search.search(tenantA, "訂單編號測試", admin)).hits).toHaveLength(1)
+    expect((await search.search(tenantA, "明細品項", admin)).hits).toHaveLength(2)
+
+    /* 明細被拿掉之後不該還搜得到 —— 否則刪掉的品項會一直留在搜尋結果裡 */
+    const keep = saved.lines[0]
+    await records.saveWithLines(
+      tenantA,
+      parent.form.id,
+      child.form.id,
+      {
+        values: { 單號: "訂單編號測試甲" },
+        id: saved.header.id,
+        expectedVersion: saved.header.version,
+      },
+      [{ values: { 品項: "明細品項甲" }, id: keep?.id }],
+      1,
+    )
+    expect((await search.search(tenantA, "明細品項", admin)).hits).toHaveLength(1)
   })
 })
