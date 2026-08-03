@@ -99,9 +99,19 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 **規則**|
 - 引用競品原始碼時**必附授權識別碼 + 查證日期**;無法確認者標**未查證**並**不得作為承重依據**。
 - 授權會變(NocoDB 就變過)→ **每次引用都重新確認**,不沿用舊結論。
-- ⚠️ **Metabase 待裁定**:`docs/28` 明載「Metabase 原始碼直讀」且已 cascade 進 `docs/14 §0.4`,
-  但依本表的較嚴標準 AGPL 應只讀公開文件。取出的是**色彩 token 架構**(想法)而非演算法實作,
-  風險等級與 NocoDB 不同,故不逕行作廢,列待決策方裁定。`pivot-and-charts` §0 同此。
+- ✅ **Metabase 已裁定(2026-08-03)|既成引用保留,往後從嚴**。
+  逐項驗過才裁,不是憑感覺放行:
+  - **採用的四項全是架構想法**(色彩兩層制 / 由 base 以 `color-mix` 推導 / `--icon-*` 對齊文字階 /
+    禁 raw hex 升 CI),**沒有任何 Metabase 的值或程式碼進入我方 code** ——
+    `tokens.css` 的 `--base-brand`(`#22568a` / `#0c5f73` / `#333739`)是 `docs/14 §2.2`
+    自訂的三配色主題,與 Metabase 無關;`docs/28` 明列**不搬**圓角 8px / 靜態陰影 / 字階重排 /
+    儀表板 IA / 12.5px。
+  - **持續性檢查已存在**:`color-literal.test.ts` 於 CI 擋 raw hex,
+    `tokens.css` 為唯一豁免 —— 這同時也是「外部色值混不進來」的守衛。
+  - **往後從嚴**:自 2026-08-03 起,AGPL 與非 OSS 來源**一律只讀公開文件**。
+    `docs/28` 為此日之前的既成事實,列為**明示例外**(範圍限已記錄的四項架構觀察),
+    不擴張、不作為往後直讀原始碼的先例。
+  - `pivot-and-charts` §0 同此處置,已標註。
 
 **已知違規紀錄**|`views-group-kanban-calendar.md` v0.1(2026-07-29)引用 NocoDB 實作路徑,
 而 `dynamic-permissions.md` §0.8(2026-07-28)**前一天**就記下該來源已非 OSS。
