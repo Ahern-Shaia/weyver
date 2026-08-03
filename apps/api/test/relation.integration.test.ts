@@ -1,9 +1,8 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDdlKnex, createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
+import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { relationDefs, tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
@@ -16,6 +15,7 @@ import { MetadataService } from "../src/form-engine/metadata/metadata.service.js
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { RelationService } from "../src/form-engine/relations/relation.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 const ACTOR = 1
 

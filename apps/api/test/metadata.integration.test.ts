@@ -1,13 +1,13 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { createDrizzle, TenantDb } from "../src/db/db.module.js"
+import { TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { FormNotFoundError } from "../src/form-engine/errors.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

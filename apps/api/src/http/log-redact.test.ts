@@ -73,7 +73,7 @@ describe("Error 與邊界", () => {
   /* log 一個帶循環的物件不該讓程序爆掉 —— 遮蔽層自己絕不能是當機來源 */
   it("🔴 循環參照不會無限遞迴", () => {
     const a: Record<string, unknown> = { name: "x" }
-    a["self"] = a
+    a.self = a
     expect(() => redact(a)).not.toThrow()
     expect(str(a)).toContain("循環參照")
   })

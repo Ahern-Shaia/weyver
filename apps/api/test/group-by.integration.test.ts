@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
@@ -8,9 +7,10 @@ import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
-import { RecordService } from "../src/form-engine/records/record.service.js"
 import { listQuerySchema } from "../src/form-engine/records/record-specs.js"
+import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 F-1 分組(docs/modules/R1/views-group-kanban-calendar.md)。
 

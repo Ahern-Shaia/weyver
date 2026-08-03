@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { and, eq, isNull } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -9,6 +8,7 @@ import { formDefs, tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* F-6 M3|metadata 車道 RLS 兜底(form-engine-core FMEA T4)。
 

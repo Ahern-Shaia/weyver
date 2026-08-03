@@ -5,7 +5,6 @@ import { ConfigService } from "@nestjs/config"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
@@ -14,6 +13,7 @@ import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import type { FilesService } from "../src/files/files.service.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* F-5 M2|上傳 / 下載 / 刪除端點 + file_object。
    覆蓋 FMEA S1(跨租戶 BOLA)· S2(hidden 欄拒下載)· S3(偽副檔名 / 型別白名單)· S4(key 形狀)。 */

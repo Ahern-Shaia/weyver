@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import type { Knex } from "knex"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -10,11 +9,12 @@ import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
-import { EventFanoutService } from "../src/integrations/event-fanout.service.js"
 import { ApiKeyService } from "../src/integrations/api-key.service.js"
+import { EventFanoutService } from "../src/integrations/event-fanout.service.js"
 import { EventService } from "../src/integrations/event.service.js"
-import { WebhookService } from "../src/integrations/webhook.service.js"
 import { WebhookDeliveryService } from "../src/integrations/webhook-delivery.service.js"
+import { WebhookService } from "../src/integrations/webhook.service.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 G-1 整合測。三件事在這裡被釘死:
    1. **事件與資料同一 tx** —— rollback 時兩者都不留

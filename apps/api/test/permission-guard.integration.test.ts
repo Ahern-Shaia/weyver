@@ -1,17 +1,17 @@
-import { ForbiddenException, type ExecutionContext } from "@nestjs/common"
+import { type ExecutionContext, ForbiddenException } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { RequiresFormAction, SelfService } from "../src/authz/authz-http.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { PermissionGuard } from "../src/authz/permission.guard.js"
 import { PermissionService } from "../src/authz/permission.service.js"
-import { type DrizzleDb, createDrizzle, TenantDb } from "../src/db/db.module.js"
+import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { formDefs, tenants, users } from "../src/db/schema.js"
 import type { TenantContext } from "../src/http/tenant-context.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

@@ -1,5 +1,5 @@
-import { getMigrations } from "better-auth/db/migration"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"

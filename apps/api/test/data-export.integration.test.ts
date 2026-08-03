@@ -152,7 +152,7 @@ describe("🔴 app 車道的權限邊界(DB 層執法,非程式碼自律)", () =
     try {
       await client.query("BEGIN")
       await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [String(tenantA)])
-      await expect(client.query(`DELETE FROM export_job WHERE id = $1`, [job.id])).rejects.toThrow(
+      await expect(client.query("DELETE FROM export_job WHERE id = $1", [job.id])).rejects.toThrow(
         /permission denied/i,
       )
       await client.query("ROLLBACK")

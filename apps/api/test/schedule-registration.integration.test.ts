@@ -2,10 +2,10 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { SchedulerRegistry } from "@nestjs/schedule"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { runMigrations } from "../src/db/migrate.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 F-9 §4.1|排程註冊次數。
 

@@ -1,17 +1,17 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
-import { ImportService } from "../src/form-engine/import/import.service.js"
-import { importPlanSchema } from "../src/form-engine/import/import-specs.js"
-import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { OptionService } from "../src/form-engine/field-types/option.service.js"
+import { importPlanSchema } from "../src/form-engine/import/import-specs.js"
+import { ImportService } from "../src/form-engine/import/import.service.js"
+import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 #106 匯入既有表單。深研見 docs/modules/R1/import-to-existing-form.md §0。
    Ragic 官方的匯入主入口是「既有 sheet → Tools → Import Data From File」——

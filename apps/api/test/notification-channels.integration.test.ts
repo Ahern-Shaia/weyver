@@ -1,5 +1,5 @@
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { ConfigService } from "@nestjs/config"
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { TenantDb, createDrizzle } from "../src/db/db.module.js"

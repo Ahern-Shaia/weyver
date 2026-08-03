@@ -1,16 +1,16 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { roleMembers, roles, tenants, users } from "../src/db/schema.js"
+import type { NotificationDispatcher } from "../src/notifications/notification-dispatcher.service.js"
 import { LEVEL, NOTIFICATION_EVENTS } from "../src/notifications/notification-specs.js"
 import type { NotificationRepository } from "../src/notifications/notification.repository.js"
-import type { NotificationDispatcher } from "../src/notifications/notification-dispatcher.service.js"
 import type { NotificationService } from "../src/notifications/notification.service.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* H-1 M1|重點:簽核接通(本模組存在的理由)· 跨租戶隔離 · 風暴防護 · 標題不洩漏。 */
 

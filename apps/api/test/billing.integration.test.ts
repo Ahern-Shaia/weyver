@@ -1,13 +1,13 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { UsageService } from "../src/billing/usage.service.js"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { roleMembers, roles, tenants, users } from "../src/db/schema.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* F-8 M2|用量快照。重點在 FMEA B3(跨租戶錯置 → 帳單算到別人頭上)與 B4(冪等 / 可補算)。 */
 

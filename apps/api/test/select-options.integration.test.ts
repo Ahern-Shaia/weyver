@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
@@ -10,6 +9,7 @@ import { OptionService } from "../src/form-engine/field-types/option.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 追溯稽核 #105|選項改名原本完全不動資料 → 既有記錄留舊字串變孤兒。
    深研見 field-types-parity.md §0-ter C。 */

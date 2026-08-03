@@ -1,12 +1,12 @@
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

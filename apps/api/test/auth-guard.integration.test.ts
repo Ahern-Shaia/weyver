@@ -1,13 +1,13 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { AUTH } from "../src/auth/auth.tokens.js"
 import type { Auth } from "../src/auth/auth.js"
+import { AUTH } from "../src/auth/auth.tokens.js"
 import { runMigrations } from "../src/db/migrate.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

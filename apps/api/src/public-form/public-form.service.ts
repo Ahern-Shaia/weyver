@@ -154,8 +154,7 @@ export class PublicFormService {
         if (!Number.isFinite(depId) || chosen.has(depId)) continue
         const depName = byId.get(depId)?.name ?? `欄位 ${String(depId)}`
         throw new PublicFormConfigError(
-          `公式欄「${byId.get(formula.fieldId)?.name ?? ""}」引用了未公開的「${depName}」——` +
-            "公開它等於間接洩漏來源欄的值。請一併公開來源欄,或把公式欄移出公開範圍。",
+          `公式欄「${byId.get(formula.fieldId)?.name ?? ""}」引用了未公開的「${depName}」——公開它等於間接洩漏來源欄的值。請一併公開來源欄,或把公式欄移出公開範圍。`,
         )
       }
     }

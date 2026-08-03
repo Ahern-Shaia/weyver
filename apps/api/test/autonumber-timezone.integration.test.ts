@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
@@ -9,6 +8,7 @@ import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 追溯稽核 #105 P1-7|autoNumber 的日期分界原本走 UTC。
    台灣 UTC+8:1/1 08:00 之前開的單,UTC 還在去年 →

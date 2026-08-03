@@ -1,10 +1,10 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { getMigrations } from "better-auth/db/migration"
 import { authenticator } from "otplib"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type Auth, createAuth } from "../src/auth/auth.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

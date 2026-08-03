@@ -1,5 +1,5 @@
-import { getMigrations } from "better-auth/db/migration"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
@@ -67,7 +67,7 @@ describe("🔴 租戶強制 2FA 的判斷來源", () => {
       `INSERT INTO tenants (name) VALUES ('乙') RETURNING id`,
     )
     const id = t.rows[0]?.id ?? 0
-    await pool.query(`UPDATE tenants SET require_mfa = true WHERE id = $1`, [id])
+    await pool.query("UPDATE tenants SET require_mfa = true WHERE id = $1", [id])
     expect(await tenantRequiresMfa(pool, id)).toBe(true)
   })
 

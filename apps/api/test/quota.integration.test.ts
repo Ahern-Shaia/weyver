@@ -1,13 +1,13 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* F-6 M2|per-tenant 配額(form-engine-core FMEA C5)。
    驗:表數 / 欄數 / bulk 記錄數上限;NULL = 用系統預設(既有租戶零遷移);超限為 403 QUOTA_EXCEEDED。 */

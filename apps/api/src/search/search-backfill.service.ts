@@ -123,15 +123,15 @@ export class SearchBackfillService {
         .select<Record<string, unknown>[]>("*")
 
       if (rows.length === 0) break
-      afterId = Number(rows[rows.length - 1]?.["id"] ?? 0)
+      afterId = Number(rows[rows.length - 1]?.id ?? 0)
       scanned += rows.length
 
-      const ids = rows.map((r) => Number(r["id"]))
+      const ids = rows.map((r) => Number(r.id))
       const already = force ? new Set<number>() : await this.indexedIds(tenantId, form.id, ids)
 
       await this.knex.transaction(async (trx) => {
         for (const row of rows) {
-          const recordId = Number(row["id"])
+          const recordId = Number(row.id)
           if (already.has(recordId)) continue
           /* 🔴 實體列的鍵是 `f<id>`,而索引寫入吃的是**欄位名稱**為鍵的物件
              (`values[f.name]`)。直接把原始列丟過去的話,每個欄位都會查到

@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import type { Knex } from "knex"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -11,8 +10,9 @@ import { MetadataService } from "../src/form-engine/metadata/metadata.service.js
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { TrashPurgeService } from "../src/form-engine/trash/trash-purge.service.js"
-import { SearchIndexService } from "../src/search/search-index.service.js"
 import { TrashService } from "../src/form-engine/trash/trash.service.js"
+import { SearchIndexService } from "../src/search/search-index.service.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 H-2 回收桶。三個東西在這裡被釘死:
    1. **列表走 app 車道** —— 本 session 已四度踩到「服務/測試用特權連線 → 權限被遮住」。

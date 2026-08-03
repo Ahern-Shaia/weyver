@@ -1,5 +1,5 @@
-import { getMigrations } from "better-auth/db/migration"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
@@ -63,7 +63,7 @@ describe("🔴 初始密碼的生命週期", () => {
     await auth.api.signInEmail({ body: { email: "hire-a@weyver.test", password: PW } })
 
     const used = await pool.query<{ used_at: Date | null }>(
-      `SELECT used_at FROM initial_credential WHERE auth_user_id = $1`,
+      "SELECT used_at FROM initial_credential WHERE auth_user_id = $1",
       [id],
     )
     expect(used.rows[0]?.used_at).not.toBeNull()
@@ -91,7 +91,7 @@ describe("🔴 初始密碼的生命週期", () => {
 
     // 過期不算「用過」—— 管理員重發時不該看到一個已消耗的憑證
     const row = await pool.query<{ used_at: Date | null }>(
-      `SELECT used_at FROM initial_credential WHERE auth_user_id = $1`,
+      "SELECT used_at FROM initial_credential WHERE auth_user_id = $1",
       [id],
     )
     expect(row.rows[0]?.used_at).toBeNull()
@@ -119,7 +119,7 @@ describe("🔴 初始密碼的生命週期", () => {
 
     expect(await mustChangePassword(pool, id)).toBe(false)
     const gone = await pool.query<{ n: number }>(
-      `SELECT count(*)::int AS n FROM initial_credential WHERE auth_user_id = $1`,
+      "SELECT count(*)::int AS n FROM initial_credential WHERE auth_user_id = $1",
       [id],
     )
     /* 刪列而非加旗標 —— 成員頁既有的推導(無列 → 已設定)因此直接成立 */

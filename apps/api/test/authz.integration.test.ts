@@ -1,12 +1,12 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { AuthzRepository, type RoleRow } from "../src/authz/authz.repository.js"
 import { RoleCycleError } from "../src/authz/authz-tree.js"
-import { type DrizzleDb, createDrizzle, TenantDb } from "../src/db/db.module.js"
+import { AuthzRepository, type RoleRow } from "../src/authz/authz.repository.js"
+import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { fieldDefs, formDefs, tenants, users } from "../src/db/schema.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

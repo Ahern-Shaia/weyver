@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import knexFactory, { type Knex } from "knex"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -15,6 +14,7 @@ import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { SearchBackfillService } from "../src/search/search-backfill.service.js"
 import { SearchIndexService } from "../src/search/search-index.service.js"
 import { SearchService } from "../src/search/search.service.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 R1·H-3|跨表全文搜尋。本檔專攻兩條 P0 與繁中的實際行為。
 

@@ -1,13 +1,13 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { PermissionService } from "../src/authz/permission.service.js"
-import { createDrizzle, type DrizzleDb, TenantDb } from "../src/db/db.module.js"
+import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { formDefs, tenants, users } from "../src/db/schema.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* P0-4a·uplift M1|資源軸繼承資料層(分類 / 分類授權 / 表單 metadata / 租戶預設 profile)。 */
 

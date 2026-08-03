@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
@@ -9,6 +8,7 @@ import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 #95 keyset 分頁。原本排序是 `sortCol, id` 但續頁條件是 `id > cursor`,
    兩者對不起來 —— 依非 id 欄排序時整頁被跳過,而使用者看不出少了東西。 */

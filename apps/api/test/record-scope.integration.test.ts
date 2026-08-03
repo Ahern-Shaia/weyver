@@ -1,18 +1,18 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { EffectivePermissions } from "../src/authz/authz-effective.js"
+import { AuthzRepository } from "../src/authz/authz.repository.js"
+import { PermissionService } from "../src/authz/permission.service.js"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { AccessPreviewService } from "../src/form-engine/access/access-preview.service.js"
-import { AuthzRepository } from "../src/authz/authz.repository.js"
-import { EffectivePermissions } from "../src/authz/authz-effective.js"
-import { PermissionService } from "../src/authz/permission.service.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 #96 E-1 記錄範圍。強制點在 `AS RESTRICTIVE` RLS policy(OQ-DP-7=B)——
    實測與應用層注入執行計畫相同,但語意恆為 AND:使用者篩選的 OR 逃不出去,

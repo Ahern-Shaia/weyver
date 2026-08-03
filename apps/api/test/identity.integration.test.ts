@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import { eq } from "drizzle-orm"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -7,6 +6,7 @@ import { IdentityService } from "../src/auth/identity.service.js"
 import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { users } from "../src/db/schema.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool

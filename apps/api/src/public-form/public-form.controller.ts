@@ -87,12 +87,12 @@ export class PublicFormController {
 /* IP 只存 hash:保留「同一來源灌單」的追查能力,但不留可回推的個資。
    加鹽以免同一 IP 在不同部署間可被比對。 */
 function hashIp(ip: string): string {
-  const salt = process.env["PUBLIC_FORM_IP_SALT"] ?? "weyver-public-form"
+  const salt = process.env.PUBLIC_FORM_IP_SALT ?? "weyver-public-form"
   return crypto.createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32)
 }
 
 function opaqueReference(submissionId: number): string {
-  const salt = process.env["PUBLIC_FORM_IP_SALT"] ?? "weyver-public-form"
+  const salt = process.env.PUBLIC_FORM_IP_SALT ?? "weyver-public-form"
   const mac = crypto
     .createHmac("sha256", salt)
     .update(String(submissionId))

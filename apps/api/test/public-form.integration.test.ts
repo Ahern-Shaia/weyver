@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import type { Knex } from "knex"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -11,6 +10,7 @@ import { MetadataService } from "../src/form-engine/metadata/metadata.service.js
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PublicFormService } from "../src/public-form/public-form.service.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 G-2 公開表單。這份測試的核心不是「功能會動」,而是**不該外洩的沒外洩**:
    1. 白名單是 opt-in —— 沒選的欄位訪客看不到也送不進來
@@ -93,7 +93,7 @@ describe("G-2 白名單", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "供應商報價",
-      fieldIds: [built.fields["公司名稱"] ?? 0, built.fields["報價"] ?? 0],
+      fieldIds: [built.fields.公司名稱 ?? 0, built.fields.報價 ?? 0],
     })
     const view = await publicForms.resolvePublicForm(share.token)
     const names = view.fields.map((f) => f.name)
@@ -109,7 +109,7 @@ describe("G-2 白名單", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "報價",
-      fieldIds: [built.fields["公司名稱"] ?? 0],
+      fieldIds: [built.fields.公司名稱 ?? 0],
     })
     const { submissionId } = await publicForms.submit({
       token: share.token,
@@ -134,7 +134,7 @@ describe("G-2 白名單", () => {
       publicForms.create(tenantA, ALICE, {
         formId: built.formId,
         title: "x",
-        fieldIds: [built.fields["名稱"] ?? 0, built.fields["危險欄"] ?? 0],
+        fieldIds: [built.fields.名稱 ?? 0, built.fields.危險欄 ?? 0],
       }),
     ).rejects.toThrow(/不得公開/)
   })
@@ -152,7 +152,7 @@ describe("G-2 白名單", () => {
       publicForms.create(tenantA, ALICE, {
         formId: built.formId,
         title: "x",
-        fieldIds: [built.fields["名稱"] ?? 0, built.fields["客戶"] ?? 0],
+        fieldIds: [built.fields.名稱 ?? 0, built.fields.客戶 ?? 0],
       }),
     ).rejects.toThrow(/列舉來源表/)
   })
@@ -171,7 +171,7 @@ describe("G-2 白名單", () => {
       publicForms.create(tenantA, ALICE, {
         formId: a.formId,
         title: "x",
-        fieldIds: [b.fields["B欄"] ?? 0],
+        fieldIds: [b.fields.B欄 ?? 0],
       }),
     ).rejects.toThrow(/不屬於這張表單/)
   })
@@ -183,7 +183,7 @@ describe("G-2 提交隔離", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "報價",
-      fieldIds: [built.fields["公司名稱"] ?? 0],
+      fieldIds: [built.fields.公司名稱 ?? 0],
     })
     await publicForms.submit({
       token: share.token,
@@ -200,7 +200,7 @@ describe("G-2 提交隔離", () => {
     expect(inTable).toHaveLength(0)
 
     const inbox = await publicForms.inbox(tenantA)
-    expect(inbox.some((s) => (s.values as Record<string, unknown>)["公司名稱"] === "乙公司")).toBe(
+    expect(inbox.some((s) => (s.values as Record<string, unknown>).公司名稱 === "乙公司")).toBe(
       true,
     )
   })
@@ -210,7 +210,7 @@ describe("G-2 提交隔離", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "報價",
-      fieldIds: [built.fields["公司名稱"] ?? 0],
+      fieldIds: [built.fields.公司名稱 ?? 0],
     })
     const { submissionId } = await publicForms.submit({
       token: share.token,
@@ -249,7 +249,7 @@ describe("G-2 提交隔離", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "報價",
-      fieldIds: [built.fields["公司名稱"] ?? 0],
+      fieldIds: [built.fields.公司名稱 ?? 0],
     })
     await expect(
       publicForms.submit({ token: share.token, values: {}, ipHash: null, userAgent: null }),
@@ -263,7 +263,7 @@ describe("G-2 關閉條件與不可探測", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "x",
-      fieldIds: [built.fields["名稱"] ?? 0],
+      fieldIds: [built.fields.名稱 ?? 0],
     })
     await publicForms.setActive(tenantA, share.id, false)
 
@@ -279,7 +279,7 @@ describe("G-2 關閉條件與不可探測", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "限額 2 筆",
-      fieldIds: [built.fields["名稱"] ?? 0],
+      fieldIds: [built.fields.名稱 ?? 0],
       maxSubmissions: 2,
     })
     const submit = () =>
@@ -303,7 +303,7 @@ describe("G-2 關閉條件與不可探測", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "x",
-      fieldIds: [built.fields["名稱"] ?? 0],
+      fieldIds: [built.fields.名稱 ?? 0],
       closesAt: new Date(Date.now() - 1000),
     })
     await expect(publicForms.resolvePublicForm(share.token)).rejects.toThrow(/無法填寫/)
@@ -316,7 +316,7 @@ describe("G-2 租戶隔離", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "A 專用",
-      fieldIds: [built.fields["名稱"] ?? 0],
+      fieldIds: [built.fields.名稱 ?? 0],
     })
     await publicForms.submit({
       token: share.token,
@@ -327,7 +327,7 @@ describe("G-2 租戶隔離", () => {
 
     expect((await publicForms.list(tenantB)).some((s) => s.title === "A 專用")).toBe(false)
     const inboxB = await publicForms.inbox(tenantB)
-    expect(inboxB.some((s) => (s.values as Record<string, unknown>)["名稱"] === "A 的提交")).toBe(
+    expect(inboxB.some((s) => (s.values as Record<string, unknown>).名稱 === "A 的提交")).toBe(
       false,
     )
   })
@@ -337,7 +337,7 @@ describe("G-2 租戶隔離", () => {
     const share = await publicForms.create(tenantA, ALICE, {
       formId: built.formId,
       title: "x",
-      fieldIds: [built.fields["名稱"] ?? 0],
+      fieldIds: [built.fields.名稱 ?? 0],
     })
     const { submissionId } = await publicForms.submit({
       token: share.token,

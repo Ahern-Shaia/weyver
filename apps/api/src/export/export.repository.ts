@@ -135,8 +135,8 @@ export class ExportRepository {
     const row = res.rows[0]
     if (row === undefined) return null
     return {
-      objectKey: String(row["object_key"]),
-      downloadCount: Number(row["download_count"]),
+      objectKey: String(row.object_key),
+      downloadCount: Number(row.download_count),
     }
   }
 

@@ -4,8 +4,8 @@ import { TenantDb } from "../db/db.module.js"
 import { tenants } from "../db/schema.js"
 import { postJsonSafely } from "../http/safe-post.js"
 import { SsrfBlockedError } from "../http/ssrf-guard.js"
-import { CHANNELS, type ChannelId, isAllowedUrl } from "./channel-registry.js"
 import { ChannelConfigService } from "./channel-config.service.js"
+import { CHANNELS, type ChannelId, isAllowedUrl } from "./channel-registry.js"
 
 /* 🔴 R1·A-1 M4|通道發送(測試發送與日後的實際投遞共用)。
 
@@ -120,7 +120,7 @@ export class ChannelSenderService {
       case "discord":
         return { url: secret, body: { content: text }, headers: json }
       case "telegram": {
-        const chatId = String(config["chatId"] ?? "")
+        const chatId = String(config.chatId ?? "")
         if (chatId === "")
           throw new BadRequestException({
             code: "CHANNEL_CONFIG_INCOMPLETE",
@@ -135,7 +135,7 @@ export class ChannelSenderService {
         }
       }
       case "line": {
-        const to = String(config["to"] ?? "")
+        const to = String(config.to ?? "")
         if (to === "")
           throw new BadRequestException({
             code: "CHANNEL_CONFIG_INCOMPLETE",

@@ -1,9 +1,9 @@
-import { getMigrations } from "better-auth/db/migration"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import { getMigrations } from "better-auth/db/migration"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
 import { createAuth } from "../src/auth/auth.js"
+import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import {

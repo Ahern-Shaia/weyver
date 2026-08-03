@@ -1,5 +1,4 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import { PG_TEST_IMAGE } from "./pg-image.js"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
@@ -10,6 +9,7 @@ import { MetadataService } from "../src/form-engine/metadata/metadata.service.js
 import { RecordService, SOURCE_DELETED } from "../src/form-engine/records/record.service.js"
 import { RelookupService } from "../src/form-engine/relations/relookup.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
+import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 追溯稽核 #113|lookup 全部是 live → 主檔一改,去年的舊單據顯示內容被**靜默**改寫。
    深研見 field-types-parity.md §0-ter A。決定性論點是失敗不對稱:

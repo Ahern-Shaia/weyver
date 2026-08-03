@@ -266,7 +266,7 @@ describe("zip bomb", () => {
       { name: "[Content_Types].xml", data: Buffer.from(CONTENT_TYPES_PLAIN) },
       {
         name: "word/document.xml",
-        data: Buffer.from("<w:document>" + "x".repeat(2000) + "</w:document>"),
+        data: Buffer.from(`<w:document>${"x".repeat(2000)}</w:document>`),
       },
     ])
     expect(inspectZipBomb(zip).ok).toBe(true)
