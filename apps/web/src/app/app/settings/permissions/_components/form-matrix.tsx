@@ -1,6 +1,4 @@
 "use client"
-import { Check, UserCheck, RotateCcw } from "lucide-react"
-import { type ReactNode, useMemo } from "react"
 import {
   ACTION_LABEL,
   FORM_ACTIONS,
@@ -11,6 +9,10 @@ import {
   useSetCategoryActions,
   useSetFormActions,
 } from "@/lib/engine/authz"
+import { PERMISSION_PRESETS, presetOf } from "@/lib/engine/permission-presets"
+import { Check, RotateCcw, UserCheck } from "lucide-react"
+import { type ReactNode, useMemo } from "react"
+import { PresetPicker } from "./preset-picker"
 
 /* 表單 × 動作矩陣「分類分組」(資源軸繼承)。分類列=授權(繼承來源);
    表單列=繼承(虛線)/ 覆寫(琥珀)/ 敏感(不繼承);對照 permissions-resource-inheritance.html。 */
@@ -77,6 +79,21 @@ export function FormMatrix({
       scopedActions: [...curScoped].filter((a) => cur.has(a)),
     }) // 空集 → 後端刪覆寫 → 還原繼承
   }
+  /* 🔴 authz 0-bis 項 7:一次設好整組動作。
+     七個獨立勾選框要求行政人員自己推導「填單者需不需要 view」——
+     那個推導本來就不該外包給他(SharePoint 33 permission → 6 個具名層級同理)。
+     底層不變,仍是同一個動作集;勾選框留著當「自訂」。 */
+  const applyPreset = (form: FormResource, key: string): void => {
+    const preset = PERMISSION_PRESETS.find((p) => p.key === key)
+    setForm.mutate({
+      formId: form.id,
+      actions: preset ? [...preset.actions] : [],
+      /* 套預設 = 重設整列 → 記錄範圍限制一併清掉,
+         否則會留下「動作是編輯者的、範圍還是上一組的」這種對不起來的狀態 */
+      scopedActions: [],
+    })
+  }
+
   const busy = setForm.isPending || setCategory.isPending
 
   return (
@@ -116,6 +133,7 @@ export function FormMatrix({
                 onToggleCategory={toggleCategory}
                 onToggleForm={toggleForm}
                 onRevert={(formId) => setForm.mutate({ formId, actions: [] })}
+                onApplyPreset={applyPreset}
               />
             ))}
             {groups.length === 0 ? (
@@ -166,6 +184,7 @@ function CategoryGroup({
   onToggleCategory,
   onToggleForm,
   onRevert,
+  onApplyPreset,
 }: {
   readonly group: Group
   readonly grant: Set<FormAction> | undefined
@@ -176,6 +195,7 @@ function CategoryGroup({
   readonly onToggleCategory: (categoryId: number, action: FormAction) => void
   readonly onToggleForm: (form: FormResource, action: FormAction) => void
   readonly onRevert: (formId: number) => void
+  readonly onApplyPreset: (form: FormResource, key: string) => void
 }): ReactNode {
   return (
     <>
@@ -209,6 +229,12 @@ function CategoryGroup({
             <td className="py-2 pr-3 pl-7 text-ink">
               <span className="text-ink-3">└ </span>
               {form.name}
+              <PresetPicker
+                value={presetOf(display)?.key ?? null}
+                empty={display.size === 0}
+                disabled={busy}
+                onPick={(key) => onApplyPreset(form, key)}
+              />
               {form.isSensitive ? <Tag tone="sensitive">敏感</Tag> : null}
               {source === "inherit" ? <Tag tone="inherit">繼承</Tag> : null}
               {source === "override" ? (

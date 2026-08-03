@@ -355,7 +355,21 @@ resolveForActor(tenantId, actorId):
 - 遷移期放寬之既有做法:[Tealium Permissions Enforcement](https://docs.tealium.com/administration/permissions-system-migration-guide/permissions-enforcement/) · [Cloudinary Roles & Permissions 遷移](https://cloudinary.com/documentation/dam_permissions_migration)
 
 ### 後續 task
-[#100 已完成](#) 三條查詢旁路已修;角色樹 UI 收斂 / deny-by-default 調整 / 具名預設 UI / 其餘旁路查核 **尚未開 task**。
+[#100 已完成](#) 三條查詢旁路已修。
+
+🔴 **2026-08-03 逐項對碼複核(承 `_audit/giants-shoulders-audit-A.md` 行動 3)** ——
+結果與 0-bis 當初的敘述**有兩項不符**,值得記:
+
+| 項 | 0-bis 建議 | 對碼實況 | 處置 |
+|---|---|---|---|
+| **4 新表 deny-by-default** | 「建議加租戶級 `new_form_default`(deny / 繼承分類 / 全員可檢視)」 | 🔴 **大半已存在**。`authz-effective.ts` 的解析本來就是四層:owner → 覆寫 → **分類繼承** → 租戶預設 profile;`tenants.default_form_actions` 從 schema、repo、endpoint、hook 到 UI(`resource-settings.tsx`)**全都接好了**。「繼承分類」不是待加的選項,它是**層 3,一直在跑** | **維持出廠 deny**(空集)。理由:層 3 已讓有分類的表自動繼承,deny 只咬到**未分類**的表;而把出廠預設改成開放會牴觸 `AGENTS.md` 資安鐵則 2(deny-by-default),對存放薪資 / 成本的平台不划算。**設定本身已可自助調整** |
+| **7 具名預設** | 「應內建具名預設(檢視者/填單者/編輯者/核准者/設計者)為主控件,自訂才展開勾選」 | ⚠️ `editor` / `viewer` **只有名字沒有內容** —— seed 註解逐字:「便利起點,實際權限由 admin 於矩陣指派」。也就是租戶看到一個叫「編輯者」的角色,而它不能編輯 | ✅ **已落地**:`permission-presets.ts` + 矩陣列的預設選單(SharePoint 形態的有序預設)。⚠️ **不做「最接近」模糊比對** —— 把「檢視者 + 匯出」講成「檢視者」是謊報權限 |
+| **1 角色樹 UI 收斂** | 預設 UI 收成平面角色 + 群組,樹降進階 | `role-tree.tsx` 仍為樹狀 | **未做**,列 P1 |
+| — 其餘查詢旁路查核 | | | **未做**,列 P1 |
+
+⚠️ **本次複核本身是一個教訓**:0-bis 的兩條建議是**對著已經存在的東西寫的**,
+因為當初沒有對碼。這與 `_audit` 找到的「design doc 的現況段落不是現況」是同一個形態,
+只是這次發生在稽核報告自己身上。
 
 ## 13. 變更紀錄
 

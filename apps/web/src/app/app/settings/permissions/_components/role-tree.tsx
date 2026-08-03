@@ -1,9 +1,9 @@
 "use client"
 
+import { type Role, useCreateRole } from "@/lib/engine/authz"
 import { Input } from "@weyver/ui/input"
 import { FolderTree, Plus, ShieldCheck, User } from "lucide-react"
 import { type ReactNode, useState } from "react"
-import { type Role, useCreateRole } from "@/lib/engine/authz"
 
 /* 角色 / 部門樹(系統角色 + 自訂樹狀 + 建立)。權限管理頁左欄。 */
 export function RoleTree({

@@ -1,16 +1,16 @@
 "use client"
 
-import { Segmented } from "@weyver/ui/segmented"
-import { Select } from "@weyver/ui/select"
-import { type ReactNode, useMemo, useState } from "react"
 import {
   FIELD_VISIBILITIES,
   type FieldVisibility,
   type RolePermissions,
-  useSetFieldVisibility,
   VISIBILITY_LABEL,
+  useSetFieldVisibility,
 } from "@/lib/engine/authz"
 import { useForm, useForms } from "@/lib/engine/hooks"
+import { Segmented } from "@weyver/ui/segmented"
+import { Select } from "@weyver/ui/select"
+import { type ReactNode, useMemo, useState } from "react"
 
 /* 欄位可見性(Salesforce FLS 式;隱藏/唯讀/可寫),收斂於表單動作。 */
 export function FieldMatrix({

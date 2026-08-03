@@ -1,10 +1,10 @@
 "use client"
 
+import { type Role, type RolePermissions, useRolePermissions } from "@/lib/engine/authz"
 import { User } from "lucide-react"
 import { type ReactNode, useState } from "react"
-import { type Role, type RolePermissions, useRolePermissions } from "@/lib/engine/authz"
-import { FieldMatrix } from "./field-matrix"
 import { AccessPreview } from "./access-preview"
+import { FieldMatrix } from "./field-matrix"
 import { FormMatrix } from "./form-matrix"
 
 /* 選定角色的詳情:header + 分頁(表單權限 / 欄位權限 / 成員)。admin 特判全權。 */

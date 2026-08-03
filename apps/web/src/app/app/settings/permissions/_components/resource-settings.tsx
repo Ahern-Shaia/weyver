@@ -1,9 +1,4 @@
 "use client"
-import { Button } from "@weyver/ui/button"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
-import { ChevronDown, ChevronRight, Trash2 } from "lucide-react"
-import { type ReactNode, useState } from "react"
 import {
   ACTION_LABEL,
   FORM_ACTIONS,
@@ -16,6 +11,11 @@ import {
   useSetFormCategory,
   useSetFormSensitive,
 } from "@/lib/engine/authz"
+import { Button } from "@weyver/ui/button"
+import { Input } from "@weyver/ui/input"
+import { Select } from "@weyver/ui/select"
+import { ChevronDown, ChevronRight, Trash2 } from "lucide-react"
+import { type ReactNode, useState } from "react"
 
 /* 租戶級資源設定(admin):分類 CRUD + 表單歸類/敏感 + 未授權非敏感表之預設 profile。
    收合於權限頁頂;分類為矩陣「分類分組」之來源。 */
