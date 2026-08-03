@@ -100,6 +100,16 @@ export class ApprovalInboxController {
     return this.approvals.listMyPending(tenant)
   }
 
+  /* 🔴 稽核用:簽核紀錄鏈完整性報告。admin 限定(service 內強制)。
+     回斷點清單而不是「通過/不通過」—— 稽核者要的是「哪一筆、斷在哪」。 */
+  @Get("chain-report")
+  async chainReport(@Tenant() tenant: TenantContext): Promise<{
+    breaks: readonly unknown[]
+    checkedAt: string
+  }> {
+    return this.approvals.chainReport(tenant, undefined)
+  }
+
   @Post(":instanceId/decide")
   @HttpCode(200)
   async decide(

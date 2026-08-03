@@ -650,3 +650,101 @@ describe("🔴 簽核代理人 API(自助設定)", () => {
     expect((bad.json() as { code: string }).code).toBe("DELEGATE_RANGE")
   })
 })
+
+/* 🔴 OQ-AP2-9|簽核紀錄 hash chain(0021 明列的「偵測層」)。
+
+   0021 已做完**防護層**(no_mutate trigger + REVOKE + event trigger 擋 DROP),
+   但它自己誠實寫著擋不住 superuser。這一組測的是另一半:**擋不住,但證明得出來**。
+
+   ⚠️ 這些測試刻意用**特權連線**去竄改 —— 那正是威脅模型裡防不住的那個角色。
+   用 app 車道改根本改不動(0021 已保證),那樣測等於什麼都沒驗。 */
+describe("🔴 簽核紀錄 hash chain(可偵測竄改)", () => {
+  const chainOf = async (instanceId: number) =>
+    (
+      await pool.query<{ id: string; hash: string | null; prev_hash: string | null }>(
+        "SELECT id, hash, prev_hash FROM approval_step_log WHERE instance_id = $1 ORDER BY id",
+        [instanceId],
+      )
+    ).rows
+
+  const breaks = async () =>
+    (
+      await pool.query<{ log_id: string; reason: string }>(
+        "SELECT log_id, reason FROM approval_log_chain_breaks($1)",
+        [tenantA],
+      )
+    ).rows
+
+  const newInstance = async (): Promise<number> => {
+    const rec = await createRecord({ 品名: "鏈測試", 金額: 500, 狀態: "草稿" })
+    const res = await submit((rec.json() as { id: number }).id)
+    return (res.json() as { id: number }).id
+  }
+
+  it("每一筆 log 都被串進鏈:第一筆 prev 為空,後續接上前一筆", async () => {
+    const instanceId = await newInstance()
+    await decide(instanceId, "approve")
+    const rows = await chainOf(instanceId)
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+    expect(rows[0]?.hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(rows[0]?.prev_hash).toBeNull()
+    for (let i = 1; i < rows.length; i += 1) {
+      expect(rows[i]?.prev_hash).toBe(rows[i - 1]?.hash)
+    }
+  })
+
+  it("乾淨的資料不得回報任何斷點(否則報告是恆紅的假警報)", async () => {
+    await newInstance()
+    expect(await breaks()).toEqual([])
+  })
+
+  /* 🔴 這一條是整個機制的重點:內容被改過就驗得出來。
+     用特權連線改 —— app 車道改不動是 0021 的事,這裡測的是「改成功之後怎麼辦」。 */
+  it("🔴 改掉某一列的內容 → 報告指出那一列 tampered", async () => {
+    const instanceId = await newInstance()
+    await decide(instanceId, "approve")
+    const rows = await chainOf(instanceId)
+    const victim = Number(rows[0]?.id)
+
+    /* trigger 擋 UPDATE,故先停用再改 —— 模擬「握有特權的人動了手腳」 */
+    await pool.query("ALTER TABLE approval_step_log DISABLE TRIGGER no_mutate")
+    await pool.query("UPDATE approval_step_log SET comment = $1 WHERE id = $2", [
+      "被竄改的理由",
+      victim,
+    ])
+    await pool.query("ALTER TABLE approval_step_log ENABLE ALWAYS TRIGGER no_mutate")
+
+    const found = await breaks()
+    expect(found.some((b) => Number(b.log_id) === victim && b.reason === "tampered")).toBe(true)
+  })
+
+  it("🔴 抽掉一列 → 它的後繼者因為接不上而被指出 unlinked", async () => {
+    const instanceId = await newInstance()
+    await decide(instanceId, "approve")
+    const rows = await chainOf(instanceId)
+    /* 🔴 必須抽**有後繼者**的那一列。抽最後一列驗不出東西 ——
+       沒有人需要接上它,鏈自然不會斷(第一版就是這樣紅的:兩列時
+       `floor(2/2)` 正好指到最後一列)。 */
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+    const victim = Number(rows[0]?.id)
+
+    await pool.query("ALTER TABLE approval_step_log DISABLE TRIGGER no_mutate")
+    await pool.query("DELETE FROM approval_step_log WHERE id = $1", [victim])
+    await pool.query("ALTER TABLE approval_step_log ENABLE ALWAYS TRIGGER no_mutate")
+
+    const found = await breaks()
+    expect(found.some((b) => b.reason === "unlinked")).toBe(true)
+  })
+
+  it("報告端點限管理員,且回傳結構含檢查時間(稽核要答得出「什麼時候查的」)", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/approvals/chain-report",
+      headers: A(),
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { breaks: unknown[]; checkedAt: string }
+    expect(Array.isArray(body.breaks)).toBe(true)
+    expect(Number.isNaN(Date.parse(body.checkedAt))).toBe(false)
+  })
+})

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| 狀態 | 📝 **M0 DRAFT — OQ-AP2-1..11 待裁定** |
+| 狀態 | 🚧 **APPROVED(2026-08-03,OQ-AP2-1..11 全採建議)— 進 M1** |
 | 建立 | 2026-08-03 |
 | 上游 | [actions-approval.md](actions-approval.md) §0-bis 之 P1 第 7–11 項(task #104);代理簽核已於 2026-08-01 交付 |
 | 為什麼獨立成檔 | 六個子項**各自改動簽核狀態機的語意**(誰是簽核人 / 一關算不算過 / 關卡集合可否在執行期變動 / 往回走 / 紀錄可否被改)。這不是加功能,是動地基 —— 混進既有模組的 changelog 會讓「當初為什麼這樣設計」查不回來 |
@@ -18,7 +18,7 @@
 | 簽核人 | **一關一個靜態角色**:`approvalStepSchema = { stepNo, approverRoleId, amountField?, minAmount? }` | `actions/action-specs.ts` |
 | 一關算不算過 | 單人決定即推進,無 N-of-M 概念 | `approval.service.ts` |
 | 進行中的狀態 | `approval_instance`:`currentStep` / `status` / `submittedBy` —— **單軌** | `db/schema.ts` |
-| 紀錄 | `approval_step_log`:`stepNo` / `actorId` / `decision` / `onBehalfOfActorId` / `comment`。**append-only 只是慣例,沒有任何機制保證** | `db/schema.ts` |
+| 紀錄 | `approval_step_log`。⚠️ **M0 初稿此處寫錯**:§0-bis 說「只是不去改、沒有機制保證」,而 **migration 0021 早就做完防護層** —— `no_mutate`/`no_truncate` trigger(`ENABLE ALWAYS`,故 replica 模式也不跳過)+ REVOKE UPDATE/DELETE/TRUNCATE + event trigger 擋 DROP。0021 自己誠實寫著擋不住 superuser,並把「hash chain 偵測層」列為後續 | `drizzle/0021` |
 | 退回 | 只有終審駁回 + 重送從頭 | §0-bis 第 9 項 |
 | 代理人 | ✅ 已交付(`approval_delegate` + `on_behalf_of` + 待簽匣納入 + 不遞移) | v1.2 |
 
@@ -171,7 +171,7 @@ append-only 由**權限**保證而非自律,整合測以 `SET ROLE weyver_app` �
 
 ---
 
-## 3. 開放問題(OQ-AP2-N)— **待裁定**
+## 3. 開放問題(OQ-AP2-N)— ✅ **已裁定 2026-08-03(全採建議)**
 
 | # | 議題 | 選項 | 建議 |
 |---|---|---|---|
@@ -183,9 +183,9 @@ append-only 由**權限**保證而非自律,整合測以 `SET ROLE weyver_app` �
 | **OQ-AP2-6** | **退回目標** | A. **只退一關**(Salesforce `BackToPrevious`)<br>B. **可退任意先前關卡,並可逐關設定白名單**(Kissflow)<br>C. 只退回申請人(現況) | **B** —— A 對多關流程不夠用(第 4 關發現第 1 關填錯,退一關給第 3 關的人毫無意義);Kissflow 的「可限制範圍」讓嚴謹流程仍能收斂。誠實代價:B 的狀態轉移比 A 多,測試面較大 |
 | **OQ-AP2-7** | **退回後那一關指派給誰** | A. **原本簽過的那個人**<br>B. **該關原始指派集合(重新解析)**<br>C. 逐關可設 | **B** —— A 在「原簽核人已離職」時直接卡死,而那正是我們要避免的形態;B 與 OQ-AP2-1 的動態解析同源,語意一致。Kissflow 兩者都給(§1.5 逐字),故 **C 是有前例的**,但先不做 —— 多一個設定要多一份說明,而 B 涵蓋絕大多數情況 |
 | **OQ-AP2-8** | **退回後已簽關卡要不要重簽** | A. **全部重簽**<br>B. 保留已簽結果,只重簽受影響關卡 | **A** —— §1.5 查證**業界無人做 B**,連 Kissflow 都只能承認這是痛點。B 需要「哪些關卡受這次修改影響」的判定,那是欄位級變更影響分析,規模等同另一個模組。**A 要在 UI 上講清楚**(退回時明示「重新送出後需重跑全部關卡」),不能讓人以為只補簽一關 |
-| **OQ-AP2-9** ⭐⭐ | **append-only 怎麼強制** | A. **DB grant:app 車道對 `approval_step_log` 只授 SELECT / INSERT**<br>B. **A + Odoo 式 hash chain + 稽核用的鏈完整性檢查報告**<br>C. 維持現況(靠自律) | **B** —— A 是我方已驗證的先例(F-8 `tenant_usage_daily`,整合測以真 `weyver_app` 角色斷言 UPDATE/DELETE permission denied),**比 Salesforce 的「平台沒開入口」更硬**,且成本只有一段 grant。但 A 擋不住**握有特權連線的人**,而 21 CFR Part 11 要求「連系統管理員都不應能改」(§0-bis 第 11 項)。Odoo 的 hash chain 是唯一可借用的 OSS 先例,**且它附了檢查報告 —— 讀取端能自行證明鏈沒斷,這對食品廠 ISO 22000 稽核正是被問到的東西**。若決策方認為 R1 不需要到 Part 11 等級,則**退為 A**,並把 B 列為觸發條件明確的後續(第一個要求 Part 11 的客戶) |
+| **OQ-AP2-9** ⭐⭐ | **append-only 怎麼強制**(⚠️ 選項 A 經查證**早已完成**於 0021,本題實質只在問要不要加 B 的偵測層)| A. ~~DB 層防護~~(**已完成**)<br>B. **A + Odoo 式 hash chain + 鏈完整性檢查報告**<br>C. 維持現況 | **B** —— A 是我方已驗證的先例(F-8 `tenant_usage_daily`,整合測以真 `weyver_app` 角色斷言 UPDATE/DELETE permission denied),**比 Salesforce 的「平台沒開入口」更硬**,且成本只有一段 grant。但 A 擋不住**握有特權連線的人**,而 21 CFR Part 11 要求「連系統管理員都不應能改」(§0-bis 第 11 項)。Odoo 的 hash chain 是唯一可借用的 OSS 先例,**且它附了檢查報告 —— 讀取端能自行證明鏈沒斷,這對食品廠 ISO 22000 稽核正是被問到的東西**。若決策方認為 R1 不需要到 Part 11 等級,則**退為 A**,並把 B 列為觸發條件明確的後續(第一個要求 Part 11 的客戶) |
 | **OQ-AP2-10** | **鎖定逃生路徑** | A. **三條全做**(admin 強制解鎖 / allowed-users 白名單 / 改派簽核人)<br>B. 只做 admin 強制解鎖 | **A** —— Salesforce 三條都有(§0-bis 第 6 項),而我方目前**只有 withdraw**,簽核人離職會導致記錄永久鎖死。三條各解不同情境:解鎖給緊急修改、白名單給常態例外、改派給人事異動。**每一條都必須進 `approval_step_log`** —— 逃生路徑不留痕就是內控破口 |
-| **OQ-AP2-11** | **`decide()` 的先讀後寫 race** | A. **條件式 UPDATE**(`WHERE status='pending' AND current_step=N`,0 列即為併發)<br>B. `SELECT … FOR UPDATE`<br>C. 唯一約束 | **A** —— 與 I-1 匯出的下載計數同一個修法(已在本專案驗證過:先查再寫會讓兩個分頁各自看到「還剩 1 次」)。B 要多一次往返且鎖範圍較大;C 對「同一關兩人同時簽」擋不住(兩列本來就都該存在)。**A 的 0 列回查要給出精確原因**,不能只回「失敗」 |
+| ~~OQ-AP2-11~~ | ~~`decide()` 的先讀後寫 race~~ | — | ⚠️ **已無此問題,M0 初稿依據的 §0-bis 記載是舊的**。對碼確認 `updateInstance(…, expect: { status, currentStep })` 已是條件式 UPDATE,0 列即 `raceLost()`,且 `approval.integration` 已有「併發雙簽只有一個贏」的測試。**本題撤銷,不列入里程碑** |
 
 ---
 
@@ -215,7 +215,7 @@ approval_step_log     既有,加:
 
 | M | 內容 | 產出 |
 |---|---|---|
-| M1 | `decide()` 條件式 UPDATE(OQ-11)+ `approval_step_log` grant 收斂(OQ-9 之 A) | api |
+| M1 ✅ | ~~`decide()` 條件式 UPDATE~~(已存在)+ ~~grant 收斂~~(0021 已完成)→ 實際交付 **hash chain 偵測層**(0048)| api |
 | M2 | 動態簽核人解析 + 送簽當下的可解析性檢查(OQ-1 / OQ-2) | api |
 | M3 | N-of-M(OQ-3 / OQ-4)+ 臨時加簽(OQ-5 之 B) | api |
 | M4 | 退回到指定關(OQ-6 / OQ-7 / OQ-8) | api |
@@ -243,4 +243,6 @@ approval_step_log     既有,加:
 
 | 日期 | 版本 | 變更 | 作者 |
 |---|---|---|---|
+| 2026-08-03 | v0.3 | **M1 SHIPPED,而它推翻了 M0 自己的兩條記載**。動工前對碼查證發現:(a) `decide()` 的 race **早就修好了** —— `updateInstance` 已是帶 `expect` 守衛的條件式 UPDATE,且已有「併發雙簽只有一個贏」的測試 → **OQ-AP2-11 撤銷**;(b) append-only 的 **DB 層防護早就做完了**(0021:trigger 且 `ENABLE ALWAYS`、REVOKE、event trigger 擋 DROP),0021 結尾自己就把「hash chain 偵測層」列為後續 → OQ-AP2-9 實質只剩 B。**兩條都源自 §0-bis 的舊記載,而我寫 M0 時採信了它、沒去對碼** —— 正是「巨人的第一站是自家 repo」那條教訓。實際交付 migration 0048:**算式只有一份**(`approval_log_hash`,trigger 與驗證器共用 —— 各寫一次遲早分岔,而分岔的表現是「稽核報告說鏈斷了」這種最難查的假警報);時間戳以**微秒 epoch** 入雜湊而非 `::text`(後者隨 session TimeZone 變,換時區驗同一列會得到不同雜湊);**每實例 advisory lock**(會簽一關多人同時核准會讓兩筆讀到同一個 prev → 鏈分岔,不是理論風險);報告回 **preChain / tampered / unlinked 三分**而非布林(稽核者要的是「哪一筆、斷在哪」)。測試刻意用**特權連線**竄改 —— 那正是威脅模型防不住的角色,用 app 車道測等於什麼都沒驗。**測試自己先紅一次**:兩列時抽到最後一列,沒有後繼者自然驗不出斷鏈。api 32 綠 | Claude Code |
+| 2026-08-03 | v0.2 | **OQ-AP2-1..11 全數裁定(全採建議),DRAFT → APPROVED,進 M1**。定調:主管由 **role tree 推導**(不引入第二份組織結構)· 解析失敗**送簽當下就擋**(不學 Salesforce 跑到一半才炸)· N-of-M 採 **`quorum: number \| null`**(null = 全體,Ragic 退化式)· 會簽一人拒絕**立刻整單否決** · 加簽**先只做臨時加簽**(唯一不改變關卡集合者)· 退回**可任意先前關卡 + 白名單** · 退回後**重新解析簽核人**、**全部重簽** · append-only 採 **DB grant + hash chain + 鏈完整性檢查報告** · 鎖定逃生**三條全做** · `decide()` 改**條件式 UPDATE** | Claude Code |
 | 2026-08-03 | v0.1 | M0 DRAFT。**§0.1 對碼查證推翻一個隱含前提**:本專案**沒有任何「主管」關係**,只有用於權限繼承的 role tree —— 動態簽核人不是「接一個欄位」而是「要不要引入第二份組織結構」的架構決定(OQ-AP2-1)。**§1 一手查證五題**:(a) Ragic 三種動態解析為 **parity 基準線非進階**,且官方明載相依於系統使用者表單的直屬主管欄位;(b) **解析失敗業界一致硬失敗、無人做 fallback**,Salesforce 更把「離職」與「空值」同等對待且**在簽核人回應時才炸**(反面教材);(c) Ragic 的 **「擇辦人數清空 = 會簽」** 是最好的 N-of-M 資料模型 —— All 是 N 的退化值,結構上不可能矛盾;(d) Ragic 的**加簽三分法**直接回答「向前加簽會暫停目前簽核動作」,而 **ServiceNow 社群明文警告** ad-hoc 加簽會破壞狀態機一致性;(e) **退回後全部重簽是業界唯一預設**,Kissflow 自承是痛點,無人做「只重簽受影響關卡」;(f) **簽核紀錄 hash chain 六家皆無**,Odoo 有但用在會計分錄且附**鏈完整性檢查報告**(讀取端可自證),是唯一可借用的 OSS 先例。OQ-AP2-1..11 待裁定 | Claude Code |

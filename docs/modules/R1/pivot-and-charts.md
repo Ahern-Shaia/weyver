@@ -432,7 +432,7 @@ Ragic 官方把篩選優先序列成表([doc/122](https://www.ragic.com/intl/zh-
 - **Teable 已把獨立儀表板整個廢掉**:「**The standalone Dashboard feature has been replaced by App Builder.**」
   ([changelog](https://help.teable.ai/changelog))—— 與 docs/24「儀表板為次要視圖」同向的又一個佐證。
 
-### 11.5 補三條 OQ(待裁定)
+### 11.5 補三條 OQ — ✅ **已裁定 2026-08-03(全採建議)**
 
 | # | 議題 | 選項 | 建議 |
 |---|---|---|---|

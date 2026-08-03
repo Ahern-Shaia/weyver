@@ -19,7 +19,11 @@ import type {
   ApprovalStep,
   CreateApprovalDefBody,
 } from "./action-specs.js"
-import { ActionsRepository, type ApprovalDefRow } from "./actions.repository.js"
+import {
+  ActionsRepository,
+  type ApprovalChainBreak,
+  type ApprovalDefRow,
+} from "./actions.repository.js"
 import { ApprovalDelegateRepository } from "./approval-delegate.repository.js"
 import { ButtonService } from "./button.service.js"
 
@@ -130,6 +134,30 @@ export class ApprovalService {
   }
 
   /* 簽核決策。gate:操作者須為 current step 之 approverRole 成員(角色閉包)。 */
+  /* 🔴 OQ-AP2-9|簽核紀錄鏈完整性報告(21 CFR 11.10(e) 的「可偵測竄改」那一半)。
+
+     **admin 限定**:斷點清單會透露哪些簽核實例存在、什麼時候被動過 ——
+     那是內控資訊,不是一般使用者該看的。
+
+     0021 已經做完防護層(no_mutate trigger + REVOKE + event trigger 擋 DROP),
+     但它自己誠實寫著擋不住 superuser。這份報告是它明列的後續:
+     擋不住不代表不能**證明**有沒有發生。 */
+  async chainReport(
+    tenant: TenantContext,
+    permissions: EffectivePermissions | undefined,
+  ): Promise<{ breaks: ApprovalChainBreak[]; checkedAt: string }> {
+    if (permissions !== undefined && !permissions.isAdmin) {
+      throw new ForbiddenException({
+        code: "FORBIDDEN",
+        message: "簽核紀錄完整性報告限管理員檢視",
+      })
+    }
+    return {
+      breaks: await this.repo.chainBreaks(tenant.tenantId),
+      checkedAt: new Date().toISOString(),
+    }
+  }
+
   async decide(
     tenant: TenantContext,
     instanceId: number,

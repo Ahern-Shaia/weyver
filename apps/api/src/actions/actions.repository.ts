@@ -43,6 +43,18 @@ export interface ApprovalInstanceRow {
   readonly updatedAt: Date
 }
 
+/* 鏈斷點的三種原因,意義完全不同:
+   preChain = 早於 hash chain 上線(0048 之前寫的),不是竄改
+   tampered = 內容與自己的雜湊對不上 → 這一列被改過
+   unlinked = 自己的雜湊沒問題,但接不上前一列 → 中間有列被刪掉或插入 */
+export interface ApprovalChainBreak {
+  readonly logId: number
+  readonly instanceId: number
+  readonly stepNo: number
+  readonly createdAt: string
+  readonly reason: "preChain" | "tampered" | "unlinked"
+}
+
 @Injectable()
 export class ActionsRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
@@ -356,6 +368,27 @@ export class ActionsRepository {
       .where(and(...guards))
       .returning({ id: approvalInstances.id })
     return rows.length > 0
+  }
+
+  /* 🔴 OQ-AP2-9|鏈完整性檢查。**只讀**,回傳斷點而不是布林 ——
+     稽核者要的是「哪一筆、什麼時候、斷在哪」,一個「通過/不通過」答不了那個問題。
+     算式在 DB 端(`approval_log_hash`),與 trigger 共用同一份;在這裡用 JS 重算一次
+     就是兩份算式,而它們分岔的表現會是「稽核報告說鏈斷了」這種最難查的假警報。 */
+  async chainBreaks(tenantId: number): Promise<ApprovalChainBreak[]> {
+    const result = await this.db.execute<{
+      log_id: string | number
+      instance_id: string | number
+      step_no: number
+      created_at: Date | string
+      reason: string
+    }>(sql`SELECT * FROM public.approval_log_chain_breaks(${tenantId})`)
+    return result.rows.map((r) => ({
+      logId: Number(r.log_id),
+      instanceId: Number(r.instance_id),
+      stepNo: Number(r.step_no),
+      createdAt: new Date(r.created_at).toISOString(),
+      reason: r.reason as ApprovalChainBreak["reason"],
+    }))
   }
 
   async appendStepLog(input: {

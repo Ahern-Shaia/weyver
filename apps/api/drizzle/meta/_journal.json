@@ -337,6 +337,13 @@
       "when": 1785687204000,
       "tag": "0047_webhook_delivery_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1785773604000,
+      "tag": "0048_approval_log_hash_chain",
+      "breakpoints": true
     }
   ]
 }

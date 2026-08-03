@@ -688,6 +688,11 @@ export const approvalStepLogs = pgTable(
        「為什麼是 B 批的?他有權嗎?」 */
     onBehalfOfActorId: bigint("on_behalf_of_actor_id", { mode: "number" }),
     comment: text("comment"),
+    /* 🔴 OQ-AP2-9|hash chain 之偵測層。**由 DB trigger 產生,應用層不寫也不該寫** ——
+       任何 INSERT 路徑都會被串進鏈裡,繞過服務層也一樣。
+       NULL = 這一列早於 chain 上線(0048 之前),不是竄改。 */
+    prevHash: text("prev_hash"),
+    hash: text("hash"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
