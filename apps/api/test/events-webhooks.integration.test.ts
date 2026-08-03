@@ -14,6 +14,7 @@ import { EventFanoutService } from "../src/integrations/event-fanout.service.js"
 import { ApiKeyService } from "../src/integrations/api-key.service.js"
 import { EventService } from "../src/integrations/event.service.js"
 import { WebhookService } from "../src/integrations/webhook.service.js"
+import { WebhookDeliveryService } from "../src/integrations/webhook-delivery.service.js"
 
 /* 🔴 G-1 整合測。三件事在這裡被釘死:
    1. **事件與資料同一 tx** —— rollback 時兩者都不留
@@ -29,6 +30,7 @@ let records: RecordService
 let webhooks: WebhookService
 let apiKeys: ApiKeyService
 let fanout: EventFanoutService
+let delivery: WebhookDeliveryService
 let ddlKnex: Knex
 const destroyers: (() => Promise<void>)[] = []
 let tenantA = 0
@@ -76,6 +78,7 @@ beforeAll(async () => {
   apiKeys = new ApiKeyService(new TenantDb(appDb), db)
   const notifyStub = { emit: async () => 0 } as never
   fanout = new EventFanoutService(ddlKnex, notifyStub)
+  delivery = new WebhookDeliveryService(ddlKnex)
 }, 180_000)
 
 afterAll(async () => {
@@ -375,5 +378,79 @@ describe("G-1 API 金鑰", () => {
     await new Promise((r) => setTimeout(r, 150))
     const row = await ddlKnex("api_key").where({ id: issued.id }).first()
     expect(row?.last_used_at).not.toBeNull()
+  })
+})
+
+/* 🔴 W7|投遞紀錄保留期。在此之前每一列都帶一份完整的載荷(業務資料快照)
+   與回應內容,而**沒有任何機制會清掉它們** —— 既是無上限成長,也是保留期破口。 */
+describe("G-1 投遞紀錄保留期", () => {
+  const agedDelivery = async (
+    tenantId: number,
+    endpointId: number,
+    ageDays: number,
+    status = "sent",
+  ): Promise<number> => {
+    const [row] = await ddlKnex("webhook_delivery")
+      .insert({
+        tenant_id: tenantId,
+        endpoint_id: endpointId,
+        message_id: `msg_${String(ageDays)}_${String(Date.now())}_${String(Math.trunc(ageDays * 7))}`,
+        event_type: "record.created",
+        payload: JSON.stringify({ 品名: "不該無限期留著的業務資料" }),
+        status,
+        response_body: "ok",
+        created_at: ddlKnex.raw(`now() - interval '${String(ageDays)} days'`),
+      })
+      .returning("id")
+    return Number((row as { id: number | string }).id)
+  }
+
+  it("🔴 超過 30 天:清掉載荷與回應內容,但列留著(內控要答得出有沒有送出去)", async () => {
+    const endpointId = await enabledEndpoint(tenantA, "https://example.com/retention")
+    const oldId = await agedDelivery(tenantA, endpointId, 40)
+    const freshId = await agedDelivery(tenantA, endpointId, 1)
+
+    const result = await delivery.enforceRetention()
+    expect(result.pruned).toBeGreaterThan(0)
+
+    const old = await ddlKnex("webhook_delivery").where({ id: oldId }).first()
+    expect(old?.payload).toEqual({})
+    expect(old?.response_body).toBeNull()
+    expect(old?.pruned_at).not.toBeNull()
+    /* 列本身不能消失 —— 「我們有沒有把這筆資料送給外部端點」是內控要問的 */
+    expect(old?.message_id).toBeTruthy()
+
+    const fresh = await ddlKnex("webhook_delivery").where({ id: freshId }).first()
+    expect(fresh?.pruned_at).toBeNull()
+    expect(fresh?.payload).not.toEqual({})
+  })
+
+  it("🔴 還在 pending 的不清 —— 那是待送內容,清掉就永遠送不出去了", async () => {
+    const endpointId = await enabledEndpoint(tenantA, "https://example.com/pending")
+    const pendingId = await agedDelivery(tenantA, endpointId, 40, "pending")
+    await delivery.enforceRetention()
+    const row = await ddlKnex("webhook_delivery").where({ id: pendingId }).first()
+    expect(row?.pruned_at).toBeNull()
+    expect(row?.payload).not.toEqual({})
+  })
+
+  it("超過一年整列刪除", async () => {
+    const endpointId = await enabledEndpoint(tenantA, "https://example.com/ancient")
+    const ancientId = await agedDelivery(tenantA, endpointId, 400)
+    await delivery.enforceRetention()
+    expect(await ddlKnex("webhook_delivery").where({ id: ancientId }).first()).toBeUndefined()
+  })
+
+  /* 🔴 少了這道閘門,按重送會送出一份空載荷而且回 200 —— 對消費端就是
+     一筆「內容突然變空」的事件,比明白地說「重送不了」糟得多。 */
+  it("🔴 內容被清掉的投遞不得重送,且訊息說得出替代做法", async () => {
+    const endpointId = await enabledEndpoint(tenantA, "https://example.com/no-redeliver")
+    const oldId = await agedDelivery(tenantA, endpointId, 40)
+    await delivery.enforceRetention()
+
+    await expect(webhooks.redeliver(tenantA, oldId)).rejects.toThrow(/保留期|無法重送/)
+    /* 狀態不得被改成 pending —— 否則投遞器下一輪就把空載荷送出去了 */
+    const row = await ddlKnex("webhook_delivery").where({ id: oldId }).first()
+    expect(row?.status).toBe("sent")
   })
 })

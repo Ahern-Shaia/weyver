@@ -29,6 +29,7 @@ const EXPECTED_CRON_JOBS = [
   "trash.purge",
   "event.fanout",
   "webhook.deliver",
+  "webhook.retention",
   "file.scan",
   "export.expire",
 ] as const

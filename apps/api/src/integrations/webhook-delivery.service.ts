@@ -32,6 +32,18 @@ const DELIVERY_LOCK_KEY = 909_003
 const DISABLE_AFTER_FAILURES = 20
 const DISABLE_AFTER_HOURS = 120
 
+/* 🔴 W7|投遞紀錄保留期。每一列都帶一份完整的載荷(業務資料快照)與回應內容,
+   而在此之前**沒有任何機制會清掉它們** —— 既是無上限成長,也是「業務資料的副本
+   無限期躺在另一張表裡」的保留期破口。
+
+   分兩段而不是一刀刪:排查「這筆到底送出去了沒、對方回什麼碼」通常發生在幾天內,
+   而「我們有沒有把這筆資料送給外部端點」是內控要問的問題,答案不該跟著內容一起消失。
+   故 30 天後清內容留 metadata,一年後才整列刪除 —— 與回收桶「刪檔案、留列給稽核」同一個取捨。 */
+const PAYLOAD_RETENTION_DAYS = 30
+const ROW_RETENTION_DAYS = 365
+const PRUNE_BATCH = 1000
+const RETENTION_LOCK_KEY = 909_004
+
 interface DueRow {
   id: number
   tenant_id: number
@@ -60,6 +72,66 @@ export class WebhookDeliveryService {
       this.logger.error(
         `webhook deliver failed: ${error instanceof Error ? error.message : String(error)}`,
       )
+    }
+  }
+
+  /* 具名為硬性要求(F-9 §4.1):未具名的 cron 以 UUID 進 registry,
+     `ScheduleModule` 重複註冊時偵測不到,同一個 job 會靜默跑多次。 */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM, { name: "webhook.retention" })
+  async scheduledRetention(): Promise<void> {
+    try {
+      const result = await this.enforceRetention()
+      if (!result.skipped && (result.pruned > 0 || result.deleted > 0)) {
+        this.logger.log(`webhook retention: ${JSON.stringify(result)}`)
+      }
+    } catch (error) {
+      this.logger.error(
+        `webhook retention failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  /* 跨租戶維運 → 特權車道 + advisory lock 擋多實例。
+   **只清已了結的投遞**(sent / failed):還在 pending 的載荷是待送內容,清掉就送不出去了。 */
+  async enforceRetention(): Promise<{ pruned: number; deleted: number; skipped: boolean }> {
+    const gate = await this.knex.raw<{ rows: { locked: boolean }[] }>(
+      "SELECT pg_try_advisory_lock(?) AS locked",
+      [RETENTION_LOCK_KEY],
+    )
+    if (gate.rows[0]?.locked !== true) return { pruned: 0, deleted: 0, skipped: true }
+    try {
+      const pruned = await this.knex("webhook_delivery")
+        .whereIn(
+          "id",
+          this.knex("webhook_delivery")
+            .select("id")
+            .whereNull("pruned_at")
+            .whereIn("status", ["sent", "failed"])
+            .whereRaw(`created_at < now() - interval '${String(PAYLOAD_RETENTION_DAYS)} days'`)
+            .limit(PRUNE_BATCH),
+        )
+        .update({
+          /* 載荷欄位為 NOT NULL,故以空物件取代而非設 NULL；
+             「有沒有被清過」由 `pruned_at` 回答,不靠猜空物件的語意。 */
+          payload: this.knex.raw("'{}'::jsonb"),
+          response_body: null,
+          pruned_at: this.knex.fn.now(),
+        })
+
+      const deleted = await this.knex("webhook_delivery")
+        .whereIn(
+          "id",
+          this.knex("webhook_delivery")
+            .select("id")
+            .whereIn("status", ["sent", "failed"])
+            .whereRaw(`created_at < now() - interval '${String(ROW_RETENTION_DAYS)} days'`)
+            .limit(PRUNE_BATCH),
+        )
+        .delete()
+
+      return { pruned, deleted, skipped: false }
+    } finally {
+      await this.knex.raw("SELECT pg_advisory_unlock(?)", [RETENTION_LOCK_KEY])
     }
   }
 

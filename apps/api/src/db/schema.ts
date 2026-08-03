@@ -1157,6 +1157,9 @@ export const webhookDeliveries = pgTable(
     lastError: text("last_error"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /* W7|載荷與回應內容已過保留期被清除。**同時是重送的閘門** ——
+       內容沒了還讓人按重送,送出去的會是一份空載荷,而且不會有任何錯誤。 */
+    prunedAt: timestamp("pruned_at", { withTimezone: true }),
   },
   (t) => [
     index("webhook_delivery_due_idx").on(t.status, t.nextAttemptAt).where(sql`status = 'pending'`),

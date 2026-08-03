@@ -12,6 +12,8 @@ import {
   BulkRowError,
   BulkTooLargeError,
   BulkValidationError,
+  DeliveryContentPrunedError,
+  DeliveryNotFoundError,
   DomainError,
   FieldBudgetExhaustedError,
   FieldForbiddenError,
@@ -56,6 +58,13 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof RecordNotFoundError) {
     return { status: HttpStatus.NOT_FOUND, code: "RECORD_NOT_FOUND" }
+  }
+  if (error instanceof DeliveryNotFoundError) {
+    return { status: HttpStatus.NOT_FOUND, code: "DELIVERY_NOT_FOUND" }
+  }
+  /* 內容已過保留期被清除 —— 這不是請求錯,是資源的狀態不允許這個動作 */
+  if (error instanceof DeliveryContentPrunedError) {
+    return { status: HttpStatus.GONE, code: "DELIVERY_CONTENT_PRUNED" }
   }
   if (error instanceof SsrfBlockedError) {
     return { status: HttpStatus.UNPROCESSABLE_ENTITY, code: "TARGET_NOT_ALLOWED" }

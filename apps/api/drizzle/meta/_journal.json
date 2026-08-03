@@ -330,6 +330,13 @@
       "when": 1785600804000,
       "tag": "0046_export_job",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1785687204000,
+      "tag": "0047_webhook_delivery_retention",
+      "breakpoints": true
     }
   ]
 }

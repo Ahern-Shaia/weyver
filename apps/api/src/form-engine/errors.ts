@@ -132,6 +132,23 @@ export class FieldBudgetExhaustedError extends DomainError {
   }
 }
 
+export class DeliveryNotFoundError extends DomainError {
+  constructor(id: number) {
+    super(`找不到投遞紀錄 #${String(id)}`)
+  }
+}
+
+/* 保留期到了之後,載荷內容會被清掉但列留著(內控要答得出「有沒有送出去」)。
+   此時重送會送出一份空載荷且回 200 —— 對消費端就是一筆內容突然變空的事件。
+   明白地擋下來,比讓它「成功」好。 */
+export class DeliveryContentPrunedError extends DomainError {
+  constructor(id: number) {
+    super(
+      `投遞紀錄 #${String(id)} 的內容已超過保留期被清除,無法重送。若仍需送出,請重新觸發該筆資料的變更。`,
+    )
+  }
+}
+
 /* 搜尋逾時。這不是壞掉,是這句查詢對現在的資料量太貴了 ——
    所以訊息要給使用者做得了的事,而不是「請稍後再試」(再試一次還是一樣慢)。 */
 export class SearchTimeoutError extends DomainError {

@@ -6,6 +6,7 @@ import { webhookDeliveries, webhookEndpoints } from "../db/schema.js"
 import { resolveSafeTarget } from "../http/ssrf-guard.js"
 import { generateSecret } from "./webhook-signature.js"
 import { newMessageId } from "./webhook-delivery.service.js"
+import { DeliveryContentPrunedError, DeliveryNotFoundError } from "../form-engine/errors.js"
 
 /* G-1 M3|Webhook 端點管理。全程走 **app 車道**(RLS)—— 端點與投遞紀錄都是租戶資料。 */
 
@@ -169,14 +170,25 @@ export class WebhookService {
     )
   }
 
-  /* 手動重送。**沿用原 messageId** —— 消費端才去重得掉(GitHub 同做法)。 */
+  /* 手動重送。**沿用原 messageId** —— 消費端才去重得掉(GitHub 同做法)。
+
+     🔴 W7|載荷已過保留期被清掉的就不能重送。少了這道閘門,按下去會送出一份
+     空載荷,而且成功回 200 —— 對消費端而言那是一筆「內容突然變空」的事件,
+     比明白地告訴使用者「重送不了」糟得多。 */
   async redeliver(tenantId: number, deliveryId: number): Promise<void> {
-    await this.tenantDb.withTenant(tenantId, (tx) =>
-      tx
+    await this.tenantDb.withTenant(tenantId, async (tx) => {
+      const [row] = await tx
+        .select({ prunedAt: webhookDeliveries.prunedAt })
+        .from(webhookDeliveries)
+        .where(and(eq(webhookDeliveries.tenantId, tenantId), eq(webhookDeliveries.id, deliveryId)))
+      if (row === undefined) throw new DeliveryNotFoundError(deliveryId)
+      if (row.prunedAt !== null) throw new DeliveryContentPrunedError(deliveryId)
+
+      await tx
         .update(webhookDeliveries)
         .set({ status: "pending", attempts: 0, nextAttemptAt: new Date(), lastError: null })
-        .where(and(eq(webhookDeliveries.tenantId, tenantId), eq(webhookDeliveries.id, deliveryId))),
-    )
+        .where(and(eq(webhookDeliveries.tenantId, tenantId), eq(webhookDeliveries.id, deliveryId)))
+    })
   }
 
   /* 測試發送:排一筆 ping,走完整投遞路徑(含簽章與 SSRF 檢查)。
