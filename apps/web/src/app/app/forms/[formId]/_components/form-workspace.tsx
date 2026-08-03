@@ -264,7 +264,13 @@ export function FormWorkspace(): ReactNode {
             {/* 🔴 F-2 M4:小圖表釘在列表頁,且**吃當下檢視的篩選**(OQ-PC-10 = A)。
                 放在網格上方而非側欄 —— Ragic 官方逐字「依據表單中的位置,從左到右、
                 從上到下依序排列」,不是可拖曳的儀表板(docs/10 §131 記載有誤)。 */}
-            <WidgetStrip formId={formId} viewQuery={viewQuery} placement="list" />
+            <WidgetStrip
+              formId={formId}
+              form={form}
+              viewQuery={viewQuery}
+              placement="list"
+              canDesign={canOnForm(caps.data, formId, "design")}
+            />
             <CollectionView
               formId={formId}
               form={form}

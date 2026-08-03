@@ -2,8 +2,10 @@
 
 import { Chart, type ChartOption } from "@/components/chart"
 import { type RecordQuery, type Widget, useGroupStats, useWidgets } from "@/lib/engine/hooks"
+import type { FormDto } from "@/lib/engine/schemas"
 import { mergeWidgetFilter } from "@/lib/engine/view-query"
-import { type ReactNode, useMemo } from "react"
+import { type ReactNode, useMemo, useState } from "react"
+import { WidgetEditor } from "./widget-editor"
 
 /* 🔴 F-2 M4|小圖表(widget)條。Ragic doc/122 形態:釘在列表頁 / 表單頁的小圖。
 
@@ -16,22 +18,54 @@ import { type ReactNode, useMemo } from "react"
    照抄一個競品沒有的東西不是 parity,是自己加的複雜度。 */
 export function WidgetStrip({
   formId,
+  form,
   viewQuery,
   placement,
+  canDesign,
 }: {
   readonly formId: number
+  readonly form: FormDto
   readonly viewQuery: RecordQuery
   readonly placement: "list" | "form"
+  /* 沒有 design 權的人看得到圖,但**設定入口不出現** —— 後端也會擋,
+     這裡只是不顯示一個按下去 403 的東西(同 `canOnForm` 的原則) */
+  readonly canDesign: boolean
 }): ReactNode {
   const widgets = useWidgets(formId, placement)
-  if ((widgets.data?.length ?? 0) === 0) return null
+  const [editing, setEditing] = useState(false)
+  const list = widgets.data ?? []
+
+  if (list.length === 0 && !canDesign) return null
 
   return (
-    <div className="flex flex-wrap gap-2 border-b border-line bg-surface px-3 py-2">
-      {widgets.data?.map((w) => (
-        <WidgetCard key={w.id} formId={formId} widget={w} viewQuery={viewQuery} />
-      ))}
-    </div>
+    <>
+      {editing ? (
+        <WidgetEditor
+          formId={formId}
+          form={form}
+          widgets={list}
+          onClose={() => setEditing(false)}
+        />
+      ) : null}
+      {list.length > 0 || canDesign ? (
+        <div className="flex flex-wrap items-start gap-2 border-b border-line bg-surface px-3 py-2">
+          {list.map((w) => (
+            <WidgetCard key={w.id} formId={formId} widget={w} viewQuery={viewQuery} />
+          ))}
+          {canDesign && !editing ? (
+            /* 🔴 第一約束:在此之前 widget **只能打 API 建立**,
+               而「有 API 可以做」不算解決 —— API 是開發者的逃生口,不得是唯一路徑。 */
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-md border border-dashed border-line px-3 py-2 text-[12px] text-ink-3 hover:border-primary hover:text-primary"
+            >
+              ＋ 小圖表
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </>
   )
 }
 

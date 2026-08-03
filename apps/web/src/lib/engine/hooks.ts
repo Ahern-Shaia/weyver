@@ -254,6 +254,48 @@ export function useWidgets(formId: number, placement: "list" | "form") {
   })
 }
 
+export function useWidgetRoleCandidates(formId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ["forms", formId, "widget-role-candidates"] as const,
+    enabled,
+    queryFn: () =>
+      engineFetch(
+        `/forms/${formId}/widgets/role-candidates`,
+        z.array(z.object({ id: z.number().int(), name: z.string() })),
+      ),
+    staleTime: 60_000,
+  })
+}
+
+export function useCreateWidget(formId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      name: string
+      chartType: "bar" | "line" | "pie"
+      dimension: string
+      measure: { fn: string; field: string } | null
+      visibleRoleIds: number[]
+    }): Promise<{ id: number }> =>
+      engineFetch(`/forms/${formId}/widgets`, z.object({ id: z.number().int() }), {
+        method: "POST",
+        body: { ...input, placement: "list" },
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["forms", formId, "widgets"] }),
+  })
+}
+
+export function useDeleteWidget(formId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (widgetId: number): Promise<void> =>
+      engineFetch(`/forms/${formId}/widgets/${widgetId}`, z.unknown(), {
+        method: "DELETE",
+      }) as Promise<void>,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["forms", formId, "widgets"] }),
+  })
+}
+
 export function useBulkUpdateRecords(formId: number) {
   const invalidate = useInvalidate()
   return useMutation({
