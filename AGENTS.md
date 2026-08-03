@@ -80,6 +80,33 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 5. **[P0] Clean-room**|不 clone Ragic / Odoo / NocoDB / Teable-AGPL source;僅獨立重寫。可 fork 者限 **MIT**(Baserow core / Teable `packages/*`),逐檔驗授權標頭 + 保留 attribution(docs/16 §7、CLAUDE 法律紅線)。
 6. **[P1] 過帳 / 沖帳 / 結轉 = 單一 DB transaction**,失敗全 rollback;已鎖期間不得過帳。
 
+### 5-bis. 🔴 競品原始碼作業規則(2026-08-03 統一,此前 repo 內有兩套互斥規則)
+
+**規則同時管「讀」,不只管「fork」。** 讀過再寫類似的東西,正是 clean-room 要隔開的污染路徑。
+
+| 來源 | 授權(SPDX) | 可 fork | **可讀實作** | 查證日 |
+|---|---|---|---|---|
+| Baserow core | MIT | ✅ | ✅ | 2026-07-18 |
+| Teable `packages/*` | MIT | ✅ | ✅ | 2026-07-18 |
+| Teable `apps/*` | AGPL-3.0 | ❌ | ❌ 只讀公開文件 | 2026-07-28 |
+| **NocoDB** | **Sustainable Use License(2026-01-29 起,已非 OSS)** | ❌ | ❌ 只讀公開文件 | 2026-07-28 |
+| Directus | 同上,已非 OSS | ❌ | ❌ 只讀公開文件 | 2026-07-28 |
+| Baserow enterprise | 專有 | ❌ | ❌ | 2026-07-18 |
+| Ragic / Odoo / 鼎新 / 正航 | 專有 | ❌ | ❌ | — |
+| Superset | Apache-2.0 | ✅ | ✅ | 未複核 |
+| **Metabase** | **AGPL-3.0(core)** | ❌ | ⚠️ **待裁定** | 未複核 |
+
+**規則**|
+- 引用競品原始碼時**必附授權識別碼 + 查證日期**;無法確認者標**未查證**並**不得作為承重依據**。
+- 授權會變(NocoDB 就變過)→ **每次引用都重新確認**,不沿用舊結論。
+- ⚠️ **Metabase 待裁定**:`docs/28` 明載「Metabase 原始碼直讀」且已 cascade 進 `docs/14 §0.4`,
+  但依本表的較嚴標準 AGPL 應只讀公開文件。取出的是**色彩 token 架構**(想法)而非演算法實作,
+  風險等級與 NocoDB 不同,故不逕行作廢,列待決策方裁定。`pivot-and-charts` §0 同此。
+
+**已知違規紀錄**|`views-group-kanban-calendar.md` v0.1(2026-07-29)引用 NocoDB 實作路徑,
+而 `dynamic-permissions.md` §0.8(2026-07-28)**前一天**就記下該來源已非 OSS。
+**不是當時不知道,是自家 repo 前一天寫了而沒查** —— 巨人第一站的失敗。已標更正,結論降級待重新推導。
+
 ---
 
 ## TypeScript 規則
