@@ -150,3 +150,75 @@ test("強制解鎖:未解鎖時記錄改不動,解鎖後狀態要在檯面上", 
   await expect(actions.getByTestId("approval-unlocked")).toBeVisible()
   expect((await patch()).status()).not.toBe(409)
 })
+
+/* 🔴 OQ-AP2-9 = C(記錄上的欄位當簽核人)—— **後端 2026-08-03 出貨,前端一直沒有入口**。
+
+   兩個獨立的問題,實走才看得到:
+
+   1. 設計器的規則清單裡**根本沒有這一項** → 只能打 API 建,而第一約束逐字說
+      「有 API 可以做不算解決」。R1 的整個目的是遷移,而這正是遷移的落點。
+   2. 前端的 `APPROVER_RULES` 鏡射也漏了它 → 用 API 建過的租戶,
+      `z.enum` 解不到 `fieldRef` 就整個 def parse 失敗,**簽核設定區塊會整塊消失**。
+      同一個檔案上面的註解正好警告過這個形狀。
+
+   另外釘住「三個 manager 規則要說實話」:它們靠角色樹的父子關係解析,
+   而角色頁的 UI **刻意是平的**(authz 0-bis)—— 沒有父角色就永遠解不出人,
+   那不該讓使用者選了之後等到送簽當下才炸。 */
+test("🔴 不用打 API 就能設定「記錄上的欄位」當簽核人;解不出人的規則要說實話", async ({
+  page,
+  request,
+}) => {
+  const stamp = String(Date.now()).slice(-6)
+  const form = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E簽核欄位_${stamp}`,
+      fields: [
+        { name: "品名", type: "text" },
+        { name: "主管", type: "member" },
+      ],
+    },
+  })
+  const formId = ((await form.json()) as { id: number }).id
+
+  await page.goto(`/app/builder?form=${String(formId)}`)
+  await page.getByRole("button", { name: "動作/簽核" }).click()
+  await page.getByRole("button", { name: "簽核流程" }).click()
+  await page.getByRole("button", { name: "加一關" }).click()
+
+  const rule = page.getByLabel("第1關簽核人規則")
+  await expect(rule).toBeVisible({ timeout: 30_000 })
+
+  /* 🔴 沒有角色階層時,三個 manager 規則必須是停用的 —— 且標題要說出**為什麼** */
+  await expect(rule.locator('option[value="manager"]')).toBeDisabled()
+  await expect(rule.locator('option[value="manager"]')).toContainText("尚未建立角色階層")
+
+  await rule.selectOption("fieldRef")
+  /* 欄位候選只有 member 欄 */
+  const field = page.getByLabel("第1關簽核人欄位")
+  await expect(field).toHaveValue("主管")
+  await expect(field.locator("option")).toHaveCount(1)
+
+  /* 🔴 繞過風險必須出現在**選的當下**,不能只留在文件裡 */
+  await expect(page.getByText(/設為唯讀/)).toBeVisible()
+
+  await page.getByRole("textbox", { name: "流程名稱" }).fill("主管簽核")
+  await page.getByRole("button", { name: "建立流程" }).click()
+
+  /* 存得進去,而且存的是 fieldRef + 欄名 */
+  await expect(async () => {
+    const res = await request.get(`/api/engine/forms/${String(formId)}/approvals/defs`, {
+      headers: DEV,
+    })
+    const defs = (await res.json()) as {
+      steps: { approverRule: string; approverField?: string }[]
+    }[]
+    expect(defs[0]?.steps[0]).toMatchObject({ approverRule: "fieldRef", approverField: "主管" })
+  }).toPass({ timeout: 15_000 })
+
+  /* 🔴 回頭再開一次設定畫面:def 解析不得整塊消失(前端鏡射漏 fieldRef 的症狀) */
+  await page.reload()
+  await page.getByRole("button", { name: "動作/簽核" }).click()
+  await page.getByRole("button", { name: "簽核流程" }).click()
+  await expect(page.getByText("主管簽核")).toBeVisible({ timeout: 30_000 })
+})

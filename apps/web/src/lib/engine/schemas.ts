@@ -408,12 +408,19 @@ export const APPROVER_RULES = [
   "manager",
   "managerOfManager",
   "managerOfPrevApprover",
+  /* 🔴 2026-08-04:這一項後端 2026-08-03 就出貨了,前端鏡射**沒跟上**。
+     後果比「選不到」更糟:`z.enum` 解不到 `fieldRef` → 整個 def 解析失敗,
+     而症狀是**簽核區塊整塊不見**(同一個檔案上面那段註解正好警告過這件事)。
+     也就是說,用 API 建了 fieldRef 流程的租戶,會發現簽核設定畫面空了。 */
+  "fieldRef",
 ] as const
 
 export const approvalStepSchema = z.object({
   stepNo: z.number().int(),
   approverRoleId: z.number().int().optional(),
   approverRule: z.enum(APPROVER_RULES).default("role"),
+  /* `fieldRef` 專用:member 欄位的顯示名 */
+  approverField: z.string().optional(),
   /* 未填 = 任一人;數字 = 擇辦 N 人;"all" = 會簽全體 */
   quorum: z.union([z.number().int(), z.literal("all")]).optional(),
   returnableTo: z.array(z.number().int()).optional(),

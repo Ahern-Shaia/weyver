@@ -29,6 +29,13 @@ export function ApprovalPanel({
   const [msg, setMsg] = useState<string | null>(null)
 
   const numericFields = form.fields.filter((f) => ["number", "money", "percent"].includes(f.type))
+  /* 🔴 OQ-AP2-9 = C|「記錄上的欄位」的候選就是本表的 member 欄 */
+  const memberFields = form.fields.filter((f) => f.type === "member")
+  /* 🔴 三個 manager 規則靠**角色樹的父子關係**解析簽核人,
+     而角色頁的 UI **刻意是平的**(authz 0-bis 項 1:客戶是行政兼職,階層理解成本才是瓶頸)。
+     於是一個從畫面把角色建起來的租戶,永遠沒有父角色 → 這三個規則**恆解不出人**,
+     而失敗會等到送簽當下才發生。讓它在選的當下就說實話。 */
+  const hasHierarchy = roles.some((r) => r.parentId !== null)
 
   const addStep = (): void => {
     const firstRole = roles[0]
@@ -109,17 +116,39 @@ export function ApprovalPanel({
                             ...x,
                             approverRule: rule,
                             approverRoleId: x.approverRoleId ?? roles[0]?.id,
+                            approverField: undefined,
                           }
-                        : { ...x, approverRule: rule, approverRoleId: undefined }
+                        : rule === "fieldRef"
+                          ? {
+                              ...x,
+                              approverRule: rule,
+                              approverRoleId: undefined,
+                              approverField: x.approverField ?? memberFields[0]?.name,
+                            }
+                          : {
+                              ...x,
+                              approverRule: rule,
+                              approverRoleId: undefined,
+                              approverField: undefined,
+                            }
                       : x,
                   ),
                 )
               }}
             >
               <option value="role">指定角色</option>
-              <option value="manager">直屬主管</option>
-              <option value="managerOfManager">主管的主管</option>
-              <option value="managerOfPrevApprover">前一簽核人的主管</option>
+              <option value="fieldRef" disabled={memberFields.length === 0}>
+                {memberFields.length === 0 ? "記錄上的欄位(本表沒有成員欄)" : "記錄上的欄位"}
+              </option>
+              <option value="manager" disabled={!hasHierarchy}>
+                {hasHierarchy ? "直屬主管" : "直屬主管(尚未建立角色階層)"}
+              </option>
+              <option value="managerOfManager" disabled={!hasHierarchy}>
+                {hasHierarchy ? "主管的主管" : "主管的主管(尚未建立角色階層)"}
+              </option>
+              <option value="managerOfPrevApprover" disabled={!hasHierarchy}>
+                {hasHierarchy ? "前一簽核人的主管" : "前一簽核人的主管(尚未建立角色階層)"}
+              </option>
             </Select>
             {s.approverRule === "role" ? (
               <Select
@@ -137,6 +166,24 @@ export function ApprovalPanel({
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+            {s.approverRule === "fieldRef" ? (
+              <Select
+                className="h-7 w-24"
+                aria-label={`第${s.stepNo}關簽核人欄位`}
+                value={s.approverField ?? ""}
+                onChange={(e) =>
+                  setSteps(
+                    steps.map((x, j) => (j === i ? { ...x, approverField: e.target.value } : x)),
+                  )
+                }
+              >
+                {memberFields.map((f) => (
+                  <option key={f.id} value={f.name}>
+                    {f.name}
                   </option>
                 ))}
               </Select>
@@ -242,6 +289,14 @@ export function ApprovalPanel({
             </button>
           </div>
         ))}
+        {/* 🔴 這句話是本功能唯一擋得住繞過的東西,所以它必須出現在**選的當下**,
+            不能只留在文件裡:簽核人來自記錄上的欄位,而申請人若改得動那一欄,
+            他把主管改成自己的下屬就核准了。程式擋得住「指到本人」,擋不住「指到下屬」。 */}
+        {steps.some((s) => s.approverRule === "fieldRef") ? (
+          <p className="text-[12px] text-warn">
+            簽核人來自記錄上的欄位:請到權限頁把該欄位對申請人設為唯讀,否則申請人可以自行改掉簽核人。
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={addStep}
