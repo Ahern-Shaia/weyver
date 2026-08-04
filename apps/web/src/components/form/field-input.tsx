@@ -9,6 +9,7 @@ import { cn } from "@weyver/ui/lib/utils"
 import { Select } from "@weyver/ui/select"
 import type { ReactNode } from "react"
 import { AttachmentInput } from "@/components/form/attachment-input"
+import { DateInput } from "@/components/form/date-input"
 import { choicesOf } from "@/components/form/value"
 import { ImageInput } from "@/components/form/image-input"
 import { SignatureInput } from "@/components/form/signature-input"
@@ -140,13 +141,17 @@ export function FieldInput({
       )
     }
 
+    /* 🔴 R1·FMT M3:改用自製輸入。原生控件的顯示格式**由瀏覽器語系決定**
+       (量測見 `docs/modules/R1/date-and-display-format.md` §0.3-bis),
+       而且不能打字。對外契約仍是 `yyyy-MM-dd`,`toSubmitValue` 不動。 */
     case "date":
       return (
-        <input
-          type="date"
+        <DateInput
           value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
+          options={field.options}
           className={baseInputClass}
+          placeholder={placeholder}
         />
       )
 
