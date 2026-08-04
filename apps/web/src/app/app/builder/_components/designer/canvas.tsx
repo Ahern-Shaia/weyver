@@ -600,6 +600,8 @@ function FieldCard({
         item={{
           label: field.name,
           required: field.required,
+          /* 畫布是**預覽**,格子裡沒有輸入 —— 外包 `<label>` 只會讓點擊與拖拉選取打架 */
+          noLabelWrap: true,
           help: layout.help !== undefined && layout.help !== "",
           mono: sampleIsMono(field.type),
           /* 型別圖示放**值格**不放標籤格:型別約束的是值不是標籤,

@@ -13,12 +13,15 @@ const TOL = 2 // 邊框收合的 ±1px
 
 async function geometry(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
+    /* ⚠️ 不用 `firstElementChild` —— 標籤格外面可能包著一層 `display: contents`
+       的 `<label>`(R1·A11Y 的無障礙名稱)。那層不佔版面但**是一個 DOM 節點**,
+       用直接子節點取會突然量到 0 個欄位格,而錯誤訊息指向「選取器可能失效」。 */
     const cards = Array.from(document.querySelectorAll('div[role="button"]')).filter(
-      (e) => e.firstElementChild?.classList.contains("bg-label") === true,
+      (e) => e.querySelector(".bg-label") !== null,
     )
     return cards.slice(0, 4).map((e) => ({
       w: Math.round(e.getBoundingClientRect().width),
-      labelW: Math.round(e.firstElementChild?.getBoundingClientRect().width ?? 0),
+      labelW: Math.round(e.querySelector(".bg-label")?.getBoundingClientRect().width ?? 0),
     }))
   })
 }
@@ -44,7 +47,8 @@ test("設計頁籤與填單頁籤的欄位幾何一致", async ({ page }) => {
       .slice(0, 4)
       .map((c) => ({
         w: Math.round(c.getBoundingClientRect().width),
-        labelW: Math.round(c.firstElementChild?.getBoundingClientRect().width ?? 0),
+        /* 同上:`display: contents` 的 `<label>` 本身沒有版面盒,量它會得到 0 */
+        labelW: Math.round(c.querySelector(".bg-label")?.getBoundingClientRect().width ?? 0),
       }))
   })
   expect(fill.length, "填單畫面不是格線版面(可能又退回平鋪清單)").toBe(design.length)

@@ -12,6 +12,16 @@ export interface FieldItem {
   readonly help?: boolean | string
   readonly mono?: boolean
   readonly note?: ReactNode
+  /* 🔴 不要外包 `<label>`。兩種情況要設 true:
+     1. 值格**自己已經有 `<label>`**(附件 / 圖片 / 簽名的「選擇檔案」);
+     2. 值格根本沒有輸入(設計器畫布的預覽格)—— 包了只是多一層 DOM,
+        而點擊會被解讀成「啟用格子裡的控件」,與拖拉選取打架。
+
+     外層再包一層 `<label>` 會產生**巢狀 label** —— 那是無效 HTML,
+     瀏覽器對「點擊要開哪一個檔案選擇器」的解讀不一致,實測會讓上傳整個失效。
+     ⚠️ 這一條是 2026-08-04 實走量出來的:M0 只預見了「label 只關聯第一個控件」,
+     **沒預見巢狀**;4 支上傳相關的 spec 同時紅才浮現。 */
+  readonly noLabelWrap?: boolean
 }
 
 export interface FieldGridProps {
@@ -88,6 +98,20 @@ function FieldCells({
   )
 }
 
+/* 退回 Fragment 的兩種情況見 `FieldItem.noLabelWrap`。 */
+function Wrap({
+  noLabelWrap,
+  children,
+}: {
+  readonly noLabelWrap: boolean
+  readonly children: ReactNode
+}): ReactElement {
+  if (noLabelWrap) return <>{children}</>
+  /* biome-ignore lint/a11y/noLabelWithoutControl: 控件由 `children` 傳入,靜態分析看不進去。
+     `noLabelWrap` 正是「裡面沒有控件」那一種情況的出口,判斷在呼叫端。 */
+  return <label style={{ display: "contents" }}>{children}</label>
+}
+
 function Cells({
   item,
   borderB,
@@ -100,14 +124,53 @@ function Cells({
   readonly flush: boolean
 }): ReactElement {
   return (
-    <>
+    /* 🔴 R1·A11Y|`<label>` 把**看得見的欄名**與輸入框關聯起來。
+
+       在此之前欄名只是旁邊的一個 `div` —— 視覺上是標籤,在無障礙樹上什麼都不是,
+       螢幕閱讀器只會唸「編輯文字」(WCAG 4.1.2)。
+       這件事是做 `link-picker` 時 **e2e 找不到穩定錨點**才浮現的
+       —— 測試找不到,通常代表使用者也找不到。
+
+       **為什麼是 `display: contents`**|label 格與值格是外層 grid 的兩個直接子項,
+       中間包一層普通元素會把它們變成「一個子項」而弄壞版面。
+       `display:contents` 讓 `<label>` 自己不產生框、子元素照樣直接參與外層 grid。
+
+       ⚠️ **量測過才用**:曾有「`display:contents` 會把元素移出無障礙樹」的說法,
+       實測(2026-08-04,Chromium)名稱與**點欄名聚焦**都成立。
+       選它而不是 `aria-labelledby` 正是為了後者 —— 而且不必為每個欄位產 id。
+       ⚠️ Firefox / Safari **未量**(FMEA A4)。
+
+       ⚠️ `<label>` 只關聯**第一個**表單控件 —— 值格內含多個控件者
+       (連結欄的「搜尋框 + 下拉」)自帶 `aria-label`,不依賴這一層。 */
+    <Wrap noLabelWrap={item.noLabelWrap === true}>
       <div
         className={cn(
           "flex min-h-[32px] min-w-0 items-center justify-end gap-[3px] border-cell border-r bg-label px-2.5 py-[5px] text-right text-[12px] text-ink-2",
           borderB,
         )}
       >
-        {item.required ? <span className="font-semibold text-er">*</span> : null}
+        {/* 🔴 `aria-hidden`:`*` 與 `?` 是**視覺記號**,不該混進欄位的無障礙名稱。
+
+            它們在 `<label>` 裡面,而 `<label>` 的名稱取自**文字內容** ——
+            不擋的話螢幕閱讀器唸出來的是「星號 品名 說明:…」,而不是「品名」。
+            2026-08-04 由 e2e 的 `getByLabel("品名", { exact: true })` 抓不到而浮現。
+
+            ⚠️ **必填性不該靠一個星號傳達** —— 那是視覺慣例,無障礙樹上要看的是
+            輸入本身的 `required` / `aria-required`。目前欄位輸入**尚未帶該屬性**,
+            列為殘留(見模組文件 FMEA)。此處先確保名稱乾淨,不讓記號污染它。
+
+            ⚠️ **說明鈕(`?`)刻意不 `aria-hidden`** —— 它的 `aria-label` 是說明文字
+            唯一被曝露的地方(`designer.spec` 有專門的斷言)。
+            代價是**有說明的欄位,其名稱會變成「品名 說明:…」** ——
+            正解是把說明改掛 `aria-describedby` 到輸入本身(description ≠ name),
+            但那需要為每個欄位產 id 並穿到輸入元件,超出本模組範圍,**列殘留**。
+            ⚠️ 2026-08-04 我一度把它也 `aria-hidden` 掉,那違反了本模組 M0 §1.2
+            自己寫的「不動說明鈕」,並讓說明文字變成不可及 —— 已還原。 */}
+        {item.required ? (
+          <span aria-hidden="true" className="font-semibold text-er">
+            *
+          </span>
+        ) : null}
         {item.label}
         {item.help ? (
           <span
@@ -133,6 +196,6 @@ function Cells({
         {item.value}
         {item.note ? <span className="text-[12px] text-ink-3">{item.note}</span> : null}
       </div>
-    </>
+    </Wrap>
   )
 }

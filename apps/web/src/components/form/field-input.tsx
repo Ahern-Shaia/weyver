@@ -156,6 +156,7 @@ export function FieldInput({
         <DateInput
           value={typeof value === "string" ? value : ""}
           onChange={onChange}
+          label={field.name}
           options={field.options}
           className={baseInputClass}
           placeholder={placeholder}
@@ -206,7 +207,10 @@ export function FieldInput({
     case "singleSelect":
       return (
         <Select
-          aria-label={field.name}
+          /* 🔴 **不自帶 `aria-label`** —— 名稱由外層的 `<label>` 提供(`field-grid.tsx` 的 `Cells`)。
+             自帶的話同一個欄名會寫兩次,日後改欄名只改一處就漂移。
+             ⚠️ 2026-08-04 曾為了讓 e2e 找得到而在此加過,那是治標:
+             真正的問題是**整個填單頁的輸入都沒有名字**,已由 R1·A11Y 從共用原件解掉。 */
           className="w-full"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}

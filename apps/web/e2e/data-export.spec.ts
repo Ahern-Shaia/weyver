@@ -23,13 +23,21 @@ test("🔴 建立匯出 → 等到可下載 → 取得可解壓的封存檔,且�
   const create = page.getByRole("button", { name: "建立匯出" })
   await expect(create).toBeEnabled({ timeout: 60_000 })
 
-  /* 🔴 **先等列數增加再取 `.first()`**。dev DB 有既有的封存檔,而按下建立到清單重抓
+  /* 🔴 **先等清單換過來再取 `.first()`**。dev DB 有既有的封存檔,而按下建立到清單重抓
      之間有一段空窗 —— 這段時間 `.first()` 指的還是上一筆,對它斷言「可下載」會
-     立刻通過,然後在下一句對著換過來的新列失敗(第一版就是這樣紅的)。 */
+     立刻通過,然後在下一句對著換過來的新列失敗(第一版就是這樣紅的)。
+
+     ⚠️ 2026-08-04:等待訊號原本是「列數 +1」,而 `listForActor` 的**後端上限是 20 筆**
+     —— 同一個租戶累積滿 20 筆之後,再建一筆列數**永遠不會變**,這條就從此恆紅。
+     不是本次改動造成的,是既有的潛在缺陷被 dev DB 的累積踩出來
+     (同一類:先前 500 張表把整套 e2e 拖成 23 分鐘)。
+     改成認**最前面那一列換人了**,與上限無關。 */
   const rows = page.getByRole("main").getByRole("listitem")
   const before = await rows.count()
+  const prevTop = before === 0 ? null : ((await rows.first().textContent()) ?? "")
   await create.click()
-  await expect(rows).toHaveCount(before + 1, { timeout: 30_000 })
+  if (prevTop === null) await expect(rows).toHaveCount(1, { timeout: 30_000 })
+  else await expect(rows.first()).not.toHaveText(prevTop, { timeout: 30_000 })
 
   /* worker 是 5 秒輪詢一次的背景工作,不是同步產生 —— 等狀態自己翻成「可下載」。
      這一段同時證明清單有在輪詢,不需要使用者自己重整。 */

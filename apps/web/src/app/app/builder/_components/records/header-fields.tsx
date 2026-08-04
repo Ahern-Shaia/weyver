@@ -23,6 +23,10 @@ import type { ReactElement, ReactNode } from "react"
    設計時看的是版面(截斷即可),填單時使用者真的要打字 —— 多行文字 / 附件 / 簽名
    必須撐得開。欄的幾何完全一致,只有列會長高。 */
 
+/* 🔴 值格自帶 `<label>` 的型別 —— 巢狀 label 是無效 HTML,實測會讓上傳失效。
+   新增自帶 label 的輸入元件時要一併加進來(見 `field-grid.tsx` 的 `noLabelWrap`)。 */
+const SELF_LABELLED = new Set(["attachment", "image", "signature"])
+
 export function HeaderFields({
   fields,
   layout,
@@ -86,6 +90,8 @@ export function HeaderFields({
                    要求使用者填一個看不見的欄位會讓他直接卡死。 */
                 required: field.required && !attrs.readonly && !attrs.skipValidation,
                 help: fl.help !== undefined && fl.help !== "" ? fl.help : false,
+                /* 這三型的輸入元件**自帶 `<label>`**(「選擇檔案」),外層不能再包一層 */
+                noLabelWrap: SELF_LABELLED.has(field.type),
                 value: renderInput(field, attrs.readonly, fl.placeholder),
               }}
             />

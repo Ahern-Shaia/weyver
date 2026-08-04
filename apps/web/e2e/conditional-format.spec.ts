@@ -175,7 +175,7 @@ test("填單:條件式隱藏即時生效,且條件不再成立時欄位會回來
      2026-08-03 左欄加了「搜尋表單」框之後,這類斷言全部多算一個,
      而失敗訊息(「應該 1 個卻有 2 個」)完全指不到原因。同型第三次。 */
   const fill = page.locator("section").filter({ hasText: "填寫" }).last()
-  const 單號 = fill.getByRole("textbox").first()
+  const 單號 = page.getByRole("textbox", { name: "單號" })
   await expect(單號).toBeVisible({ timeout: 30_000 })
   /* 條件未成立 → 兩欄都在 */
   await expect(fill.getByRole("textbox")).toHaveCount(2)

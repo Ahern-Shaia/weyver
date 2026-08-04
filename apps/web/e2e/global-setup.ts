@@ -130,4 +130,18 @@ async function purgePreviousRunArtifacts(pool: pg.Pool): Promise<void> {
   )
   const purged = forms.rowCount ?? 0
   if (purged > 0) console.info(`[e2e] 回收上一輪產物:${String(purged)} 張表單`)
+
+  /* 🔴 匯出的**每日配額**也要歸零。
+
+     `EXPORT_MAX_PER_DAY = 10` 是產品刻意的界線(擋接力式無限匯出),
+     但它讓 `data-export.spec` 在同一個 dev DB 上**一天只能跑十次** ——
+     第十一次起 create 被擋,而測試看到的症狀是「清單最上面那列沒有換人」,
+     指不到真正的原因。2026-08-04 實際踩到。
+
+     只刪 dev 租戶今天的紀錄:配額是「當日」的,舊資料留著不影響。 */
+  const jobs = await pool.query(
+    `DELETE FROM export_job WHERE tenant_id = 1 AND created_at >= current_date`,
+  )
+  const dropped = jobs.rowCount ?? 0
+  if (dropped > 0) console.info(`[e2e] 歸零匯出配額:${String(dropped)} 筆`)
 }

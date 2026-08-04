@@ -60,7 +60,7 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
      (「已儲存」沒出現)完全指不到真正的原因。 */
   const fill = page.locator("section").filter({ hasText: "填寫" }).last()
   await fill.getByRole("textbox").first().fill("鑫豐農產品") // 供應商(單號唯讀)
-  await fill.getByRole("textbox", { name: "0.0000" }).fill("128400.0000")
+  await page.getByRole("textbox", { name: "金額" }).fill("128400.0000")
   await page.getByRole("button", { name: "儲存" }).click()
   await expect(page.getByText(/已儲存:/)).toBeVisible()
 

@@ -76,6 +76,10 @@ export function RecordActions({
       <div className="flex flex-wrap items-center gap-2">
         {instance !== null ? (
           <span
+            /* 🔴 狀態章要能被**單獨**指名。動作區裡同時會出現操作完成的提示訊息,
+               而那段文字與狀態章一字不差(「已駁回」)—— 以文字找會同時命中兩個,
+               且提示訊息是短暫的,於是整套跑起來時紅得沒有規律。2026-08-04 實際踩到。 */
+            data-testid="approval-status"
             className={`inline-flex items-center gap-1 rounded-xs border px-2 py-0.5 text-[12px] ${STATUS_CLASS[instance.status]}`}
           >
             {STATUS_LABEL[instance.status]}
@@ -104,7 +108,12 @@ export function RecordActions({
 
         {instance !== null && instance.unlockedAt !== null ? (
           /* 解鎖是繞過內控的狀態,必須在檯面上 —— 不顯示的話沒有人知道這筆現在可以改 */
-          <span className="inline-flex items-center gap-1 rounded-xs border border-warn-line bg-warn-t px-2 py-0.5 text-[12px] text-warn">
+          <span
+            /* 同 `approval-status`:操作完成的提示訊息也含「已強制解鎖」四個字,
+               以文字找會同時命中兩個。要斷言哪一個就指名哪一個。 */
+            data-testid="approval-unlocked"
+            className="inline-flex items-center gap-1 rounded-xs border border-warn-line bg-warn-t px-2 py-0.5 text-[12px] text-warn"
+          >
             已強制解鎖
           </span>
         ) : null}

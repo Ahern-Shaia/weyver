@@ -72,11 +72,13 @@ test("🔴 駁回必須能用 —— 舊版那顆按鈕不帶理由,按下去必
   await reason.fill("金額與附件對不上")
   await page.getByRole("button", { name: "確定" }).click()
 
-  /* 🔴 收斂到動作區。原本是整頁範圍的 `getByText("已駁回")` ——
-     單跑會過,整套跑時前面的 spec 在畫面上留下另一個「已駁回」,
-     於是 strict mode 撞到兩個元素而爆掉。**單跑過、整套紅就是順序相依,
-     而順序相依本身就是缺陷**,不是可容忍的 flake。 */
-  await expect(actions.getByText("已駁回", { exact: true })).toBeVisible()
+  /* 🔴 指名**狀態章本身**,不用文字找。
+
+     歷史:先是整頁範圍的 `getByText("已駁回")`,收斂到動作區之後仍會紅 ——
+     因為動作區裡的「操作完成」提示訊息與狀態章**一字不差**,兩個都命中,
+     而提示是短暫的,於是同一份程式碼有時 0 個、有時 2 個。
+     **文字是給人看的,不是識別碼**;要斷言哪一個元素就指名哪一個。 */
+  await expect(actions.getByTestId("approval-status")).toHaveText("已駁回")
 })
 
 test("🔴 會簽:分母不含送簽者,且未達門檻時留在原關", async ({ page, request }) => {
@@ -145,6 +147,6 @@ test("強制解鎖:未解鎖時記錄改不動,解鎖後狀態要在檯面上", 
   await page.getByRole("button", { name: "確定" }).click()
 
   /* 解鎖是繞過內控的狀態,必須看得見 —— 不顯示的話沒人知道這筆現在可以改 */
-  await expect(actions.getByText("已強制解鎖")).toBeVisible()
+  await expect(actions.getByTestId("approval-unlocked")).toBeVisible()
   expect((await patch()).status()).not.toBe(409)
 })

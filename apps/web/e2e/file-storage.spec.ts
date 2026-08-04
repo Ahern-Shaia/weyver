@@ -41,11 +41,10 @@ test("附件:填單上傳 → 存檔 → 記錄頁下載", async ({ page, reques
     },
   )
 
-  /* 🔴 收斂到填寫區塊 —— 整頁範圍的 `.first()` 會打到左欄的「搜尋表單」框。
-     那次改版之後這條就一直紅著,而失敗訊息是「已儲存沒出現」,指不到真因。
-     同一個形態 `builder.spec` 已修過一次(見該檔註解)。 */
-  const fill_7131187759429270136 = page.locator("section").filter({ hasText: "填寫" }).last()
-  await fill_7131187759429270136.getByRole("textbox").first().fill("冷凍雞胸肉")
+  /* 🔴 R1·A11Y(2026-08-04):錨點改用**欄名**。
+     欄位輸入現在有無障礙名稱了(`field-grid.tsx` 的 `<label>`),
+     而欄名比 placeholder 穩定 —— placeholder 是版面設定、欄名是資料模型。 */
+  await page.getByRole("textbox", { name: "品名" }).fill("冷凍雞胸肉")
   await page.setInputFiles('input[type="file"]', {
     name: "驗收單.pdf",
     mimeType: "application/pdf",
@@ -80,11 +79,7 @@ test("附件:移除後欄值不再包含該檔", async ({ page, request }) => {
   await page.goto(`/app/builder?form=${formId}&tab=fill`)
   await page.getByRole("tab", { name: "填單" }).click()
 
-  /* 🔴 收斂到填寫區塊 —— 整頁範圍的 `.first()` 會打到左欄的「搜尋表單」框。
-     那次改版之後這條就一直紅著,而失敗訊息是「已儲存沒出現」,指不到真因。
-     同一個形態 `builder.spec` 已修過一次(見該檔註解)。 */
-  const fill_7157844435574430894 = page.locator("section").filter({ hasText: "填寫" }).last()
-  await fill_7157844435574430894.getByRole("textbox").first().fill("移除測試")
+  await page.getByRole("textbox", { name: "品名" }).fill("移除測試")
   await page.setInputFiles('input[type="file"]', {
     name: "待移除.pdf",
     mimeType: "application/pdf",

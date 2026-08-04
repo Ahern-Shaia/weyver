@@ -77,11 +77,7 @@ test("🔴 選了要存得進去 —— 送出邊界不得靜默丟掉", async (
   const { poId } = await seed(request)
   await openFill(page, poId)
 
-  /* ⚠️ 收斂到填寫區塊再取第一個 textbox(同 `builder.spec` 的做法)——
-     整頁範圍的 `.first()` 會打到左欄的「搜尋表單」框。
-     ⚠️ 這裡沒有用欄位名當錨點,因為**欄位輸入在無障礙樹上還沒有名字**(見 field-input.tsx 註解)。 */
-  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
-  await fill.getByRole("textbox").first().fill("PO-LNK-E2E")
+  await page.getByRole("textbox", { name: "單號" }).fill("PO-LNK-E2E")
   await picker(page).selectOption({ label: "鑫豐農產" })
   await page.getByRole("button", { name: "儲存" }).click()
   await expect(page.getByText(/已儲存/)).toBeVisible({ timeout: 30_000 })
@@ -148,9 +144,8 @@ test("🔴 選記錄 → 對映的欄位自動帶入(Load)", async ({ page, requ
 
   await supplier.selectOption({ label: "鑫豐農產" })
 
-  /* 🔴 選了之後**電話欄自己填上了** —— 那正是 Load。
-     ⚠️ 錨點取「填寫」區塊內的最後一個 textbox(電話是最後一欄),
-     不用整頁 `.first()`(會打到左欄搜尋框)。 */
-  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
-  await expect(fill.getByRole("textbox").last()).toHaveValue("02-1234-5678", { timeout: 15_000 })
+  /* 🔴 選了之後**電話欄自己填上了** —— 那正是 Load。 */
+  await expect(page.getByRole("textbox", { name: "電話" })).toHaveValue("02-1234-5678", {
+    timeout: 15_000,
+  })
 })

@@ -23,7 +23,7 @@ import { StatusChip, chipToneTextClass } from "@weyver/ui/status-chip"
 import { Copy, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
+import { type ReactElement, type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { LineItems } from "./line-items"
 import { RecordActions } from "./record-actions"
 import { titleOf } from "./record-list"
@@ -51,6 +51,32 @@ function statusFieldOf(fields: readonly FieldDto[]): FieldDto | undefined {
 /* 金額彙總:money / percent / formula / rollup 之現值(單筆的「算」的結果)。
    與「基本資料」重複呈現是刻意的 —— 摘要區讓人不必往下捲就看到數字(信任訊號,docs/14)。 */
 const SUMMARY_TYPES = new Set(["money", "percent", "formula", "rollup"])
+
+const SELF_LABELLED = new Set(["attachment", "image", "signature"])
+
+function Row({
+  noLabelWrap,
+  className,
+  style,
+  children,
+}: {
+  readonly noLabelWrap: boolean
+  readonly className: string
+  readonly style: CSSProperties | undefined
+  readonly children: ReactNode
+}): ReactElement {
+  if (noLabelWrap)
+    return (
+      <div className={className} style={style}>
+        {children}
+      </div>
+    )
+  return (
+    <label className={className} style={style}>
+      {children}
+    </label>
+  )
+}
 
 export function ObjectPage({
   form,
@@ -300,8 +326,15 @@ export function ObjectPage({
               窄螢幕強行兩欄會讓每欄只剩一半寬、標籤與值互相擠壓。 */}
           <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {fields.map((f) => (
-              <div
+              /* 🔴 R1·A11Y|記錄頁**有自己的版面**,不走 `field-grid.tsx` 的共用格子
+                 (M0 §0.1 只查了填單面板 —— 那是一個站①的漏,「單一落點」只對了一半)。
+                 故這裡自己用 `<label>` 把欄名與編輯中的輸入關聯起來。
+                 檢視模式沒有輸入框,`<label>` 不會關聯到任何東西,無害。 */
+              /* 附件 / 圖片 / 簽名的輸入元件自帶 `<label>`,外層再包一層會變巢狀 label
+                 —— 無效 HTML,實測讓上傳失效(見 `field-grid.tsx` 的 `noLabelWrap`)。 */
+              <Row
                 key={f.id}
+                noLabelWrap={SELF_LABELLED.has(f.type)}
                 className="flex items-baseline gap-3 border-b border-line-2 py-2"
                 style={printStyleFor(f.id)}
               >
@@ -358,7 +391,7 @@ export function ObjectPage({
                     />
                   )}
                 </span>
-              </div>
+              </Row>
             ))}
           </div>
         </section>

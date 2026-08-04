@@ -100,8 +100,33 @@ test("版面屬性在填單頁生效:唯讀不給編輯器、說明文字取得�
   await page.getByRole("tab", { name: "填單" }).click()
   await expect(page.getByText("填寫", { exact: true })).toBeVisible({ timeout: 30_000 })
 
-  /* 提示文字要真的進到輸入框(它是 textbox 的無障礙名稱來源) */
-  await expect(page.getByRole("textbox", { name: "例:急件" })).toBeVisible()
+  /* 提示文字要真的進到輸入框。
+     ⚠️ **原本這裡斷言 placeholder 是「textbox 的無障礙名稱來源」** ——
+     2026-08-04 R1·A11Y 之後不再是:欄名由 `<label>` 提供,而 W3C 名稱計算裡
+     placeholder 是**第 ⑤ 級**(Tooltip,「只有其餘都沒有結果時才用」)。
+     那是刻意的改善(placeholder 一打字就消失,拿它當名稱是反樣式),
+     故此處改為斷言 placeholder 屬性本身。 */
+  await expect(page.getByRole("textbox", { name: "備註" })).toHaveAttribute("placeholder", "例:急件")
+
+  /* 🔴 **全稱守衛:填寫區塊裡每一個輸入都必須有無障礙名稱。**
+     寫成全稱而不是列舉,是因為下一個新增的欄位型別若忘了,只有全稱抓得到
+     (`pitfall_rule_without_check_always_drifts`:規則只寫在文件裡就會漂移)。 */
+  const anonymous = await page.evaluate(() => {
+    const section = [...document.querySelectorAll("section")].find((s) =>
+      s.textContent?.includes("填寫"),
+    )
+    if (section === undefined) return ["找不到填寫區塊"]
+    return [...section.querySelectorAll("input,select,textarea")]
+      .filter((el) => (el as HTMLElement).offsetParent !== null)
+      .filter((el) => {
+        const aria = el.getAttribute("aria-label")
+        if (aria !== null && aria.trim() !== "") return false
+        const label = el.closest("label")
+        return (label?.textContent ?? "").trim() === ""
+      })
+      .map((el) => `${el.tagName}[type=${el.getAttribute("type") ?? "-"}]`)
+  })
+  expect(anonymous, `這些輸入在無障礙樹上沒有名字:\n  ${anonymous.join("\n  ")}`).toEqual([])
 
   /* 唯讀欄**根本不渲染編輯器** —— 不是 disabled 屬性,是沒有這個元素。
      刻意如此:readonly 若當成 prop 穿過二十幾個型別分支,漏一支就破功。

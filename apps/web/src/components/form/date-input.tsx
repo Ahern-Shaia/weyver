@@ -35,6 +35,7 @@ export function DateInput({
   options,
   className,
   placeholder,
+  label,
 }: {
   /* 對外契約是正規 `yyyy-MM-dd`,與原生控件相同 —— `toSubmitValue` 不必改 */
   readonly value: string
@@ -42,6 +43,12 @@ export function DateInput({
   readonly options: unknown
   readonly className?: string
   readonly placeholder?: string | undefined
+  /* 🔴 R1·A11Y|**複合輸入必須自帶名稱**。本元件渲染**兩個** input
+     (窄螢幕的原生日期 + 寬螢幕的自製文字),而外層的 `<label>`(`field-grid.tsx`)
+     只會關聯**第一個** —— 也就是桌機上看不見的那一個。
+     結果是:看得見的輸入框在無障礙樹上沒有名字,而測試與螢幕閱讀器都找不到它。
+     ⚠️ 這是實走量出來的,不是預想的(M0 FMEA A2 應驗)。 */
+  readonly label?: string | undefined
 }): ReactNode {
   const { timeZone, locale } = useDisplayCtx()
   const format = dateFormatOfField(options)
@@ -151,6 +158,7 @@ export function DateInput({
           與 `record-list.tsx` 的 `hidden md:flex` 同一套做法。 */}
       <input
         type="date"
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={`md:hidden ${className ?? ""}`}
