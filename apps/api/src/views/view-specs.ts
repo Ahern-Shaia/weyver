@@ -1,5 +1,9 @@
 import { z } from "zod"
-import { FILTER_OPERATORS } from "../form-engine/records/record-specs.js"
+import {
+  aggregateSpecSchema,
+  FILTER_OPERATORS,
+  groupBySchema,
+} from "../form-engine/records/record-specs.js"
 
 /* R1·UP-2 視圖組態 schema(view_def.config 之邊界驗證;docs/modules/R1/views-list.md §4.1)。
    欄位一律以「顯示名」表示(Ragic 範式;直接對映 records query API 之 field 名)。
@@ -31,6 +35,18 @@ export const viewConfigSchema = z.object({
   fields: z.array(z.string().min(1).max(100)).max(200).default([]),
   filter: viewFilterSchema.default({ combinator: "and", conditions: [] }),
   sorts: z.array(viewSortSchema).max(5).default([]),
+  /* 🔴 2026-08-04|**分組與小計原本不在這裡,而前端一直在送** ——
+     zod 非 strict,未知鍵直接 strip:使用者設好分組按「另存」,存進去是空的,
+     重載回來什麼都沒有,而且**沒有任何錯誤**。每次進頁都要重設,共通檢視也帶不動。
+
+     本模組 §2 現況走查逐字寫著「`view_def.config` 加 `group` / `kanban` / `calendar`
+     子物件(加法,零 migration)」—— **已裁定,沒做到**(audit-D §2.1)。
+
+     ⚠️ 直接複用 `record-specs` 的 `groupBySchema` / `aggregateSpecSchema`,
+     不另立一份:這兩個東西最後都要餵給同一支查詢 API,分成兩份遲早不一致 ——
+     而「前後端兩份鏡射」正是這個 bug 的成因。 */
+  groupBy: z.array(groupBySchema).max(3).default([]),
+  aggregates: z.array(aggregateSpecSchema).max(10).default([]),
   search: z.string().max(200).optional(),
   pageSize: z.number().int().min(1).max(200).optional(),
 })

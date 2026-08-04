@@ -25,7 +25,12 @@ interface ViewDto {
   scope: string
   isDefault: boolean
   locked: boolean
-  config: { fields: string[]; sorts: { field: string; dir: string }[] }
+  config: {
+    fields: string[]
+    sorts: { field: string; dir: string }[]
+    groupBy?: { field: string; dir: string; unit?: string }[]
+    aggregates?: { field: string; fn: string }[]
+  }
   position: number
   createdBy: number | null
   updatedAt: string
@@ -189,5 +194,60 @@ describe("R1·UP-2 view_def CRUD + 隔離", () => {
     })
     expect(res.statusCode).toBe(404)
     expect((res.json() as { code: string }).code).toBe("VIEW_NOT_FOUND")
+  })
+})
+
+/* 🔴 audit-D §2.1|**存了要讀得回來**。
+
+   這一段之所以存在,是因為原本一條都沒有:`views.spec.ts` 只斷言「檢視出現在
+   選擇器」,而分組與小計**根本沒有進到後端 schema** —— zod 非 strict,未知鍵直接
+   strip,於是使用者設好分組按「另存」,存進去是空的,重載回來什麼都沒有,
+   **而且沒有任何錯誤**。前端 schema 有、後端沒有,兩份鏡射漂移了兩個月沒人發現。
+
+   ⚠️ 判準不是「欄位有沒有加進 schema」,是「**送什麼進去就要拿什麼出來**」——
+   前者下次還會漏,後者不會。 */
+describe("view config round-trip(送什麼進去就要拿什麼出來)", () => {
+  const CONFIG = {
+    fields: ["供應商", "金額"],
+    filter: { combinator: "and", conditions: [{ field: "金額", op: "gt", value: 100 }] },
+    sorts: [{ field: "金額", dir: "desc" }],
+    groupBy: [{ field: "供應商", dir: "asc" }],
+    aggregates: [{ field: "金額", fn: "sum" }],
+    pageSize: 50,
+  }
+
+  it("🔴 分組與小計存得進去、讀得回來", async () => {
+    const res = await createView(A(), { name: "依供應商彙總", config: CONFIG })
+    expect(res.statusCode).toBe(201)
+    const created = res.json() as ViewDto
+    expect(created.config.groupBy).toEqual([{ field: "供應商", dir: "asc" }])
+    expect(created.config.aggregates).toEqual([{ field: "金額", fn: "sum" }])
+
+    /* 重新讀清單 —— 存進 DB 再回來的那一趟才是真的 */
+    const list = await app.inject({
+      method: "GET",
+      url: `/api/forms/${formId}/views`,
+      headers: A(),
+    })
+    const got = (list.json() as ViewDto[]).find((v) => v.name === "依供應商彙總")
+    expect(got?.config.groupBy).toEqual([{ field: "供應商", dir: "asc" }])
+    expect(got?.config.aggregates).toEqual([{ field: "金額", fn: "sum" }])
+  })
+
+  it("日期分組粒度(unit)不得被吃掉", async () => {
+    const res = await createView(A(), {
+      name: "按月",
+      config: { ...CONFIG, groupBy: [{ field: "供應商", dir: "asc", unit: "month" }] },
+    })
+    expect(res.statusCode).toBe(201)
+    expect((res.json() as ViewDto).config.groupBy?.[0]).toMatchObject({ unit: "month" })
+  })
+
+  it("未知的聚合函數 → 400(邊界仍然收斂,不是什麼都收)", async () => {
+    const res = await createView(A(), {
+      name: "壞的",
+      config: { ...CONFIG, aggregates: [{ field: "金額", fn: "median" }] },
+    })
+    expect(res.statusCode).toBe(400)
   })
 })

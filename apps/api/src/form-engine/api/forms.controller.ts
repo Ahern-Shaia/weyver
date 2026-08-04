@@ -373,15 +373,26 @@ export class FormsController {
     @Param("formId", ParseIntPipe) formId: number,
     @Param("fieldId", ParseIntPipe) fieldId: number,
     @Query("q") q?: string,
+    /* `ids=1,2,3` = 指名解析(記錄頁顯示用);不給則回候選清單 */
+    @Query("ids") ids?: string,
   ): Promise<{ options: { id: number; label: string }[] }> {
+    const wanted =
+      ids === undefined || ids.trim() === ""
+        ? undefined
+        : ids
+            .split(",")
+            .map((x) => Number(x.trim()))
+            .filter((n) => Number.isInteger(n) && n > 0)
+            .slice(0, 50)
     return {
       options: await this.linkOptionsService.listOptions(
         tenant.tenantId,
         formId,
         fieldId,
         (q ?? "").trim(),
-        20,
+        wanted === undefined ? 20 : 50,
         permissions,
+        wanted,
       ),
     }
   }
@@ -400,9 +411,30 @@ export class FormsController {
     /* 🔴 欄位必須屬於這張表。少了這一條,帶著自己有 design 權的 formId
        就能改別張表的欄位 —— 綁了租戶不等於有權存取這一筆。 */
     if (field === undefined) throw new FieldNotFoundError(fieldId)
+    /* 🔴 型別閘。`options.dateFormat` 在 **autoNumber 是另一個語意**
+       (取號的日期樣板,且其 optionsSchema 為 `.strict()` + 三值 enum)——
+       少了這一條,對 autoNumber 欄打這支就會寫入它自己的 schema 不接受的值,
+       而 `RecordService` 會據此把取號切成 patterned counter。
+
+       ⚠️ UI 只對 date / dateTime 渲染這個設定,但**畫面上的閘不是閘**;
+       上面那條「欄位必須屬於這張表」是同一個形狀的前一格(audit-D §2.6)。 */
+    const isDate = field.cellValueType === "date" || field.cellValueType === "dateTime"
+    if (body.dateFormat !== undefined && !isDate) {
+      throw new BadRequestException({
+        code: "DISPLAY_FORMAT_NOT_APPLICABLE",
+        message: `「${field.name}」不是日期欄,沒有日期顯示格式可設`,
+      })
+    }
+    if (body.showAsQr !== undefined && field.cellValueType !== "text") {
+      throw new BadRequestException({
+        code: "DISPLAY_FORMAT_NOT_APPLICABLE",
+        message: `「${field.name}」不是單行文字欄,不能以條碼呈現`,
+      })
+    }
     await this.metadata.updateFieldOptions(tenant.tenantId, fieldId, {
       ...(field.options as Record<string, unknown>),
-      dateFormat: body.dateFormat,
+      ...(body.dateFormat === undefined ? {} : { dateFormat: body.dateFormat }),
+      ...(body.showAsQr === undefined ? {} : { showAsQr: body.showAsQr }),
     })
   }
 

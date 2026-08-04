@@ -60,6 +60,12 @@ export class LinkOptionsService {
     q: string,
     limit: number,
     permissions?: EffectivePermissions,
+    /* 🔴 audit-D §2.2|**指名解析**:給定 id 取標題,而不是「最近 N 筆裡找找看」。
+
+       記錄頁要顯示的是**這一筆連到誰**,而候選清單只回最近的一批 ——
+       用清單去查表的話,連到舊記錄就查不到,而畫面會靜靜地顯示一個數字 id。
+       同一支方法、同一套遮罩與標題推導,只是換一個過濾條件。 */
+    ids?: readonly number[],
   ): Promise<{ id: number; label: string }[]> {
     const loaded = await this.metadata.getForm(tenantId, formId)
     const field = loaded.fields.find((f) => f.id === fieldId)
@@ -100,6 +106,7 @@ export class LinkOptionsService {
         .whereNull("deleted_at")
         .orderBy("id", "desc")
         .limit(capped)
+      if (ids !== undefined) void builder.whereIn("id", [...ids])
       /* 搜尋只在標題欄上做 —— 掃全部欄位等於把隱藏欄變成可探測面
          (`field-leak` 已為快速搜尋修過同型)。標題被遮時不提供搜尋。 */
       if (q !== "" && titleCol !== null) {

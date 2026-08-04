@@ -16,7 +16,13 @@ function fakeRow(o: Partial<ViewRow> = {}): ViewRow {
     scope: o.scope ?? "personal",
     isDefault: o.isDefault ?? false,
     locked: o.locked ?? false,
-    config: o.config ?? { fields: [], filter: { combinator: "and", conditions: [] }, sorts: [] },
+    config: o.config ?? {
+      fields: [],
+      filter: { combinator: "and", conditions: [] },
+      sorts: [],
+      groupBy: [],
+      aggregates: [],
+    },
     position: o.position ?? 0,
     createdBy: o.createdBy ?? 5,
     updatedAt: o.updatedAt ?? new Date("2026-07-25T00:00:00Z"),
@@ -52,7 +58,13 @@ function makeService(opts: {
 
 const nonAdmin: TenantContext = { tenantId: 1, actorId: 5 }
 const superAdmin: TenantContext = { tenantId: 1, actorId: 5, isSuperAdmin: true }
-const cfg = { fields: [], filter: { combinator: "and" as const, conditions: [] }, sorts: [] }
+const cfg = {
+  fields: [],
+  filter: { combinator: "and" as const, conditions: [] },
+  sorts: [],
+  groupBy: [],
+  aggregates: [],
+}
 
 describe("ViewService admin-gating", () => {
   it("非 admin 建共通視圖 → Forbidden", async () => {

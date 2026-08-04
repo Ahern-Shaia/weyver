@@ -378,6 +378,34 @@ describe("R1·FMT 欄位顯示格式", () => {
     const otherField = (other.json() as { fields: { id: number }[] }).fields[0]?.id ?? 0
     expect((await setDisplay(otherField, "iso", formId)).statusCode).toBe(404)
   })
+
+  /* 🔴 audit-D §2.6|**型別閘**。`options.dateFormat` 在 autoNumber 是另一個語意
+     (取號的日期樣板,`.strict()` + 三值 enum)—— 對它打這支端點會寫入它自己的
+     schema 不接受的值,而取號會據此切成 patterned counter。
+
+     ⚠️ UI 只對 date / dateTime 渲染這個設定,但**畫面上的閘不是閘**;
+     上一條「欄位必須屬於這張表」是同一個形狀的前一格。 */
+  it("🔴 非日期欄 → 400,不得把 dateFormat 寫進別種型別的 options", async () => {
+    const f = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: "型別閘",
+        fields: [
+          { name: "單號", type: "autoNumber" },
+          { name: "備註", type: "text" },
+        ],
+      },
+    })
+    const body = f.json() as { id: number; fields: { id: number; name: string }[] }
+    for (const name of ["單號", "備註"]) {
+      const fid = body.fields.find((x) => x.name === name)?.id ?? 0
+      const res = await setDisplay(fid, "slash", body.id)
+      expect(res.statusCode).toBe(400)
+      expect((res.json() as { code: string }).code).toBe("DISPLAY_FORMAT_NOT_APPLICABLE")
+    }
+  })
 })
 
 /* 🔴 C-3|**伺服器強制**。這一段整組的意義只有一句話:
