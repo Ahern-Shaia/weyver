@@ -7,8 +7,10 @@ import { ImageThumb } from "@/components/form/image-input"
 import { RuleMessages } from "@/components/form/rule-messages"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
+import { formatFieldValue } from "@/components/form/value"
+import { useMemberNames } from "@/lib/engine/authz"
 import { evaluateFormats, evaluateMessages } from "@/lib/engine/conditional-format"
-import { displayValue, formatDateTime } from "@/lib/engine/display-value"
+import { formatDateTime } from "@/lib/engine/display-value"
 import {
   useButtons,
   useCreateRecord,
@@ -16,7 +18,7 @@ import {
   useRecordApproval,
   useUserNames,
 } from "@/lib/engine/hooks"
-import { useLayout } from "@/lib/engine/hooks"
+import { useLayout, useLinkLabels } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
 import { useUserSettings } from "@/lib/engine/use-settings"
@@ -122,7 +124,13 @@ export function ObjectPage({
   const { data: userSettings } = useUserSettings()
   /* 顯示時區來自個人設定;未載入前用瀏覽器預設,不擋畫面 */
   const fmtCtx = { timeZone: userSettings?.displayTimezone }
-  const fmtVal = (f: FieldDto, v: unknown): string => displayValue(f, v, fmtCtx)
+  /* 🔴 audit-D §2.2|原本直接走 `displayValue`,而那支**不認識 member 與 link**
+     —— 兩者都存數字 id,於是記錄頁把 id 印在畫面上。改走 `formatFieldValue`
+     (列表頁本來就走這支),差別只在多帶兩張對照表。 */
+  const memberNames = useMemberNames(fields)
+  const linkLabels = useLinkLabels(formId, fields, [record])
+  const fmtVal = (f: FieldDto, v: unknown): string =>
+    formatFieldValue(f, v, memberNames, fmtCtx, linkLabels)
   const fmtDate = (iso: string): string => formatDateTime(iso, fmtCtx)
 
   const { data: layoutResp } = useLayout(formId)

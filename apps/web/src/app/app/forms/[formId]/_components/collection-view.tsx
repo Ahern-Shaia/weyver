@@ -13,6 +13,7 @@ import {
   useGroupStats,
   useInfiniteRecordsQuery,
   useLayout,
+  useLinkLabels,
   useUpdateRecord,
 } from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow, ViewConfig } from "@/lib/engine/schemas"
@@ -76,6 +77,8 @@ export function CollectionView({
     [recordsQuery.data],
   )
 
+  /* 🔴 audit-D §2.2|連結欄本頁用到的 id → 標題。不解析的話畫面上是裸數字。 */
+  const linkLabels = useLinkLabels(formId, form.fields, records)
   // view 選欄(依名解析成現存欄、保序;丟棄已不存在的名);空 = 全欄
   const displayFields: FieldDto[] = useMemo(() => {
     if (view === null || view.fields.length === 0) return form.fields
@@ -99,7 +102,7 @@ export function CollectionView({
     const rows = records.map((r) => {
       const o: Record<string, unknown> = {}
       for (const f of displayFields) {
-        const disp = formatFieldValue(f, r.values[f.name], memberNames, fmtCtx)
+        const disp = formatFieldValue(f, r.values[f.name], memberNames, fmtCtx, linkLabels)
         o[f.name] = disp === "—" ? "" : disp
       }
       return o
@@ -179,7 +182,7 @@ export function CollectionView({
     }
     const value = record.values[field.name]
     const editable = isGridEditable(field)
-    const shown = formatFieldValue(field, value, memberNames, fmtCtx)
+    const shown = formatFieldValue(field, value, memberNames, fmtCtx, linkLabels)
     const display = shown === "—" ? "" : shown
     const kind = gridKind(field.type)
 

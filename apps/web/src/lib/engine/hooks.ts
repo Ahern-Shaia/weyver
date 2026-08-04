@@ -4,9 +4,11 @@ import {
   keepPreviousData,
   useInfiniteQuery,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
+import { useMemo } from "react"
 import { z } from "zod"
 import { engineFetch } from "./client"
 import {
@@ -1106,6 +1108,60 @@ export function useLinkOptions(formId: number, fieldId: number, q: string, enabl
     enabled,
     staleTime: 15_000,
   })
+}
+
+/* 🔴 audit-D §2.2|連結欄的**可讀顯示**。
+
+   在此之前,記錄頁與列表頁顯示的是**原始的數字 id** —— `toSubmitValue` 有 `case "link"`
+   (送出面修過了),`formatFieldValue` 沒有,於是落到預設分支把 id 印出來。
+   模組文件 §7 卻逐字寫著「✅ 已出貨:候選端點 + 選記錄 UI + **可讀顯示**」。
+
+   ⚠️ 刻意**不用候選清單去查表**:那支只回最近的一批,連到舊記錄就查不到,
+   而畫面會靜靜地顯示一個數字。這裡走 `ids=` 指名解析,同一套遮罩與標題推導。
+
+   回傳鍵為 `${fieldId}:${id}` —— **不同連結欄指向不同的表,id 會撞**。 */
+export function useLinkLabels(
+  formId: number,
+  fields: readonly { readonly id: number; readonly name: string; readonly type: string }[],
+  records: readonly { readonly values: Record<string, unknown> }[],
+): ReadonlyMap<string, string> {
+  const linkFields = fields.filter((f) => f.type === "link")
+  /* 逐欄收集本頁出現過的 id。`useQueries` 讓欄數變動時 hook 數不變 */
+  const wanted = linkFields.map((f) => {
+    const ids = new Set<number>()
+    for (const r of records) {
+      const v = r.values[f.name]
+      const n = typeof v === "number" ? v : Number(v)
+      if (Number.isInteger(n) && n > 0) ids.add(n)
+    }
+    return { fieldId: f.id, ids: [...ids].sort((a, b) => a - b) }
+  })
+
+  const results = useQueries({
+    queries: wanted.map((w) => ({
+      queryKey: ["link-labels", formId, w.fieldId, w.ids.join(",")] as const,
+      queryFn: () =>
+        engineFetch(
+          `/forms/${String(formId)}/fields/${String(w.fieldId)}/link-options?ids=${w.ids.join(",")}`,
+          z.object({ options: z.array(z.object({ id: z.number(), label: z.string() })) }),
+        ),
+      enabled: w.ids.length > 0,
+      staleTime: 30_000,
+    })),
+  })
+
+  const key = wanted.map((w) => `${String(w.fieldId)}:${w.ids.join("|")}`).join(";")
+  const payload = results.map((r) => r.data?.options ?? []).flat().length
+  // biome-ignore lint/correctness/useExhaustiveDependencies: results 每次 render 皆為新陣列,以內容摘要為依賴
+  return useMemo(() => {
+    const out = new Map<string, string>()
+    wanted.forEach((w, i) => {
+      for (const o of results[i]?.data?.options ?? []) {
+        out.set(`${String(w.fieldId)}:${String(o.id)}`, o.label)
+      }
+    })
+    return out
+  }, [key, payload])
 }
 
 /* 🔴 R1·LNK M2|Load 帶入。**對映在後端解讀** —— 前端拿到 `本地欄名 → 值` 可直接 spread。

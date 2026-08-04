@@ -100,6 +100,7 @@ function Card({
   disabled,
   onOpen,
   memberNames,
+  linkLabels,
   fmtCtx,
 }: {
   readonly record: RecordRow
@@ -107,6 +108,7 @@ function Card({
   readonly disabled: boolean
   readonly onOpen: (id: number) => void
   readonly memberNames: ReadonlyMap<number, string>
+  readonly linkLabels: ReadonlyMap<string, string>
   /* 🔴 由上層傳入,**不在卡片裡自己訂閱**。在 Card 內呼叫 `useDisplayCtx()`
      會讓每張卡片各自掛一個 query 訂閱 —— 設定回來時全部重繪,
      而 dnd-kit 的鍵盤拖曳靠 `document.activeElement`:重繪把焦點吃掉,
@@ -138,11 +140,12 @@ function Card({
           record.values[fields[0]?.name ?? ""],
           memberNames,
           fmtCtx,
+          linkLabels,
         ) || `#${String(record.id)}`}
       </button>
       {fields.slice(1, 3).map((f) => (
         <div key={f.id} className="truncate text-[12px] text-ink-3">
-          {formatFieldValue(f, record.values[f.name], memberNames, fmtCtx)}
+          {formatFieldValue(f, record.values[f.name], memberNames, fmtCtx, linkLabels)}
         </div>
       ))}
     </div>
@@ -185,6 +188,7 @@ export function KanbanView({
   records,
   stackField,
   memberNames,
+  linkLabels,
   onOpen,
   counts,
 }: {
@@ -193,6 +197,7 @@ export function KanbanView({
   readonly records: readonly RecordRow[]
   readonly stackField: FieldDto
   readonly memberNames: ReadonlyMap<number, string>
+  readonly linkLabels: ReadonlyMap<string, string>
   readonly onOpen: (id: number) => void
   /* 每欄總筆數來自後端 group-stats(可能多於已載入的卡片) */
   readonly counts: ReadonlyMap<string, number>
@@ -278,6 +283,7 @@ export function KanbanView({
                     disabled={locked}
                     onOpen={onOpen}
                     memberNames={memberNames}
+                    linkLabels={linkLabels}
                     fmtCtx={fmtCtx}
                   />
                 ))}

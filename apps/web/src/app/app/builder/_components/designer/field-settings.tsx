@@ -259,6 +259,10 @@ export function FieldSettingsPanel({
         <DateFormatPanel formId={formId} field={field} onSaved={onOptionsSaved} />
       ) : null}
 
+      {field.type === "text" ? (
+        <BarcodePanel formId={formId} field={field} onSaved={onOptionsSaved} />
+      ) : null}
+
       {choices !== undefined ? (
         <OptionsEditorPanel
           formId={formId}
@@ -381,6 +385,52 @@ export function StaticSettingsPanel({
 
    ⚠️ 自己送出、自己確認 —— 與 layout 草稿分開。理由與選項編輯同:
    layout 是草稿會隨畫布一起存,而這一項存下去**所有人**看到的都變。 */
+/* 🔴 audit-D §2.3|`showAsQr` 在 registry 與渲染端都存在了,**卻沒有任何寫入處**
+   —— 只能打 API 設,而第一約束逐字說「有 API 可以做」不算解決。
+   這一格就是那個缺的寫入端。 */
+function BarcodePanel({
+  formId,
+  field,
+  onSaved,
+}: {
+  readonly formId: number
+  readonly field: FieldDto
+  readonly onSaved: () => void
+}): ReactNode {
+  const on = (field.options as { showAsQr?: unknown }).showAsQr === true
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = (next: boolean): void => {
+    setBusy(true)
+    setError(null)
+    void engineFetch(`/forms/${String(formId)}/fields/${String(field.id)}/display`, z.unknown(), {
+      method: "PATCH",
+      body: { showAsQr: next },
+    })
+      .then(() => onSaved())
+      .catch((e: unknown) => setError(describeEngineError(e)))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <div className="border-t border-line p-3 text-[12px]">
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={busy}
+          onChange={(e) => save(e.target.checked)}
+        />
+        以條碼 / QR 呈現
+      </label>
+      {/* 值本身不變 —— 這是顯示層,不是型別 */}
+      <p className="mt-1 text-ink-3">值仍是文字;列印與記錄頁改以圖形呈現。</p>
+      {error !== null ? <p className="mt-1 text-er">{error}</p> : null}
+    </div>
+  )
+}
+
 function DateFormatPanel({
   formId,
   field,

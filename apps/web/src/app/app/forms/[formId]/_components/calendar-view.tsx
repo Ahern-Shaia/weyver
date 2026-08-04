@@ -3,7 +3,7 @@
 import { formatFieldValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
 import { useDisplayCtx } from "@/lib/engine/use-settings"
-import { useCalendarRange } from "@/lib/engine/hooks"
+import { useCalendarRange, useLinkLabels } from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"
 import { Select } from "@weyver/ui/select"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -61,6 +61,8 @@ export function CalendarView({
       ? null
       : { startField: startName, endField: endName === "" ? undefined : endName, from, to }
   const { data, isPending } = useCalendarRange(formId, params)
+  /* audit-D §2.2|連結欄顯示標題而非 id;與列表 / 記錄頁 / 看板同一支 */
+  const linkLabels = useLinkLabels(formId, form.fields, data?.records ?? [])
 
   /* 把記錄攤到每一天 —— 跨日事件會出現在多格(這正是 group-by 做不到的) */
   const byDay = useMemo(() => {
@@ -196,6 +198,7 @@ export function CalendarView({
                             r.values[form.fields[0]?.name ?? ""],
                             memberNames,
                             fmtCtx,
+                            linkLabels,
                           ) || `#${String(r.id)}`}
                         </button>
                       ))}

@@ -106,6 +106,9 @@ export function formatFieldValue(
   value: unknown,
   members?: ReadonlyMap<number, string>,
   ctx?: { timeZone?: string | undefined; locale?: string | undefined },
+  /* 🔴 audit-D §2.2|連結欄的可讀顯示。鍵為 `${fieldId}:${id}` ——
+     不同連結欄指向不同的表,光用 id 當鍵會撞。 */
+  linkLabels?: ReadonlyMap<string, string>,
 ): string {
   if (value === null || value === undefined) return "—"
   if (typeof value === "string" && value in SOURCE_MARKERS) return SOURCE_MARKERS[value] ?? value
@@ -113,6 +116,15 @@ export function formatFieldValue(
   if (field.type === "member") {
     const id = typeof value === "number" ? value : Number(value)
     return members?.get(id) ?? String(value)
+  }
+  /* 🔴 `link` 與 `member` 同型(都存數字 id),而這裡原本只有 member ——
+     於是連結欄一路落到 `displayValue` 把 id 印出來。
+     解析不到時回 `#id` 而不是裸數字:讓人看得出那是一個指標,不是資料
+     (同 `link-options` 對被遮罩標題的處置 —— 寧可具名,不要靜默)。 */
+  if (field.type === "link") {
+    const id = typeof value === "number" ? value : Number(value)
+    if (!Number.isFinite(id)) return String(value)
+    return linkLabels?.get(`${String(field.id)}:${String(id)}`) ?? `#${String(id)}`
   }
   if (
     (field.type === "attachment" || field.type === "image" || field.type === "signature") &&

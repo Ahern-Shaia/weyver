@@ -121,8 +121,17 @@ export async function engineFetch<T>(
     throw new EngineApiError(response.status, "UNKNOWN", `HTTP ${response.status}`)
   }
 
+  /* 🔴 204 不是「無內容」的唯一形態。NestJS 的 `Promise<void>` handler 在 PATCH / POST
+     上回的是 **200 + 空 body**,而 `response.json()` 對空 body 會擲
+     「Unexpected end of JSON input」——那個訊息會原封不動出現在使用者的設定面板上。
+
+     ⚠️ 這條路徑活到 2026-08-04 才被發現,因為**兩個呼叫端的測試都是打 API 設值的**
+     (日期顯示格式的 e2e 用 `request.patch`),UI 的那一趟從來沒有人走過。
+     這正是 audit-D 的主題:設定類功能最容易只在後端被驗證。 */
   if (response.status === 204) return schema.parse(undefined)
-  return schema.parse(await response.json())
+  const text = await response.text()
+  if (text === "") return schema.parse(undefined)
+  return schema.parse(JSON.parse(text))
 }
 
 /* F-5 檔案:上傳走 multipart(不設 content-type,交瀏覽器帶 boundary);

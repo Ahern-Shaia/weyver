@@ -4,12 +4,19 @@ import { formatFieldValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
 import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { describeEngineError } from "@/lib/engine/client"
-import { useForm, useRecords } from "@/lib/engine/hooks"
+import { useForm, useLinkLabels, useRecords } from "@/lib/engine/hooks"
 
 export function RecordsListPanel({ formId }: { formId: number }) {
   const formQuery = useForm(formId)
   const recordsQuery = useRecords(formId)
   const memberNames = useMemberNames(formQuery.data?.fields ?? [])
+  /* audit-D §2.2|連結欄顯示標題而非 id。**這一面是設計器的「資料」頁籤** ——
+     它與工作區列表是兩個元件、同一支 `formatFieldValue`,漏帶對照表就會顯示 `#id`。 */
+  const linkLabels = useLinkLabels(
+    formId,
+    formQuery.data?.fields ?? [],
+    recordsQuery.data?.records ?? [],
+  )
   const fmtCtx = useDisplayCtx()
 
   if (formQuery.data === undefined) {
@@ -61,7 +68,13 @@ export function RecordsListPanel({ formId }: { formId: number }) {
                       key={field.id}
                       className="border-b border-l border-cell px-2.5 py-1.5 whitespace-nowrap text-ink"
                     >
-                      {formatFieldValue(field, record.values[field.name], memberNames, fmtCtx)}
+                      {formatFieldValue(
+                        field,
+                        record.values[field.name],
+                        memberNames,
+                        fmtCtx,
+                        linkLabels,
+                      )}
                     </td>
                   ))}
                 </tr>

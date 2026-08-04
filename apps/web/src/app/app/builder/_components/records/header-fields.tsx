@@ -33,6 +33,13 @@ import type { ReactElement, ReactNode } from "react"
    新增自帶 label 的輸入元件時要一併加進來(見 `field-grid.tsx` 的 `noLabelWrap`)。 */
 const SELF_LABELLED = new Set(["attachment", "image", "signature"])
 
+/* 版面圖片是使用者填的任意 URL(schema 只放行 https 與相對路徑),
+   不走 `next/image` 的最佳化管線 —— 那需要網域白名單,而白名單是使用者資料。 */
+function StaticImage({ url }: { readonly url: string | undefined }): ReactElement | null {
+  if (url === undefined || url === "") return null
+  return <img src={url} alt="" className="max-h-full object-contain" />
+}
+
 export function HeaderFields({
   fields,
   layout,
@@ -79,6 +86,34 @@ export function HeaderFields({
           width: cols * FORM_COL_W,
         }}
       >
+        {/* 🔴 audit-D §2.5|靜態敘述與圖片。`layout.statics[]` 出貨兩個月以來
+            **只有設計器畫布讀得到** —— 設計者放了說明文字,填單的人看不到,
+            而那正是 `form-designer-2d` §1.1 目標 2 的整個用意。
+
+            `designOnly` 為真時**刻意不畫**:那是給設計者自己看的註記
+            (欄位對照、待辦),不是給填單的人看的。 */}
+        {effective.statics.map((el) =>
+          el.designOnly === true ? null : (
+            <div
+              key={el.id}
+              style={cellPosition(el)}
+              className="-mr-px -mb-px flex items-center overflow-hidden border border-cell px-2.5 py-1 text-[13px] text-ink-2"
+            >
+              {el.kind === "image" ? (
+                <StaticImage url={el.imageUrl} />
+              ) : el.href !== undefined && el.href !== "" ? (
+                <a href={el.href} className="truncate text-primary hover:underline">
+                  {el.text ?? el.href}
+                </a>
+              ) : (
+                /* 純文字 —— `markdown` 旗標目前無渲染器,原樣顯示不解析
+                   (與條件式訊息同一條原則:不可信輸入不做標記解析) */
+                <span className="whitespace-pre-wrap">{el.text ?? ""}</span>
+              )}
+            </div>
+          ),
+        )}
+
         {fields.map((field) => {
           const fl = effective.fields[String(field.id)]
           if (fl === undefined) return null

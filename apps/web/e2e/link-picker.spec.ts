@@ -149,3 +149,34 @@ test("🔴 選記錄 → 對映的欄位自動帶入(Load)", async ({ page, requ
     timeout: 15_000,
   })
 })
+
+/* 🔴 audit-D §2.2|**顯示面**。
+
+   `toSubmitValue` 有 `case "link"`(送出面 2026-08-04 修過),`formatFieldValue` 沒有
+   —— 於是連結欄一路落到預設分支,**記錄頁與列表頁把目標記錄的數字 id 印在畫面上**。
+   而模組文件 §7 逐字寫著「✅ 已出貨:候選端點 + 選記錄 UI + **可讀顯示**」。
+
+   FMEA L2 的緩解本來寫著「e2e 斷言不得為純數字」,但當時加的斷言看的是
+   **選擇器**(填單面)與 **API 回值**(儲存面)—— 顯示面零覆蓋,所以缺口活了下來。
+   這一條補的就是那個洞。 */
+test("🔴 顯示面:記錄頁與列表頁顯示標題,不得是數字 id", async ({ page, request }) => {
+  const { poId } = await seed(request)
+  await openFill(page, poId)
+
+  await page.getByRole("textbox", { name: "單號" }).fill("PO-DISPLAY")
+  await picker(page).selectOption({ label: "鑫豐農產" })
+  await page.getByRole("button", { name: "儲存" }).click()
+  await expect(page.getByText(/已儲存/)).toBeVisible({ timeout: 30_000 })
+
+  /* 列表(設計器的「資料」頁籤 —— HTML 表格)。
+     ⚠️ 工作區的列表頁是 **Glide canvas**,文字不在 DOM 裡,斷言不到;
+     兩者走的是同一支 `formatFieldValue`,故此處覆蓋等同覆蓋。**這是誠實的限制,不是偷懶。** */
+  await page.getByRole("tab", { name: "資料" }).click()
+  const row = page.getByRole("row").filter({ hasText: "PO-DISPLAY" }).first()
+  await expect(row).toContainText("鑫豐農產", { timeout: 30_000 })
+
+  /* 記錄頁 */
+  await page.goto(`/app/forms/${String(poId)}`)
+  await page.getByRole("tab", { name: "記錄" }).click()
+  await expect(page.getByText("鑫豐農產")).toBeVisible({ timeout: 30_000 })
+})

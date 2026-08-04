@@ -83,3 +83,47 @@ test("設計器:標籤頁籤 + 列印設定面板", async ({ page, request }) =>
   await expect(page.getByText(/由瀏覽器列印對話框設定/)).toBeVisible()
   await expect(page.getByRole("checkbox", { name: /設為列印頁首/ }).first()).toBeVisible()
 })
+
+/* 🔴 audit-D §2.3|**不用打 API 就能把文字欄設成條碼顯示**。
+
+   `showAsQr` 在欄位型別 registry 與 `barcode.tsx` 都存在,而 §4.2 / M2 / changelog
+   都寫著它已落地 —— 但**全 repo 沒有任何寫入處**,只能打 API 設。
+   第一約束逐字:「有 API 可以做」不算解決。
+
+   範本是 `widgets.spec.ts` 的「不用打 API 就能建小圖表」——
+   audit-D 的六條 🔴 裡有四條,是因為別的模組沒有這樣一條測試。 */
+test("🔴 不用打 API 就能把文字欄設為條碼顯示(第一約束)", async ({ page, request }) => {
+  const res = await request.post("/api/engine/forms", {
+    headers: { "x-dev-tenant": "1", "content-type": "application/json" },
+    data: {
+      name: `E2E條碼開關_${String(Date.now()).slice(-6)}`,
+      fields: [{ name: "料號", type: "text" }],
+    },
+  })
+  const formId = ((await res.json()) as { id: number }).id
+
+  await page.goto(`/app/builder?form=${String(formId)}`)
+  /* ⚠️ 欄位格的無障礙名稱含示例值與兩顆內嵌按鈕(「料號 範例文字 拖曳 料號 下架 料號」),
+     用 `/料號/` 會同時命中內嵌的「拖曳 / 下架」按鈕而點錯。挑最外層那一個。 */
+  await page
+    .getByRole("button", { name: /^料號 / })
+    .first()
+    .click()
+  const toggle = page.getByLabel("以條碼 / QR 呈現")
+  await expect(toggle).toBeVisible({ timeout: 30_000 })
+  await expect(toggle).not.toBeChecked()
+  /* ⚠️ 用 `click` 不用 `check`:這顆勾選框由**伺服器狀態**驅動(存完重抓才翻),
+     而 `check()` 會斷言點擊當下狀態就改變 —— 那是對樂觀更新的假設,這裡沒有。
+     單一真實來源優先於即時回饋,與同一面板的日期格式下拉同一形狀。 */
+  await toggle.click()
+  await expect(toggle).toBeChecked({ timeout: 15_000 })
+
+  /* 存得進 options —— 畫面上勾了,後端要真的收到 */
+  await expect(async () => {
+    const got = await request.get(`/api/engine/forms/${String(formId)}`, {
+      headers: { "x-dev-tenant": "1" },
+    })
+    const f = ((await got.json()) as { fields: { options: Record<string, unknown> }[] }).fields[0]
+    expect(f?.options.showAsQr).toBe(true)
+  }).toPass({ timeout: 15_000 })
+})

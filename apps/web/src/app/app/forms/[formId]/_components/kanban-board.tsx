@@ -1,7 +1,12 @@
 "use client"
 
 import { useMemberNames } from "@/lib/engine/authz"
-import { type RecordQuery, useGroupStats, useInfiniteRecordsQuery } from "@/lib/engine/hooks"
+import {
+  type RecordQuery,
+  useGroupStats,
+  useInfiniteRecordsQuery,
+  useLinkLabels,
+} from "@/lib/engine/hooks"
 import type { FormDto } from "@/lib/engine/schemas"
 import { Select } from "@weyver/ui/select"
 import { type ReactNode, useMemo, useState } from "react"
@@ -36,6 +41,8 @@ export function KanbanBoard({
   const recordsQuery = useInfiniteRecordsQuery(formId, query)
   const stats = useGroupStats(formId, query, [])
   const records = recordsQuery.data?.pages.flatMap((p) => p.records) ?? []
+  /* audit-D §2.2|連結欄顯示標題而非 id;與列表 / 記錄頁同一支 */
+  const linkLabels = useLinkLabels(formId, form.fields, records)
 
   /* 每欄總筆數以後端統計為準 —— 已載入的卡片可能少於總數(分頁) */
   const counts = useMemo(() => {
@@ -93,6 +100,7 @@ export function KanbanBoard({
           records={records}
           stackField={stackField}
           memberNames={memberNames}
+          linkLabels={linkLabels}
           onOpen={onOpen}
           counts={counts}
         />

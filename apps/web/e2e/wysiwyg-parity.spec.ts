@@ -80,3 +80,41 @@ test("設計畫布不得回到「卡片＋間距」(gap 必須為 0)", async ({ 
   expect(gap, "找不到設計畫布格線容器").not.toBeNull()
   expect(gap).toMatch(/^(0px|normal|0px 0px)$/)
 })
+
+/* 🔴 audit-D §2.5|**靜態敘述要在填單畫面看得到**。
+
+   `layout.statics[]` 出貨兩個月以來只有設計器畫布讀得到 —— 設計者放了說明文字,
+   填單的人看不到,而那正是 `form-designer-2d` §1.1 目標 2 的整個用意。
+   §0.5 把它「移交 form-designer-wysiwyg」,而該檔的範圍表與里程碑**都沒有接收**
+   —— 移交無接收方,於是它就停在那裡。
+
+   同時釘住 `designOnly`:那是給設計者自己看的註記,**不得**畫到填單畫面。 */
+test("🔴 靜態敘述在填單畫面看得到,而 designOnly 的不畫", async ({ page, request }) => {
+  const DEV = { "x-dev-tenant": "1", "content-type": "application/json" }
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E靜態元素_${String(Date.now()).slice(-6)}`,
+      fields: [{ name: "品名", type: "text" }],
+    },
+  })
+  const form = (await res.json()) as { id: number; fields: { id: number }[] }
+  await request.patch(`/api/engine/forms/${String(form.id)}/layout`, {
+    headers: DEV,
+    data: {
+      grid: { cols: 12 },
+      fields: { [String(form.fields[0]?.id ?? 0)]: { row: 1, col: 0, colSpan: 6 } },
+      statics: [
+        { id: "st1", kind: "text", row: 0, col: 0, colSpan: 6, text: "本表僅供內部使用" },
+        { id: "st2", kind: "text", row: 2, col: 0, colSpan: 6, text: "設計註記", designOnly: true },
+      ],
+      sections: [],
+    },
+  })
+
+  await page.goto(`/app/builder?form=${String(form.id)}&mode=fill`)
+  await page.getByRole("tab", { name: "填單" }).click()
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  await expect(fill.getByText("本表僅供內部使用")).toBeVisible({ timeout: 30_000 })
+  await expect(fill.getByText("設計註記")).toHaveCount(0)
+})
