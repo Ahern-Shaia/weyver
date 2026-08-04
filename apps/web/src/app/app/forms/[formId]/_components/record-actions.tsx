@@ -1,8 +1,9 @@
 "use client"
 
 import { describeEngineError } from "@/lib/engine/client"
+import { evaluateApprovalGate, evaluateButtonGate } from "@/lib/engine/conditional-format"
 import { useButtons, useRecordApproval, useRunButton, useSubmitApproval } from "@/lib/engine/hooks"
-import type { ApprovalInstanceDto, ButtonDto } from "@/lib/engine/schemas"
+import type { ApprovalInstanceDto, ButtonDto, FormatRule } from "@/lib/engine/schemas"
 import { ExternalLink, Play, Send } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { ApprovalPanel, ApprovalTrail } from "./approval-panel"
@@ -28,9 +29,18 @@ const STATUS_CLASS: Record<ApprovalInstanceDto["status"], string> = {
 export function RecordActions({
   formId,
   recordId,
+  rules = [],
+  values = {},
+  fieldNames = [],
 }: {
   readonly formId: number
   readonly recordId: number
+  /* 🔴 C-3|條件式的「顯示 / 隱藏 / 上鎖動作按鈕」。
+     這裡只是畫面 —— **真正的執法在伺服器**(`ButtonService.execute` /
+     `ApprovalService.submit`)。畫面照做的理由是別讓使用者按一顆註定失敗的按鈕。 */
+  readonly rules?: readonly FormatRule[]
+  readonly values?: Record<string, unknown>
+  readonly fieldNames?: readonly string[]
 }): ReactNode {
   const { data: buttons = [] } = useButtons(formId)
   const { data: approval } = useRecordApproval(formId, recordId)
@@ -40,6 +50,7 @@ export function RecordActions({
 
   const instance = approval?.instance ?? null
   const locked = instance?.status === "pending"
+  const approvalGate = evaluateApprovalGate(rules, values, fieldNames)
 
   const onRun = (button: ButtonDto): void => {
     if (button.confirm && !window.confirm(`執行「${button.label}」?`)) return
@@ -92,19 +103,32 @@ export function RecordActions({
           </span>
         ) : null}
 
-        {buttons.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => onRun(b)}
-            disabled={runButton.isPending || (locked && b.actionType !== "openUrl")}
-            className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
-            title={locked && b.actionType !== "openUrl" ? "簽核中,不可執行寫入動作" : undefined}
-          >
-            {b.actionType === "openUrl" ? <ExternalLink size={13} /> : <Play size={13} />}
-            {b.label}
-          </button>
-        ))}
+        {buttons.map((b) => {
+          const gate = evaluateButtonGate(rules, values, fieldNames, b.id)
+          if (gate.hidden) return null
+          const blocked = gate.locked
+          const lockedByApproval = locked && b.actionType !== "openUrl"
+          return (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => onRun(b)}
+              disabled={runButton.isPending || lockedByApproval || blocked}
+              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
+              title={
+                blocked
+                  ? /* 官方逐字:上鎖動作按鈕「還可以客製提醒訊息」 */
+                    (gate.message ?? "此記錄目前的狀態不允許執行這個動作")
+                  : lockedByApproval
+                    ? "簽核中,不可執行寫入動作"
+                    : undefined
+              }
+            >
+              {b.actionType === "openUrl" ? <ExternalLink size={13} /> : <Play size={13} />}
+              {b.label}
+            </button>
+          )
+        })}
 
         {instance !== null && instance.unlockedAt !== null ? (
           /* 解鎖是繞過內控的狀態,必須在檯面上 —— 不顯示的話沒有人知道這筆現在可以改 */
@@ -118,16 +142,21 @@ export function RecordActions({
           </span>
         ) : null}
 
-        {instance === null || instance.status !== "pending" ? (
+        {approvalGate.hidden ? null : instance === null || instance.status !== "pending" ? (
           <button
             type="button"
+            disabled={submitApproval.isPending || approvalGate.locked}
+            title={
+              approvalGate.locked
+                ? (approvalGate.message ?? "此記錄目前的狀態不需要(或不允許)送簽")
+                : undefined
+            }
             onClick={() =>
               submitApproval.mutate(recordId, {
                 onSuccess: () => setMsg("已送出簽核"),
                 onError: (e) => setMsg(describeEngineError(e)),
               })
             }
-            disabled={submitApproval.isPending}
             className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
           >
             <Send size={13} />

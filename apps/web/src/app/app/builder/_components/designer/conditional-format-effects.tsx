@@ -26,7 +26,10 @@ function withTone(rule: FormatRule, tone: ChipTone): Partial<FormatRule> {
   return { effects: [...rest, { kind: "color", tone }] }
 }
 
-function toggleEffect(rule: FormatRule, kind: "hide" | "readonly"): Partial<FormatRule> {
+function toggleEffect(
+  rule: FormatRule,
+  kind: "hide" | "readonly" | "required",
+): Partial<FormatRule> {
   const has = rule.effects.some((e) => e.kind === kind)
   const next = has
     ? rule.effects.filter((e) => e.kind !== kind)
@@ -35,6 +38,14 @@ function toggleEffect(rule: FormatRule, kind: "hide" | "readonly"): Partial<Form
      而不是讓使用者存下一條會被後端擋掉的規則。 */
   return { effects: next.length > 0 ? next : [{ kind: "color", tone: "neutral" }] }
 }
+
+const EFFECT_LABEL = {
+  hide: "隱藏欄位",
+  readonly: "設為唯讀",
+  /* 🔴 C-3|這一顆與上面兩顆**不同級**:必填是伺服器強制的,
+     隱藏與唯讀只到版面層。文案要講出這個差別,否則使用者會以為三者一樣硬。 */
+  required: "設為必填",
+} as const
 
 function messageOf(rule: FormatRule): string | null {
   for (const e of rule.effects) if (e.kind === "message") return e.text
@@ -74,16 +85,20 @@ export function RuleEffects({
   rule,
   fieldNames,
   sections,
+  buttons,
   face,
   patch,
 }: {
   readonly rule: FormatRule
   readonly fieldNames: readonly string[]
   readonly sections: readonly Section[]
+  /* C-3|可當作目標的動作按鈕(記錄頁才有意義) */
+  readonly buttons: readonly { readonly id: number; readonly label: string }[]
   readonly face: "record" | "list"
   readonly patch: (next: Partial<FormatRule>) => void
 }): ReactNode {
   const targetSections = rule.targetSections
+  const targetButtons = rule.targetButtons
   const message = messageOf(rule)
 
   return (
@@ -138,25 +153,58 @@ export function RuleEffects({
         </div>
       ) : null}
 
+      {/* 🔴 C-3|按鈕與「開始簽核」也是目標軸,不是新的效果類 ——
+          官方對它們用的動詞與分段那組一樣(顯示 / 隱藏 / 上鎖)。 */}
+      <div className="mt-3">
+        <div className="mb-1 text-[12px] text-ink-3">或套用到動作</div>
+        <div className="flex flex-wrap gap-1">
+          {buttons.map((b) => (
+            <Chip
+              key={b.id}
+              on={targetButtons.includes(b.id)}
+              onClick={() =>
+                patch({
+                  targetButtons: targetButtons.includes(b.id)
+                    ? targetButtons.filter((t) => t !== b.id)
+                    : [...targetButtons, b.id],
+                })
+              }
+            >
+              {b.label}
+            </Chip>
+          ))}
+          <Chip
+            on={rule.targetApproval === true}
+            onClick={() => patch({ targetApproval: rule.targetApproval !== true })}
+          >
+            開始簽核
+          </Chip>
+        </div>
+        <p className="mt-1 text-[12px] text-ink-3">
+          對動作而言:隱藏 = 不顯示,唯讀 = 上鎖;上鎖的理由用下面的訊息。兩者皆由伺服器執法。
+        </p>
+      </div>
+
       <div className="mt-3">
         {/* 🔴 C-2:效果種類。**加 schema 的同一批就要加寫入端** ——
             否則就是又造一個「欄位存在、沒人寫得進去」的陷阱,
             而 form-designer-2d 的 colWidths 剛因為同一個理由被移除。 */}
         <div className="mb-1 text-[12px] text-ink-3">效果(可複選)</div>
         <div className="mb-2 flex flex-wrap gap-1">
-          {(["hide", "readonly"] as const).map((kind) => (
+          {(["hide", "readonly", "required"] as const).map((kind) => (
             <Chip
               key={kind}
               on={rule.effects.some((e) => e.kind === kind)}
               onClick={() => patch(toggleEffect(rule, kind))}
             >
-              {kind === "hide" ? "隱藏欄位" : "設為唯讀"}
+              {EFFECT_LABEL[kind]}
             </Chip>
           ))}
         </div>
         {/* 隱藏不是權限 —— Ragic / Airtable 官方都明文警告過,這裡照講 */}
         <p className="mb-2 text-[12px] text-ink-3">
-          隱藏與唯讀為版面層效果,擋不住 API。欄位級保護請用權限設定。
+          隱藏與唯讀為版面層效果,擋不住 API;欄位級保護請用權限設定。
+          <span className="text-ink-2">必填由伺服器強制。</span>
         </p>
 
         {/* 🔴 訊息是**規則層**效果,不落在任何欄位上;列表頁一列一則訊息沒有意義,故不提供 */}

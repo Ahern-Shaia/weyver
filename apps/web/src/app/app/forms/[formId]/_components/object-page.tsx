@@ -325,7 +325,13 @@ export function ObjectPage({
             放在容器外的話 scroll-spy 永遠不會把它算成當前區段。 */}
         {hasActions ? (
           <section id="sec-動作" className="scroll-mt-2 pb-4" data-noprint>
-            <RecordActions formId={formId} recordId={record.id} />
+            <RecordActions
+              formId={formId}
+              recordId={record.id}
+              rules={recordRules}
+              values={record.values}
+              fieldNames={fields.map((f) => f.name)}
+            />
           </section>
         ) : null}
 

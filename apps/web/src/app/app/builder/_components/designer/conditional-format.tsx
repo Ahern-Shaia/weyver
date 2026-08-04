@@ -6,6 +6,7 @@ import {
   toneOf,
 } from "@/app/app/builder/_components/designer/conditional-format-effects"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
+import { useButtons } from "@/lib/engine/hooks"
 import { OPERATOR_LABEL, fieldOperators } from "@/lib/engine/field-filters"
 import type {
   ConditionalFormats,
@@ -39,6 +40,8 @@ function newRule(field: string): FormatRule {
     conditions: [{ field, op: "isNotEmpty" }],
     targets: [],
     targetSections: [],
+    targetButtons: [],
+    targetApproval: false,
     effects: [{ kind: "color", tone: "warn" }],
     enabled: true,
   }
@@ -56,6 +59,7 @@ function describe(rule: FormatRule): string {
 }
 
 export function ConditionalFormatPanel({
+  formId,
   fields,
   sections,
   formats,
@@ -63,6 +67,7 @@ export function ConditionalFormatPanel({
   onChange,
   onClose,
 }: {
+  readonly formId: number
   readonly fields: readonly FieldDto[]
   /* 分段用作**目標選擇器**(OQ-CF-9);由畫布傳入現行版面的分段 */
   readonly sections: readonly Section[]
@@ -77,6 +82,10 @@ export function ConditionalFormatPanel({
   const [selected, setSelected] = useState(0)
   const rules = current[face]
   const fieldNames = fields.map((f) => f.name)
+
+  /* C-3|按鈕可當規則目標(記錄頁);清單本來就要抓,不新增端點 */
+  const { data: buttonRows = [] } = useButtons(fields.length > 0 ? formId : null)
+  const buttons = buttonRows.map((b) => ({ id: b.id, label: b.label }))
 
   const setRules = (next: FormatRule[]): void => onChange({ ...current, [face]: next })
   const patch = (index: number, next: Partial<FormatRule>): void =>
@@ -288,6 +297,7 @@ export function ConditionalFormatPanel({
               rule={rule}
               fieldNames={fieldNames}
               sections={sections}
+              buttons={buttons}
               face={face}
               patch={(next) => patch(selected, next)}
             />

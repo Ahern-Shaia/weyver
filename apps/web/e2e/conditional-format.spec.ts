@@ -290,3 +290,76 @@ test("🔴 顯示訊息:條件成立才出現,帶入欄位值,且標記不被解
   await 單號.fill("")
   await expect(box).toBeHidden()
 })
+
+/* ── C-3|伺服器強制(OQ-CF-12)────────────────────────────────────── */
+
+/* 🔴 這一條釘的不是「星號有沒有出現」,而是**畫面與伺服器說的是同一件事**。
+
+   求值器住在 `@weyver/rules`,前後端共用。若哪天有人為了方便在某一側
+   多加一個分支,症狀就是這裡:畫面沒標必填卻存不進去,或標了卻存得進去。 */
+test("🔴 條件式必填:畫面標星號,而伺服器真的擋得住", async ({ page, request }) => {
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E條件必填_${uniq()}`,
+      fields: [
+        { name: "狀態", type: "text" },
+        { name: "金額", type: "text" },
+      ],
+    },
+  })
+  const form = (await res.json()) as { id: number; fields: { id: number; name: string }[] }
+  const idOf = (n: string): string => String(form.fields.find((f) => f.name === n)?.id ?? 0)
+  await request.patch(`/api/engine/forms/${String(form.id)}/layout`, {
+    headers: DEV,
+    data: {
+      grid: { cols: 12 },
+      fields: {
+        [idOf("狀態")]: { row: 0, col: 0, colSpan: 6 },
+        [idOf("金額")]: { row: 1, col: 0, colSpan: 6 },
+      },
+      statics: [],
+      sections: [],
+      conditionalFormats: {
+        record: [
+          {
+            combinator: "and",
+            conditions: [{ field: "狀態", op: "eq", value: "送審" }],
+            targets: ["金額"],
+            effects: [{ kind: "required" }],
+          },
+        ],
+        list: [],
+      },
+    },
+  })
+
+  /* 🔴 先驗**伺服器**:直接打 API,完全不經過畫面 */
+  const bypass = await request.post(`/api/engine/forms/${String(form.id)}/records`, {
+    headers: DEV,
+    data: { values: { 狀態: "送審" } },
+  })
+  expect(bypass.status()).toBe(422)
+
+  const ok = await request.post(`/api/engine/forms/${String(form.id)}/records`, {
+    headers: DEV,
+    data: { values: { 狀態: "草稿" } },
+  })
+  expect(ok.status()).toBe(201)
+
+  /* 再驗**畫面**:同一條規則,星號要跟著條件出現與消失 */
+  await page.goto(`/app/builder?form=${String(form.id)}&mode=fill`)
+  await page.getByRole("tab", { name: "填單" }).click()
+  const 狀態 = page.getByRole("textbox", { name: "狀態" })
+  await expect(狀態).toBeVisible({ timeout: 30_000 })
+
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  const star = fill.locator("span", { hasText: /^\*$/ })
+  await expect(star).toHaveCount(0)
+
+  await 狀態.fill("送審")
+  await expect(star).toHaveCount(1)
+
+  await 狀態.fill("草稿")
+  await expect(star).toHaveCount(0)
+})

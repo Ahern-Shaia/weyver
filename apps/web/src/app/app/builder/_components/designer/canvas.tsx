@@ -491,6 +491,7 @@ export function DesignCanvas({
       ) : null}
       {aux === "formats" ? (
         <ConditionalFormatPanel
+          formId={formId}
           fields={form.fields}
           sections={effective.sections}
           formats={effective.conditionalFormats}

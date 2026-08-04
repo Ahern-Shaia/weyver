@@ -83,7 +83,12 @@ export function HeaderFields({
           const fl = effective.fields[String(field.id)]
           if (fl === undefined) return null
           /* S4 仲裁:靜態屬性 × 條件式規則(見 resolveFieldAttrs 之逐字依據) */
-          const attrs = resolveFieldAttrs(fl, states.get(field.name))
+          /* 必填在**欄位**上、隱藏與唯讀在**版面**上 —— 兩者要一起交給仲裁,
+             否則 `attrs.required` 只會反映規則,靜態必填的星號會憑空消失。 */
+          const attrs = resolveFieldAttrs(
+            { ...fl, required: field.required },
+            states.get(field.name),
+          )
           if (attrs.hidden) return null
           return (
             <div
@@ -101,7 +106,10 @@ export function HeaderFields({
                   /* 唯讀欄不標必填星號;**因條件式被隱藏者亦略過必填**
                    —— 官方逐字:「當欄位因條件式格式被隱藏時,系統會略過檢查必填及輸入檢查」。
                    要求使用者填一個看不見的欄位會讓他直接卡死。 */
-                  required: field.required && !attrs.readonly && !attrs.skipValidation,
+                  /* 🔴 C-3|必填吃**解析後**的值:靜態必填與規則必填的聯集,
+                   且被規則隱藏時整個放掉(官方逐字「略過檢查必填」)。
+                   唯讀欄不標星號 —— 標了等於要求使用者填一個他填不了的欄。 */
+                  required: attrs.required && !attrs.readonly,
                   help: fl.help !== undefined && fl.help !== "" ? fl.help : false,
                   /* 這三型的輸入元件**自帶 `<label>`**(「選擇檔案」),外層不能再包一層 */
                   noLabelWrap: SELF_LABELLED.has(field.type),

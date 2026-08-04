@@ -180,6 +180,8 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
   /* C-2 後半|顯示訊息 —— **規則層效果,不落在欄位上**。
      文字可含 `{{fieldValue:欄名}}` / `{{fieldName:欄名}}`(見 `renderMessage`)。 */
   z.object({ kind: z.literal("message"), text: z.string().min(1).max(500) }),
+  /* C-3|條件式必填 —— 伺服器強制(求值器共用 `@weyver/rules`) */
+  z.object({ kind: z.literal("required") }),
 ])
 export type FormatEffect = z.infer<typeof formatEffectSchema>
 
@@ -189,6 +191,9 @@ export const formatRuleSchema = z.object({
   targets: z.array(z.string().min(1).max(100)).max(50).default([]),
   /* C-2 後半|分段為**目標選擇器**(OQ-CF-9):求值時展開成該列區間內的欄位,與 targets 併集 */
   targetSections: z.array(z.string().min(1).max(60)).max(20).default([]),
+  /* C-3|動作按鈕(以 id 指涉)與「開始簽核」按鈕 */
+  targetButtons: z.array(z.number().int().positive()).max(50).default([]),
+  targetApproval: z.boolean().default(false),
   effects: z.array(formatEffectSchema).min(1).max(10),
   note: z.string().max(200).optional(),
   enabled: z.boolean().default(true),
