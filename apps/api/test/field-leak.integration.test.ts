@@ -390,3 +390,106 @@ describe("連結欄候選清單:跨表單權限", () => {
     for (const o of options) expect(o.label).toMatch(/^#\d+$/)
   })
 })
+
+/* 🔴 R1·LNK M2|Load 帶入。
+
+   Ragic `doc/14` 逐字:「選擇顧客姓名之後,**會自動帶出**該顧客對應的其他資訊」。
+   帶入 = 把來源記錄的欄值複製過來 —— 那是一條**把別張表的資料搬到這張表**的路徑,
+   所以權限與遮罩必須跟著走,否則它就是 `link-options` 之外的第二個洩漏面。 */
+describe("Load 帶入", () => {
+  let poFormId = 0
+  let linkFieldId = 0
+  let noteFieldId = 0
+  let salaryCopyFieldId = 0
+
+  beforeAll(async () => {
+    const admin = { "x-dev-tenant": String(tenantId), "x-dev-actor": "1" }
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: admin,
+      payload: {
+        name: "帶入測試單",
+        fields: [
+          { name: "員工", type: "link", options: { targetFormId: formId } },
+          { name: "帶入姓名", type: "text" },
+          { name: "帶入月薪", type: "money" },
+        ],
+      },
+    })
+    const body = created.json() as { id: number; fields: { id: number; name: string }[] }
+    poFormId = body.id
+    linkFieldId = body.fields.find((f) => f.name === "員工")?.id ?? 0
+    noteFieldId = body.fields.find((f) => f.name === "帶入姓名")?.id ?? 0
+    salaryCopyFieldId = body.fields.find((f) => f.name === "帶入月薪")?.id ?? 0
+
+    const detail = await app.inject({ method: "GET", url: `/api/forms/${formId}`, headers: admin })
+    const src = (detail.json() as { fields: { id: number; name: string }[] }).fields
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${poFormId}/fields/${linkFieldId}/load-map`,
+      headers: admin,
+      payload: {
+        loadMap: [
+          { fromFieldId: src.find((f) => f.name === "姓名")?.id ?? 0, toFieldId: noteFieldId },
+          { fromFieldId: salaryFieldId, toFieldId: salaryCopyFieldId },
+        ],
+      },
+    })
+    expect(res.statusCode).toBeLessThan(300)
+  }, 60_000)
+
+  const load = async (recordId: number, perms?: EffectivePermissions) => {
+    const { LinkOptionsService } = await import(
+      "../src/form-engine/relations/link-options.service.js"
+    )
+    return app.get(LinkOptionsService).loadValues(tenantId, poFormId, linkFieldId, recordId, perms)
+  }
+
+  it("admin 選了記錄 → 對映的欄值都帶進來(以**本地欄名**為鍵,前端可直接 spread)", async () => {
+    const values = await load(1)
+    expect(values["帶入姓名"]).toBe("甲")
+    expect(values["帶入月薪"]).toBe("30000.0000")
+  })
+
+  /* 🔴 這一條是本模組的核心防線:帶入不得繞過欄位級遮罩。
+     `月薪` 對此人隱藏 → `getRecord` 根本不會回那個鍵 → 也就帶不進來。 */
+  it("🔴 來源欄對此人隱藏 → 該欄不帶入(其餘照帶)", async () => {
+    const values = await load(1, limitedPerms())
+    expect(values["帶入姓名"]).toBe("甲")
+    expect(values).not.toHaveProperty("帶入月薪")
+  })
+
+  it("🔴 對目標表單沒有 view 權 → 整個帶入被拒", async () => {
+    const onlySource = new EffectivePermissions(
+      false,
+      new Map([[poFormId, new Set(["view" as const])]]),
+      new Map(),
+      new Set(),
+    )
+    await expect(load(1, onlySource)).rejects.toThrow()
+  })
+
+  /* 🔴 綁了租戶不等於這個欄位屬於這張表。少了歸屬檢查,帶著自己有 design 權的 formId
+     就能把**任意兩個欄位**配成對映,而下次有人選記錄時那個值就會被讀出來。 */
+  it("🔴 設定對映時兩端都要驗歸屬 —— 拿別張表的欄位當目標必須被拒", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${poFormId}/fields/${linkFieldId}/load-map`,
+      headers: { "x-dev-tenant": String(tenantId), "x-dev-actor": "1" },
+      /* toFieldId 指向來源表單的欄位(不屬於 poForm) */
+      payload: { loadMap: [{ fromFieldId: salaryFieldId, toFieldId: salaryFieldId }] },
+    })
+    expect(res.statusCode).toBeGreaterThanOrEqual(400)
+  })
+
+  it("連結欄自己不能當帶入目標 —— 會把使用者剛選的那筆蓋掉", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${poFormId}/fields/${linkFieldId}/load-map`,
+      headers: { "x-dev-tenant": String(tenantId), "x-dev-actor": "1" },
+      payload: { loadMap: [{ fromFieldId: salaryFieldId, toFieldId: linkFieldId }] },
+    })
+    expect(res.statusCode).toBeGreaterThanOrEqual(400)
+  })
+})

@@ -5,6 +5,7 @@ import type { EffectivePermissions } from "../../authz/authz-effective.js"
 import { NotALinkFieldError, UnknownFieldError } from "../errors.js"
 import { DATA_SCHEMA, physicalTableName } from "../identifiers.js"
 import { MetadataService } from "../metadata/metadata.service.js"
+import { RecordService } from "../records/record.service.js"
 
 /* 🔴 R1·LNK M1|連結欄的**候選記錄清單**。
 
@@ -24,11 +25,32 @@ import { MetadataService } from "../metadata/metadata.service.js"
    候選清單長的是「給人看的標題」,而標題欄可能對這個人隱藏。
    隱藏時回 `#id` —— **不是回空白**:空白會讓使用者以為那筆沒資料,
    而他其實是沒權限(同 `pivot-and-charts` 的裁定:寧可具名,不要靜默)。 */
+/* 🔴 對映以 **field id** 存,不用欄名 —— 沿用 `formula_def.depends_on` 的同一理由:
+ **id 穩定於改名**。用欄名的話,來源表單改個欄名就靜默斷掉,而畫面上看不出來。 */
+export interface LoadPair {
+  readonly fromFieldId: number
+  readonly toFieldId: number
+}
+
+export function parseLoadMap(raw: unknown): LoadPair[] {
+  if (!Array.isArray(raw)) return []
+  const out: LoadPair[] = []
+  for (const item of raw) {
+    if (item === null || typeof item !== "object") continue
+    const o = item as { fromFieldId?: unknown; toFieldId?: unknown }
+    if (typeof o.fromFieldId !== "number" || typeof o.toFieldId !== "number") continue
+    if (!Number.isInteger(o.fromFieldId) || !Number.isInteger(o.toFieldId)) continue
+    out.push({ fromFieldId: o.fromFieldId, toFieldId: o.toFieldId })
+  }
+  return out
+}
+
 @Injectable()
 export class LinkOptionsService {
   constructor(
     @Inject(APP_KNEX) private readonly knex: Knex,
     @Inject(MetadataService) private readonly metadata: MetadataService,
+    @Inject(RecordService) private readonly records: RecordService,
   ) {}
 
   async listOptions(
@@ -93,5 +115,61 @@ export class LinkOptionsService {
         return { id, label: raw === "" ? `#${String(id)}` : raw }
       })
     })
+  }
+
+  /* 🔴 R1·LNK M2|Load 帶入:取目標記錄的**已對映欄值**。
+
+     ## 為什麼回「本地欄名 → 值」而不是原樣
+
+     前端的填單狀態是 `本地欄名 → 值` 的 record,直接可 spread。
+     讓後端做對映還有一個更重要的理由:**對映表是設定,不該讓前端自己解讀** ——
+     前端拿到 `fromFieldId` 還要自己查欄名,那份查表邏輯遲早與後端漂移。
+
+     ## 權限:走 `getRecord` 而不是自己查表
+
+     `getRecord` 已經套 `maskRead`(含 2026-08-04 的公式污染閉包)——
+     來源欄若對此人隱藏,**它根本不會出現在回傳值裡**,於是也帶不進來。
+     🔴 **這是 fail-closed 的關鍵**:自己寫一條 SQL 取值等於繞過遮罩,
+     而 Ragic 對同一風險的解法是「**設定了欄位層級存取權限的欄位不准當連結欄位**」
+     (`doc/14`)—— 它用禁止,我們用遮罩,兩者都不讓值漏出去。 */
+  async loadValues(
+    tenantId: number,
+    formId: number,
+    fieldId: number,
+    recordId: number,
+    permissions?: EffectivePermissions,
+  ): Promise<Record<string, unknown>> {
+    const loaded = await this.metadata.getForm(tenantId, formId)
+    const field = loaded.fields.find((f) => f.id === fieldId)
+    if (field === undefined) throw new UnknownFieldError(String(fieldId))
+    if (field.cellValueType !== "link") throw new NotALinkFieldError(field.name)
+
+    const options = field.options as { targetFormId?: unknown; loadMap?: unknown } | null
+    const targetFormId = typeof options?.targetFormId === "number" ? options.targetFormId : null
+    if (targetFormId === null) throw new NotALinkFieldError(field.name)
+    if (permissions !== undefined && !permissions.canRead(targetFormId)) {
+      throw new ForbiddenException({
+        code: "LINK_TARGET_FORBIDDEN",
+        message: "你對這個連結欄的來源表單沒有檢視權",
+      })
+    }
+
+    const pairs = parseLoadMap(options?.loadMap)
+    if (pairs.length === 0) return {}
+
+    const target = await this.metadata.getForm(tenantId, targetFormId)
+    const record = await this.records.getRecord(tenantId, targetFormId, recordId, permissions)
+
+    const out: Record<string, unknown> = {}
+    for (const pair of pairs) {
+      const from = target.fields.find((f) => f.id === pair.fromFieldId)
+      const to = loaded.fields.find((f) => f.id === pair.toFieldId)
+      if (from === undefined || to === undefined) continue
+      /* 🔴 來源欄被遮罩時 `values` 裡根本沒有這個鍵 → 不帶入(而不是帶入 undefined)。
+         帶入 undefined 會把使用者原本填的值清掉,那是靜默的資料遺失。 */
+      if (!(from.name in record.values)) continue
+      out[to.name] = record.values[from.name]
+    }
+    return out
   }
 }

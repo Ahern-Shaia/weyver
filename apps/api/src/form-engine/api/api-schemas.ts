@@ -37,6 +37,20 @@ export const convertFieldTypeBodySchema = z.object({
    合在一起會讓呼叫端分不清自己在做哪件事,也會讓「改格式」背上「可能改資料」的風險感。
 
    白名單與前端 `DATE_FORMATS` 同一組。民國年(P1)屆時加 key。 */
+/* 🔴 R1·LNK M2|Load 對映。以 field id 存(穩定於改名,同 `formula_def.depends_on`)。
+   上限 30 對 —— Ragic 的載入欄位可以有多個但沒有明文上限;取一個明顯夠用又不會
+   讓單次帶入變成大查詢的數字,超過時使用者該考慮的是「這兩張表是不是該合併」。 */
+export const updateLoadMapBodySchema = z.object({
+  loadMap: z
+    .array(
+      z.object({
+        fromFieldId: z.number().int().positive(),
+        toFieldId: z.number().int().positive(),
+      }),
+    )
+    .max(30),
+})
+
 export const updateDisplayBodySchema = z.object({
   dateFormat: z.enum(["local", "iso", "slash", "dash", "dot"]),
 })

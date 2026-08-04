@@ -55,6 +55,7 @@ import {
   toFieldDto,
   toFormDto,
   updateDisplayBodySchema,
+  updateLoadMapBodySchema,
   updateOptionsBodySchema,
 } from "./api-schemas.js"
 
@@ -302,6 +303,65 @@ export class FormsController {
 
      為什麼需要它:`local` 之下格式由租戶/使用者的 `locale` 決定,而 `en` 是
      設定白名單裡的合法值 —— 選了它整個產品的日期就變美式。**設計者必須能指定。** */
+  /* 🔴 R1·LNK M2|Load 帶入:取目標記錄已對映的欄值。
+     權限與遮罩由 service 內的 `getRecord` 承擔(來源欄被遮就不會出現在回傳裡)。 */
+  @Get(":formId/fields/:fieldId/link-record/:recordId")
+  @RequiresFormAction("view")
+  async linkRecordValues(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Param("recordId", ParseIntPipe) recordId: number,
+  ): Promise<{ values: Record<string, unknown> }> {
+    return {
+      values: await this.linkOptionsService.loadValues(
+        tenant.tenantId,
+        formId,
+        fieldId,
+        recordId,
+        permissions,
+      ),
+    }
+  }
+
+  /* 🔴 R1·LNK M2|設定 Load 對映。 */
+  @Patch(":formId/fields/:fieldId/load-map")
+  @RequiresFormAction("design")
+  async updateLoadMap(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(updateLoadMapBodySchema))
+    body: z.infer<typeof updateLoadMapBodySchema>,
+  ): Promise<void> {
+    const loaded = await this.metadata.getForm(tenant.tenantId, formId)
+    const field = loaded.fields.find((f) => f.id === fieldId)
+    if (field === undefined) throw new FieldNotFoundError(fieldId)
+    const options = (field.options ?? {}) as Record<string, unknown>
+    const targetFormId = typeof options.targetFormId === "number" ? options.targetFormId : null
+    if (field.cellValueType !== "link" || targetFormId === null) {
+      throw new FieldNotFoundError(fieldId)
+    }
+    const target = await this.metadata.getForm(tenant.tenantId, targetFormId)
+    const targetIds = new Set(target.fields.map((f) => f.id))
+    const localIds = new Set(loaded.fields.map((f) => f.id))
+    for (const pair of body.loadMap) {
+      /* 🔴 兩端都要驗歸屬 —— 綁了租戶不等於這個欄位屬於這張表。
+         少了這一條,帶著自己有 design 權的 formId 就能把**任意兩個欄位**配成對映,
+         而下次有人選記錄時那個值就會被讀出來。 */
+      if (!targetIds.has(pair.fromFieldId) || !localIds.has(pair.toFieldId)) {
+        throw new FieldNotFoundError(pair.fromFieldId)
+      }
+      /* 連結欄自己不能當帶入目標 —— 帶進來會把使用者剛選的那筆蓋掉 */
+      if (pair.toFieldId === fieldId) throw new FieldNotFoundError(fieldId)
+    }
+    await this.metadata.updateFieldOptions(tenant.tenantId, fieldId, {
+      ...options,
+      loadMap: body.loadMap,
+    })
+  }
+
   /* 🔴 R1·LNK M1|連結欄的候選記錄。**目標表單的 view 權在 service 內再驗一次** ——
      來源表單的權限不蘊含目標表單的權限(你在填採購單不代表你看得到供應商),
      而只在前端過濾等於沒做(同 OQ-PC-12 的教訓,直接打 API 就能繞)。 */
