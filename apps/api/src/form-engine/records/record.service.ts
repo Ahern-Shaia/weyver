@@ -1067,6 +1067,27 @@ export class RecordService {
         fields: toIndexable(resolved.fields),
         records: indexed,
       })
+
+      /* 🔴 audit-E §2.4|**事件同理,而且這是同一形狀的第四次**。
+
+         前三次:批次匯入沒寫索引 · 子表沒寫索引 · 子表沒發事件。
+         第四次就在這裡 —— 上面那段補索引時,事件沒有一起補。
+         症狀:客戶匯入 5000 筆,webhook 零投遞、事件驅動的整合對這批資料全瞎。
+
+         ⚠️ 逐列發:訂閱者要的是「哪一筆進來了」,發一個「匯入完成」他還是不知道
+         要去撈什麼。**代價誠實記在這裡**:一次匯入 = N 個事件 = N 次投遞,
+         大批匯入會讓 webhook 端點瞬間吃到尖峰。若日後要收斂,正確的做法是
+         **在投遞層合併**(每端點的節流 / 批次封包),不是在來源靜默不發 ——
+         來源不發等於資料悄悄地不存在。 */
+      for (const row of indexed) {
+        await this.events?.emitInTx(trx, {
+          tenantId,
+          type: EVENT_TYPES.recordCreated,
+          formId,
+          recordId: row.recordId,
+          actorId,
+        })
+      }
       return { created: rows.length }
     })
   }
@@ -1514,6 +1535,19 @@ export class RecordService {
           recordId,
           fields: toIndexable(resolved.fields),
           values: Object.fromEntries(resolved.fields.map((f) => [f.row.name, restored[f.column]])),
+        })
+        /* 🔴 還原也要發事件。訂閱者收過 `record.deleted`,
+           少了這一發,他手上那筆就永遠停在「已刪除」——
+           而那是**錯的資料**,不只是漏一個通知。
+           用 `recordUpdated` 而非新增一個 `record.restored`:
+           對訂閱者而言「這筆現在長這樣」才是他要的,而新事件型別要動
+           EVENT_TYPES 與所有既有訂閱的過濾條件。 */
+        await this.events?.emitInTx(trx, {
+          tenantId,
+          type: EVENT_TYPES.recordUpdated,
+          formId,
+          recordId,
+          actorId,
         })
       }
       return { ok: true as const }

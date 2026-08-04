@@ -322,6 +322,7 @@ export class FormsController {
         fieldId,
         recordId,
         permissions,
+        tenant.actorId,
       ),
     }
   }
@@ -393,6 +394,7 @@ export class FormsController {
         (q ?? "").trim(),
         wanted === undefined ? 20 : 50,
         permissions,
+        tenant.actorId,
         wanted,
       ),
     }

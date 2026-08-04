@@ -193,6 +193,50 @@ describe("G-1 事件匯流排", () => {
     expect(lineAfter.map((e) => e.type)).toContain("record.deleted")
   })
 
+  /* 🔴 audit-E §2.4|**列舉所有寫入路徑,而不是再補一條個案測試。**
+
+     這個形狀已經第四次:批次匯入沒寫索引 · 子表沒寫索引 · 子表沒發事件 ·
+     批次匯入沒發事件。每次都是「補了個案、下一條路徑照樣漏」——
+     因為**沒有任何東西在列舉出口**。
+
+     這條測試的意義不是驗證某一條路徑,而是:**新增寫入路徑時它會紅**,
+     逼人回來確認事件有沒有一起補。 */
+  it("🔴 每一條寫入路徑都要發事件(新增路徑時這條會紅)", async () => {
+    const formId = await makeForm(tenantA, "事件_全路徑")
+    const count = async (): Promise<number> => {
+      const rows = await ddlKnex("event_outbox").where({ form_id: formId }).select("type")
+      return rows.length
+    }
+
+    /* ① 單筆建立 */
+    const one = await records.createRecord(tenantA, formId, { 品名: "單筆" }, ALICE)
+    expect(await count()).toBe(1)
+
+    /* ② 批次匯入 —— 逐列各一個事件 */
+    await records.createManyRecords(
+      tenantA,
+      formId,
+      [{ 品名: "匯入1" }, { 品名: "匯入2" }, { 品名: "匯入3" }],
+      ALICE,
+    )
+    expect(await count()).toBe(4)
+
+    /* ③ 更新 ④ 刪除 */
+    await records.updateRecord(tenantA, formId, one.id, 1, { 品名: "改" }, ALICE)
+    await records.softDeleteRecord(tenantA, formId, one.id, ALICE)
+    expect(await count()).toBe(6)
+
+    /* ⑤ 還原 —— 訂閱者收過 deleted,少了這一發他手上那筆就永遠停在「已刪除」 */
+    await records.restoreRecord(tenantA, formId, one.id, ALICE)
+    const types = (await ddlKnex("event_outbox").where({ form_id: formId }).select("type")).map(
+      (r) => String(r.type),
+    )
+    expect(types).toHaveLength(7)
+    expect(types.filter((t) => t === "record.created")).toHaveLength(4)
+    expect(types.filter((t) => t === "record.deleted")).toHaveLength(1)
+    expect(types.filter((t) => t === "record.updated")).toHaveLength(2) // 改 + 還原
+  })
+
   it("更新與刪除各自發射對應事件", async () => {
     const formId = await makeForm(tenantA, "事件_增改刪")
     const rec = await records.createRecord(tenantA, formId, { 品名: "米" }, ALICE)

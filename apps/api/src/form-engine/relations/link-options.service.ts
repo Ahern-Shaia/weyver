@@ -45,6 +45,34 @@ export function parseLoadMap(raw: unknown): LoadPair[] {
   return out
 }
 
+/* 🔴 audit-E §2.5|**記錄範圍的閘**。
+
+   `record_scope` 未設時,`ddl.service` 的 RESTRICTIVE policy 整條為真
+   (`NULLIF(current_setting('app.record_scope', true), '')` → 視同 'all')——
+   於是受「只能看自己的記錄」限制的人,可以用 `?ids=1,2,3…` 逐一枚舉
+   目標表任意記錄的標題。原本候選清單只回最近 20 筆,`ids=` 把它放大成任意 id 查詢。
+
+   ⚠️ **機制早就存在,範本就在 `record.service.inTenantTx`** —— 新路徑沒有套用而已。
+   這正是「綁了 tenant_id ≠ 有權存取這一筆」的形狀:租戶對了,**這一筆**沒對。
+
+   ⚠️ 三個 GUC 一起設,**不設的那個會沿用同一條連線上的殘值**
+   (連線池重用;`record.service` 的同一段註解逐字警告過)——
+   所以這裡明確把三個都寫一次,而不是「只設需要的那個」。 */
+async function setScopeGucs(
+  trx: Knex.Transaction,
+  tenantId: number,
+  targetFormId: number,
+  permissions: EffectivePermissions | undefined,
+  actorId: number | null | undefined,
+): Promise<void> {
+  const own = permissions?.isScopedToOwn?.(targetFormId, "view") === true
+  await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
+  await trx.raw(`SELECT set_config('app.record_scope', ?, true)`, [own ? "own" : "all"])
+  await trx.raw(`SELECT set_config('app.actor_id', ?, true)`, [
+    actorId === undefined || actorId === null ? "" : String(actorId),
+  ])
+}
+
 @Injectable()
 export class LinkOptionsService {
   constructor(
@@ -60,6 +88,8 @@ export class LinkOptionsService {
     q: string,
     limit: number,
     permissions?: EffectivePermissions,
+    /* 🔴 記錄範圍(E-1)需要「我是誰」。缺它就只能全開,而那正是下面那個 bug。 */
+    actorId?: number | null,
     /* 🔴 audit-D §2.2|**指名解析**:給定 id 取標題,而不是「最近 N 筆裡找找看」。
 
        記錄頁要顯示的是**這一筆連到誰**,而候選清單只回最近的一批 ——
@@ -98,7 +128,7 @@ export class LinkOptionsService {
 
     /* 動態表走 Knex 車道 + tx 範圍的 `set_config` —— RLS 執法 + app 層 tenant 雙防線(鐵則 3) */
     return this.knex.transaction(async (trx) => {
-      await trx.raw(`SELECT set_config('app.tenant_id', ?, true)`, [String(tenantId)])
+      await setScopeGucs(trx, tenantId, targetFormId, permissions, actorId)
       const builder = trx
         .withSchema(DATA_SCHEMA)
         .table(table)
@@ -145,6 +175,7 @@ export class LinkOptionsService {
     fieldId: number,
     recordId: number,
     permissions?: EffectivePermissions,
+    actorId?: number | null,
   ): Promise<Record<string, unknown>> {
     const loaded = await this.metadata.getForm(tenantId, formId)
     const field = loaded.fields.find((f) => f.id === fieldId)
@@ -165,7 +196,15 @@ export class LinkOptionsService {
     if (pairs.length === 0) return {}
 
     const target = await this.metadata.getForm(tenantId, targetFormId)
-    const record = await this.records.getRecord(tenantId, targetFormId, recordId, permissions)
+    /* 🔴 `getRecord` 的第五個參數是**記錄範圍所需的 actor**,不給的話受 own 限制者
+       一律解析不到(而症狀是「這筆帶不出來」,指不到原因)。 */
+    const record = await this.records.getRecord(
+      tenantId,
+      targetFormId,
+      recordId,
+      permissions,
+      actorId ?? null,
+    )
 
     const out: Record<string, unknown> = {}
     for (const pair of pairs) {

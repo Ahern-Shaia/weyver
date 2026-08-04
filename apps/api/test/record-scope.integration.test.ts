@@ -8,6 +8,7 @@ import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/d
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { AccessPreviewService } from "../src/form-engine/access/access-preview.service.js"
+import { LinkOptionsService } from "../src/form-engine/relations/link-options.service.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
@@ -28,6 +29,7 @@ let ddl: DdlService
    superuser 一律 bypass RLS,用它測範圍等於什麼都沒測。 */
 let records: RecordService
 let preview: AccessPreviewService
+let linkOptions: LinkOptionsService
 const destroyers: (() => Promise<void>)[] = []
 let tenantA = 0
 
@@ -58,6 +60,7 @@ beforeAll(async () => {
 
   const repo = new AuthzRepository(db, new TenantDb(db))
   preview = new AccessPreviewService(appKnex, new PermissionService(repo), repo)
+  linkOptions = new LinkOptionsService(appKnex, metadata, records)
 }, 120_000)
 
 afterAll(async () => {
@@ -522,5 +525,75 @@ describe("🔴 來源表上被隱藏的欄,不得經由帶入繞出來", () => {
       BOB,
     )
     expect(page.records[0]?.values.客戶名).toBe("__source_restricted__")
+  })
+})
+
+/* 🔒 audit-E §2.5|**連結欄的候選解析也要吃記錄範圍。**
+
+   `link-options` 原本只設 `app.tenant_id`,沒設 `app.record_scope` ——
+   而 RESTRICTIVE policy 在該 GUC 未設時整條為真。於是受「只能看自己的記錄」
+   限制的人,可以用 `?ids=1,2,3…` **逐一枚舉目標表任意記錄的標題**:
+   原本候選清單只回最近 20 筆,`ids=` 把它放大成任意 id 查詢。
+
+   ⚠️ 機制早就存在(`record.service.inTenantTx` 就在設),**新路徑沒有套用而已** ——
+   這正是「綁了 tenant_id ≠ 有權存取這一筆」的形狀。 */
+describe("🔒 連結欄候選:記錄範圍(audit-E §2.5)", () => {
+  async function seedLink(): Promise<{
+    poFormId: number
+    supFormId: number
+    fieldId: number
+    ids: number[]
+  }> {
+    const supFormId = await seed() // 客戶表:ALICE 兩筆、BOB 一筆
+    const { form: po, fields: poFields } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `採購_${String(Date.now()).slice(-6)}`,
+        fields: [
+          { name: "單號", type: "text" },
+          { name: "客戶", type: "link", options: { targetFormId: supFormId } },
+        ],
+      }),
+    )
+    const all = await records.listRecords(
+      tenantA,
+      supFormId,
+      { filters: [], sort: [], limit: 50 },
+      allScoped(supFormId),
+      ALICE,
+    )
+    return {
+      poFormId: po.id,
+      supFormId,
+      fieldId: linkFieldId(poFields),
+      ids: all.records.map((r) => r.id),
+    }
+  }
+
+  /* 建表回傳裡就有欄位,不必再查 metadata */
+  const linkFieldId = (fields: readonly { id: number; name: string }[]): number =>
+    fields.find((f) => f.name === "客戶")?.id ?? 0
+
+  it("🔴 指名解析(ids=)不得繞過記錄範圍 —— BOB 拿不到 ALICE 的客戶標題", async () => {
+    const { poFormId, supFormId, fieldId, ids } = await seedLink()
+    const perms = ownScoped(supFormId)
+    /* 對 PO 表也要有 view 權才進得來,但範圍限制掛在**目標表**上 */
+    const got = await linkOptions.listOptions(tenantA, poFormId, fieldId, "", 50, perms, BOB, ids)
+    expect(got.map((o) => o.label).sort()).toEqual(["B的客戶"])
+  })
+
+  it("未設範圍者照樣看得到全部(既有行為不變)", async () => {
+    const { poFormId, supFormId, fieldId, ids } = await seedLink()
+    const got = await linkOptions.listOptions(
+      tenantA,
+      poFormId,
+      fieldId,
+      "",
+      50,
+      allScoped(supFormId),
+      ALICE,
+      ids,
+    )
+    expect(got).toHaveLength(3)
   })
 })
