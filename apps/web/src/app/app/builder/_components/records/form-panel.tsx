@@ -6,7 +6,15 @@ import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { describeEngineError } from "@/lib/engine/client"
 import { isStubType } from "@/lib/engine/field-types"
 import { type FormulaFieldSpec, computeFormulaPreview } from "@/lib/engine/formula-preview"
-import { useCreateRecord, useForm, useForms, useLayout, useSaveWithLines } from "@/lib/engine/hooks"
+import { useMemberNames } from "@/lib/engine/authz"
+import {
+  useCreateRecord,
+  useForm,
+  useForms,
+  useLayout,
+  useLinkLabels,
+  useSaveWithLines,
+} from "@/lib/engine/hooks"
 import { useDisplayCtx } from "@/lib/engine/use-settings"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { toText } from "@weyver/formula"
@@ -66,6 +74,11 @@ export function RecordFormPanel({ formId }: { formId: number }) {
      載入狀態切換時 hook 呼叫順序改變而崩潰(M5 首版即誤置,由 build 的 lint 抓到)。 */
   const childFieldCount = childQuery.data?.fields.length ?? 0
   const grid = useGridKeyboard(lines.length, childFieldCount)
+  /* audit-E §2.1|唯讀顯示的那一格原本連 `members` 都沒帶 —— 成員欄印 actor id。
+     ⚠️ 這兩支也必須在 early return 之前 —— **上面那段註解就是在講這件事,
+     而我第一版仍把它們放到了 return 之後**,由 lint 抓到。規則寫在眼前也會犯。 */
+  const memberNames = useMemberNames(formQuery.data?.fields ?? [])
+  const linkLabels = useLinkLabels(formId, formQuery.data?.fields ?? [], [{ values }])
 
   if (formQuery.isLoading) return <div className="p-6 text-[13px] text-ink-3">載入中…</div>
   if (formQuery.data === undefined) {
@@ -199,7 +212,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
               if (readonly) {
                 return (
                   <span className="px-2.5 py-[5px] text-[13px] text-ink-2">
-                    {formatFieldValue(field, shown, undefined, fmtCtx)}
+                    {formatFieldValue(field, shown, memberNames, fmtCtx, linkLabels)}
                   </span>
                 )
               }

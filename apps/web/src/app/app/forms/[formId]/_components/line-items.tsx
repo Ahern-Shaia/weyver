@@ -1,7 +1,10 @@
 "use client"
 
+import { formatFieldValue } from "@/components/form/value"
 import { displayValue } from "@/lib/engine/display-value"
-import { useForm, useRecords } from "@/lib/engine/hooks"
+import { useMemberNames } from "@/lib/engine/authz"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
+import { useForm, useLinkLabels, useRecords } from "@/lib/engine/hooks"
 import type { FieldDto } from "@/lib/engine/schemas"
 import type { ReactNode } from "react"
 
@@ -28,6 +31,12 @@ export function LineItems({
   const { data: resp } = useRecords(childFormId)
 
   const cols = (childForm?.fields ?? []).filter((f) => f.type !== "autoNumber")
+  /* 🔴 audit-E §2.2|**這一格原本走 `displayValue`** —— 那支不認識 member / link /
+     附件,於是記錄頁的明細表格印的是 actor id、目標記錄 id 與 `[object Object]`。
+     改走 `formatFieldValue`(其餘唯讀面都走這支),差別只在多帶三張對照表。 */
+  const memberNames = useMemberNames(childForm?.fields ?? [])
+  const fmtCtx = useDisplayCtx()
+  const linkLabels = useLinkLabels(childFormId, childForm?.fields ?? [], resp?.records ?? [])
   const lines = (resp?.records ?? [])
     .filter((r) => r.parentId === parentRecordId)
     .sort((a, b) => (a.lineNo ?? 0) - (b.lineNo ?? 0))
@@ -76,7 +85,13 @@ export function LineItems({
                       : "px-3 py-1.5 text-ink"
                   }
                 >
-                  {displayValue(f, isNum(f) ? toNum(r.values[f.name]) : r.values[f.name])}
+                  {formatFieldValue(
+                    f,
+                    isNum(f) ? toNum(r.values[f.name]) : r.values[f.name],
+                    memberNames,
+                    fmtCtx,
+                    linkLabels,
+                  )}
                 </td>
               ))}
             </tr>

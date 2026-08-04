@@ -5,7 +5,9 @@ import { useParams, useSearchParams } from "next/navigation"
 import { type ReactNode, useMemo } from "react"
 import { formatFieldValue } from "@/components/form/value"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
-import { useForm, useLabels, useRecords } from "@/lib/engine/hooks"
+import { useMemberNames } from "@/lib/engine/authz"
+import { useForm, useLabels, useLinkLabels, useRecords } from "@/lib/engine/hooks"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import {
   type FieldDto,
   type LabelConfig,
@@ -41,6 +43,10 @@ export function LabelPrintClient(): ReactNode {
   const { data: form } = useForm(Number.isSafeInteger(formId) ? formId : null)
   const { data: labels } = useLabels(Number.isSafeInteger(formId) ? formId : null)
   const { data: resp, isPending } = useRecords(Number.isSafeInteger(formId) ? formId : null)
+  /* audit-E §2.1|列印同樣要吃成員名 / 租戶時區與欄位格式 / 連結標題 */
+  const memberNames = useMemberNames(form?.fields ?? [])
+  const fmtCtx = useDisplayCtx()
+  const linkLabels = useLinkLabels(formId, form?.fields ?? [], resp?.records ?? [])
 
   const label = (labels ?? []).find((l) => l.id === labelId) ?? null
   const config = label?.config ?? null
@@ -139,6 +145,9 @@ export function LabelPrintClient(): ReactNode {
                     item={item}
                     value={u.record.values[item.field]}
                     showName={config.showFieldNames}
+                    members={memberNames}
+                    ctx={fmtCtx}
+                    linkLabels={linkLabels}
                   />
                 )
               })}
@@ -155,11 +164,20 @@ function LabelLine({
   item,
   value,
   showName,
+  members,
+  ctx,
+  linkLabels,
 }: {
   readonly field: FieldDto
   readonly item: LabelConfig["items"][number]
   readonly value: unknown
   readonly showName: boolean
+  /* 🔴 audit-E §2.1|這一格原本只傳 `(field, value)` —— **連 `ctx` 都沒有**,
+     於是印出來的日期與金額不吃租戶時區、也不吃欄位的日期顯示格式;
+     成員欄與連結欄則印出裸 id。**列印是拿去貼在實體物件上的**,印錯的成本比畫面高。 */
+  readonly members: ReadonlyMap<number, string>
+  readonly ctx: { timeZone?: string | undefined; locale?: string | undefined }
+  readonly linkLabels: ReadonlyMap<string, string>
 }): ReactNode {
   const asQr = item.asQr === true || field.type === "barcode"
   const style = item.style ?? {}
@@ -171,7 +189,7 @@ function LabelLine({
       </span>
     )
   }
-  const display = formatFieldValue(field, value)
+  const display = formatFieldValue(field, value, members, ctx, linkLabels)
   return (
     <span
       className={style.wrap === true ? "break-words" : "truncate"}

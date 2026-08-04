@@ -345,6 +345,26 @@ export function ObjectPage({
 
         <section id="sec-基本資料" className="scroll-mt-2 border-t border-line pt-4 pb-5">
           <h4 className="mb-2.5 text-[12px] font-semibold text-ink-3">基本資料</h4>
+          {/* 🔴 audit-E §2.3|**靜態敘述第一批只補了 builder 的填單面板** ——
+              而這裡才是終端使用者的主要畫面,它自己排版、不經 `HeaderFields`。
+              「補了一半」比兩邊都沒有更難發現:設計者在填單頁看得到,
+              到記錄頁就沒了,而沒有人會去比對這兩個畫面。
+              ⚠️ 這裡是**流式版面**不是 12 欄格線,故依 row 排序後平鋪,不套座標。 */}
+          {(layoutResp?.layout?.statics ?? [])
+            .filter((el) => el.designOnly !== true)
+            .slice()
+            .sort((a, b) => a.row - b.row || a.col - b.col)
+            .map((el) => (
+              <p key={el.id} className="mb-2 text-[13px] text-ink-2">
+                {el.kind === "image" ? null : el.href !== undefined && el.href !== "" ? (
+                  <a href={el.href} className="text-primary hover:underline">
+                    {el.text ?? el.href}
+                  </a>
+                ) : (
+                  <span className="whitespace-pre-wrap">{el.text ?? ""}</span>
+                )}
+              </p>
+            ))}
           {/* 🔴 欄數隨寬度降級(Material adaptive layout):寬螢幕放得下就多欄,
               窄螢幕強行兩欄會讓每欄只剩一半寬、標籤與值互相擠壓。 */}
           <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

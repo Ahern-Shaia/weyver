@@ -1,6 +1,7 @@
 "use client"
 
-import { displayValue } from "@/lib/engine/display-value"
+import { formatFieldValue } from "@/components/form/value"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, RecordRow } from "@/lib/engine/schemas"
 import { StatusChip } from "@weyver/ui/status-chip"
@@ -35,6 +36,7 @@ export function RecordList({
 }): ReactNode {
   const statusField = fields.find((f) => f.type === "singleSelect")
   const moneyField = fields.find((f) => f.type === "money")
+  const fmtCtx = useDisplayCtx()
   const rovingId = records.find((r) => r.id === selectedId)?.id ?? records[0]?.id ?? null
 
   return (
@@ -117,7 +119,16 @@ export function RecordList({
                   ) : null}
                   {moneyField ? (
                     <span className="ml-auto font-mono text-[12px] tabular-nums text-ink-2">
-                      {displayValue(moneyField, r.values[moneyField.name])}
+                      {/* 只印金額 → member / link 的對照表在此**確實**用不到,
+                          但 `ctx` 用得到(金額依租戶語系格式化)。三者一律顯式寫出,
+                          讓「用不到」是一個看得見的決定,而不是忘了帶。 */}
+                      {formatFieldValue(
+                        moneyField,
+                        r.values[moneyField.name],
+                        undefined,
+                        fmtCtx,
+                        undefined,
+                      )}
                     </span>
                   ) : null}
                 </div>

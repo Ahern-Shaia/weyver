@@ -288,6 +288,8 @@ export function CollectionView({
             }
             onOpen={onRowOpen}
             memberNames={memberNames}
+            fmtCtx={fmtCtx}
+            linkLabels={linkLabels}
             query={query}
           />
         ) : (

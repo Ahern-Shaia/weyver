@@ -5,7 +5,13 @@ import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
 import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { describeEngineError } from "@/lib/engine/client"
-import { useCreateRecord, useForm, useInfiniteRecords, useUpdateRecord } from "@/lib/engine/hooks"
+import {
+  useCreateRecord,
+  useForm,
+  useInfiniteRecords,
+  useLinkLabels,
+  useUpdateRecord,
+} from "@/lib/engine/hooks"
 import type { RecordRow } from "@/lib/engine/schemas"
 import {
   type EditableGridCell,
@@ -34,6 +40,9 @@ export function RecordGridPanel({ formId }: { formId: number }) {
     () => recordsQuery.data?.pages.flatMap((p) => p.records) ?? [],
     [recordsQuery.data],
   )
+  /* audit-E §2.1|連結欄顯示標題而非 id。**這是第 4 個出口** ——
+     第一批只接了 5 個,而漏掉的三個各自是一個畫面上的裸數字。 */
+  const linkLabels = useLinkLabels(formId, formQuery.data?.fields ?? [], records)
 
   if (formQuery.data === undefined) {
     return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
@@ -56,7 +65,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
     }
     const value = record.values[field.name]
     const editable = isGridEditable(field)
-    const shown = formatFieldValue(field, value, memberNames, fmtCtx)
+    const shown = formatFieldValue(field, value, memberNames, fmtCtx, linkLabels)
     const display = shown === "—" ? "" : shown
     const kind = gridKind(field.type)
 
