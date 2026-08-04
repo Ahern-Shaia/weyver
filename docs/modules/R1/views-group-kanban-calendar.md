@@ -205,10 +205,10 @@ Figma / Linear = **fractional indexing**(字串任意精度)+ 週期 rebalance �
 
 ### 0.8 來源
 
-分組|[Baserow group rows](https://baserow.io/user-docs/group-rows-in-baserow) · [Baserow footer aggregation](https://baserow.io/user-docs/footer-aggregation) · [Baserow 原始碼 views/grid/utils.py](https://github.com/baserow/baserow/blob/develop/backend/src/baserow/contrib/database/api/views/grid/utils.py) · [NocoDB group-by 原始碼](https://github.com/nocodb/nocodb/blob/develop/packages/nocodb/src/db/BaseModelSqlv2/group-by.ts) · [Teable get-group-points](https://github.com/teableio/teable/blob/develop/packages/openapi/src/aggregation/get-group-points.ts) · [Airtable grouping](https://support.airtable.com/docs/grouping-records-in-airtable) · [Notion views/filters/sorts](https://www.notion.com/help/views-filters-and-sorts) · [Ragic doc/92 分群報表](https://www.ragic.com/intl/zh-TW/doc/92/分群報表) · [Ragic doc/9 報表](https://www.ragic.com/intl/zh-TW/doc/9/reports)
+分組|[Baserow group rows](https://baserow.io/user-docs/group-rows-in-baserow) · [Baserow footer aggregation](https://baserow.io/user-docs/footer-aggregation) · [Baserow 原始碼 views/grid/utils.py](https://github.com/baserow/baserow/blob/develop/backend/src/baserow/contrib/database/api/views/grid/utils.py) · ~~NocoDB group-by 原始碼~~(**2026-08-04 刪除**:NocoDB 自 2026-01-29 起為 Sustainable Use License,非 OSS,`AGENTS.md` §5-bis 列為只讀公開文件不看實作。檔頭已撤回該引用,此清單漏刪) · [Teable get-group-points](https://github.com/teableio/teable/blob/develop/packages/openapi/src/aggregation/get-group-points.ts) · [Airtable grouping](https://support.airtable.com/docs/grouping-records-in-airtable) · [Notion views/filters/sorts](https://www.notion.com/help/views-filters-and-sorts) · [Ragic doc/92 分群報表](https://www.ragic.com/intl/zh-TW/doc/92/分群報表) · [Ragic doc/9 報表](https://www.ragic.com/intl/zh-TW/doc/9/reports)
 分頁基準|[AG Grid SSRM grouping](https://www.ag-grid.com/javascript-data-grid/server-side-model-grouping/) · [AG Grid row pagination](https://www.ag-grid.com/javascript-data-grid/row-pagination/) · [AG Grid infinite model](https://ag-grid.com/javascript-grid/infinite-scrolling/)
 權限×聚合|[PG Row Security Policies](https://www.postgresql.org/docs/current/ddl-rowsecurity.html) · [pganalyze RLS / LEAKPROOF](https://pganalyze.com/blog/5mins-postgres-row-level-security-bypassrls-security-invoker-views-leakproof-functions) · [BigQuery aggregation threshold](https://cloud.google.com/bigquery/docs/analysis-rules) · [Salesforce sharing](https://help.salesforce.com/s/articleView?language=en_US&id=platform.managing_the_sharing_model.htm&type=5)
-Kanban|[Airtable kanban](https://support.airtable.com/docs/getting-started-with-airtable-kanban-views) · [Teable kanban](https://help.teable.ai/en/basic/view/kanban) · [Baserow kanban](https://baserow.io/user-docs/guide-to-kanban-view) · [NocoDB kanban](https://nocodb.com/docs/product-docs/views/view-types/kanban) · [nocodb#6184 分欄型別](https://github.com/nocodb/nocodb/issues/6184) · [nocodb#7537 Uncategorized bug](https://github.com/nocodb/nocodb/issues/7537) · [Atlassian:拖曳失敗排查](https://support.atlassian.com/jira/kb/unable-to-drag-and-drop-to-reorder-issues-on-a-kanban-board-in-jira/) · [Airtable sorting / Keep sorted](https://support.airtable.com/docs/sorting-records-in-airtable-views)
+Kanban|[Airtable kanban](https://support.airtable.com/docs/getting-started-with-airtable-kanban-views) · [Teable kanban](https://help.teable.ai/en/basic/view/kanban) · [Baserow kanban](https://baserow.io/user-docs/guide-to-kanban-view) · [NocoDB kanban](https://nocodb.com/docs/product-docs/views/view-types/kanban) · [nocodb#6184 分欄型別](https://github.com/nocodb/nocodb/issues/6184) · [nocodb#7537 Uncategorized bug](https://github.com/nocodb/nocodb/issues/7537)(⚠️ issue 為公開討論非原始碼,保留) · [Atlassian:拖曳失敗排查](https://support.atlassian.com/jira/kb/unable-to-drag-and-drop-to-reorder-issues-on-a-kanban-board-in-jira/) · [Airtable sorting / Keep sorted](https://support.airtable.com/docs/sorting-records-in-airtable-views)
 排序|[Trello pos 為 64-bit float](https://news.ycombinator.com/item?id=10957165) · [Figma realtime ordered sequences](https://www.figma.com/blog/realtime-editing-of-ordered-sequences/) · [Fractional indexing](https://observablehq.com/@dgreensp/implementing-fractional-indexing)
 Calendar|[RFC 5545](https://datatracker.ietf.org/doc/html/rfc5545) · [Google Calendar API events](https://developers.google.com/workspace/calendar/api/concepts/events-calendars) · [Airtable timezones and locales](https://support.airtable.com/docs/timezones-and-locales) · [Baserow timezones](https://baserow.io/user-docs/working-with-timezones) · [Airtable calendar](https://support.airtable.com/docs/getting-started-with-airtable-calendar-views) · [NocoDB calendar](https://nocodb.com/docs/product-docs/views/view-types/calendar) · [FullCalendar lazyFetching](https://fullcalendar.io/docs/lazyFetching)
 
@@ -404,6 +404,25 @@ canvas 網格插入非資料列需自行維護「行號 ↔ 記錄索引」映�
 **殘留**|(a) Kanban 卡片手動排序未做(OQ-VG-5=A 之裁定,P1 再上 `record_view_order` 側表);
 (b) 分組僅在列表模式,記錄模式不受影響;(c) 行事曆僅月檢視,週/日檢視列 P1;
 (d) 多選欄拆值分組列 P1。
+
+---
+
+## 12.3 🔴 鍵盤可用性(2026-08-04 回填,`_audit/giants-shoulders-audit-C.md` §3-4)
+
+**本檔全文原本零筆 a11y 記載,而程式早已修過兩輪。** 修了沒回填,
+下一個人讀這份文件會以為看板只能用滑鼠。
+
+| 項 | 現況 | 位置 |
+|---|---|---|
+| WCAG 2.1.1 Keyboard(Level A) | ✅ 已補 `KeyboardSensor` —— 原本只有 `PointerSensor`,**沒有滑鼠就完全不能移動卡片** | `kanban-view.tsx:208` |
+| 一次按鍵 = 一整欄 | ✅ 自訂 `stackCoordinateGetter`:以**最近的欄**為基準(不是「包含」——卡片落在欄與欄的間隙時「包含」會找不到),`toIdx` 越界則不繞回 | 同檔 `:59-95` |
+| e2e 固化 | ✅ `group-kanban-calendar.spec.ts:187` | — |
+
+🔴 **一個已知的靜默失效**(未修,未開 task):
+`stackCoordinateGetter` 依賴 `context.droppableRects`。若那些矩形尚未量到,
+←/→ **靜默無效** —— 畫面完全正常、卡片就是不動、沒有任何錯誤。
+2026-08-04 的 e2e 診斷曾觀察到一次(整套跑時 ArrowRight 五秒內無反應,
+而同批診斷顯示版面矩形正常),**真因未確認**。若再現,先 dump live region 逐步驟狀態。
 
 ---
 
