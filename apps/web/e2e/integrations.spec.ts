@@ -94,7 +94,10 @@ test("簽發 API 金鑰:明文只出現一次,清單只留前綴", async ({ page
   await expect(page.getByText(/只顯示這一次/)).toBeVisible({ timeout: 15_000 })
   const row = page.getByRole("listitem").filter({ hasText: name })
   await expect(row).toBeVisible()
-  await expect(row.getByText(/wvk_\w+…/)).toBeVisible()
+  /* 🔴 原本是 `getByText(/wvk_\w+…/)`,而金鑰前綴是**隨機的 base64url** ——
+     裡面可能有 `-`,而 `\w` 不含 `-`。約每三次紅一次,失敗訊息只說「找不到元素」。
+     **斷言不該依賴隨機資料的字元組成**:改成看那一格是不是以 `wvk_` 開頭。 */
+  await expect(row.locator("code")).toHaveText(/^wvk_.+…$/)
 
   await page.reload()
   const after = page.getByRole("listitem").filter({ hasText: name })

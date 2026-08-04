@@ -107,6 +107,8 @@ export function FieldSettingsPanel({
   readonly onClose: () => void
   readonly onOptionsSaved: () => void
 }): ReactNode {
+  /* 連動選項要知道同表有哪些單選欄可當父欄 */
+  const selfForm = useForm(formId)
   /* 🔴 選項編輯只在此(#105)。layout 那些是**草稿**、隨畫布一起存;
      選項會改寫**既有記錄的資料**,所以是自己送出、自己確認,兩者不混。 */
   const choices = (field.options as { choices?: { id: string; name: string }[] } | undefined)
@@ -269,6 +271,12 @@ export function FieldSettingsPanel({
           fieldId={field.id}
           fieldName={field.name}
           initial={choices}
+          siblings={selfForm.data?.fields ?? []}
+          initialParentField={
+            typeof (field.options as { parentField?: unknown }).parentField === "string"
+              ? (field.options as { parentField: string }).parentField
+              : null
+          }
           onSaved={onOptionsSaved}
         />
       ) : null}

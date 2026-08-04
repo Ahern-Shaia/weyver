@@ -6,6 +6,9 @@ import { Select } from "@weyver/ui/select"
 import { CHIP_TONES, type ChipTone, StatusChip } from "@weyver/ui/status-chip"
 import { AlertTriangle, Plus, RotateCcw, X } from "lucide-react"
 import { type ReactNode, useEffect, useState } from "react"
+
+import { CascadeEditor } from "@/app/app/builder/_components/designer/cascade-editor"
+import type { FieldDto } from "@/lib/engine/schemas"
 import { z } from "zod"
 import { describeEngineError, engineFetch } from "@/lib/engine/client"
 
@@ -31,6 +34,7 @@ const choiceSchema = z.object({
   name: z.string(),
   color: z.string().optional(),
   retired: z.boolean().optional(),
+  parents: z.array(z.string()).optional(),
 })
 type Choice = z.infer<typeof choiceSchema>
 
@@ -45,15 +49,21 @@ export function OptionsEditorPanel({
   fieldId,
   fieldName,
   initial,
+  siblings,
+  initialParentField,
   onSaved,
 }: {
   readonly formId: number
   readonly fieldId: number
   readonly fieldName: string
   readonly initial: readonly Choice[]
+  /* 連動:可當父欄的候選(同表其他欄)+ 目前的父欄 */
+  readonly siblings: readonly FieldDto[]
+  readonly initialParentField: string | null
   readonly onSaved: () => void
 }): ReactNode {
   const [rows, setRows] = useState<Choice[]>([...initial])
+  const [parentField, setParentField] = useState<string | null>(initialParentField)
 
   /* 🔴 存檔後要用後端回來的清單重新同步(瀏覽器實走時發現)。
      不同步的話,停用的選項在面板上會**消失** —— 使用者看不到也無法重新啟用,
@@ -103,7 +113,9 @@ export function OptionsEditorPanel({
             name: r.name.trim(),
             ...(r.color === undefined ? {} : { color: r.color }),
             ...(r.retired === true ? { retired: true } : {}),
+            ...(r.parents === undefined || r.parents.length === 0 ? {} : { parents: r.parents }),
           })),
+          parentField,
           deleteMode: mode,
           ...(target === undefined ? {} : { replaceWith: target }),
         },
@@ -143,6 +155,14 @@ export function OptionsEditorPanel({
   }
 
   const active = rows.filter((r) => r.retired !== true)
+
+  /* 父欄或連動關係一改就直接送出 —— 這一段沒有「儲存」按鈕的心智,
+     與顏色 / 停用同一個形狀(改了就是改了) */
+  const commit = (nextRows: readonly Choice[], nextParent: string | null): void => {
+    setRows([...nextRows])
+    setParentField(nextParent)
+    void submit(nextRows, "retire").catch(() => undefined)
+  }
 
   return (
     <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
@@ -305,6 +325,29 @@ export function OptionsEditorPanel({
           </div>
         </div>
       ) : null}
+      <CascadeEditor
+        fieldName={fieldName}
+        siblings={siblings}
+        parentField={parentField}
+        rows={active}
+        disabled={busy}
+        onParentFieldChange={(next) => commit(rows, next)}
+        onToggleParent={(choiceId, parentOptionId) =>
+          commit(
+            rows.map((r) =>
+              r.id === choiceId
+                ? {
+                    ...r,
+                    parents: (r.parents ?? []).includes(parentOptionId)
+                      ? (r.parents ?? []).filter((p) => p !== parentOptionId)
+                      : [...(r.parents ?? []), parentOptionId],
+                  }
+                : r,
+            ),
+            parentField,
+          )
+        }
+      />
     </div>
   )
 }

@@ -401,6 +401,9 @@ export function ObjectPage({
                       onChange={(v) => setField(f.name, v)}
                       /* R1·LNK M2:連結欄選取當下把來源欄值帶進兄弟欄位 */
                       onLoadMany={setFields}
+                      /* 連動選項:編輯中的草稿值(不是已存檔的 record.values)*/
+                      siblings={draft}
+                      fields={fields}
                     />
                   ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />

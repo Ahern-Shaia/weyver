@@ -11,7 +11,7 @@ import { Select } from "@weyver/ui/select"
 import { type ReactNode, useState } from "react"
 import { AttachmentInput } from "@/components/form/attachment-input"
 import { DateInput } from "@/components/form/date-input"
-import { choicesOf } from "@/components/form/value"
+import { cascadedChoicesOf, choicesOf } from "@/components/form/value"
 import { ImageInput } from "@/components/form/image-input"
 import { SignatureInput } from "@/components/form/signature-input"
 
@@ -38,6 +38,8 @@ export function FieldInput({
   value,
   onChange,
   onLoadMany,
+  siblings,
+  fields,
   placeholder,
 }: {
   field: FieldDto
@@ -50,6 +52,10 @@ export function FieldInput({
      那與 Ragic 的語意不同:它是**選取的當下**帶進來、存檔前還能改
      (`doc/14` 逐字提到「未儲存」狀態)。 */
   onLoadMany?: ((patch: Record<string, unknown>) => void) | undefined
+  /* 🔴 audit-D §2.4|連動選項需要**兄弟欄位的值**與**同表的欄位清單**
+     (父欄的選項在它自己的 options 裡)。未給時退回不連動。 */
+  siblings?: Record<string, unknown> | undefined
+  fields?: readonly FieldDto[] | undefined
   /* 🔴 2026-08-03:版面層 `placeholder`。設計器有一格就叫「提示文字(placeholder)」,
      但它自出貨以來只在設計畫布的預覽裡看得到,填單的輸入框從來沒收到過。
      只接文字類與數值類 —— 其餘型別的控制項沒有可放提示文字的位置,
@@ -59,6 +65,12 @@ export function FieldInput({
   if (isStubType(field.type)) {
     return <span className="text-[12px] text-ink-3">(此型別即將推出,暫不可填)</span>
   }
+
+  /* 連動選項:父欄有值才看得到對應的子選項。未接線的呼叫端拿到的是完整清單 */
+  const selectable =
+    siblings === undefined || fields === undefined
+      ? choicesOf(field)
+      : cascadedChoicesOf(field, fields, siblings)
 
   switch (field.type) {
     // F-5 M4 附件:上傳 → pending 檔,欄值存 [{key,name}],記錄存檔後由後端轉 bound
@@ -216,7 +228,7 @@ export function FieldInput({
           onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
         >
           <option value="">—</option>
-          {choicesOf(field).map((choice) => (
+          {selectable.map((choice) => (
             <option key={choice} value={choice}>
               {choice}
             </option>
@@ -228,7 +240,7 @@ export function FieldInput({
       const selected = Array.isArray(value) ? (value as string[]) : []
       return (
         <div className="flex flex-wrap gap-2">
-          {choicesOf(field).map((choice) => {
+          {selectable.map((choice) => {
             const on = selected.includes(choice)
             return (
               <label

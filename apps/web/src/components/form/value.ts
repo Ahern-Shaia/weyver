@@ -1,3 +1,4 @@
+import { allowedChoices, asSelectOptions } from "@weyver/rules"
 import { displayValue } from "@/lib/engine/display-value"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
@@ -11,6 +12,25 @@ import type { FieldDto } from "@/lib/engine/schemas"
 
    `retired`(軟停用)不出現在可選清單:新記錄不該再選到停用值;
    但既有值仍會被 formatFieldValue 正常顯示,不會憑空消失。 */
+/* 🔴 audit-D §2.4|連動選項:依父欄目前的值收窄可選集合。
+
+   判斷與伺服器共用 `@weyver/rules` —— 兩份各自實作會變成
+   「畫面上選得到、存下去被拒」。`siblings`/`fields` 未給時退回全部,
+   讓還沒接線的呼叫端維持既有行為(不是靜默錯,是明確的無連動)。 */
+export function cascadedChoicesOf(
+  field: FieldDto,
+  fields: readonly FieldDto[],
+  siblings: Record<string, unknown>,
+): string[] {
+  const child = asSelectOptions(field.options)
+  if (child.parentField === undefined) return choicesOf(field)
+  const parent = fields.find((f) => f.name === child.parentField)
+  if (parent === undefined) return choicesOf(field)
+  return allowedChoices(child, asSelectOptions(parent.options), siblings[parent.name]).map(
+    (c) => c.name,
+  )
+}
+
 export function choicesOf(field: FieldDto): string[] {
   const raw = (field.options as { choices?: unknown }).choices
   if (!Array.isArray(raw)) return []
