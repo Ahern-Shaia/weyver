@@ -32,6 +32,15 @@ export const convertFieldTypeBodySchema = z.object({
   choices: z.array(z.string().max(100)).max(200).optional(),
 })
 
+/* 🔴 R1·FMT M2|**顯示格式**。與選項端點分開,理由同上一段的精神:
+   選項會改寫既有記錄的資料,顯示格式**一個位元組都不動** ——
+   合在一起會讓呼叫端分不清自己在做哪件事,也會讓「改格式」背上「可能改資料」的風險感。
+
+   白名單與前端 `DATE_FORMATS` 同一組。民國年(P1)屆時加 key。 */
+export const updateDisplayBodySchema = z.object({
+  dateFormat: z.enum(["local", "iso", "slash", "dash", "dot"]),
+})
+
 /* 選項增刪改名(#105)。刻意與 /type 分開:改型別是 DDL,改選項會改寫**資料**,
    兩者的風險與流程不同,合在一個端點會讓呼叫端分不清自己在做哪件事。 */
 export const updateOptionsBodySchema = z.object({

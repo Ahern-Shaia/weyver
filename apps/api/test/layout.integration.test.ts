@@ -275,3 +275,40 @@ describe("🔴 版面樂觀鎖(#109)", () => {
     expect(res.statusCode).toBe(200)
   })
 })
+
+/* 🔴 R1·FMT M2|日期顯示格式。與選項端點分開:選項會改寫既有記錄的資料,這個不動任何資料。 */
+describe("R1·FMT 欄位顯示格式", () => {
+  const setDisplay = (fid: number, dateFormat: string, form = formId) =>
+    app.inject({
+      method: "PATCH",
+      url: `/api/forms/${form}/fields/${fid}/display`,
+      headers: A(),
+      payload: { dateFormat },
+    })
+
+  it("設定後寫進 options,且不動其他 options 鍵", async () => {
+    expect((await setDisplay(dateFieldId, "slash")).statusCode).toBe(200)
+    const got = await app.inject({ method: "GET", url: `/api/forms/${formId}`, headers: A() })
+    const f = (
+      got.json() as { fields: { id: number; options: Record<string, unknown> }[] }
+    ).fields.find((x) => x.id === dateFieldId)
+    expect(f?.options.dateFormat).toBe("slash")
+  })
+
+  it("白名單外的值拒絕 —— 格式是顯示層,但仍是使用者輸入", async () => {
+    expect((await setDisplay(dateFieldId, "yyyy年MM月dd日")).statusCode).toBe(400)
+  })
+
+  /* 🔴 綁了租戶不等於有權存取這一筆:帶著自己有 design 權的 formId,
+     配上**別張表的 fieldId**,不得寫得進去。 */
+  it("欄位不屬於這張表 → 404,不得跨表寫入", async () => {
+    const other = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: "另一張表", fields: [{ name: "到期日", type: "date" }] },
+    })
+    const otherField = (other.json() as { fields: { id: number }[] }).fields[0]?.id ?? 0
+    expect((await setDisplay(otherField, "iso", formId)).statusCode).toBe(404)
+  })
+})

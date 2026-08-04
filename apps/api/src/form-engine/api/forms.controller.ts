@@ -37,6 +37,7 @@ const IMPORT_MAX_BYTES = 20 * 1024 * 1024
 import { z } from "zod"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { LayoutService } from "../layout/layout.service.js"
+import { FieldNotFoundError } from "../errors.js"
 import { MetadataService } from "../metadata/metadata.service.js"
 import {
   type AddFieldSpec,
@@ -52,6 +53,7 @@ import {
   moveFieldBodySchema,
   toFieldDto,
   toFormDto,
+  updateDisplayBodySchema,
   updateOptionsBodySchema,
 } from "./api-schemas.js"
 
@@ -291,6 +293,31 @@ export class FormsController {
       body.deleteMode,
       body.replaceWith,
     )
+  }
+
+  /* 🔴 R1·FMT M2|欄位的顯示格式。**與選項端點分開**:選項會改寫既有記錄的資料,
+     這個一個位元組都不動 —— 混在一起會讓「改格式」背上「可能改資料」的風險感。
+
+     為什麼需要它:`local` 之下格式由租戶/使用者的 `locale` 決定,而 `en` 是
+     設定白名單裡的合法值 —— 選了它整個產品的日期就變美式。**設計者必須能指定。** */
+  @Patch(":formId/fields/:fieldId/display")
+  @RequiresFormAction("design")
+  async updateDisplay(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Body(new ZodValidationPipe(updateDisplayBodySchema))
+    body: z.infer<typeof updateDisplayBodySchema>,
+  ): Promise<void> {
+    const loaded = await this.metadata.getForm(tenant.tenantId, formId)
+    const field = loaded.fields.find((f) => f.id === fieldId)
+    /* 🔴 欄位必須屬於這張表。少了這一條,帶著自己有 design 權的 formId
+       就能改別張表的欄位 —— 綁了租戶不等於有權存取這一筆。 */
+    if (field === undefined) throw new FieldNotFoundError(fieldId)
+    await this.metadata.updateFieldOptions(tenant.tenantId, fieldId, {
+      ...(field.options as Record<string, unknown>),
+      dateFormat: body.dateFormat,
+    })
   }
 
   /* 🔴 解析在後端(OQ-IMP-6,推翻既有的前端解析裁定)。
