@@ -8,13 +8,15 @@ const uniq = () => Date.now().toString().slice(-6)
 
 /* 觸發一則真實的「待簽核」通知給 dev actor 1。
    送簽者用另一個 actor —— 系統刻意不通知觸發者自己。 */
+/* 回傳本輪的表單名 —— 斷言要錨在**這一輪**的通知上,不能只錨在「有某個通知」 */
 async function seedPendingApproval(
   request: import("@playwright/test").APIRequestContext,
-): Promise<void> {
+): Promise<string> {
+  const formName = `E2E通知_${uniq()}`
   const form = await request.post("/api/engine/forms", {
     headers: DEV,
     data: {
-      name: `E2E通知_${uniq()}`,
+      name: formName,
       fields: [{ name: "金額", type: "money", required: true }],
     },
   })
@@ -44,6 +46,7 @@ async function seedPendingApproval(
     { headers: { "x-dev-tenant": "1", "x-dev-actor": "59" } },
   )
   expect(submit.status()).toBe(200)
+  return formName
 }
 
 test("通知:鈴鐺未讀 → 面板顯示 → 全部標為已讀", async ({ page, request }) => {
@@ -67,7 +70,7 @@ test("通知:鈴鐺未讀 → 面板顯示 → 全部標為已讀", async ({ pag
 
 test("通知內容不含欄位值(欄位級權限使「過濾收件人」失效)", async ({ page, request }) => {
   await request.post("/api/engine/notifications/read-all", { headers: DEV })
-  await seedPendingApproval(request)
+  const formName = await seedPendingApproval(request)
 
   await page.goto("/app")
   /* ⚠️ 用前綴不用 exact:鈴鐺有未讀時可及名稱是「通知(N 則未讀)」(這是刻意的,
@@ -78,7 +81,10 @@ test("通知內容不含欄位值(欄位級權限使「過濾收件人」失效)
   /* 🔴 audit-D §3-5|**先斷言通知項真的在,再斷言它不含值**。
      少了前半,seed 失敗時面板是空的,而「不含 77000」對空面板恆真 ——
      那條規則會靜靜地不再測任何東西。同一支檔案上一條測試有做這件事,形成對照。 */
-  await expect(panel.getByRole("button", { name: /待簽核/ }).first()).toBeVisible({
+  /* 🔴 錨在**本輪**的表單名上。`read-all` 只標已讀不刪除,共用 dev DB 裡前幾輪的
+     通知仍在清單上 —— 錨在「有某個待簽核」的話,本輪派送壞掉時舊項目照樣滿足它,
+     於是「不含 77000」又回到近乎恆真。 */
+  await expect(panel.getByRole("button", { name: new RegExp(formName) })).toBeVisible({
     timeout: 15_000,
   })
   // 首欄是「金額」值 77000 —— 標題不得帶出

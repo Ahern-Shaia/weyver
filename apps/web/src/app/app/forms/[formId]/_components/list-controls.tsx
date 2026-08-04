@@ -2,6 +2,7 @@
 
 import { choicesOf, toSubmitValue } from "@/components/form/value"
 import { OPERATOR_LABEL, fieldOperators, operatorNeedsValue } from "@/lib/engine/field-filters"
+import { GROUP_AGGREGATE_FNS } from "@/lib/engine/schemas"
 import type { GROUP_DATE_UNITS } from "@/lib/engine/schemas"
 import type {
   FieldDto,
@@ -18,6 +19,16 @@ import { type ReactNode, useState } from "react"
 
 /* R1·UP-2 集合視圖控制列:儲存檢視三態選擇 + facet 篩選(型別感知 operator,單層 AND|OR)+ 多鍵排序。
    anyOf(多選集合)本期不入 UI(留 P1)→ 篩選值皆 scalar,經 toSubmitValue 轉正確型別。 */
+const AGG_LABEL: Record<(typeof GROUP_AGGREGATE_FNS)[number], string> = {
+  count: "筆數",
+  empty: "空白數",
+  filled: "已填數",
+  sum: "加總",
+  avg: "平均",
+  min: "最小",
+  max: "最大",
+}
+
 export function ListControls({
   form,
   views,
@@ -52,6 +63,9 @@ export function ListControls({
   const conditions = config.filter.conditions
   const sorts = config.sorts
   const groups = config.groupBy
+  const aggregates = config.aggregates
+  /* 小計只對數值型別有意義(count 例外,但它已是每組的預設顯示) */
+  const numericFields = form.fields.filter((f) => ["number", "money", "percent"].includes(f.type))
 
   const setFilter = (next: Partial<ViewConfig["filter"]>): void =>
     onConfigChange({ ...config, filter: { ...config.filter, ...next } })
@@ -274,10 +288,94 @@ export function ListControls({
             ) : (
               <span className="text-[12px] text-ink-3">最多 3 層</span>
             )}
+            {/* 🔴 audit-E §3-1|**小計原本只能打 API 設**。
+                本模組把 `aggregates` 加進了後端 schema、列表也已經在畫它,
+                但設定的入口一直沒有 —— 而下面那句「每組的筆數與小計由伺服器計算」
+                讀起來像是已經可以設了。 */}
             {groups.length > 0 ? (
-              <p className="mt-1 text-[12px] text-ink-3">
-                每組的筆數與小計由伺服器計算,只會統計你有權檢視的記錄。
-              </p>
+              <div className="mt-2 flex flex-col gap-1.5 border-t border-line-2 pt-2">
+                <span className="text-[12px] text-ink-3">小計</span>
+                {aggregates.map((a, i) => (
+                  <div key={`${a.field}-${String(i)}`} className="flex items-center gap-2">
+                    <Select
+                      className="h-7 w-32"
+                      aria-label={`小計 ${String(i + 1)} 欄位`}
+                      value={a.field}
+                      onChange={(e) =>
+                        onConfigChange({
+                          ...config,
+                          aggregates: aggregates.map((x, j) =>
+                            j === i ? { ...x, field: e.target.value } : x,
+                          ),
+                        })
+                      }
+                    >
+                      {numericFields.map((f) => (
+                        <option key={f.id} value={f.name}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      className="h-7 w-24"
+                      aria-label={`小計 ${String(i + 1)} 函數`}
+                      value={a.fn}
+                      onChange={(e) =>
+                        onConfigChange({
+                          ...config,
+                          aggregates: aggregates.map((x, j) =>
+                            j === i
+                              ? { ...x, fn: e.target.value as (typeof GROUP_AGGREGATE_FNS)[number] }
+                              : x,
+                          ),
+                        })
+                      }
+                    >
+                      {GROUP_AGGREGATE_FNS.map((fn) => (
+                        <option key={fn} value={fn}>
+                          {AGG_LABEL[fn]}
+                        </option>
+                      ))}
+                    </Select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onConfigChange({
+                          ...config,
+                          aggregates: aggregates.filter((_, j) => j !== i),
+                        })
+                      }
+                      className="text-ink-3 hover:text-er"
+                      aria-label={`移除小計 ${String(i + 1)}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {numericFields.length === 0 ? (
+                  /* 說出為什麼加不了,不要給一個按下去沒反應的按鈕 */
+                  <span className="text-[12px] text-ink-3">本表沒有數值 / 金額欄可小計。</span>
+                ) : aggregates.length < 10 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const first = numericFields[0]
+                      if (first !== undefined)
+                        onConfigChange({
+                          ...config,
+                          aggregates: [...aggregates, { field: first.name, fn: "sum" }],
+                        })
+                    }}
+                    className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
+                  >
+                    <Plus size={12} strokeWidth={2} />
+                    加入小計
+                  </button>
+                ) : null}
+                <p className="text-[12px] text-ink-3">
+                  每組的筆數與小計由伺服器計算,只會統計你有權檢視的記錄。
+                </p>
+              </div>
             ) : null}
           </div>
         </div>

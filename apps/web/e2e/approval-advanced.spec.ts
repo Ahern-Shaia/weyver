@@ -98,10 +98,14 @@ test("🔴 會簽:分母不含送簽者,且未達門檻時留在原關", async (
   })
   const roleId = ((await roleRes.json()) as { id: number }).id
   for (const actorId of [Number(SUBMITTER), 91, 92]) {
-    await request.post(`/api/engine/authz/roles/${String(roleId)}/members`, {
+    const added = await request.post(`/api/engine/authz/roles/${String(roleId)}/members`, {
       headers: DEV,
       data: { actorId },
     })
+    /* 🔴 `role_members.actor_id` 對 `users.id` 有 FK —— dev DB 若沒有這個 user,
+       插入會失敗。不斷言的話,分母會變成 1,而這條測試紅在 `1 !== 2`,
+       訊息完全指不到「成員根本沒加進去」這個真正的原因。 */
+    expect(added.status(), `actor ${String(actorId)} 未能加入角色`).toBeLessThan(300)
   }
 
   const { formId, recordId } = await seed(request, [

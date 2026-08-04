@@ -178,5 +178,8 @@ test("🔴 顯示面:記錄頁與列表頁顯示標題,不得是數字 id", asyn
   /* 記錄頁 */
   await page.goto(`/app/forms/${String(poId)}`)
   await page.getByRole("tab", { name: "記錄" }).click()
-  await expect(page.getByText("鑫豐農產")).toBeVisible({ timeout: 30_000 })
+  /* 收斂到記錄詳情區塊 —— 同一條測試上一段已經這樣做了,這一行原本沒有 */
+  await expect(page.getByRole("main").getByText("鑫豐農產").first()).toBeVisible({
+    timeout: 30_000,
+  })
 })

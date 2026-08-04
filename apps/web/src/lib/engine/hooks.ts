@@ -1127,14 +1127,24 @@ export function useLinkLabels(
 ): ReadonlyMap<string, string> {
   const linkFields = fields.filter((f) => f.type === "link")
   /* 逐欄收集本頁出現過的 id。`useQueries` 讓欄數變動時 hook 數不變 */
-  const wanted = linkFields.map((f) => {
+  /* 🔴 audit-E §3-2|**後端一次最多解析 50 個 id**(controller 的 `.slice(0,50)`)。
+     原本整頁 id 一次送出 → 無限捲動載到第 51 筆之後,多出來的**靜默退回顯示數字 id**,
+     而那正是這整件事要修的症狀。改成前端分批,每批 50。 */
+  const CHUNK = 50
+  const wanted = linkFields.flatMap((f) => {
     const ids = new Set<number>()
     for (const r of records) {
       const v = r.values[f.name]
       const n = typeof v === "number" ? v : Number(v)
       if (Number.isInteger(n) && n > 0) ids.add(n)
     }
-    return { fieldId: f.id, ids: [...ids].sort((a, b) => a - b) }
+    const sorted = [...ids].sort((a, b) => a - b)
+    const batches: { fieldId: number; ids: number[] }[] = []
+    for (let i = 0; i < sorted.length; i += CHUNK) {
+      batches.push({ fieldId: f.id, ids: sorted.slice(i, i + CHUNK) })
+    }
+    /* 沒有值時仍留一個空批 —— `useQueries` 的長度必須隨欄位數穩定變化 */
+    return batches.length > 0 ? batches : [{ fieldId: f.id, ids: [] }]
   })
 
   const results = useQueries({
