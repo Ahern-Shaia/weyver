@@ -69,6 +69,9 @@ export interface AuthAuditRow {
    比 GitHub 90 天 / Entra 30 天都長 —— 客戶多為台灣企業,取法定下限。 */
 export const AUTH_AUDIT_RETENTION_DAYS = 183
 
+/* 與 `trash.purge`(909_002)不同號,兩者可並行 */
+const AUDIT_PURGE_LOCK_KEY = 909_003
+
 @Injectable()
 export class SecurityService {
   private readonly logger = new Logger(SecurityService.name)
@@ -196,8 +199,20 @@ export class SecurityService {
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { name: "security.purgeAudit" })
   async scheduledPurge(): Promise<void> {
     try {
-      const n = await this.purgeExpiredAudit()
-      if (n > 0) this.logger.log(`auth audit purge: 刪除 ${String(n)} 筆逾期紀錄`)
+      /* 🔴 audit-E §3-4|**advisory lock 擋多實例重複執行**。
+         同型的 `trash-purge` 有這一道,這裡第一版沒有 —— 而多開一個 instance
+         就會有兩份同時刪。刪除本身冪等,代價是白做工與鎖競爭,但更重要的是:
+         **同一個維運動作在不同檔案裡有兩套做法,那本身就是缺陷**。 */
+      const gate = await this.db.execute<{ locked: boolean }>(
+        sql`SELECT pg_try_advisory_lock(${AUDIT_PURGE_LOCK_KEY}) AS locked`,
+      )
+      if (gate.rows[0]?.locked !== true) return
+      try {
+        const n = await this.purgeExpiredAudit()
+        if (n > 0) this.logger.log(`auth audit purge: 刪除 ${String(n)} 筆逾期紀錄`)
+      } finally {
+        await this.db.execute(sql`SELECT pg_advisory_unlock(${AUDIT_PURGE_LOCK_KEY})`)
+      }
     } catch (error) {
       this.logger.error(
         `auth audit purge failed: ${error instanceof Error ? error.message : String(error)}`,

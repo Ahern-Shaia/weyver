@@ -385,7 +385,16 @@ export class FormsController {
             .split(",")
             .map((x) => Number(x.trim()))
             .filter((n) => Number.isInteger(n) && n > 0)
-            .slice(0, 50)
+    /* 🔴 audit-E §3-2|**不靜默截斷**。原本是 `.slice(0, 50)`,於是呼叫端要了 80 個
+       只拿回 50 個,而少掉的那 30 個在畫面上是「顯示數字 id」——
+       沒有錯誤、沒有訊號,只有「有些筆好好的、有些筆怪怪的」。
+       上限仍要有(這是一支會掃表的端點),但**超過就明說**,讓呼叫端自己分批。 */
+    if (wanted !== undefined && wanted.length > 50) {
+      throw new BadRequestException({
+        code: "TOO_MANY_IDS",
+        message: "一次最多解析 50 筆,請分批查詢",
+      })
+    }
     return {
       options: await this.linkOptionsService.listOptions(
         tenant.tenantId,
