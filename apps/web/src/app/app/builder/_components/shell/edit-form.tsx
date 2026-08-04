@@ -195,7 +195,15 @@ export function EditFormPanel({
 
   return (
     <div className="flex h-full min-h-0">
-      <FieldPalette onPick={startAdd} disabled={form.provisionState !== "ready"} advanced />
+      <FieldPalette
+        onPick={startAdd}
+        /* task #154|子表入口與加欄位同層。子表本身不能再有子表,故只在主表給 */
+        onAddSubtable={
+          form.parentFormId === null ? () => onAddSubtable(form.id, form.name) : undefined
+        }
+        disabled={form.provisionState !== "ready"}
+        advanced
+      />
 
       <div className="flex min-w-0 flex-1 flex-col bg-surface">
         <div className="flex shrink-0 items-center gap-2.5 border-b border-line bg-card px-4 py-2.5">
@@ -206,9 +214,6 @@ export function EditFormPanel({
           <span className="ml-auto font-mono text-[12px] text-ink-3">
             v{form.version} · {fields.length} 欄{form.parentFormId !== null ? " · 子表" : ""}
           </span>
-          {form.parentFormId === null ? (
-            <Button onClick={() => onAddSubtable(form.id, form.name)}>＋ 加子表</Button>
-          ) : null}
         </div>
 
         {error !== null ? (

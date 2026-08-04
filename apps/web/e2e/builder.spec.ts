@@ -76,7 +76,32 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
 
   // 5) 子表:回設計 → 加子表 → 於子表設計器加欄
   await page.getByRole("tab", { name: "設計" }).click()
-  await page.getByRole("button", { name: "＋ 加子表" }).click()
+  /* 🔴 task #154|子表入口在**欄位面板裡**,與「加欄位」同一層。
+
+     原本它是標題列右上角的一顆按鈕,與「v1 · 2 欄」這種中繼資料並排 ——
+     而「兩層以上的資料結構」是本產品對 Google Sheets 的核心差異點,
+     **核心賣點被擺在 metadata 的版位**。判準:加欄位與加子表都是
+     「往這張表加東西」,所以它們該在同一個地方、長同一個樣子。 */
+  const subtable = page.getByRole("button", { name: "子表(明細)" })
+  /* 🔴 釘住**位置**而不只是「按得到」——「規則寫了沒檢查就會漏」在這個 repo 已發生五次。
+     它必須與欄位型別在同一個面板裡(同一個容器 = 同一層),
+     而**不在**表單標題那一列(那是中繼資料的版位)。 */
+  const palette = page
+    .locator("div")
+    .filter({ hasText: /^點擊加入/ })
+    .first()
+  await expect(palette.getByRole("button", { name: "單行文字" })).toBeVisible()
+  await expect(palette.getByRole("button", { name: "子表(明細)" })).toBeVisible()
+  /* ⚠️ 這一條寫成 `not.toContainText("子表(明細)")` 是**空的** ——
+     舊版那顆按鈕叫「＋ 加子表」,字面不同,規則本來就不會紅。
+     要擋的是「標題列裡有任何跟子表有關的按鈕」,故比對名稱樣式。 */
+  await expect(
+    page
+      .getByRole("heading", { name: formName })
+      .locator("xpath=..")
+      .getByRole("button", { name: /子表/ }),
+  ).toHaveCount(0)
+  await subtable.click()
   await page.getByRole("textbox", { name: "表單名稱" }).fill(childName)
   await page.getByRole("button", { name: "建立並開始設計" }).click()
   await expect(page.getByRole("heading", { name: childName })).toBeVisible()
