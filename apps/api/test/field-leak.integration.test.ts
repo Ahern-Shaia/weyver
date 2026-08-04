@@ -239,7 +239,7 @@ describe("旁路:公式欄引用隱藏欄", () => {
       undefined,
     )
     const values = res.records.map((r) => r.values)
-    expect(values.some((v) => v["年薪"] !== undefined && v["年薪"] !== null)).toBe(true)
+    expect(values.some((v) => v.年薪 !== undefined && v.年薪 !== null)).toBe(true)
   })
 
   it("🔴 隱藏月薪的人,**看不到年薪** —— 否則除以 12 就還原了", async () => {
@@ -287,7 +287,7 @@ describe("旁路:公式欄引用隱藏欄", () => {
       { filters: [], sort: [], limit: 50 },
       undefined,
     )
-    expect(res.records.some((r) => r.values["年薪兩倍"] !== undefined)).toBe(true)
+    expect(res.records.some((r) => r.values.年薪兩倍 !== undefined)).toBe(true)
   })
 })
 
@@ -448,15 +448,15 @@ describe("Load 帶入", () => {
 
   it("admin 選了記錄 → 對映的欄值都帶進來(以**本地欄名**為鍵,前端可直接 spread)", async () => {
     const values = await load(1)
-    expect(values["帶入姓名"]).toBe("甲")
-    expect(values["帶入月薪"]).toBe("30000.0000")
+    expect(values.帶入姓名).toBe("甲")
+    expect(values.帶入月薪).toBe("30000.0000")
   })
 
   /* 🔴 這一條是本模組的核心防線:帶入不得繞過欄位級遮罩。
      `月薪` 對此人隱藏 → `getRecord` 根本不會回那個鍵 → 也就帶不進來。 */
   it("🔴 來源欄對此人隱藏 → 該欄不帶入(其餘照帶)", async () => {
     const values = await load(1, limitedPerms())
-    expect(values["帶入姓名"]).toBe("甲")
+    expect(values.帶入姓名).toBe("甲")
     expect(values).not.toHaveProperty("帶入月薪")
   })
 
