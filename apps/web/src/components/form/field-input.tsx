@@ -1,7 +1,7 @@
 "use client"
 
 import { usePreviewActors } from "@/lib/engine/authz"
-import { useLinkOptions } from "@/lib/engine/hooks"
+import { fetchLinkRecordValues, useLinkOptions } from "@/lib/engine/hooks"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
@@ -37,6 +37,7 @@ export function FieldInput({
   formId,
   value,
   onChange,
+  onLoadMany,
   placeholder,
 }: {
   field: FieldDto
@@ -44,6 +45,11 @@ export function FieldInput({
   formId: number
   value: unknown
   onChange: (value: unknown) => void
+  /* 🔴 R1·LNK M2|Load 帶入需要寫**兄弟欄位**,而 `onChange` 只改自己這一欄。
+     缺這個回呼的話,帶入就只能做成「後端在存檔時補值」——
+     那與 Ragic 的語意不同:它是**選取的當下**帶進來、存檔前還能改
+     (`doc/14` 逐字提到「未儲存」狀態)。 */
+  onLoadMany?: ((patch: Record<string, unknown>) => void) | undefined
   /* 🔴 2026-08-03:版面層 `placeholder`。設計器有一格就叫「提示文字(placeholder)」,
      但它自出貨以來只在設計畫布的預覽裡看得到,填單的輸入框從來沒收到過。
      只接文字類與數值類 —— 其餘型別的控制項沒有可放提示文字的位置,
@@ -170,7 +176,15 @@ export function FieldInput({
        連結欄落到預設分支,使用者要自己打目標記錄的 id。
        連結是 Ragic 兩大招牌之一(doc/14「連結與載入」),遷移客戶天天在用。 */
     case "link":
-      return <LinkInput value={value} onChange={onChange} field={field} formId={formId} />
+      return (
+        <LinkInput
+          value={value}
+          onChange={onChange}
+          onLoadMany={onLoadMany}
+          field={field}
+          formId={formId}
+        />
+      )
 
     /* 🔴 member 欄選人器(#96 M2)。**這是 E-1 指派機制在 UI 上的唯一入口** ——
        沒有它,「指派負責業務」只能靠 API 寫,而指派正是 Ragic 賴以達成
@@ -305,11 +319,13 @@ function MemberInput({
 function LinkInput({
   value,
   onChange,
+  onLoadMany,
   field,
   formId,
 }: {
   readonly value: unknown
   readonly onChange: (v: unknown) => void
+  readonly onLoadMany?: ((patch: Record<string, unknown>) => void) | undefined
   readonly field: FieldDto
   readonly formId: number
 }): ReactNode {
@@ -333,7 +349,20 @@ function LinkInput({
       <Select
         value={current}
         aria-label={`${field.name} 選擇記錄`}
-        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+        onChange={(e) => {
+          const next = e.target.value === "" ? null : Number(e.target.value)
+          onChange(next)
+          /* 🔴 Load 帶入發生在**選取的當下**(Ragic doc/14),不是存檔時。
+             ⚠️ 清除選擇時**不清空已帶入的值** —— Ragic 對子表格的規則逐字是
+             「不會自動清除或覆蓋原有資料」;把使用者可能已經改過的欄位清掉,
+             是靜默的資料遺失。 */
+          if (next === null || onLoadMany === undefined) return
+          void fetchLinkRecordValues(formId, field.id, next)
+            .then((r) => onLoadMany(r.values))
+            /* 帶入失敗不擋選取 —— 使用者選的那筆已經存進去了,
+               帶入只是省打字。靜默失敗優於把整個選取回滾。 */
+            .catch(() => undefined)
+        }}
       >
         <option value="">未選擇</option>
         {missing ? <option value={current}>{`#${current}`}</option> : null}

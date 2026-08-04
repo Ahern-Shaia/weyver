@@ -94,3 +94,63 @@ test("🔴 選了要存得進去 —— 送出邊界不得靜默丟掉", async (
   expect(row?.values["供應商"]).not.toBeNull()
   expect(String(row?.values["供應商"] ?? "")).toMatch(/^\d+$/)
 })
+
+/* 🔴 R1·LNK M2|Load 帶入。
+
+   Ragic `doc/14` 逐字:「選擇顧客姓名之後,**會自動帶出**該顧客對應的其他資訊,
+   像是:聯絡電話、地址及 E-mail 等,這些對應帶入的欄位就是**載入欄位**。」
+
+   ⚠️ 這一條釘的是**跨欄位的副作用** —— 選 A 欄會改 B、C 欄。
+   單元測試看不到(那是 form state 的整體行為),只有實走看得到。 */
+test("🔴 選記錄 → 對映的欄位自動帶入(Load)", async ({ page, request }) => {
+  const stamp = String(Date.now()).slice(-6)
+  const sup = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E帶入供應商_${stamp}`,
+      fields: [
+        { name: "供應商名稱", type: "text" },
+        { name: "聯絡電話", type: "text" },
+      ],
+    },
+  })
+  const supBody = (await sup.json()) as { id: number; fields: { id: number; name: string }[] }
+  await request.post(`/api/engine/forms/${String(supBody.id)}/records`, {
+    headers: DEV,
+    data: { values: { 供應商名稱: "鑫豐農產", 聯絡電話: "02-1234-5678" } },
+  })
+
+  const po = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E帶入採購單_${stamp}`,
+      fields: [
+        { name: "供應商", type: "link", options: { targetFormId: supBody.id } },
+        { name: "電話", type: "text" },
+      ],
+    },
+  })
+  const poBody = (await po.json()) as { id: number; fields: { id: number; name: string }[] }
+  const linkId = poBody.fields.find((f) => f.name === "供應商")?.id ?? 0
+  const phoneLocal = poBody.fields.find((f) => f.name === "電話")?.id ?? 0
+  const phoneSrc = supBody.fields.find((f) => f.name === "聯絡電話")?.id ?? 0
+
+  const mapped = await request.patch(
+    `/api/engine/forms/${String(poBody.id)}/fields/${String(linkId)}/load-map`,
+    { headers: DEV, data: { loadMap: [{ fromFieldId: phoneSrc, toFieldId: phoneLocal }] } },
+  )
+  expect(mapped.status()).toBeLessThan(300)
+
+  await page.goto(`/app/builder?form=${String(poBody.id)}&mode=records`)
+  await page.getByRole("tab", { name: "填單" }).click()
+  const supplier = page.getByLabel("供應商 選擇記錄")
+  await expect(supplier).toBeVisible({ timeout: 30_000 })
+
+  await supplier.selectOption({ label: "鑫豐農產" })
+
+  /* 🔴 選了之後**電話欄自己填上了** —— 那正是 Load。
+     ⚠️ 錨點取「填寫」區塊內的最後一個 textbox(電話是最後一欄),
+     不用整頁 `.first()`(會打到左欄搜尋框)。 */
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  await expect(fill.getByRole("textbox").last()).toHaveValue("02-1234-5678", { timeout: 15_000 })
+})

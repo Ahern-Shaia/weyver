@@ -1108,6 +1108,31 @@ export function useLinkOptions(formId: number, fieldId: number, q: string, enabl
   })
 }
 
+/* 🔴 R1·LNK M2|Load 帶入。**對映在後端解讀** —— 前端拿到 `本地欄名 → 值` 可直接 spread。
+   讓前端自己查 fromFieldId → 欄名的話,那份查表邏輯遲早與後端漂移。 */
+export function fetchLinkRecordValues(
+  formId: number,
+  fieldId: number,
+  recordId: number,
+): Promise<{ values: Record<string, unknown> }> {
+  return engineFetch(
+    `/forms/${String(formId)}/fields/${String(fieldId)}/link-record/${String(recordId)}`,
+    z.object({ values: z.record(z.string(), z.unknown()) }),
+  )
+}
+
+export function useSaveLoadMap(formId: number, fieldId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (loadMap: readonly { fromFieldId: number; toFieldId: number }[]) =>
+      engineFetch(`/forms/${String(formId)}/fields/${String(fieldId)}/load-map`, z.unknown(), {
+        method: "PATCH",
+        body: { loadMap },
+      }),
+    onSuccess: () => invalidate([formKeys.detail(formId)]),
+  })
+}
+
 export function usePublicSafeTypes() {
   return useQuery({
     queryKey: ["public-forms", "safe-types"],

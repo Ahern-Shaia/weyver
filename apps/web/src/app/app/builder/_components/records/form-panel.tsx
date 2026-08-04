@@ -209,6 +209,8 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                   formId={formId}
                   value={shown}
                   onChange={(v) => set(field.name, v)}
+                  /* R1·LNK M2:連結欄選取當下把來源欄值帶進兄弟欄位 */
+                  onLoadMany={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
                   placeholder={placeholder}
                 />
               )

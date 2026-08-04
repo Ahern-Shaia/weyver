@@ -86,6 +86,7 @@ export function ObjectPage({
     msg,
     setMsg,
     setField,
+    setFields,
     startEdit,
     cancelEdit,
     saveEdit,
@@ -342,6 +343,8 @@ export function ObjectPage({
                       formId={formId}
                       value={draft[f.name]}
                       onChange={(v) => setField(f.name, v)}
+                      /* R1·LNK M2:連結欄選取當下把來源欄值帶進兄弟欄位 */
+                      onLoadMany={setFields}
                     />
                   ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />

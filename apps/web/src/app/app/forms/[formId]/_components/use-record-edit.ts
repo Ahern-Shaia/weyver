@@ -31,6 +31,8 @@ export interface RecordEdit {
   readonly msg: string | null
   readonly setMsg: (m: string | null) => void
   readonly setField: (name: string, value: unknown) => void
+  /* R1·LNK M2:連結欄的 Load 帶入一次寫多欄(逐欄呼叫 setField 會連續觸發多次重繪) */
+  readonly setFields: (patch: Record<string, unknown>) => void
   readonly startEdit: () => void
   readonly cancelEdit: () => void
   readonly saveEdit: () => void
@@ -121,6 +123,7 @@ export function useRecordEdit(
     msg,
     setMsg,
     setField: (name, value) => setDraft((d) => ({ ...d, [name]: value })),
+    setFields: (patch) => setDraft((d) => ({ ...d, ...patch })),
     startEdit,
     cancelEdit,
     saveEdit,

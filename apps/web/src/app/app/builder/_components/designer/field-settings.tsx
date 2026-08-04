@@ -5,6 +5,7 @@ import { OptionsEditorPanel } from "@/app/app/builder/_components/designer/optio
 import { RelookupPanel } from "@/app/app/builder/_components/designer/relookup"
 import { describeEngineError, engineFetch } from "@/lib/engine/client"
 import { DATE_FORMAT_LABEL, DATE_FORMATS } from "@/lib/engine/display-value"
+import { useForm, useSaveLoadMap } from "@/lib/engine/hooks"
 import {
   DEFAULT_VARIABLES,
   type DefaultValue,
@@ -12,6 +13,7 @@ import {
   type FieldLayout,
   type StaticElement,
 } from "@/lib/engine/schemas"
+import { Button } from "@weyver/ui/button"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, X } from "lucide-react"
@@ -249,6 +251,10 @@ export function FieldSettingsPanel({
         <RelookupPanel formId={formId} fieldId={field.id} onDone={onOptionsSaved} />
       ) : null}
 
+      {field.type === "link" ? (
+        <LoadMapPanel formId={formId} field={field} onSaved={onOptionsSaved} />
+      ) : null}
+
       {field.type === "date" || field.type === "dateTime" ? (
         <DateFormatPanel formId={formId} field={field} onSaved={onOptionsSaved} />
       ) : null}
@@ -422,6 +428,116 @@ function DateFormatPanel({
         {value === "local"
           ? "依每位使用者的語系設定顯示,不同語系的人看到的寫法會不同。"
           : "所有人看到的寫法一致,不受各自的語系設定影響。"}
+      </p>
+      {error === null ? null : <p className="mt-1 text-er">{error}</p>}
+    </div>
+  )
+}
+
+/* 🔴 R1·LNK M2|Load 帶入的對映設定。**這是設計者指定帶入哪些欄的唯一入口** ——
+   在此之前只能打 API,而第一約束逐字「有 API 可以做不算解決」。
+
+   Ragic 的形態是「連連看」(`doc/14`:右邊選來源表單,左邊拉對應)。
+   我方用**成對的下拉**:同樣是「來源欄 → 本地欄」,但不需要拖曳,
+   鍵盤可達、窄螢幕也能用。⚠️ 這是**刻意的差異**不是簡化 ——
+   連連看的價值在一次看到全貌,而我們的欄位清單本來就在同一畫面上。
+
+   對映以 **field id** 存(穩定於改名,同 `formula_def.depends_on`)。 */
+function LoadMapPanel({
+  formId,
+  field,
+  onSaved,
+}: {
+  readonly formId: number
+  readonly field: FieldDto
+  readonly onSaved: () => void
+}): ReactNode {
+  const targetFormId = (field.options as { targetFormId?: number }).targetFormId ?? null
+  const stored = (field.options as { loadMap?: { fromFieldId: number; toFieldId: number }[] })
+    .loadMap
+  const [rows, setRows] = useState<{ fromFieldId: number; toFieldId: number }[]>(stored ?? [])
+  const [error, setError] = useState<string | null>(null)
+  const target = useForm(targetFormId)
+  const self = useForm(formId)
+  const save = useSaveLoadMap(formId, field.id)
+
+  if (targetFormId === null) return null
+  const sourceFields = target.data?.fields ?? []
+  /* 可當帶入目標的:排除連結欄自己(帶進來會蓋掉剛選的那筆)與計算欄(值由引擎產生) */
+  const localFields = (self.data?.fields ?? []).filter(
+    (f) => f.id !== field.id && f.type !== "formula" && f.type !== "autoNumber",
+  )
+
+  return (
+    <div className="border-t border-line p-3 text-[12px]">
+      <div className="mb-1 text-ink-3">選這筆記錄時要帶入哪些欄</div>
+      {rows.map((row, i) => (
+        <div
+          key={`${String(row.fromFieldId)}-${String(i)}`}
+          className="mb-1 flex items-center gap-1"
+        >
+          <Select
+            className="h-7 min-w-0 flex-1"
+            aria-label={`帶入來源欄 ${String(i + 1)}`}
+            value={String(row.fromFieldId)}
+            onChange={(e) =>
+              setRows((prev) =>
+                prev.map((r, j) => (j === i ? { ...r, fromFieldId: Number(e.target.value) } : r)),
+              )
+            }
+          >
+            <option value="0">選來源欄</option>
+            {sourceFields.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </Select>
+          <span className="shrink-0 text-ink-3">→</span>
+          <Select
+            className="h-7 min-w-0 flex-1"
+            aria-label={`帶入目標欄 ${String(i + 1)}`}
+            value={String(row.toFieldId)}
+            onChange={(e) =>
+              setRows((prev) =>
+                prev.map((r, j) => (j === i ? { ...r, toFieldId: Number(e.target.value) } : r)),
+              )
+            }
+          >
+            <option value="0">選本表欄位</option>
+            {localFields.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </Select>
+          <Button onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}>移除</Button>
+        </div>
+      ))}
+      <div className="mt-1 flex items-center gap-1">
+        <Button onClick={() => setRows((prev) => [...prev, { fromFieldId: 0, toFieldId: 0 }])}>
+          ＋ 一組
+        </Button>
+        <Button
+          variant="primary"
+          disabled={save.isPending}
+          onClick={() => {
+            setError(null)
+            /* 未選完的整組不送 —— 送 0 會被後端擋,但先在這裡濾掉比較不吵 */
+            const clean = rows.filter((r) => r.fromFieldId > 0 && r.toFieldId > 0)
+            save.mutate(clean, {
+              onSuccess: () => onSaved(),
+              onError: (e) => setError(describeEngineError(e)),
+            })
+          }}
+        >
+          儲存對映
+        </Button>
+      </div>
+      {/* 快照語意要講出來 —— 使用者會預期「來源改了這裡也會變」,而 Ragic 的行為相反,
+          且它的理由很好:訂單上要顯示的是下單當時的地址,不是客戶後來搬家的新地址。 */}
+      <p className="mt-1 text-ink-3">
+        帶入的是**選取當下**的值,存檔後不會跟著來源異動。要即時反映請改用帶入欄(lookup)。
       </p>
       {error === null ? null : <p className="mt-1 text-er">{error}</p>}
     </div>
