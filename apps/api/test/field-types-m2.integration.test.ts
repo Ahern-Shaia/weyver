@@ -161,6 +161,24 @@ describe("R1·UP-4 M2 autoNumber pattern + 選項擴充", () => {
     const rec = await records.createRecord(tenantA, form.id, { 狀態: "新", 細項: "新A" }, ACTOR)
     expect(rec.values.狀態).toBe("新")
     await expect(records.createRecord(tenantA, form.id, { 狀態: "無效" }, ACTOR)).rejects.toThrow()
+
+    /* 🔴 audit-D §2.4|**這條測試原本只斷言持久化** —— 綠,但沒有測到「連動」。
+       連動的意義是**不合法的父子組合要被拒**,而那在 2026-08-04 之前根本沒有實作。 */
+    await expect(
+      records.createRecord(tenantA, form.id, { 狀態: "結", 細項: "新A" }, ACTOR),
+    ).rejects.toThrow(/不屬於目前的/)
+    /* 父欄未選 → 受限的子選項一律不可選 */
+    await expect(records.createRecord(tenantA, form.id, { 細項: "新A" }, ACTOR)).rejects.toThrow(
+      /不屬於目前的/,
+    )
+
+    /* 🔴 **部分更新:父欄不在 payload 裡,限制仍然成立。**
+       只拿 patch 判斷的話,條件會憑空不成立 —— 與條件式必填同一個坑。 */
+    await expect(
+      records.updateRecord(tenantA, form.id, rec.id, 1, { 細項: "結B" }, ACTOR),
+    ).rejects.toThrow(/不屬於目前的/)
+    /* 同一次把父欄一起改成相符的 → 放行 */
+    await records.updateRecord(tenantA, form.id, rec.id, 1, { 狀態: "結", 細項: "結B" }, ACTOR)
   })
 
   it("link displayFields options 保存", async () => {

@@ -295,6 +295,7 @@ export class FormsController {
       body.choices,
       body.deleteMode,
       body.replaceWith,
+      body.parentField,
     )
   }
 

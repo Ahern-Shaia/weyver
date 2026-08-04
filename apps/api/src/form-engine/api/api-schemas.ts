@@ -89,6 +89,10 @@ export const updateOptionsBodySchema = z.object({
   // 預設 retire:仍被使用的選項不硬刪,既有值保留(見 option.service 檔頭)
   deleteMode: z.enum(["retire", "replace", "clear"]).default("retire"),
   replaceWith: z.string().max(100).optional(),
+  /* 🔴 audit-D §2.4|連動選項的**父欄名稱**。`null` = 取消連動。
+     與 `choices[].parents` 一起經由這支端點寫入 —— 兩者是同一個設定的兩半,
+     分兩支端點會出現「父欄設了但選項還沒指定」的中間狀態。 */
+  parentField: z.string().max(100).nullable().optional(),
 })
 
 export const bulkRecordsBodySchema = z.object({

@@ -139,6 +139,60 @@ describe("G-1 事件匯流排", () => {
     expect(after[0]?.n).toBe(before[0]?.n)
   })
 
+  /* 🔴 audit-D 之外的發現(2026-08-04)|**主檔明細這條路徑一個事件都沒發。**
+
+     `emitInTx` 掛在 `createRecord` / `updateRecord` 那一層,而 `saveWithLines`
+     自己呼叫 `insertOne` / `updateOne` —— 於是繞過去了:用主檔明細畫面存的記錄,
+     webhook 訂閱者收不到任何通知。
+
+     ⚠️ 與 2026-08-03 修過的「主檔明細從未寫過搜尋索引」是**同一個形狀**,
+     而且就在同一段程式碼裡:索引補了、事件沒補。
+     **一起補的時候漏掉一半,比兩個都沒做更難發現。** */
+  it("🔴 主檔明細儲存:主檔與每一列明細都要發事件", async () => {
+    const parentId = await makeForm(tenantA, "事件_主檔")
+    const { form: child } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: "事件_明細",
+        parentFormId: parentId,
+        fields: [{ name: "品項", type: "text" }],
+      }),
+    )
+
+    const headerId = await records.saveWithLines(
+      tenantA,
+      parentId,
+      child.id,
+      { values: { 品名: "採購單" } },
+      [{ values: { 品項: "A" } }, { values: { 品項: "B" } }],
+      ALICE,
+    )
+
+    const parentEvents = await ddlKnex("event_outbox").where({ form_id: parentId }).select("*")
+    expect(parentEvents).toHaveLength(1)
+    expect(parentEvents[0]?.type).toBe("record.created")
+
+    const lineEvents = await ddlKnex("event_outbox").where({ form_id: child.id }).select("*")
+    expect(lineEvents).toHaveLength(2)
+    expect(lineEvents.every((e) => e.type === "record.created")).toBe(true)
+
+    /* 再存一次:主檔轉 updated,既有明細轉 updated,移除的那一列發 deleted */
+    const keptId = Number(lineEvents[0]?.record_id)
+    await records.saveWithLines(
+      tenantA,
+      parentId,
+      child.id,
+      { id: headerId.header.id, expectedVersion: 1, values: { 品名: "採購單" } },
+      [{ id: keptId, values: { 品項: "A2" } }],
+      ALICE,
+    )
+    const after = await ddlKnex("event_outbox").where({ form_id: parentId }).select("*")
+    expect(after.map((e) => e.type)).toContain("record.updated")
+    const lineAfter = await ddlKnex("event_outbox").where({ form_id: child.id }).select("*")
+    expect(lineAfter.map((e) => e.type)).toContain("record.updated")
+    expect(lineAfter.map((e) => e.type)).toContain("record.deleted")
+  })
+
   it("更新與刪除各自發射對應事件", async () => {
     const formId = await makeForm(tenantA, "事件_增改刪")
     const rec = await records.createRecord(tenantA, formId, { 品名: "米" }, ALICE)

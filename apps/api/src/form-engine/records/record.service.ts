@@ -1,5 +1,6 @@
 import { Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
+import { asSelectOptions, isChoiceAllowed } from "@weyver/rules"
 import {
   type ActionGateState,
   evaluateApprovalGate,
@@ -1658,6 +1659,8 @@ export class RecordService {
           .update({ deleted_at: trx.fn.now(), updated_by: actorId })
       }
 
+      /* 新建的明細列 id —— 事件要分得出 created 與 updated */
+      const createdLineIds = new Set<number>()
       for (const [index, line] of lines.entries()) {
         const lineNo = index + 1
         if (line.id === undefined) {
@@ -1670,6 +1673,7 @@ export class RecordService {
             id,
             lineNo,
           )
+          createdLineIds.add(created.id)
           savedLines.push({ id: created.id, values: line.values })
         } else {
           await this.updateOne(trx, tenantId, child, line.id, null, line.values, actorId, lineNo)
@@ -1698,6 +1702,43 @@ export class RecordService {
       /* 被移除的明細列要移出索引,否則刪掉的品項仍然搜得到 */
       for (const removedId of removed) {
         await this.searchIndex?.removeInTx(trx, tenantId, childFormId, removedId)
+      }
+
+      /* 🔴 事件同理。**這條路徑此前一個事件都沒發** —— `emitInTx` 掛在
+         `createRecord` / `updateRecord` 那一層,而這裡是自己呼叫 `insertOne` /
+         `updateOne`,於是繞過去了:用主檔明細畫面存的記錄,webhook 訂閱者
+         收不到任何通知,事件驅動的整合對這條路徑是瞎的。
+
+         ⚠️ 與上面那段索引是**同一個形狀**:橫切關注點掛在單筆路徑上,
+         而繞過那一層的路徑就靜靜地沒有。索引在 2026-08-03 補了,事件沒有 ——
+         **一起補的時候漏掉一半,比兩個都沒做更難發現。**
+
+         明細逐列各發一個:它們是子表單裡真正的記錄,訂閱子表單的人要收得到
+         (與索引逐列寫入同一個判準)。 */
+      await this.events?.emitInTx(trx, {
+        tenantId,
+        type: header.id === undefined ? EVENT_TYPES.recordCreated : EVENT_TYPES.recordUpdated,
+        formId: parentFormId,
+        recordId: id,
+        actorId,
+      })
+      for (const line of savedLines) {
+        await this.events?.emitInTx(trx, {
+          tenantId,
+          type: createdLineIds.has(line.id) ? EVENT_TYPES.recordCreated : EVENT_TYPES.recordUpdated,
+          formId: childFormId,
+          recordId: line.id,
+          actorId,
+        })
+      }
+      for (const removedId of removed) {
+        await this.events?.emitInTx(trx, {
+          tenantId,
+          type: EVENT_TYPES.recordDeleted,
+          formId: childFormId,
+          recordId: removedId,
+          actorId,
+        })
       }
       return id
     })
@@ -1890,7 +1931,15 @@ export class RecordService {
     const merged: RecordValues =
       current === undefined ? values : { ...this.toRecord(resolved, current).values, ...values }
     const attrs = this.conditionalAttrs(resolved, merged)
-    const columns = await this.validateValues(trx, tenantId, resolved, values, "update", attrs)
+    const columns = await this.validateValues(
+      trx,
+      tenantId,
+      resolved,
+      values,
+      "update",
+      attrs,
+      merged,
+    )
 
     /* 🔴 部分更新不會經過「create 的補漏迴圈」——
        一個**因規則而必填**的欄位若這次沒送、DB 裡又是空的,就會靜靜地漏掉。
@@ -1971,6 +2020,44 @@ export class RecordService {
     return out
   }
 
+  /* 🔴 audit-D §2.4|**連動選項的伺服器強制**。
+
+     `parentField` / `choices[].parents` 自 M2 出貨以來只有 schema —— 沒有 UI、
+     沒有填單過濾、**也沒有後端驗證**。第一約束的反面同樣成立:
+     只在前端過濾等於沒做,直接打 API 就能把「飲料」底下的品項存到「食品」去。
+
+     判斷本身與前端共用 `@weyver/rules`(見該檔 §為什麼住在共用套件裡)。
+     多選欄逐值檢查:一顆不合法就整筆拒,不做「只留合法的」那種靜默修正 ——
+     靜默修正比拒絕更難查。 */
+  private assertCascadingAllowed(
+    resolved: ResolvedForm,
+    field: ResolvedField,
+    value: unknown,
+    context: RecordValues,
+  ): void {
+    if (field.type !== "singleSelect" && field.type !== "multiSelect") return
+    const childOptions = asSelectOptions(field.row.options)
+    if (childOptions.parentField === undefined) return
+    const parent = resolved.byName.get(childOptions.parentField)
+    /* 父欄被刪 / 改名 → 略過而非擋死:一條壞掉的設定不該讓整張表存不了東西
+       (同條件式格式對「引用已刪欄位」的處置) */
+    if (parent === undefined) return
+    const parentOptions = asSelectOptions(parent.row.options)
+    const parentValue = context[parent.row.name]
+    const candidates = Array.isArray(value) ? value : [value]
+    for (const one of candidates) {
+      if (typeof one !== "string" || one === "") continue
+      if (!isChoiceAllowed(childOptions, parentOptions, parentValue, one)) {
+        throw new FieldValueError(
+          field.row.name,
+          `「${one}」不屬於目前的「${parent.row.name}」(${
+            typeof parentValue === "string" && parentValue !== "" ? parentValue : "未選"
+          })`,
+        )
+      }
+    }
+  }
+
   /* 值驗證:name whitelist → systemManaged 拒寫 → 空值正規化 → required → 型別 Zod → DB 值轉換 */
   private async validateValues(
     trx: Knex.Transaction,
@@ -1979,6 +2066,10 @@ export class RecordService {
     values: RecordValues,
     mode: "create" | "update",
     attrs?: ReadonlyMap<string, { required: boolean; skipValidation: boolean }>,
+    /* 🔴 連動選項要看**父欄的值**,而父欄可能不在這次的 payload 裡(部分更新)。
+       與條件式必填同一個理由:只拿 patch 判斷,限制會憑空消失。
+       未給時退回 `values`(建立時兩者相同)。 */
+    context?: RecordValues,
   ): Promise<Record<string, unknown>> {
     const columns: Record<string, unknown> = {}
     for (const [name, raw] of Object.entries(values)) {
@@ -1998,6 +2089,7 @@ export class RecordService {
       if (!parsed.success) {
         throw new FieldValueError(name, z.prettifyError(parsed.error))
       }
+      this.assertCascadingAllowed(resolved, field, value, context ?? values)
       columns[field.column] = this.toDbValue(field.type, parsed.data)
     }
 

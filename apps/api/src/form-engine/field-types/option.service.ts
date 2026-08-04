@@ -81,6 +81,8 @@ export class OptionService {
     next: readonly OptionChoice[],
     deleteMode: OptionDeleteMode = "retire",
     replaceWith?: string,
+    /* `undefined` = 不動;`null` = 取消連動 */
+    parentField?: string | null,
   ): Promise<{ renamed: number; affectedRows: number }> {
     const { field, table, column, multi } = await this.resolve(tenantId, formId, fieldId)
     const prev = (field.options.choices as OptionChoice[] | undefined) ?? []
@@ -141,6 +143,11 @@ export class OptionService {
     await this.metadata.updateFieldOptions(tenantId, fieldId, {
       ...field.options,
       choices: finalChoices,
+      ...(parentField === undefined
+        ? {}
+        : parentField === null || parentField === ""
+          ? { parentField: undefined }
+          : { parentField }),
     })
     await this.metadata.bumpVersion(tenantId, formId)
     return { renamed: renames.length, affectedRows }
