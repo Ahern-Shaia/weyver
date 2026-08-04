@@ -1,6 +1,7 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMemo } from "react"
 import { z } from "zod"
 import { engineFetch } from "./client"
 
@@ -57,6 +58,23 @@ export function useUserSettings() {
     queryFn: () => engineFetch("/settings/me", userSettingsSchema),
     staleTime: 60_000,
   })
+}
+
+/* 🔴 顯示格式的**單一 context 來源**。
+
+   在此之前只有 `object-page` 自己組了 `{ timeZone }`,而且**漏了 `locale`** ——
+   使用者在個人設定改了語系,記錄頁的日期仍照 zh-TW 畫。
+   其餘畫面(列表 / 看板 / 行事曆 / 標籤列印)則連時區都沒帶。
+
+   同一個值在不同畫面上寫成不同的字,正是 `docs/14` 說的信任訊號**反效果**。 */
+export function useDisplayCtx(): { timeZone: string | undefined; locale: string | undefined } {
+  const { data } = useUserSettings()
+  /* 🔴 **必須記憶化**。每次呼叫回一個新物件的話,拿它當 prop 傳下去等於
+     每次 render 都換一個身分,`memo` / 相依陣列全部失效。 */
+  return useMemo(
+    () => ({ timeZone: data?.displayTimezone, locale: data?.locale }),
+    [data?.displayTimezone, data?.locale],
+  )
 }
 
 export function useUpdateTenantSettings() {

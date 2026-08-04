@@ -4,6 +4,7 @@ import { formatFieldValue } from "@/components/form/value"
 import { choicesOf } from "@/components/form/value"
 import { describeEngineError } from "@/lib/engine/client"
 import { useUpdateRecord } from "@/lib/engine/hooks"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"
 import {
   type ClientRect,
@@ -99,12 +100,20 @@ function Card({
   disabled,
   onOpen,
   memberNames,
+  fmtCtx,
 }: {
   readonly record: RecordRow
   readonly fields: readonly FieldDto[]
   readonly disabled: boolean
   readonly onOpen: (id: number) => void
   readonly memberNames: ReadonlyMap<number, string>
+  /* 🔴 由上層傳入,**不在卡片裡自己訂閱**。在 Card 內呼叫 `useDisplayCtx()`
+     會讓每張卡片各自掛一個 query 訂閱 —— 設定回來時全部重繪,
+     而 dnd-kit 的鍵盤拖曳靠 `document.activeElement`:重繪把焦點吃掉,
+     Space 就什麼都沒發生,**畫面看起來完全正常**。
+     這不是假設 —— 我先前在這裡呼叫 hook,`group-kanban-calendar` 那條
+     鍵盤測試立刻從「單跑會過」變成「單跑也不過」。 */
+  readonly fmtCtx: { timeZone?: string | undefined; locale?: string | undefined }
 }): ReactNode {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: String(record.id),
@@ -128,11 +137,12 @@ function Card({
           fields[0] as FieldDto,
           record.values[fields[0]?.name ?? ""],
           memberNames,
+          fmtCtx,
         ) || `#${String(record.id)}`}
       </button>
       {fields.slice(1, 3).map((f) => (
         <div key={f.id} className="truncate text-[12px] text-ink-3">
-          {formatFieldValue(f, record.values[f.name], memberNames)}
+          {formatFieldValue(f, record.values[f.name], memberNames, fmtCtx)}
         </div>
       ))}
     </div>
@@ -188,6 +198,7 @@ export function KanbanView({
   readonly counts: ReadonlyMap<string, number>
 }): ReactNode {
   const [error, setError] = useState<string | null>(null)
+  const fmtCtx = useDisplayCtx()
   const updateRecord = useUpdateRecord(formId)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -267,6 +278,7 @@ export function KanbanView({
                     disabled={locked}
                     onOpen={onOpen}
                     memberNames={memberNames}
+                    fmtCtx={fmtCtx}
                   />
                 ))}
               </Column>

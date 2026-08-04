@@ -58,14 +58,87 @@ export function formatNumber(value: unknown, locale = "zh-TW"): string {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(n)
 }
 
+/* 🔴 R1·FMT M2|日期格式是**欄位的屬性**,不是瀏覽器或租戶語系的屬性。
+
+   一手依據(§0.3):Ragic 把格式放在「設計模式 › 欄位設定 › 基本」;
+   Airtable 放在欄位的「Date format」,且明說預設跟瀏覽器走、**要改得去改瀏覽器設定** ——
+   它把「跟著環境」降級成其中一個選項(`Local`),而不是唯一行為。
+
+   ⚠️ 為什麼這件事必要:`local` 之下,格式由使用者/租戶的 `locale` 決定,
+   而 `en` 是設定白名單裡的合法值 —— 一個租戶選了它,整個產品的日期就變成美式。
+   那正是 #155 回報的症狀,只是成因不是瀏覽器而是設定。**設計者必須能指定。**
+
+   白名單而非格式碼:兩者相容方向是單向的 —— 白名單日後可映射成 pattern,
+   但一旦開放任意字串就收不回來(會動到客戶已存的資料)。先窄後寬。
+   民國年(P1,`field-types-parity` OQ-FTP-7 已裁定)屆時加 key 即可,不必改模型。 */
+export const DATE_FORMATS = ["local", "iso", "slash", "dash", "dot"] as const
+export type DateFormatKey = (typeof DATE_FORMATS)[number]
+
+export const DATE_FORMAT_LABEL: Record<DateFormatKey, string> = {
+  local: "依語系",
+  iso: "2026-03-05",
+  slash: "2026/03/05",
+  dash: "05-03-2026",
+  dot: "2026.03.05",
+}
+
+function dateFormatOf(field: Pick<FieldDto, "options">): DateFormatKey {
+  const raw = (field.options as { dateFormat?: unknown } | undefined)?.dateFormat
+  return typeof raw === "string" && (DATE_FORMATS as readonly string[]).includes(raw)
+    ? (raw as DateFormatKey)
+    : "local"
+}
+
+/* 取指定時區下的年月日。**不可用 `d.getFullYear()`** —— 那是執行環境的時區,
+   會讓同一筆資料在不同機器上跨日(專案已為 pg DATE parser 踩過一次位移 bug)。 */
+function partsIn(d: Date, timeZone: string | undefined): { y: string; m: string; day: string } {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    ...(timeZone === undefined ? {} : { timeZone }),
+  }).formatToParts(d)
+  const get = (t: string): string => p.find((x) => x.type === t)?.value ?? ""
+  return { y: get("year"), m: get("month"), day: get("day") }
+}
+
+function timeIn(d: Date, timeZone: string | undefined, withSeconds: boolean): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(withSeconds ? { second: "2-digit" } : {}),
+    hour12: false,
+    ...(timeZone === undefined ? {} : { timeZone }),
+  }).format(d)
+}
+
 export function formatDateTime(
   value: unknown,
-  opts: { timeZone?: string | undefined; locale?: string | undefined; withTime?: boolean } = {},
+  opts: {
+    timeZone?: string | undefined
+    locale?: string | undefined
+    withTime?: boolean
+    format?: DateFormatKey
+  } = {},
 ): string {
   const raw = typeof value === "string" || value instanceof Date ? value : String(value)
   const d = raw instanceof Date ? raw : new Date(raw)
   if (Number.isNaN(d.getTime())) return String(value)
-  const { timeZone, locale = "zh-TW", withTime = true } = opts
+  const { timeZone, locale = "zh-TW", withTime = true, format = "local" } = opts
+
+  if (format !== "local") {
+    const { y, m, day } = partsIn(d, timeZone)
+    const datePart =
+      format === "iso"
+        ? `${y}-${m}-${day}`
+        : format === "slash"
+          ? `${y}/${m}/${day}`
+          : format === "dash"
+            ? `${day}-${m}-${y}`
+            : `${y}.${m}.${day}`
+    return withTime ? `${datePart} ${timeIn(d, timeZone, true)}` : datePart
+  }
+
   return (
     new Intl.DateTimeFormat(locale, {
       year: "numeric",
@@ -75,8 +148,14 @@ export function formatDateTime(
       ...(timeZone === undefined ? {} : { timeZone }),
     })
       .format(d)
-      /* zh-TW 的預設分隔是 `2026/07/19` —— 保留,但把時間段的分隔統一為冒號 */
-      .replace(/ /g, " ")
+      /* 🔴 ICU 在日期與時間之間放的是**窄空白**,不是一般空白。
+         看不出來,但會讓 e2e 的文字比對、複製到 Excel、匯出比對全部失準。
+
+         ⚠️ 原本這行寫死 `\u202f`(narrow no-break space),
+         而現行 ICU 實測送的是 `\u2009`(thin space)—— **那行早已是 no-op**,
+         只是沒有任何東西會告訴你。ICU 改過一次就會再改,
+         故改為歸一化**所有** Unicode 空白分隔符,不追定哪一個碼位。 */
+      .replace(/\p{Zs}/gu, " ")
   )
 }
 
@@ -99,13 +178,15 @@ export function displayValue(
       return Number.isFinite(n) ? `${formatNumber(n, ctx.locale)}%` : String(value)
     }
     case "date":
-      return formatDateTime(value, { ...ctx, withTime: false })
+      return formatDateTime(value, { ...ctx, withTime: false, format: dateFormatOf(field) })
     /* 🔴 `createdAt` / `updatedAt` 是**系統時間欄**,型別名與 `dateTime` 不同,
        但顯示需求一樣。初版漏了它們 —— 瀏覽器實走時「建立時間」仍印出
        `2026-07-19T05:45:02.592Z`,而單元測試全綠(測試裡沒有這兩個型別)。
        型別驅動的代價就是**漏列一個型別 = 那個型別完全沒被處理**,
        而它不會以錯誤的形式出現,只會安靜地退回 String()。 */
     case "dateTime":
+      return formatDateTime(value, { ...ctx, format: dateFormatOf(field) })
+    /* 系統時間欄**不吃欄位格式** —— 它們不是使用者設計的欄位,沒有欄位設定可改 */
     case "createdAt":
     case "updatedAt":
       return formatDateTime(value, ctx)

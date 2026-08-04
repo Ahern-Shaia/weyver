@@ -3,6 +3,7 @@
 import { gridEditData, gridKind, isGridEditable } from "@/components/form/grid-cells"
 import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { describeEngineError } from "@/lib/engine/client"
 import { useCreateRecord, useForm, useInfiniteRecords, useUpdateRecord } from "@/lib/engine/hooks"
 import type { RecordRow } from "@/lib/engine/schemas"
@@ -27,6 +28,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
   const createRecord = useCreateRecord(formId)
   const [error, setError] = useState<string | null>(null)
   const memberNames = useMemberNames(formQuery.data?.fields ?? [])
+  const fmtCtx = useDisplayCtx()
 
   const records: RecordRow[] = useMemo(
     () => recordsQuery.data?.pages.flatMap((p) => p.records) ?? [],
@@ -54,7 +56,7 @@ export function RecordGridPanel({ formId }: { formId: number }) {
     }
     const value = record.values[field.name]
     const editable = isGridEditable(field)
-    const shown = formatFieldValue(field, value, memberNames)
+    const shown = formatFieldValue(field, value, memberNames, fmtCtx)
     const display = shown === "—" ? "" : shown
     const kind = gridKind(field.type)
 

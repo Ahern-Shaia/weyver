@@ -3,6 +3,8 @@
 import { ConvertTypePanel } from "@/app/app/builder/_components/designer/convert-type"
 import { OptionsEditorPanel } from "@/app/app/builder/_components/designer/options-editor"
 import { RelookupPanel } from "@/app/app/builder/_components/designer/relookup"
+import { describeEngineError, engineFetch } from "@/lib/engine/client"
+import { DATE_FORMAT_LABEL, DATE_FORMATS } from "@/lib/engine/display-value"
 import {
   DEFAULT_VARIABLES,
   type DefaultValue,
@@ -13,7 +15,8 @@ import {
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Trash2, X } from "lucide-react"
-import type { ReactNode } from "react"
+import { type ReactNode, useState } from "react"
+import { z } from "zod"
 
 /* R1·UP-3 M3 欄位設定面板(placeholder/help/readonly/hidden/colSpan/預設值)。編輯 layout 草稿;
    hidden 為排版層(≠權限 D4)。預設值變數對映 M1 後端 create-time 解析。 */
@@ -246,6 +249,10 @@ export function FieldSettingsPanel({
         <RelookupPanel formId={formId} fieldId={field.id} onDone={onOptionsSaved} />
       ) : null}
 
+      {field.type === "date" || field.type === "dateTime" ? (
+        <DateFormatPanel formId={formId} field={field} onSaved={onOptionsSaved} />
+      ) : null}
+
       {choices !== undefined ? (
         <OptionsEditorPanel
           formId={formId}
@@ -354,6 +361,69 @@ export function StaticSettingsPanel({
           <span className="text-ink-2">僅設計模式可見</span>
         </label>
       </div>
+    </div>
+  )
+}
+
+/* 🔴 R1·FMT M2|日期顯示格式。**這是設計者指定格式的唯一入口** ——
+   在此之前格式由環境決定:瀏覽器語系(原生輸入控件)或租戶 `locale`(顯示層),
+   兩者設計者都碰不到,而 `en` 是設定白名單裡的合法值。
+
+   一手依據:Ragic 把格式放在「設計模式 › 欄位設定 › 基本」;
+   Airtable 放在欄位的「Date format」(選項 Local / Friendly / US / European / ISO)。
+   **兩家都把格式當成欄位的屬性**,不是環境的屬性。
+
+   ⚠️ 自己送出、自己確認 —— 與 layout 草稿分開。理由與選項編輯同:
+   layout 是草稿會隨畫布一起存,而這一項存下去**所有人**看到的都變。 */
+function DateFormatPanel({
+  formId,
+  field,
+  onSaved,
+}: {
+  readonly formId: number
+  readonly field: FieldDto
+  readonly onSaved: () => void
+}): ReactNode {
+  const current = (field.options as { dateFormat?: unknown }).dateFormat
+  const value = typeof current === "string" ? current : "local"
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = (next: string): void => {
+    setBusy(true)
+    setError(null)
+    void engineFetch(`/forms/${String(formId)}/fields/${String(field.id)}/display`, z.unknown(), {
+      method: "PATCH",
+      body: { dateFormat: next },
+    })
+      .then(() => onSaved())
+      .catch((e: unknown) => setError(describeEngineError(e)))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <div className="border-t border-line p-3 text-[12px]">
+      <div className="mb-1 text-ink-3">日期顯示格式</div>
+      <Select
+        className="h-7 w-full"
+        aria-label="日期顯示格式"
+        value={value}
+        disabled={busy}
+        onChange={(e) => save(e.target.value)}
+      >
+        {DATE_FORMATS.map((k) => (
+          <option key={k} value={k}>
+            {DATE_FORMAT_LABEL[k]}
+          </option>
+        ))}
+      </Select>
+      {/* 「依語系」不是壞選項,但它的後果要講清楚 —— 否則設計者不知道自己交出了什麼 */}
+      <p className="mt-1 text-ink-3">
+        {value === "local"
+          ? "依每位使用者的語系設定顯示,不同語系的人看到的寫法會不同。"
+          : "所有人看到的寫法一致,不受各自的語系設定影響。"}
+      </p>
+      {error === null ? null : <p className="mt-1 text-er">{error}</p>}
     </div>
   )
 }

@@ -72,9 +72,11 @@ test("🔴 駁回必須能用 —— 舊版那顆按鈕不帶理由,按下去必
   await reason.fill("金額與附件對不上")
   await page.getByRole("button", { name: "確定" }).click()
 
-  await expect(page.getByText("已駁回", { exact: true })).toBeVisible()
-  /* 狀態章也要說「已駁回」不是「已退回」—— M4 之後那兩個詞是不同的動作 */
-  await expect(actions.getByText("已駁回")).toBeVisible()
+  /* 🔴 收斂到動作區。原本是整頁範圍的 `getByText("已駁回")` ——
+     單跑會過,整套跑時前面的 spec 在畫面上留下另一個「已駁回」,
+     於是 strict mode 撞到兩個元素而爆掉。**單跑過、整套紅就是順序相依,
+     而順序相依本身就是缺陷**,不是可容忍的 flake。 */
+  await expect(actions.getByText("已駁回", { exact: true })).toBeVisible()
 })
 
 test("🔴 會簽:分母不含送簽者,且未達門檻時留在原關", async ({ page, request }) => {

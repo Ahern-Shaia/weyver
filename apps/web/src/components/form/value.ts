@@ -1,3 +1,4 @@
+import { displayValue } from "@/lib/engine/display-value"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
 
@@ -78,10 +79,25 @@ const SOURCE_MARKERS: Record<string, string> = {
   __source_restricted__: "無權檢視",
 }
 
+/* 🔴 **顯示格式只有一個來源**(R1·FMT M1)。
+
+   在此之前這支與 `lib/engine/display-value.ts` 是**兩支各做各的**:
+   記錄頁走 displayValue(金額 `128,400.00` / 時間 `2026/07/19 13:45:02`),
+   而列表網格 / 看板 / 行事曆 / 標籤列印走這一支 ——
+   於是列表頁上金額印成 `128400.0000`、建立時間印成 `2026-07-19T05:45:02.5…`,
+   **正是 display-value.ts 檔頭逐字說它要修的那兩個症狀**。
+
+   ⚠️ 根因不是「這支漏了格式化」,是**有兩支函式做同一件事**。
+   同型漂移 `pivot-and-charts` §14.5 才記過一次(樞紐/圖表複製列表的查詢推導後分家)——
+   所以這裡是**合併**不是補丁:只保留 displayValue 沒有的分支,其餘一律委派。
+
+   保留的三個分支都不是格式問題,是**語意問題**:
+   引擎標記要翻成人話 · member id 要查成姓名 · 附件物件要取檔名。 */
 export function formatFieldValue(
   field: FieldDto,
   value: unknown,
   members?: ReadonlyMap<number, string>,
+  ctx?: { timeZone?: string | undefined; locale?: string | undefined },
 ): string {
   if (value === null || value === undefined) return "—"
   if (typeof value === "string" && value in SOURCE_MARKERS) return SOURCE_MARKERS[value] ?? value
@@ -90,8 +106,6 @@ export function formatFieldValue(
     const id = typeof value === "number" ? value : Number(value)
     return members?.get(id) ?? String(value)
   }
-  if (field.type === "checkbox") return value === true ? "是" : "否"
-  if (field.type === "multiSelect" && Array.isArray(value)) return value.join("、")
   if (
     (field.type === "attachment" || field.type === "image" || field.type === "signature") &&
     Array.isArray(value)
@@ -103,8 +117,5 @@ export function formatFieldValue(
     )
     return names.filter((n) => n !== "").join("、") || "—"
   }
-  if (field.type === "dateTime" && typeof value === "string") {
-    return value.replace("T", " ").slice(0, 19)
-  }
-  return String(value)
+  return displayValue(field, value, ctx ?? {})
 }

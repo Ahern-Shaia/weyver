@@ -2,6 +2,7 @@
 
 import { formatFieldValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { describeEngineError } from "@/lib/engine/client"
 import { useForm, useRecords } from "@/lib/engine/hooks"
 
@@ -9,6 +10,7 @@ export function RecordsListPanel({ formId }: { formId: number }) {
   const formQuery = useForm(formId)
   const recordsQuery = useRecords(formId)
   const memberNames = useMemberNames(formQuery.data?.fields ?? [])
+  const fmtCtx = useDisplayCtx()
 
   if (formQuery.data === undefined) {
     return <div className="p-6 text-[12px] text-ink-3">載入中…</div>
@@ -59,7 +61,7 @@ export function RecordsListPanel({ formId }: { formId: number }) {
                       key={field.id}
                       className="border-b border-l border-cell px-2.5 py-1.5 whitespace-nowrap text-ink"
                     >
-                      {formatFieldValue(field, record.values[field.name], memberNames)}
+                      {formatFieldValue(field, record.values[field.name], memberNames, fmtCtx)}
                     </td>
                   ))}
                 </tr>

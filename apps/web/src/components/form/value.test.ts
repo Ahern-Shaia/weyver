@@ -1,5 +1,6 @@
 import type { CellValueType, FieldDto } from "@/lib/engine/schemas"
 import { describe, expect, it } from "vitest"
+import { displayValue } from "@/lib/engine/display-value"
 import { choicesOf, formatFieldValue, toSubmitValue } from "@/components/form/value"
 
 function field(type: CellValueType, options: Record<string, unknown> = {}): FieldDto {
@@ -60,13 +61,48 @@ describe("formatFieldValue 之來源標記", () => {
 })
 
 describe("formatFieldValue", () => {
+  /* ⚠️ 時區一律**明寫**。不寫的話這條會跟著跑測試那台機器的時區走 ——
+     本機綠、CI(UTC)紅,而失敗訊息看起來像功能壞了。 */
+  const TPE = { timeZone: "Asia/Taipei" }
+
   it("renders null / bool / multiSelect / datetime readably", () => {
     expect(formatFieldValue(field("text"), null)).toBe("—")
     expect(formatFieldValue(field("checkbox"), true)).toBe("是")
     expect(formatFieldValue(field("multiSelect"), ["急件", "冷鏈"])).toBe("急件、冷鏈")
-    expect(formatFieldValue(field("dateTime"), "2026-07-19T10:00:00.000Z")).toBe(
-      "2026-07-19 10:00:00",
+    /* 🔴 R1·FMT M1:原本斷言 `2026-07-19 10:00:00` —— 那是把 UTC 的 ISO 去掉 T,
+       既不是使用者的時區、也不是 zh-TW 的寫法。**那條斷言在釘住 bug 本身。** */
+    expect(formatFieldValue(field("dateTime"), "2026-07-19T10:00:00.000Z", undefined, TPE)).toBe(
+      "2026/07/19 18:00:00",
     )
+  })
+
+  /* 🔴 M1 的核心斷言:**同一個值,兩支函式給同一個字串**。
+     這條在的目的不是驗證某個格式,是防止它們**再次分家** ——
+     列表頁與記錄頁曾經對同一筆資料寫出不同的字,而那是靠肉眼才發現的。 */
+  it("與 displayValue 對同一輸入給同一輸出(防再次分家)", () => {
+    const cases: readonly [ReturnType<typeof field>, unknown][] = [
+      [field("money"), "128400.0000"],
+      [field("number"), 320],
+      [field("percent"), 12.5],
+      [field("date"), "2026-07-22"],
+      [field("dateTime"), "2026-07-19T10:00:00.000Z"],
+      [field("createdAt"), "2026-07-19T05:45:02.592Z"],
+      [field("text"), "冷凍雞胸肉"],
+      [field("checkbox"), true],
+      [field("multiSelect"), ["急件", "冷鏈"]],
+    ]
+    for (const [f, v] of cases) {
+      expect(formatFieldValue(f, v, undefined, TPE)).toBe(displayValue(f, v, TPE))
+    }
+  })
+
+  /* 委派之後仍必須成立的三個**語意**分支(displayValue 沒有這些) */
+  it("member / 附件 / 引擎標記 三個語意分支不因委派而失效", () => {
+    expect(formatFieldValue(field("member"), 58, new Map([[58, "王小明"]]))).toBe("王小明")
+    expect(formatFieldValue(field("attachment"), [{ key: "k", name: "驗收單.pdf" }])).toBe(
+      "驗收單.pdf",
+    )
+    expect(formatFieldValue(field("lookup"), "__source_deleted__")).toBe("來源已刪除")
   })
 })
 

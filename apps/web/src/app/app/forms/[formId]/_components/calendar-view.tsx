@@ -2,6 +2,7 @@
 
 import { formatFieldValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { useCalendarRange } from "@/lib/engine/hooks"
 import type { FieldDto, FormDto, RecordRow } from "@/lib/engine/schemas"
 import { Select } from "@weyver/ui/select"
@@ -50,6 +51,7 @@ export function CalendarView({
   const [year, setYear] = useState(now.getUTCFullYear())
   const [month, setMonth] = useState(now.getUTCMonth() + 1)
   const memberNames = useMemberNames(form.fields)
+  const fmtCtx = useDisplayCtx()
 
   const from = ymd(year, month, 1)
   const to = month === 12 ? ymd(year + 1, 1, 1) : ymd(year, month + 1, 1) /* 排他上界 */
@@ -193,6 +195,7 @@ export function CalendarView({
                             form.fields[0] as FieldDto,
                             r.values[form.fields[0]?.name ?? ""],
                             memberNames,
+                            fmtCtx,
                           ) || `#${String(r.id)}`}
                         </button>
                       ))}

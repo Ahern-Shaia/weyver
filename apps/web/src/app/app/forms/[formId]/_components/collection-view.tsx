@@ -3,6 +3,7 @@
 import { gridEditData, gridKind, isGridEditable } from "@/components/form/grid-cells"
 import { formatFieldValue, toSubmitValue } from "@/components/form/value"
 import { useMemberNames } from "@/lib/engine/authz"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { describeEngineError } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { gridThemeOverride } from "@/lib/engine/grid-tone"
@@ -56,6 +57,7 @@ export function CollectionView({
   const deleteRecord = useDeleteRecord(formId)
   const [error, setError] = useState<string | null>(null)
   const memberNames = useMemberNames(form.fields)
+  const fmtCtx = useDisplayCtx()
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION)
   /* 折疊狀態 —— 傳到後端從查詢排除,而非前端隱藏(否則折疊後仍吃 page size)。 */
   const [collapsed, setCollapsed] = useState<readonly (readonly string[])[]>([])
@@ -97,7 +99,7 @@ export function CollectionView({
     const rows = records.map((r) => {
       const o: Record<string, unknown> = {}
       for (const f of displayFields) {
-        const disp = formatFieldValue(f, r.values[f.name], memberNames)
+        const disp = formatFieldValue(f, r.values[f.name], memberNames, fmtCtx)
         o[f.name] = disp === "—" ? "" : disp
       }
       return o
@@ -177,7 +179,7 @@ export function CollectionView({
     }
     const value = record.values[field.name]
     const editable = isGridEditable(field)
-    const shown = formatFieldValue(field, value, memberNames)
+    const shown = formatFieldValue(field, value, memberNames, fmtCtx)
     const display = shown === "—" ? "" : shown
     const kind = gridKind(field.type)
 

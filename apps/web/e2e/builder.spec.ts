@@ -68,7 +68,11 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
   await page.getByRole("tab", { name: "資料" }).click()
   const row = page.getByRole("row").filter({ hasText: "鑫豐農產品" }).first()
   await expect(row).toBeVisible()
-  await expect(row).toContainText("128400.0000")
+  /* 🔴 R1·FMT M1:原本斷言 `128400.0000` —— 那是引擎的 `numeric(19,4)` 原始表示,
+     **那條斷言在釘住 bug 本身**。`display-value.ts` 檔頭逐字說它要修的就是這個,
+     但列表走的是另一支格式化函式,所以修了兩年也沒生效。
+     現在兩支合一 → 這裡看到的與記錄頁一致。 */
+  await expect(row).toContainText("128,400.00")
 
   // 5) 子表:回設計 → 加子表 → 於子表設計器加欄
   await page.getByRole("tab", { name: "設計" }).click()

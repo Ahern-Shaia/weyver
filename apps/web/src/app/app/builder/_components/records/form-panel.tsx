@@ -7,6 +7,7 @@ import { describeEngineError } from "@/lib/engine/client"
 import { isStubType } from "@/lib/engine/field-types"
 import { type FormulaFieldSpec, computeFormulaPreview } from "@/lib/engine/formula-preview"
 import { useCreateRecord, useForm, useForms, useLayout, useSaveWithLines } from "@/lib/engine/hooks"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { toText } from "@weyver/formula"
 import { Button } from "@weyver/ui/button"
@@ -42,6 +43,7 @@ let lineSeq = 0
 
 export function RecordFormPanel({ formId }: { formId: number }) {
   const formQuery = useForm(formId)
+  const fmtCtx = useDisplayCtx()
   /* 填單吃設計器排的版面(UP-3c M1);沒有版面時 effectiveLayout 會給預設半寬順排 */
   const layoutQuery = useLayout(formId)
   const formsQuery = useForms()
@@ -197,7 +199,7 @@ export function RecordFormPanel({ formId }: { formId: number }) {
               if (readonly) {
                 return (
                   <span className="px-2.5 py-[5px] text-[13px] text-ink-2">
-                    {formatFieldValue(field, shown)}
+                    {formatFieldValue(field, shown, undefined, fmtCtx)}
                   </span>
                 )
               }
