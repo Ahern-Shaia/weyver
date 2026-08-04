@@ -1,6 +1,11 @@
 # formula-and-linkload.md — [P0-3] 公式引擎 + 關聯 Link&Load 設計文件
 
-> ✅ **狀態:SHIPPED v1.0(2026-07-19)— M0–M6 全數達成**。fork Teable `packages/formula`(MIT,clean-room);Tarjan SCC 依賴圖 + 讀時算 + Link&Load + Rollup(N+1);前端設計器啟用 formula 欄 + 即時預覽 + e2e 固化。FMEA §14 P0 F1–F4 全清、殘留 F6(N+1)/F7(刪欄保護)P1 已知。⚠️ 對外上 prod 前提同引擎(F-2 auth)。
+> 🟡 **狀態:SHIPPED v1.0(2026-07-19)公式側 · ⚠️ Link&**Load** 半邊未接線(2026-08-04 更正)**。
+> 🔴 **原本寫「M0–M6 全數達成」是過度宣稱** —— `_audit/giants-shoulders-audit-C.md` §2.2 查出
+> `RelationService` **零個生產注入點**,詳見 §11-bis。公式引擎(A1/A2/A5)與 Rollup 側確實已出貨且在跑;
+> **Link 的選記錄 UI 與 Load 帶入沒有任何生產路徑**。
+>
+> 舊述 —— fork Teable `packages/formula`(MIT,clean-room);Tarjan SCC 依賴圖 + 讀時算 + Link&Load + Rollup(N+1);前端設計器啟用 formula 欄 + 即時預覽 + e2e 固化。FMEA §14 P0 F1–F4 全清、殘留 F6(N+1)/F7(刪欄保護)P1 已知。⚠️ 對外上 prod 前提同引擎(F-2 auth)。
 >
 > **一句話**|Ragic 兩大招牌的技術核心:**欄位公式即時重算**(C 模組)+ **關聯 Link&Load / Lookup / Rollup**(D 模組)。兩者共用「依賴圖 + 重算引擎」故合為一個 P0-3 模組。**這是 R1 實作模組**(非 design-ahead)。
 >
@@ -259,12 +264,54 @@ formula_def
 | **M0** 設計 review | 本檔 → APPROVED(裁定 OQ-FML-1..8;含 OQ-FEC-7 fork 決策)| ⏳ |
 | **M1** A1 | 公式 parser(fork Teable ANTLR)+ 函數庫 + 型別推斷 + formula_def | ✅ **完成**|`packages/formula`(parser vendored + evaluate + ~28 函數 Decimal 禁 float + infer + 參照收集;28 tests;CLEANROOM MIT 鏈)+ apps/api `formula_def` 表(RLS+grants)+ `FormulaService.defineFormula`(parse→名稱解析成 field id→型別推斷→存;unknown/自我參照/語法錯設計期擋;7 整合測試真 PG)|
 | **M2** A2 | 依賴圖 + 循環偵測 + 重算引擎(讀時算 / 物化混合)| ✅ **核心完成**|`packages/formula/graph.ts`(**Tarjan SCC 循環偵測 + 拓樸求值序**,HyperFormula 式,11 tests)+ `FormulaService` 定義期循環檢查(FormulaCycleError 帶欄名鏈)+ `computeRecord` **讀時重算**(拓樸序鏈式,真 PG 9 整合測)· 物化 / Scheduled / Bulk 三模式為後續優化(OQ-FML-8/2) |
-| **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | ✅ **後端核心完成**|link 欄儲存(bigint 目標 id + options.targetFormId)已由 form-engine 型別系統落地;`RelationService`.registerRelation(寫 relation_def,idempotent)+ **load 帶入**(讀目標記錄指定欄值,採購單→供應商 帶入 地址/電話);6 整合測(真 PG)· **選記錄 UI(前端)+ M2M junction 續** |
+| **M3** A3 | relation_def 落地 + Link 選記錄 + Load 帶入 | 🟡 **僅 relation_def 落地;Load 與選記錄 UI 未接線**(2026-08-04 更正,見 §11-bis)|舊述 ——|link 欄儲存(bigint 目標 id + options.targetFormId)已由 form-engine 型別系統落地;`RelationService`.registerRelation(寫 relation_def,idempotent)+ **load 帶入**(讀目標記錄指定欄值,採購單→供應商 帶入 地址/電話);6 整合測(真 PG)· **選記錄 UI(前端)+ M2M junction 續** |
 | **M4** A4 | Lookup + Rollup + **N+1 防護(dataloader / 物化)** | ✅ **後端核心完成**|`RollupService`(子表聚合 SUM/COUNT/AVERAGE/MIN/MAX + **條件式**(OQ-FML-10)+ **rollupBatch N+1 安全**(一次 whereIn 撈全部子列 app 層分組)+ **讀時算故刪子即反映**(架構免疫,無 stale 窗口))+ `RecordService.listByParents` + `RelationService.lookup`(即時單欄);6 整合測(真 PG)· 多層鏈式由依賴圖串接 · 物化為後續 |
 | **M5** A5 | 前端共享求值即時預覽 + 後端權威重算一致性 | ✅ **共享引擎完成**|apps/web 依賴同一 `@weyver/formula`(parser/求值/依賴圖 by construction 一致,OQ-FML-7=A)+ `computeFormulaPreview` 前端即時預覽 util(拓樸序鏈式 + 循環偵測 + Decimal 精度)+ 5 web 單元測;後端為權威。**渲染進填單 UI(formula 欄唯讀顯示)於 M6 隨設計器啟用** |
 | **M6** 收尾 | 安全 / 精度硬化 + Playwright 固化 + FMEA + SHIPPED | ✅ **SHIPPED**|後端 createForm 自動 defineFormula + 讀時算注入(88 api tests 零回歸)+ 前端設計器啟用 formula 欄(palette + 運算式)+ 填單即時預覽(computeFormulaPreview)+ grid 唯讀 + `e2e/formula.spec.ts` 固化(建欄→預覽 50→存→資料檢視)+ §14 FMEA(P0 全清)|
 
 ---
+
+---
+
+## 11-bis. 🔴 Link&Load 的落地缺口(2026-08-04,`_audit/giants-shoulders-audit-C.md` §2.2)
+
+### 可複驗的查法(不要只讀這段結論)
+
+```
+grep -rn "RelationService" apps/api/src        # → 只有 form-engine.module.ts 註冊/匯出
+grep -rn "\.load(" apps/api/src | grep -v test # → 只有 relation.service.ts:91(lookup 內部自呼)
+grep -n 'case "link"' apps/web/src/components/form/field-input.tsx  # → 零命中
+```
+
+### 事實
+
+| 宣稱 | 實況 |
+|---|---|
+| M3「**load 帶入**(讀目標記錄指定欄值)…6 整合測」 | 方法存在、測試會綠,但**沒有任何 controller 或 service 注入 `RelationService`** —— 它是一個有測試的死服務 |
+| OQ-FML-4 = A「Load 快照**複製進本記錄**、可編輯」 | **無實作路徑**。沒有任何地方把 load 的結果寫進記錄 |
+| §165「**選記錄 UI**|link 欄填單時彈出來源表單搜尋 + 選取」 | **不存在**。`field-input.tsx` 沒有 `case "link"`,link 欄落到 default 分支(要使用者自己打 id) |
+| Lookup 有在跑嗎 | ✅ **有,但不是走 RelationService** —— 生產實作在 `record.service.ts:336` 的 `isSnapshotLookup(...)`(含 snapshot/live 兩態),與本模組的 `RelationService.lookup` 無關 |
+
+### 為什麼這個缺口特別難發現
+
+`pitfall_unread_schema_field_drift` 記的是「沒有 reader 的 schema 欄位」。
+**這一條是它的上一層:沒有 caller 的 service。**
+而它比欄位更難發現 —— **它有整合測試,而且測試會綠**。
+測試證明的是「這個方法自己能跑」,不是「有人在用它」。
+
+👉 **教訓**|`SHIPPED` 的判準不能是「方法寫了 + 測試綠」,
+要能回答「**從使用者的哪一個動作走得到這裡**」。走不到的,就不是出貨了。
+
+### 未決的設計問題(要做之前得先裁定,不能直接補程式碼)
+
+🔴 **Load 應該發生在前端還是後端?**
+Ragic 的語意是「選到記錄的**當下**把值帶進表單,存檔前還能改」——
+那是**前端**行為(選 → 取來源欄值 → 填進 form state)。
+若如此,後端該提供的是「給我那筆記錄的這幾個欄」的讀端點,
+而現有的 `RelationService.load()`(伺服器端組值)**形狀就不對**。
+
+這一題會決定要補什麼,故**歸入獨立 M0**,不在此處逕行實作。
+
 
 ## 12. 開放問題(OQ-FML-N)— ✅ OQ-1..10 全數裁定(全採建議)
 
