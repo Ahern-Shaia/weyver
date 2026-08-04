@@ -125,6 +125,14 @@ Ragic 讓使用者挑任意背景色,於是對比只能交還給使用者自己�
 
 ## 2. 上游 / 既有現況走查
 
+> ⚠️ **2026-08-04 敘述漂移更正(audit-D §3-10)**|本節、OQ-OC-5/6 與 FMEA C1/C3
+> 全部描述 `options.colors` **side map**,而 #105 已改為 `choices[].color`
+> (`field-type-registry.ts` 的 `color: z.enum(CHIP_TONES)`,並在讀取端剝除 v1 的 `colors`)。
+> C3 宣稱的後端 `superRefine`(「`colors` key 非現存 choice 即拒」)**已不存在**,
+> 現行驗證是名稱大小寫不敏感的唯一性。
+> 🔴 **風險本身確已消除**(檔內逐字:「借屍還魂從結構上不可能發生,驗證規則因此退場」)——
+> **屬敘述漂移,不是安全漏洞**。以下文字保留原貌以存脈絡,讀時請以本框為準。
+
 | 子題 | 現況 | Gap |
 |---|---|---|
 | 後端 schema | ✅ `choicesSchema.colors: z.record(string, string().max(40)).optional()` | **過度寬鬆**:接受任意 ≤40 字串;且**未與 `choices` 交叉驗證** → 孤兒項可存 |

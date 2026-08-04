@@ -72,9 +72,15 @@ export default function NotificationSettingsPage(): ReactNode {
     ...(categories ?? []).map((c) => ({
       key: `c${String(c.id)}`,
       name: c.name,
+      categoryId: c.id,
       forms: matched.filter((f) => f.categoryId === c.id),
     })),
-    { key: "none", name: "未分類", forms: matched.filter((f) => (f.categoryId ?? null) === null) },
+    {
+      key: "none",
+      name: "未分類",
+      categoryId: null,
+      forms: matched.filter((f) => (f.categoryId ?? null) === null),
+    },
   ].filter((g) => g.forms.length > 0)
 
   const emailOn = (code: string): boolean => {
@@ -133,6 +139,7 @@ export default function NotificationSettingsPage(): ReactNode {
           <div className="mb-1.5 text-[12px] font-medium text-ink-2">全租戶預設</div>
           <NotificationLevelPicker
             value={tenantLevel}
+            label="全租戶預設通知層級"
             disabled={!enabled}
             onPick={(lv) =>
               savePref.mutate({ scope: "tenant", scopeId: null, level: lv, customEvents: null })
@@ -157,10 +164,33 @@ export default function NotificationSettingsPage(): ReactNode {
           />
           {groups.map((g) => (
             <div key={g.key} className="mb-2">
-              <div className="mb-0.5 text-[12px] text-ink-3">{g.name}</div>
+              {/* 🔴 audit-D §3-9|分類層原本**只能打 API 設**,而它是後端三層繼承的中間層。
+                  設定入口就放在分類標題這一列 —— 那正是它作用的範圍。 */}
+              <div className="mb-0.5 flex items-center gap-2 text-[12px] text-ink-3">
+                {g.name}
+                {g.categoryId === null ? null : (
+                  <NotificationLevelPicker
+                    value={resolveClientLevel(data.prefs, null, g.categoryId).level}
+                    label={`分類「${g.name}」通知層級`}
+                    disabled={!enabled}
+                    onPick={(lv) =>
+                      savePref.mutate({
+                        scope: "category",
+                        scopeId: g.categoryId,
+                        level: lv,
+                        customEvents: null,
+                      })
+                    }
+                  />
+                )}
+              </div>
               <ul className="flex flex-col">
                 {g.forms.map((f) => {
-                  const { level, inherited } = resolveClientLevel(data.prefs, f.id)
+                  const { level, inherited, from } = resolveClientLevel(
+                    data.prefs,
+                    f.id,
+                    f.categoryId ?? null,
+                  )
                   return (
                     <li
                       key={f.id}
@@ -172,7 +202,11 @@ export default function NotificationSettingsPage(): ReactNode {
                       >
                         {f.name}
                       </Link>
-                      {inherited ? null : (
+                      {inherited ? (
+                        from === "category" ? (
+                          <span className="shrink-0 text-[12px] text-ink-3">跟著分類</span>
+                        ) : null
+                      ) : (
                         <span className="shrink-0 rounded-sm border border-primary px-1 py-px text-[12px] text-primary">
                           已單獨設定
                         </span>

@@ -1,6 +1,7 @@
 # authz.md — [P0-4a] 三層權限(授權層)設計文件
 
-> ✅ **狀態：APPROVED — OQ-AUTHZ-1..6 已裁定（2026-07-21）**；進入 M1。
+> ✅ **狀態：SHIPPED（M1–M5;管理 UI 見 §9 M5 與 `settings/permissions/`）** — OQ-AUTHZ-1..6 已裁定（2026-07-21）。
+> ⚠️ 2026-08-04 更正:此欄與 §12.7「完整 SHIPPED 待管理 UI」皆停在管理 UI 出貨之前。
 > **裁定摘要**|OQ-1=**C 完整 role tree(部門繼承)**〔用戶選,較建議 B 大 → role tree 自 docs/13 P1-I 前移本模組〕· OQ-2=A app 層 · OQ-3=A 記錄級全延 P1-I · OQ-4=A deny-by-default · OQ-5=A org owner/admin→tenant admin · OQ-6=A per-request CLS 快取。
 >
 > 在租戶隔離(F-2 已 SHIPPED)之上,補「租戶**內**」授權層 —— 目前租戶內任何登入者都能對所有表單/欄位做任何事(`TenantContext` 只有 `{tenantId, actorId}`,無 role)。本模組加 **表單級 RBAC + 欄位級遮罩**(記錄級延 P1-I),deny-by-default,對齊 docs/13 Gate P0-4 之權限部分。

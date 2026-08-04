@@ -161,6 +161,21 @@ export function formatDateTime(
 
 /* 顯示用的單一入口。**型別驅動**,不靠值的長相猜 ——
    猜的話「看起來像日期的字串」與「真的日期欄」會走到不同分支,而那正是不一致的來源。 */
+function applyMask(raw: string, mask: string): string {
+  let i = 0
+  let out = ""
+  for (const ch of mask) {
+    if (ch !== "#") {
+      out += ch
+      continue
+    }
+    if (i >= raw.length) return out
+    out += raw[i]
+    i += 1
+  }
+  return i < raw.length ? out + raw.slice(i) : out
+}
+
 export function displayValue(
   field: Pick<FieldDto, "type" | "options">,
   value: unknown,
@@ -171,6 +186,17 @@ export function displayValue(
   if (typeof value === "boolean") return value ? "是" : "否"
 
   switch (field.type) {
+    /* 🔴 audit-D §2.4|格式遮罩。`###-##-####` 之類的樣板,`#` 為值的下一個字元,
+       其餘字元原樣插入。**儲存的仍是原值**(模組 §4.5 逐字:前端顯示格式化)。
+
+       ⚠️ 這個 option 從 M3 出貨以來**只有 schema**:設計器沒有入口、渲染端沒有分支
+       —— 打 API 設了也不會有任何效果。值比樣板長時**把剩下的接在後面**,
+       不截斷:截斷等於在畫面上偽造資料。 */
+    case "text": {
+      const mask = (field.options as { displayMask?: unknown } | null)?.displayMask
+      if (typeof mask !== "string" || mask === "") return String(value)
+      return applyMask(String(value), mask)
+    }
     case "money":
       return formatMoney(value, currencyOf(field), ctx.locale)
     case "percent": {

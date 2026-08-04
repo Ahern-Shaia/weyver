@@ -1,6 +1,9 @@
 # field-types-parity.md — [R1·UP-4] 欄位型別 parity（form-engine-core 增量）設計文件
 
-> ✅ **狀態：SHIPPED v1.0（2026-07-25;M1–M5 全綠;api 236 + web 17 e2e 過）**
+> 🟡 **狀態：v1.1（2026-08-04 更正）** —— M1–M5 出貨,但 §1.1 列為 P0 的兩項**只有 schema**:
+> **格式遮罩 `displayMask` 已於 2026-08-04 補上渲染 + 設計器入口**;
+> 🔴 **連動選項(`parentField` / `choices[].parents`)仍只有 schema** —— 無 UI、無填單過濾、無後端硬驗,
+> 打 API 設了也不會有任何效果(audit-D §2.4)。**這一項不該算在 SHIPPED 裡。**
 > **裁定摘要**｜1=A 讀時 systemManaged pseudo-field · 2=A 系統欄投影 audit · 3=A options 加法擴充 · 4=A link 補完(含 link&load,級聯 P1) · 5=A counter table 統一 · 6=A image/signature 依 file-storage 排除 P0 · 7=A 採 §1.1 八項為 P0。
 > **落地**｜M0 `2b28960` · M1 後端 `0972cf7`(系統欄/lookup/rollup 讀時型別)· M2 後端 `d98ffa4`(autoNumber pattern/選項顏色連動/link displayFields)· M3 `7d212f0`+`e469aa1`(barcode/mask + 前端 enum/渲染)· M4 `ad8c9e7`(設計器進階型別設定)· M5 `58e6f1d`(field-types.spec)。
 >

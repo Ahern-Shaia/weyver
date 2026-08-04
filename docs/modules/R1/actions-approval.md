@@ -133,7 +133,7 @@
 | 拋轉重複過帳 | 冪等 key（button+record+target / instance)→ 重試不重複建單（[[rule_coding_standards]] 冪等鐵則）|
 | 簽核越權（非該步角色亦可簽）| approve 驗操作者為 current step 之 approverRole 成員（authz role 閉包）+ deny-by-default |
 | 簽核中改記錄繞流程 | pending instance 記錄鎖(update 拒);解鎖僅 reject/withdraw |
-| ZEN 規則注入 / 逃逸 | JDM 為結構化決策(非任意 code);QuickJS 函數節點 sandbox + 50ms timeout(docs/20);規則值不拼接 |
+| ~~ZEN 規則注入 / 逃逸~~ | ⚠️ **2026-08-04 更正:此列描述的緩解機制已不存在。** ZEN 於 2026-08-03 移除(§4.4 / OQ-AA-4:`package.json` 無相依,`approval.service.ts` 只剩一則說明註解)—— **沒有 JDM、沒有 QuickJS sandbox、沒有 50ms timeout**。現行金額條件是寫死的比較(`amountField` / `minAmount`),經 Zod 收斂,不接受任意運算式,故該風險面**已隨功能一起消失**;但讀這一列的人會以為系統裡有一個 sandbox 在守著,那是錯的 |
 | openUrl SSRF/XSS | https 白名單 scheme;前端開新分頁 rel=noopener;不由後端 fetch |
 | 簽核完自動執行失敗半過帳 | 收尾單一 tx + 冪等;失敗 rollback + 標記,不留半完成 |
 

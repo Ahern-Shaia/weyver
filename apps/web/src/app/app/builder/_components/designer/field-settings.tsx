@@ -398,15 +398,17 @@ function BarcodePanel({
   readonly onSaved: () => void
 }): ReactNode {
   const on = (field.options as { showAsQr?: unknown }).showAsQr === true
+  const rawMask = (field.options as { displayMask?: unknown }).displayMask
+  const mask = typeof rawMask === "string" ? rawMask : ""
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const save = (next: boolean): void => {
+  const save = (body: { showAsQr?: boolean; displayMask?: string }): void => {
     setBusy(true)
     setError(null)
     void engineFetch(`/forms/${String(formId)}/fields/${String(field.id)}/display`, z.unknown(), {
       method: "PATCH",
-      body: { showAsQr: next },
+      body,
     })
       .then(() => onSaved())
       .catch((e: unknown) => setError(describeEngineError(e)))
@@ -420,12 +422,31 @@ function BarcodePanel({
           type="checkbox"
           checked={on}
           disabled={busy}
-          onChange={(e) => save(e.target.checked)}
+          onChange={(e) => save({ showAsQr: e.target.checked })}
         />
         以條碼 / QR 呈現
       </label>
       {/* 值本身不變 —— 這是顯示層,不是型別 */}
       <p className="mt-1 text-ink-3">值仍是文字;列印與記錄頁改以圖形呈現。</p>
+
+      {/* 🔴 audit-D §2.4|格式遮罩同樣是「有 schema 沒入口」。`#` 代表值的下一個字元。 */}
+      <div className="mt-2.5">
+        <label className="mb-1 block text-ink-3" htmlFor={`mask-${String(field.id)}`}>
+          格式遮罩
+        </label>
+        <Input
+          id={`mask-${String(field.id)}`}
+          className="h-7"
+          defaultValue={mask}
+          placeholder="例:###-##-####"
+          maxLength={60}
+          disabled={busy}
+          onBlur={(e) => {
+            if (e.target.value !== mask) save({ displayMask: e.target.value })
+          }}
+        />
+        <p className="mt-1 text-ink-3">`#` 代表一個字元;**儲存的仍是原值**,只改呈現。</p>
+      </div>
       {error !== null ? <p className="mt-1 text-er">{error}</p> : null}
     </div>
   )

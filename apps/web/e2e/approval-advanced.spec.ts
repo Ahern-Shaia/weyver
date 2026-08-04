@@ -82,19 +82,40 @@ test("🔴 駁回必須能用 —— 舊版那顆按鈕不帶理由,按下去必
 })
 
 test("🔴 會簽:分母不含送簽者,且未達門檻時留在原關", async ({ page, request }) => {
+  /* 🔴 audit-D §3-4|**自建角色,讓分母成為確定值**。
+
+     原本用共用的 `approverRoleId: 1`,而斷言是 `required >= 1` ——
+     **分母 2 或 3 都會綠**,也就是說這條 P0(把送簽者算進分母 → 那一關永遠過不了)
+     修好之後就沒有任何東西在守它。整合測也抓不到:§12 A1 自己逐字說
+     「它的角色成員裡剛好沒有送簽者」,而那個條件至今沒被改變。
+
+     這裡建一個只有三個成員(含送簽者)的角色 → 分母**必須是 2**。
+     若哪天分母又把送簽者算進去,這條會紅在 `3 !== 2`。 */
+  const stamp = String(Date.now()).slice(-6)
+  const roleRes = await request.post("/api/engine/authz/roles", {
+    headers: DEV,
+    data: { key: `e2e_quorum_${stamp}`, name: `E2E會簽_${stamp}` },
+  })
+  const roleId = ((await roleRes.json()) as { id: number }).id
+  for (const actorId of [Number(SUBMITTER), 91, 92]) {
+    await request.post(`/api/engine/authz/roles/${String(roleId)}/members`, {
+      headers: DEV,
+      data: { actorId },
+    })
+  }
+
   const { formId, recordId } = await seed(request, [
-    { stepNo: 1, approverRoleId: 1, quorum: "all" },
+    { stepNo: 1, approverRoleId: roleId, quorum: "all" },
   ])
   await open(page, formId, recordId)
 
-  /* 角色成員含送簽者,但他永遠不能簽自己的單 —— 把他算進分母那一關就永遠過不了。
-     這條斷言的是「分母已扣掉他」,不是某個固定數字。 */
   const chip = page.getByTestId("record-actions").getByText(/人已核准/)
   await expect(chip).toBeVisible()
   const before = await chip.textContent()
   const [, approved, required] = /(\d+)\/(\d+) 人已核准/.exec(before ?? "") ?? []
   expect(Number(approved)).toBe(0)
-  expect(Number(required)).toBeGreaterThanOrEqual(1)
+  /* 🔴 三個成員扣掉送簽者 = 2。**不是 >= 1** */
+  expect(Number(required)).toBe(2)
 
   await page.getByTestId("record-actions").getByRole("button", { name: "核准" }).click()
   /* 未達門檻要明講,否則使用者以為自己按了沒反應然後再按一次 */
@@ -184,7 +205,10 @@ test("🔴 不用打 API 就能設定「記錄上的欄位」當簽核人;解不
   await page.goto(`/app/builder?form=${String(formId)}`)
   await page.getByRole("button", { name: "動作/簽核" }).click()
   await page.getByRole("button", { name: "簽核流程" }).click()
-  await page.getByRole("button", { name: "加一關" }).click()
+  /* 角色清單到齊前這顆是停用的(按了也只會跳一句錯的訊息)—— 等它可按再按 */
+  const addStep = page.getByRole("button", { name: "加一關" })
+  await expect(addStep).toBeEnabled({ timeout: 30_000 })
+  await addStep.click()
 
   const rule = page.getByLabel("第1關簽核人規則")
   await expect(rule).toBeVisible({ timeout: 30_000 })

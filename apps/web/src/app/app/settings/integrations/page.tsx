@@ -105,6 +105,14 @@ function DeliveryList({ endpointId }: { readonly endpointId: number }): ReactNod
   )
 }
 
+/* 與後端 `EVENT_TYPES` 同一組值。**空陣列 = 全訂閱**(`event-fanout` 的
+   `cardinality(event_types) = 0` 分支),故 UI 明說「不選 = 全部」。 */
+const EVENT_TYPE_OPTIONS = [
+  { value: "record.created", label: "建立" },
+  { value: "record.updated", label: "更新" },
+  { value: "record.deleted", label: "刪除" },
+] as const
+
 export default function IntegrationsPage(): ReactNode {
   const { data: hooks, isLoading } = useWebhooks()
   const { data: keys } = useApiKeys()
@@ -116,6 +124,10 @@ export default function IntegrationsPage(): ReactNode {
   const revokeKey = useRevokeApiKey()
 
   const [url, setUrl] = useState("")
+  /* 🔴 audit-D §3-1|訂閱哪些事件**只能打 API 設** —— 這裡恆送空陣列,
+     而空陣列在 `event-fanout` 等於**全訂閱**。使用者要「只收建立事件」做不到,
+     而第一約束逐字說「有 API 可以做」不算解決。 */
+  const [picked, setPicked] = useState<readonly string[]>([])
   const [keyName, setKeyName] = useState("")
   const [expanded, setExpanded] = useState<number | null>(null)
   const [shown, setShown] = useState<{ label: string; value: string } | null>(null)
@@ -125,7 +137,7 @@ export default function IntegrationsPage(): ReactNode {
     e.preventDefault()
     setError(null)
     try {
-      const res = await createHook.mutateAsync({ url, eventTypes: [] })
+      const res = await createHook.mutateAsync({ url, eventTypes: [...picked] })
       setShown({
         label: `簽章秘鑰 + 驗證權杖(端點 #${String(res.id)})`,
         value: `secret=${res.secret}\nverify_token=${res.verifyToken}`,
@@ -181,6 +193,30 @@ export default function IntegrationsPage(): ReactNode {
             新增
           </Button>
         </form>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-[12px] text-ink-3">訂閱事件(不選 = 全部):</span>
+          {EVENT_TYPE_OPTIONS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              aria-pressed={picked.includes(t.value)}
+              onClick={() =>
+                setPicked(
+                  picked.includes(t.value)
+                    ? picked.filter((x) => x !== t.value)
+                    : [...picked, t.value],
+                )
+              }
+              className={`rounded-xs border px-1.5 py-0.5 text-[12px] ${
+                picked.includes(t.value)
+                  ? "border-primary bg-primary-t text-primary"
+                  : "border-line text-ink-3"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         <p className="mt-1 text-[12px] text-ink-3">
           只接受 https,且不跟隨轉址。建立後端點須回報驗證權杖才會開始收到事件。
         </p>
@@ -193,6 +229,14 @@ export default function IntegrationsPage(): ReactNode {
                   {e.url}
                 </span>
                 {/* 未驗證的端點收不到任何投遞 —— 這件事必須看得見,否則使用者會以為壞掉 */}
+                {/* 設了看不出來等於沒設 —— 清單要說出這個端點收哪些事件 */}
+                <span className="shrink-0 text-[12px] text-ink-3">
+                  {e.eventTypes.length === 0
+                    ? "全部事件"
+                    : e.eventTypes
+                        .map((t) => EVENT_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t)
+                        .join("、")}
+                </span>
                 {e.verified ? null : (
                   <span className="shrink-0 rounded-sm border border-warn/50 px-1.5 py-px text-[12px] text-warn">
                     待驗證

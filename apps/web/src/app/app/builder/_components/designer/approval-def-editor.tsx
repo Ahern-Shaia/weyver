@@ -20,7 +20,7 @@ export function ApprovalPanel({
   readonly form: FormDto
 }): ReactNode {
   const { data: defs = [] } = useApprovalDefs(formId)
-  const { data: roles = [] } = useRoles()
+  const { data: roles = [], isPending: rolesPending } = useRoles()
   const { data: buttons = [] } = useButtons(formId)
   const createDef = useCreateApprovalDef(formId)
   const [name, setName] = useState("")
@@ -299,6 +299,10 @@ export function ApprovalPanel({
         ) : null}
         <button
           type="button"
+          /* 🔴 角色還沒到之前按下去只會跳一句「請先於權限頁建立角色」——
+             那句話是錯的(角色明明有,只是還在路上),而使用者會信。
+             按不動比按了說謊好。 */
+          disabled={rolesPending}
           onClick={addStep}
           className="flex w-fit items-center gap-1 text-[12px] text-primary hover:underline"
         >

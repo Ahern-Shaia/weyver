@@ -10,15 +10,19 @@ import type { ReactNode } from "react"
    最具體者勝),獨立開關無法表達「跟著上層」。 */
 export function NotificationLevelPicker({
   value,
+  label = "通知層級",
   disabled = false,
   onPick,
 }: {
   readonly value: number
+  /* 🔴 同一頁上會有多組(全租戶 / 每個分類 / 每張表單)。全部叫「通知層級」的話,
+     螢幕閱讀器唸出來一模一樣,而測試也只能靠位置去猜是哪一組。 */
+  readonly label?: string
   readonly disabled?: boolean
   readonly onPick: (level: number) => void
 }): ReactNode {
   return (
-    <div role="radiogroup" aria-label="通知層級" className="flex flex-col">
+    <div role="radiogroup" aria-label={label} className="flex flex-col">
       {NOTIFICATION_LEVELS.map((lv) => (
         <button
           key={lv.value}

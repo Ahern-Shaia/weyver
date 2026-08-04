@@ -107,3 +107,33 @@ describe("🔴 型別驅動", () => {
     expect(displayValue(f("text"), "2026-07-19T05:45:02.592Z")).toBe("2026-07-19T05:45:02.592Z")
   })
 })
+
+/* 🔴 audit-D §2.4|格式遮罩。此 option 自 M3 出貨以來只有 schema —— 設計器沒有入口、
+   渲染端沒有分支,打 API 設了也不會有任何效果。 */
+describe("displayMask", () => {
+  const f = (displayMask?: string) => ({
+    type: "text" as const,
+    options: displayMask === undefined ? {} : { displayMask },
+  })
+
+  it("`#` 逐一吃值的字元,其餘字元原樣插入", () => {
+    expect(displayValue(f("###-##-####"), "123456789")).toBe("123-45-6789")
+  })
+
+  it("沒設遮罩 → 原值", () => {
+    expect(displayValue(f(), "123456789")).toBe("123456789")
+  })
+
+  /* 🔴 值比樣板長時**接在後面,不截斷** —— 截斷等於在畫面上偽造資料 */
+  it("值比樣板長 → 多的接在後面", () => {
+    expect(displayValue(f("###-###"), "1234567890")).toBe("123-4567890")
+  })
+
+  it("值比樣板短 → 畫到值用完為止,不補佔位符", () => {
+    expect(displayValue(f("###-###"), "12")).toBe("12")
+  })
+
+  it("儲存的仍是原值 —— 遮罩只在顯示層(空值仍走既有的『—』)", () => {
+    expect(displayValue(f("###-###"), "")).toBe("—")
+  })
+})

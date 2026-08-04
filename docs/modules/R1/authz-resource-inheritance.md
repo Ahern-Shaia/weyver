@@ -148,7 +148,7 @@ resolveFormActions(actor, form F(category=C, sensitive=S, owner=O), roleClosure 
 - **欄位級不變**:`EffectivePermissions.fieldVisibility()` 續以 `formActions(formId)` 為天花板 `clampFieldToForm`;動作集現可能源自分類,欄位邏輯無感。
 - **list 行為(OQ-8=折衷,擴充 `readableFormIds()`)**:分類授了 view 的表 → **完整可見**(新建表無需逐表配置即自動可見 = 本模組核心收斂)。無 view 者依三態分派:
   - **敏感表** → **隱藏**(排除清單,守 authz.md G4 不洩漏存在)。
-  - **非敏感表**(未分類 / 遷移期)→ 回傳**鎖定 stub**(僅名稱 + 分類,不含記錄/資料,附「申請存取」入口)—— Drive「看得到打不開 + request access」範式,緩解遷移期「東西不見了」。
+  - **非敏感表**(未分類 / 遷移期)→ 回傳**鎖定 stub**(僅名稱 + 分類,不含記錄/資料,~~附「申請存取」入口~~ ⚠️ **2026-08-04:「申請存取」未落地** —— `app/page.tsx` 目前只有靜態文字「無存取權,請洽管理員授予」,**沒有任何按鈕**。§12.4 有記延後,但本節未標,兩節互相矛盾,只讀設計節會以為已出貨)—— Drive「看得到打不開 + request access」範式,緩解遷移期「東西不見了」。
   - 判定由 `EffectivePermissions` 依 `canRead(formId)` + `form.is_sensitive` 分派;新增 `listableForms()` 回 `{ readable[], locked[] }`,敏感無權者不入任一。
 
 ### 5.2 解析輸入的取得(repository)

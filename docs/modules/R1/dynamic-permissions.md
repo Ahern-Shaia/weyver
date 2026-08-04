@@ -265,7 +265,7 @@ v0.1 依「RLS policy 內子查詢每列執行、非 LEAKPROOF 破壞 pushdown�
 
 ### 12.3 不在本模組 scope 修的 pre-existing 問題
 
-- 🔴 **keyset 分頁在非 id 排序時會跳列 / 重複**|`record.service.ts:425-434` 以 `orderBy(<欄>)` 排序卻只用 `id > cursor` 當 cursor(已對程式碼確認)。**與本模組無關但同一檔案**,且**加上權限述詞後症狀會更明顯**(可見列變少 → 跳頁更容易露餡)。應另立小項修為複合 cursor `(sort_val, id) > (:v, :id)`。
+- ~~🔴 **keyset 分頁在非 id 排序時會跳列 / 重複**~~ ✅ **已修(#95,2026-08-04 複驗)** —— `keyset.ts` 檔頭逐字記著同一個 bug,已改為遞迴展開述詞,並有 `keyset-pagination.integration.test.ts`。⚠️ **本節在它修好之後仍寫著「應另立小項」** —— 待辦不會自己過期,而「不在本模組 scope」的項目最容易變成這樣:沒有人負責回來看。
 
 ---
 

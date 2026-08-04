@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| 狀態 | **APPROVED — OQ-IMP-1..8 已裁定(2026-07-29),進 M1** |
+| 狀態 | ✅ **SHIPPED(M1–M3;見 §13 變更紀錄)** ⚠️ 2026-08-04 更正:此欄一直停在「APPROVED,進 M1」,而 §13 早已記 M1/M2/M3 出貨 —— 只讀檔頭者會誤判為未出貨 |
 | 建立 | 2026-07-29 |
 | 上游 | #106 追溯稽核(Tier 2)· grid-and-excel-import.md · docs/25 G 匯入匯出 |
 | 依賴 | form-engine-core(記錄 DML / 動態表)· reliability(idempotency)· authz |

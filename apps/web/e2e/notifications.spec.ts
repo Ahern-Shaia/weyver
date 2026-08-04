@@ -75,6 +75,12 @@ test("通知內容不含欄位值(欄位級權限使「過濾收件人」失效)
   await page.getByRole("button", { name: /^通知/ }).click()
   const panel = page.locator(".shadow-overlay")
   await expect(panel).toBeVisible()
+  /* 🔴 audit-D §3-5|**先斷言通知項真的在,再斷言它不含值**。
+     少了前半,seed 失敗時面板是空的,而「不含 77000」對空面板恆真 ——
+     那條規則會靜靜地不再測任何東西。同一支檔案上一條測試有做這件事,形成對照。 */
+  await expect(panel.getByRole("button", { name: /待簽核/ }).first()).toBeVisible({
+    timeout: 15_000,
+  })
   // 首欄是「金額」值 77000 —— 標題不得帶出
   await expect(panel).not.toContainText("77000")
 })
@@ -89,8 +95,11 @@ test("通知設定:三軸皆在,層級可改且持久化", async ({ page, reques
   await expect(page.getByText("簽核逾期提醒為例外", { exact: false })).toBeVisible()
 
   /* 軸 1 的上半是全租戶預設(表單那一層改為逐表單清單,見 form-tools.spec)。
-     ⚠️ 這裡是 `radio` 不是 `button` —— 單選清單的正確語意,選擇器要跟著語意走。 */
-  await page.getByRole("radio", { name: /^靜音/ }).click()
+     ⚠️ 這裡是 `radio` 不是 `button` —— 單選清單的正確語意,選擇器要跟著語意走。
+     🔴 2026-08-04:整頁範圍的 radio 查詢在**分類層 picker 出現之後**變成 6 個。
+     要點的是「全租戶預設」那一組,故收斂到它所屬的 radiogroup。 */
+  const tenantPicker = page.getByRole("radiogroup", { name: "全租戶預設通知層級" })
+  await tenantPicker.getByRole("radio", { name: /^靜音/ }).click()
   await expect
     .poll(
       async () => {
@@ -103,5 +112,5 @@ test("通知設定:三軸皆在,層級可改且持久化", async ({ page, reques
     .toBe(0)
 
   // 還原為預設層級,不影響其他 spec
-  await page.getByRole("radio", { name: /^與我相關/ }).click()
+  await tenantPicker.getByRole("radio", { name: /^與我相關/ }).click()
 })

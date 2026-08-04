@@ -123,7 +123,7 @@
 
 ### 4.3 A3|Excel-to-form onboarding
 
-- 上傳 .xlsx(≤ 合理大小)→ 前端解析(OQ-GEI-3)→ 取工作表首列為欄名、其餘為資料。
+- 上傳 .xlsx(≤ 合理大小)→ ~~前端解析(OQ-GEI-3)~~ **⚠️ OQ-GEI-3=A(前端解析)已被 `import-to-existing-form.md` §OQ-IMP-6 正式推翻,改為後端解析**(`form-engine/import/workbook.ts`,含 `dense` + `cellDates`)。該處逐字要求「本檔需標註」,而本檔到 2026-08-04 才標 —— **被推翻的裁定不會自己去通知原文件**。
 - **預覽 / 校正 UI**:表格顯示推斷結果(欄名 + 推斷型別 + 前幾列樣本);使用者可改欄名、改型別(限可建型別)、勾選略過欄、設必填。
 - **送出**:createForm(校正後 spec)→ ready → bulk 灌資料(略過欄不送;型別轉換複用 toSubmitValue)→ 開新表單網格。
 - 空欄名 / 重複欄名 → 自動命名(欄1、欄2)或提示改。
@@ -258,7 +258,7 @@
 | **upsert by key** | 無此功能則重覆匯入必產生重複資料。**Ragic 官方三政策**:新增 / 更新既有 / 只更新不新增;Airtable 有「Merge with existing records」 |
 | **匯入撤銷** | **Ragic 官方有** Recent Changes → Revert 整批還原。已有 soft delete 地基 → 加 `import_batch_id` 即可,低成本高價值 |
 | **大檔** | 目前主執行緒同步讀、無 Worker、無 `dense`、**硬上限 5000 列直接截斷**。SheetJS 官方要求大檔用 `dense:true` + Web Worker,>100M cells 撞 V8 字串上限,官方明說「處理很大的檔應在伺服器端」。**客戶 3 萬列的舊 Excel 現在無解 —— 對「既有客戶遷移」定位是硬傷** |
-| 靜默錯誤 | **多工作表寫死 `SheetNames[0]` → 靜默吃錯表**;標題列寫死 `matrix[0]`;合併儲存格 SheetJS 只左上格有值 → 靜默空值 |
+| 靜默錯誤 | ~~**多工作表寫死 `SheetNames[0]`**;標題列寫死 `matrix[0]`~~ ✅ **兩者皆已修(2026-08-04 複驗)** —— `excel/parse.ts` 有工作表清單、`panel.tsx` 有工作表下拉與標題列偵測。**殘留**:合併儲存格 SheetJS 只左上格有值 → 靜默空值 |
 
 ### 推斷規則的其餘改進(未修)
 
