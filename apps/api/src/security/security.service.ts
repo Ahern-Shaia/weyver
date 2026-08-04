@@ -1,4 +1,5 @@
-import { Inject, Injectable } from "@nestjs/common"
+import { Inject, Injectable, Logger } from "@nestjs/common"
+import { Cron, CronExpression } from "@nestjs/schedule"
 import { desc, eq, lt, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb } from "../db/db.module.js"
 import { authAudits } from "../db/schema.js"
@@ -70,6 +71,8 @@ export const AUTH_AUDIT_RETENTION_DAYS = 183
 
 @Injectable()
 export class SecurityService {
+  private readonly logger = new Logger(SecurityService.name)
+
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
   /* session / api_key 皆為 Tier-1 系統表(非 RLS)→ 走特權車道,
@@ -180,6 +183,26 @@ export class SecurityService {
       .orderBy(desc(authAudits.createdAt))
       .limit(Math.min(limit, 200))
     return rows
+  }
+
+  /* 🔴 audit-D §3-3|**保留期要有人執行**。
+
+     這支方法自出貨以來**零呼叫者** —— `settings-center` §4.1 逐字寫著
+     「認證活動紀錄(保留 6 個月)」,而實際上只存在一個常數:紀錄含 IP,
+     無限期堆積。**「文件說有、程式沒有」正是本模組當初要修的東西。**
+
+     排程沿用 `trash.purge` 的形態(每日 3AM + 吞例外只記 log):
+     清理失敗不該讓整個排程器掛掉。 */
+  @Cron(CronExpression.EVERY_DAY_AT_3AM, { name: "security.purgeAudit" })
+  async scheduledPurge(): Promise<void> {
+    try {
+      const n = await this.purgeExpiredAudit()
+      if (n > 0) this.logger.log(`auth audit purge: 刪除 ${String(n)} 筆逾期紀錄`)
+    } catch (error) {
+      this.logger.error(
+        `auth audit purge failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
   }
 
   /* 保留期清理。**只刪逾期**,不提供任意刪除 —— 稽核紀錄不該有人為的刪除入口。 */

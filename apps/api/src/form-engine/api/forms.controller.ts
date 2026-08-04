@@ -425,16 +425,25 @@ export class FormsController {
         message: `「${field.name}」不是日期欄,沒有日期顯示格式可設`,
       })
     }
-    if (body.showAsQr !== undefined && field.cellValueType !== "text") {
+    if (
+      (body.showAsQr !== undefined || body.displayMask !== undefined) &&
+      field.cellValueType !== "text"
+    ) {
       throw new BadRequestException({
         code: "DISPLAY_FORMAT_NOT_APPLICABLE",
-        message: `「${field.name}」不是單行文字欄,不能以條碼呈現`,
+        message: `「${field.name}」不是單行文字欄,沒有條碼與遮罩可設`,
       })
     }
     await this.metadata.updateFieldOptions(tenant.tenantId, fieldId, {
       ...(field.options as Record<string, unknown>),
       ...(body.dateFormat === undefined ? {} : { dateFormat: body.dateFormat }),
       ...(body.showAsQr === undefined ? {} : { showAsQr: body.showAsQr }),
+      /* 空字串 = 取消遮罩 → 直接移除該鍵,不留一個空值在 options 裡 */
+      ...(body.displayMask === undefined
+        ? {}
+        : body.displayMask === ""
+          ? { displayMask: undefined }
+          : { displayMask: body.displayMask }),
     })
   }
 

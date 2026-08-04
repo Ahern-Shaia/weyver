@@ -60,10 +60,15 @@ export const updateDisplayBodySchema = z
        這個鍵在 `field-type-registry` 與 `barcode.tsx` 都存在了,**但沒有任何寫入處**
        —— 只能打 API 設,而第一約束逐字說那不算解決。 */
     showAsQr: z.boolean().optional(),
+    /* 🔴 audit-D §2.4|格式遮罩(`###-##-####`)。空字串 = 取消遮罩。 */
+    displayMask: z.string().max(60).optional(),
   })
-  .refine((b) => b.dateFormat !== undefined || b.showAsQr !== undefined, {
-    message: "至少要指定一個顯示設定",
-  })
+  .refine(
+    (b) => b.dateFormat !== undefined || b.showAsQr !== undefined || b.displayMask !== undefined,
+    {
+      message: "至少要指定一個顯示設定",
+    },
+  )
 
 /* 選項增刪改名(#105)。刻意與 /type 分開:改型別是 DDL,改選項會改寫**資料**,
    兩者的風險與流程不同,合在一個端點會讓呼叫端分不清自己在做哪件事。 */

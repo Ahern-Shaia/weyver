@@ -119,10 +119,19 @@ describe("G-1 事件匯流排", () => {
     expect(Number(events[0]?.actor_id)).toBe(ALICE)
   })
 
-  it("🔴 業務失敗 rollback 時,事件也不留", async () => {
+  /* ⚠️ audit-D §3-2|**這條測試原本不構成證據,標題已改成它真正證明的事。**
+
+     原標題是「業務失敗 rollback 時,事件也不留」,而它用的觸發點是**未知欄位**
+     —— `validateValues` 在 `insertOne` 的**開頭**就擲錯,`emitInTx` 根本沒執行到。
+     也就是說,就算事件寫在交易外面,這條測試一樣會綠。
+
+     🔴 **更強的性質(emit 之後才失敗 → 事件一併回滾)目前無法從公開 API 構造**:
+     `createRecord` 的 emit 之後只剩搜尋索引寫入,而那支沒有可從外部觸發的失敗路徑;
+     DB 約束違反都發生在 emit 之前。同一 tx 的保證目前**只由結構提供**
+     —— `emitInTx(trx, …)` 收的就是那個 trx。**誠實記錄:這一條沒有測試在守。** */
+  it("寫入被擋下時(驗證階段)不會留下事件", async () => {
     const formId = await makeForm(tenantA, "事件_回滾")
     const before = await ddlKnex("event_outbox").where({ form_id: formId }).count({ n: "*" })
-    // 未知欄位 → validateValues 擲錯 → 整個 tx rollback
     await expect(
       records.createRecord(tenantA, formId, { 不存在的欄: "x" }, ALICE),
     ).rejects.toThrow()

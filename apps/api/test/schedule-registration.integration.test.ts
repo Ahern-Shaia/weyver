@@ -32,6 +32,9 @@ const EXPECTED_CRON_JOBS = [
   "webhook.retention",
   "file.scan",
   "export.expire",
+  /* audit-D §3-3|認證稽核的保留期原本**沒有執行者** —— `purgeExpiredAudit` 零呼叫者,
+     而 `settings-center` §4.1 寫著「保留 6 個月」。這條清單當場把新 cron 攔下來要求具名。 */
+  "security.purgeAudit",
 ] as const
 
 let container: StartedPostgreSqlContainer
