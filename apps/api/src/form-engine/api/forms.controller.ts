@@ -38,6 +38,7 @@ import { z } from "zod"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { LayoutService } from "../layout/layout.service.js"
 import { FieldNotFoundError } from "../errors.js"
+import { LinkOptionsService } from "../relations/link-options.service.js"
 import { MetadataService } from "../metadata/metadata.service.js"
 import {
   type AddFieldSpec,
@@ -64,6 +65,7 @@ export class FormsController {
   constructor(
     @Inject(DdlService) private readonly ddl: DdlService,
     @Inject(MetadataService) private readonly metadata: MetadataService,
+    @Inject(LinkOptionsService) private readonly linkOptionsService: LinkOptionsService,
     @Inject(LayoutService) private readonly layout: LayoutService,
     @Inject(OptionService) private readonly options: OptionService,
     @Inject(RelookupService) private readonly relookup: RelookupService,
@@ -300,6 +302,30 @@ export class FormsController {
 
      為什麼需要它:`local` 之下格式由租戶/使用者的 `locale` 決定,而 `en` 是
      設定白名單裡的合法值 —— 選了它整個產品的日期就變美式。**設計者必須能指定。** */
+  /* 🔴 R1·LNK M1|連結欄的候選記錄。**目標表單的 view 權在 service 內再驗一次** ——
+     來源表單的權限不蘊含目標表單的權限(你在填採購單不代表你看得到供應商),
+     而只在前端過濾等於沒做(同 OQ-PC-12 的教訓,直接打 API 就能繞)。 */
+  @Get(":formId/fields/:fieldId/link-options")
+  @RequiresFormAction("view")
+  async linkOptions(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("fieldId", ParseIntPipe) fieldId: number,
+    @Query("q") q?: string,
+  ): Promise<{ options: { id: number; label: string }[] }> {
+    return {
+      options: await this.linkOptionsService.listOptions(
+        tenant.tenantId,
+        formId,
+        fieldId,
+        (q ?? "").trim(),
+        20,
+        permissions,
+      ),
+    }
+  }
+
   @Patch(":formId/fields/:fieldId/display")
   @RequiresFormAction("design")
   async updateDisplay(

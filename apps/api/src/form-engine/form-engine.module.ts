@@ -13,6 +13,7 @@ import { AccessPreviewService } from "./access/access-preview.service.js"
 import { OptionService } from "./field-types/option.service.js"
 import { ImportService } from "./import/import.service.js"
 import { RecordService } from "./records/record.service.js"
+import { LinkOptionsService } from "./relations/link-options.service.js"
 import { RelationService } from "./relations/relation.service.js"
 import { RelookupService } from "./relations/relookup.service.js"
 import { ReverseRelationService } from "./relations/reverse-relation.service.js"
@@ -32,6 +33,7 @@ import { TrashService } from "./trash/trash.service.js"
     ImportService,
     RecordService,
     FormulaService,
+    LinkOptionsService,
     RelationService,
     RelookupService,
     ReverseRelationService,
@@ -48,6 +50,7 @@ import { TrashService } from "./trash/trash.service.js"
     ImportService,
     RecordService,
     FormulaService,
+    LinkOptionsService,
     RelationService,
     RelookupService,
     ReverseRelationService,

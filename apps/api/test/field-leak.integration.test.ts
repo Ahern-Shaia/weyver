@@ -290,3 +290,103 @@ describe("旁路:公式欄引用隱藏欄", () => {
     expect(res.records.some((r) => r.values["年薪兩倍"] !== undefined)).toBe(true)
   })
 })
+
+/* 🔴 R1·LNK M1|連結欄候選清單的權限。
+
+   **來源表單的權限不蘊含目標表單的權限** —— 你在填採購單不代表你看得到供應商。
+   而候選清單天生是一個「把整張目標表念出來」的端點,漏檢就是跨表單資料掃描器。 */
+describe("連結欄候選清單:跨表單權限", () => {
+  let linkFormId = 0
+  let linkFieldId = 0
+
+  beforeAll(async () => {
+    const admin = { "x-dev-tenant": String(tenantId), "x-dev-actor": "1" }
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: admin,
+      payload: {
+        name: "採購單",
+        fields: [
+          { name: "單號", type: "text" },
+          { name: "員工", type: "link", options: { targetFormId: formId } },
+        ],
+      },
+    })
+    expect(created.statusCode).toBeLessThan(300)
+    const body = created.json() as { id: number; fields: { id: number; name: string }[] }
+    linkFormId = body.id
+    linkFieldId = body.fields.find((f) => f.name === "員工")?.id ?? 0
+    expect(linkFieldId).toBeGreaterThan(0)
+  }, 60_000)
+
+  const call = (headers: Record<string, string>, q = "") =>
+    app.inject({
+      method: "GET",
+      url: `/api/forms/${linkFormId}/fields/${linkFieldId}/link-options?q=${encodeURIComponent(q)}`,
+      headers,
+    })
+
+  it("admin 拿得到候選,且 label 是標題不是 id", async () => {
+    const res = await call({ "x-dev-tenant": String(tenantId), "x-dev-actor": "1" })
+    expect(res.statusCode).toBe(200)
+    const { options } = res.json() as { options: { id: number; label: string }[] }
+    expect(options.length).toBeGreaterThan(0)
+    expect(options.map((o) => o.label)).toContain("乙")
+  })
+
+  it("搜尋只縮到相符的那些", async () => {
+    const res = await call({ "x-dev-tenant": String(tenantId), "x-dev-actor": "1" }, "乙")
+    const { options } = res.json() as { options: { label: string }[] }
+    expect(options).toHaveLength(1)
+    expect(options[0]?.label).toBe("乙")
+  })
+
+  /* 🔴 這一條是本模組的核心防線。dev 車道恆為 admin,故直接對 service 驗 ——
+     用一個「對來源表單有 view、對目標表單沒有」的權限物件。 */
+  it("🔴 對目標表單沒有 view 權 → 拒絕,不得變成跨表單掃描器", async () => {
+    const { LinkOptionsService } = await import(
+      "../src/form-engine/relations/link-options.service.js"
+    )
+    const svc = app.get(LinkOptionsService)
+    const onlySource = new EffectivePermissions(
+      false,
+      new Map([[linkFormId, new Set(["view" as const])]]),
+      new Map(),
+      new Set(),
+    )
+    await expect(
+      svc.listOptions(tenantId, linkFormId, linkFieldId, "", 20, onlySource),
+    ).rejects.toThrow()
+  })
+
+  /* 標題欄被遮時回 `#id` —— **不是空白**。空白會讓人以為那筆沒資料,
+     而他其實是沒權限(同 pivot 的裁定:寧可具名,不要靜默)。 */
+  it("標題欄對此人隱藏 → label 退回 #id,且不提供搜尋", async () => {
+    const { LinkOptionsService } = await import(
+      "../src/form-engine/relations/link-options.service.js"
+    )
+    const svc = app.get(LinkOptionsService)
+    const detail = await app.inject({
+      method: "GET",
+      url: `/api/forms/${formId}`,
+      headers: { "x-dev-tenant": String(tenantId), "x-dev-actor": "1" },
+    })
+    const nameFieldId =
+      (detail.json() as { fields: { id: number; name: string }[] }).fields.find(
+        (f) => f.name === "姓名",
+      )?.id ?? 0
+    const hiddenTitle = new EffectivePermissions(
+      false,
+      new Map([
+        [linkFormId, new Set(["view" as const])],
+        [formId, new Set(["view" as const])],
+      ]),
+      new Map([[nameFieldId, "hidden" as const]]),
+      new Set(),
+    )
+    const options = await svc.listOptions(tenantId, linkFormId, linkFieldId, "", 20, hiddenTitle)
+    expect(options.length).toBeGreaterThan(0)
+    for (const o of options) expect(o.label).toMatch(/^#\d+$/)
+  })
+})
