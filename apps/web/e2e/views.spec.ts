@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { expect, test } from "@playwright/test"
 
 /* R1·UP-2 views-list UI 固化:集合(browse)視圖 + 雙模式 + 快速搜尋 + 篩選面板 + 儲存檢視 + 匯出。
@@ -25,7 +26,14 @@ test("集合視圖:篩選面板加條件", async ({ page }) => {
   await expect(page.getByRole("combobox").nth(1)).toBeVisible()
 })
 
-test("集合視圖:匯出 Excel", async ({ page }) => {
+/* 🔴 列表頁的「匯出 Excel」是**所見即所得**,不是原始資料 ——
+   兩種匯出在本專案是刻意分開的兩件事(見 `docs/modules/R1/data-export.md` §0):
+   · 這一支:畫面上那些列、畫面上那些字。**看的便利**
+   · 設定中心的租戶封存(CSV + zip):原值不格式化,供再匯入。**帶得走**
+
+   ⚠️ 原本這條只驗副檔名 —— 那連「檔案裡有沒有東西」都沒問。
+   R1·FMT M1 把顯示收成單一來源之後,這裡是**唯一**能證明匯出真的跟著畫面走的地方。 */
+test("集合視圖:匯出 Excel —— 內容與畫面一致(不是資料庫原值)", async ({ page }) => {
   await page.goto("/app/forms/1?mode=list")
   await expect(page.getByText(/筆/).first()).toBeVisible({ timeout: 30_000 })
   const [download] = await Promise.all([
@@ -33,6 +41,23 @@ test("集合視圖:匯出 Excel", async ({ page }) => {
     page.getByRole("button", { name: "匯出 Excel" }).click(),
   ])
   expect(download.suggestedFilename()).toMatch(/\.xlsx$/)
+
+  const path = await download.path()
+  const { read, utils } = await import("xlsx")
+  const wb = read(await readFile(path), { type: "buffer" })
+  const sheet = wb.Sheets[wb.SheetNames[0] ?? ""]
+  const rows = utils.sheet_to_json<Record<string, unknown>>(sheet ?? {})
+  expect(rows.length).toBeGreaterThan(0)
+
+  /* 🔴 金額必須是**畫面上的寫法**(千分位 + 幣別小數位),
+     不得是引擎的 `numeric(19,4)` 原始表示 `128400.0000` ——
+     那正是 `display-value.ts` 檔頭逐字說要修的症狀,而列表頁曾經漏接。 */
+  const money = rows.map((r) => String(r["金額"] ?? "")).filter((v) => v !== "")
+  expect(money.length).toBeGreaterThan(0)
+  for (const v of money) {
+    expect(v).not.toMatch(/^\d+\.0000$/)
+    expect(v).toMatch(/,/)
+  }
 })
 
 test("另存個人檢視 → 出現於檢視選擇器", async ({ page }) => {
