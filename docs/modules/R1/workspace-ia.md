@@ -252,7 +252,7 @@
 | 站 | 查了什麼 | 結果 |
 |---|---|---|
 | ① **自家 repo** | 表單層既有的「面板」形態 · 公開表單後端的權限判準 | 🔴 **查出兩個現行入口的閘門都是錯的**,見 §14.1。面板形態既有兩種:`ImportPanel` 全接管 / `WidgetEditor` 內嵌條 |
-| ② **自家相依套件** | 有沒有現成 Dialog / Modal | **沒有**。`packages/ui` 無 dialog,全 repo 零個 `role="dialog"` —— 為這件事引入一套 modal 是新的相依,不做 |
+| ② **自家相依套件** | 有沒有現成 Dialog / Modal | **當時沒有現成元件**(2026-08-04 07:37 查:`packages/ui` 無 dialog)。⚠️ **原文寫「全 repo 零個 `role="dialog"`」,該斷言已於同日 08:56 失效** —— `date-input.tsx` 的自製月曆彈層帶了 `role="dialog"`(commit `b28fc35`,由本人加上)。結論(不為此引入 modal 相依)仍成立,但**依據要改成不會過期的形式**。見 `_audit/giants-shoulders-audit-C.md` §4.2 |
 | ③ **競品** | Ragic 官方文件:per-form 對外設定與通知設定住在哪 | **兩份逐字依據直接定案**,且**推翻了我原本要做的一半**,見 §14.1 |
 
 ### 14.1 三個一手發現

@@ -203,9 +203,11 @@ export function FormWorkspace(): ReactNode {
   }
 
   /* 🔴 R1·IA 第二階段:公開表單 / 通知的面板**開在表單上**,不再深連設定中心。
-     沿用 ImportPanel 的全接管形態 —— 同樣由「工具」開啟,不為此新增第三種面板語彙
-     (repo 內無 dialog 元件,全 repo 零個 `role="dialog"`;為這件事引入一套 modal
-     是新的相依)。 */
+     沿用 ImportPanel 的全接管形態 —— 同樣由「工具」開啟,不為此新增第三種面板語彙:
+     當時沒有現成的 dialog 元件,而為這件事引入一套 modal 相依不划算。
+
+     ⚠️ 原本這裡寫「全 repo 零個 `role="dialog"`」—— **那種斷言有保鮮期**,
+     同日稍晚 `date-input.tsx` 的月曆彈層就帶了一個。理由改寫成不會過期的形式。 */
   if (tool === "share" && form !== undefined) {
     return (
       <div className="h-full min-h-0 overflow-auto">
