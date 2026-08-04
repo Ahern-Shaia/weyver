@@ -1,6 +1,6 @@
 # link-picker-and-load.md — [R1·LNK] 連結欄選記錄 + Load 帶入 設計文件
 
-> ✅ **狀態:APPROVED(2026-08-04)** — OQ-LNK-1..6 依 `AGENTS.md`〈研究錨定的建議 = 已核准〉裁定。
+> 🟡 **狀態:M1 SHIPPED(2026-08-04)· M2 Load 未做** — OQ-LNK-1..6 依 `AGENTS.md`〈研究錨定的建議 = 已核准〉裁定。
 >
 > **起因**|`_audit/giants-shoulders-audit-C.md` §2.2 查出 `formula-and-linkload` 標 SHIPPED
 > 但 **Link 的選記錄 UI 與 Load 帶入沒有任何生產路徑** ——
@@ -148,9 +148,54 @@ Ragic 要求連結目標欄唯一。我方 link 值是**記錄 id**(天生唯一
 
 | M | 內容 |
 |---|---|
-| **M1** | 候選端點 + 選記錄 UI + 可讀顯示 + 測試 |
+| **M1** | ✅ **已出貨**:候選端點 + 選記錄 UI + 可讀顯示 + api 4 整合 / web 3 e2e |
 | **M2** | Load 對映設定(設計器)+ 選取當下帶入 |
 | **M3** | FMEA 回填 + `formula-and-linkload` 狀態更正 + docs/25 |
+
+---
+
+## 7-bis. M1 出貨紀錄(2026-08-04)
+
+### 落地中翻掉的一件事
+
+🔴 **連結欄在前端本來就被列為 stub。** `STUB_TYPES` 逐字是 `["link"]`,
+填單畫面顯示「(此型別即將推出,暫不可填)」——
+而 `formula-and-linkload` 的檔頭同時寫著「Link&Load SHIPPED」。
+
+👉 **UI 一直說實話,是模組文件在過度宣稱。**
+`STUB_TYPES` 這個機制的價值正是**讓畫面誠實**:寧可說「還不能填」,
+也不要給一個填了沒反應的框。故常數保留(清空但不刪),下一個「後端先行、前端未跟上」的型別還會用到。
+
+### 🔴 送出邊界的靜默丟值(實走才發現)
+
+`toSubmitValue` 沒有列 `link` → 落到 default 的字串分支被丟掉:
+**畫面上明明選了供應商,存進去卻是 `null`,而且沒有任何錯誤。**
+
+⚠️ **`member` 欄踩過同一個坑(#96),`value.ts` 裡有一段註解逐字寫著** ——
+而 link 還是踩了,因為那條規則只寫在註解裡,**沒有任何機制在漏列時發出訊號**。
+兩次都是**瀏覽器實走**才發現的:單元測試不會送出、型別上 `unknown` 一路綠燈。
+
+`value.test` 原本斷言 `toSubmitValue(field("link"), 5)` 為 `undefined` ——
+**那條斷言在釘住 bug**(它當時是「link 是 stub」的正確表述,型別解禁後就變成護欄)。
+
+### 移出 stub 的連帶(三處)
+
+| 處 | 為什麼要跟著改 |
+|---|---|
+| `palette.tsx` | 原本硬寫 `[...ADVANCED_TYPES, "link"]` 補進來(stub 時期的 workaround),link 進 ADVANCED 後會**重複出現** |
+| `isGridEditable` | 要**顯式排除** link —— 網格內沒有選記錄器,開放編輯等於讓人在格子裡打目標記錄的 id,**那正是填單頁剛移除的東西,不要從另一個門放回來** |
+| `singleSelect` 的 `aria-label` | `record-workbench` 用整頁 `getByRole("combobox")`,而連結欄的選記錄器**也是 combobox** |
+
+### ⚠️ 試了又收回的:欄位輸入的無障礙名稱
+
+欄位輸入框在無障礙樹上**沒有名字**(視覺欄名是旁邊的 div,無 `<label for>` 關聯,
+螢幕閱讀器只唸「編輯文字」,WCAG 4.1.2)。補上 `aria-label` 之後
+**量到的波及面是 27 條 e2e** —— 現行多數 spec 拿 placeholder 推導出的無障礙名稱
+當錨點(如 money 欄的 `0.0000`)。
+
+修法是對的(placeholder 一打字就消失,拿它當名稱是反樣式),
+但它是一件**獨立的 a11y 工作**,不該夾帶在別的 commit 裡順手做掉。已還原,
+`field-input.tsx` 留下說明與量到的數字。
 
 ---
 
