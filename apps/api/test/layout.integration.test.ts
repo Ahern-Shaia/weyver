@@ -216,6 +216,70 @@ describe("條件式格式(conditionalFormats)", () => {
     const res = await putLayout(A(), { fields: {} })
     expect(res.statusCode).toBe(200)
   })
+
+  /* ── C-2 後半|分段目標 + 顯示訊息(OQ-CF-9 / 11)───────────────── */
+
+  it("targetSections + message 效果 → round-trip", async () => {
+    const res = await putFormats({
+      record: [
+        {
+          conditions: [{ field: "備註", op: "isNotEmpty" }],
+          targets: [],
+          targetSections: ["sec1"],
+          effects: [{ kind: "readonly" }, { kind: "message", text: "{{fieldValue:備註}} 待確認" }],
+        },
+      ],
+      list: [],
+    })
+    expect(res.statusCode).toBe(200)
+
+    const got = await app.inject({
+      method: "GET",
+      url: `/api/forms/${formId}/layout`,
+      headers: A(),
+    })
+    const rule = (
+      got.json() as {
+        layout: {
+          conditionalFormats?: {
+            record: { targetSections: string[]; effects: { kind: string; text?: string }[] }[]
+          }
+        }
+      }
+    ).layout.conditionalFormats?.record[0]
+    expect(rule?.targetSections).toEqual(["sec1"])
+    expect(rule?.effects.find((e) => e.kind === "message")?.text).toBe("{{fieldValue:備註}} 待確認")
+  })
+
+  it("空訊息 / 超長訊息 → 400(效果不得是一則沒有內容的訊息)", async () => {
+    for (const text of ["", "x".repeat(501)]) {
+      const res = await putFormats({
+        record: [
+          { conditions: [{ field: "備註", op: "isEmpty" }], effects: [{ kind: "message", text }] },
+        ],
+        list: [],
+      })
+      expect(res.statusCode).toBe(400)
+    }
+  })
+
+  it("未知效果種類 → 400(判別式聯集不得被任意 kind 撐開)", async () => {
+    const res = await putFormats({
+      record: [{ conditions: [{ field: "備註", op: "isEmpty" }], effects: [{ kind: "required" }] }],
+      list: [],
+    })
+    expect(res.statusCode).toBe(400)
+  })
+
+  /* 🔴 `sectionId` 曾存在於 `fieldLayoutSchema` 且**零 reader 零 writer**,本批移除。
+     schema 為 `.strict()`,故舊 client 若還在送這個鍵會被擋下來 —— 那是刻意的:
+     靜默接受一個沒有人讀的欄位,正是它當初能存在兩個月的原因。 */
+  it("已移除的 sectionId → 400,不靜默吞掉", async () => {
+    const res = await putLayout(A(), {
+      fields: { "1": { row: 0, col: 0, sectionId: "sec1" } },
+    })
+    expect(res.statusCode).toBe(400)
+  })
 })
 
 describe("🔴 版面樂觀鎖(#109)", () => {

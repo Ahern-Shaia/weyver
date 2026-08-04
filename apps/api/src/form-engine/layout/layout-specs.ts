@@ -46,7 +46,6 @@ export const fieldLayoutSchema = z
     row: z.number().int().min(0).max(999),
     col: z.number().int().min(0).max(50),
     colSpan: z.number().int().min(1).max(50).optional(),
-    sectionId: z.string().max(60).optional(),
     placeholder: z.string().max(200).optional(),
     help: z.string().max(1000).optional(),
     readonly: z.boolean().optional(),
@@ -121,6 +120,16 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
      欄位級保護走權限設定(E-1 後端 assertWritable / maskRead)。 */
   z.object({ kind: z.literal("hide") }).strict(),
   z.object({ kind: z.literal("readonly") }).strict(),
+  /* 🔴 C-2 後半|顯示訊息(OQ-CF-11)。**規則層效果,不落在任何欄位上**。
+
+     文字可含欄位參數 `{{fieldValue:欄名}}` / `{{fieldName:欄名}}`。
+     Ragic 用的是欄位編號(`{{fieldValue_1000199}}`),我方一律用**欄名** ——
+     `conditions.field` 與 `targets` 都是欄名,再引進一套 id 指涉等於要使用者學兩套。
+     分隔符改冒號且**只切第一個**:欄名可以含底線,Ragic 用 id 才沒有這個歧義。
+
+     ⚠️ 插值與渲染的兩條硬約束在**前端**(求值在前端,OQ-CF-6=A):
+     值取不到時回具名的「(無權檢視)」而非留空;訊息一律純文字,不吃 markdown/HTML。 */
+  z.object({ kind: z.literal("message"), text: z.string().min(1).max(500) }).strict(),
 ])
 
 /* 🔴 OQ-CF-8 重裁 = 選項 C-1(2026-08-03):**規則的形狀現在定死,效果的覆蓋面分層補**。
@@ -136,15 +145,24 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
    **嚴格較高**(多一次合併遷移),且分成兩份之後 Ragic 用一整節解釋的
    「同一欄位被多條規則涵蓋時由上而下、後者覆蓋」在本產品裡**結構上表達不出來**。
 
-   **本步不新增任何伺服器強制面**,`effects` 目前只有 `color` 一種 ——
-   純呈現效果(hide / readonly / section / message)為 C-2,
-   需伺服器參與的三項(required / 動作按鈕 / 簽核按鈕)為 C-3 單獨排程。 */
+   **仍未新增任何伺服器強制面**:C-2 全數(color / hide / readonly / 分段 / 訊息)
+   都只在前端生效;需伺服器參與的三項(required / 動作按鈕 / 簽核按鈕)為 C-3 單獨排程。 */
 export const formatRuleSchema = z
   .object({
     combinator: z.enum(["and", "or"]).default("and"),
     conditions: z.array(formatConditionSchema).min(1).max(20),
     /* 套用到哪些欄位(顯示名);空 = 條件所涉之欄位 */
     targets: z.array(z.string().min(1).max(100)).max(50).default([]),
+    /* 🔴 C-2 後半|分段是**目標選擇器**,不是新的效果類(OQ-CF-9)。
+
+       官方逐字:「就可以將相關欄位設成同一分段後,再透過條件式格式一次設定,
+       **就無需逐一針對各欄位進行設定**」—— 它是批次捷徑,效果就是欄位級的那一組。
+       求值時展開成該分段列區間內的欄位,**與 `targets` 併集**。
+
+       這樣仲裁空間仍然只有一個(每個欄位),Ragic 的「由上而下、後者覆蓋」
+       跨分段級與欄位級規則自動一致;另立一軸就會重蹈 §10-bis 選項 A 的兩份真相。
+       「上鎖」不需要新效果 —— 逐字「若選擇將分段上鎖,該分段會變為**唯讀**狀態」。 */
+    targetSections: z.array(z.string().min(1).max(60)).max(20).default([]),
     effects: z.array(formatEffectSchema).min(1).max(10),
     /* Ragic 的規則清單有這兩欄 —— 規則多起來之後,沒有註解就沒人敢動別人設的規則 */
     note: z.string().max(200).optional(),
