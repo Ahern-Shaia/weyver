@@ -72,7 +72,7 @@ test("版面屬性在填單頁生效:唯讀不給編輯器、說明文字取得�
   const res = await request.post("http://localhost:3001/api/forms", {
     headers: { "x-dev-tenant": "1", "content-type": "application/json" },
     data: {
-      name: `版面屬性_${stamp}`,
+      name: `E2E版面屬性_${stamp}`,
       fields: [
         { name: "單號", type: "text" },
         { name: "備註", type: "text" },

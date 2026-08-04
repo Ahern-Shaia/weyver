@@ -26,7 +26,7 @@ async function seed(
   const stamp = String(Date.now()).slice(-6)
   const form = await request.post("/api/engine/forms", {
     headers: AS(SUBMITTER),
-    data: { name: `簽核進階_${stamp}`, fields: [{ name: "品名", type: "text" }] },
+    data: { name: `E2E簽核進階_${stamp}`, fields: [{ name: "品名", type: "text" }] },
   })
   const formId = ((await form.json()) as { id: number }).id
   const def = await request.post(`/api/engine/forms/${String(formId)}/approvals/defs`, {

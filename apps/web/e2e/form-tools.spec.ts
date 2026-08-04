@@ -18,7 +18,7 @@ async function makeForm(request: import("@playwright/test").APIRequestContext): 
   id: number
   name: string
 }> {
-  const name = `工具選單_${String(Date.now()).slice(-6)}`
+  const name = `E2E工具選單_${String(Date.now()).slice(-6)}`
   const res = await request.post("/api/engine/forms", {
     headers: DEV,
     /* autoNumber 是**一律不得公開**的型別 —— 留著它,挑選器的過濾才測得到 */

@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process"
+import { readdirSync, readFileSync } from "node:fs"
 import pg from "pg"
 
 const DATABASE_URL =
@@ -41,6 +42,7 @@ export default async function globalSetup(): Promise<void> {
       )
     }
     await ensureDevOrg(pool)
+    assertNamingConvention()
     await purgePreviousRunArtifacts(pool)
   } finally {
     await pool.end()
@@ -81,6 +83,39 @@ async function ensureDevOrg(pool: pg.Pool): Promise<void> {
   await pool.query("UPDATE tenants SET auth_org_id = $1 WHERE id = 1 AND auth_org_id IS NULL", [
     orgId,
   ])
+}
+
+/* 🔴 命名慣例必須是**可檢查的**,否則它只是註解。
+
+   2026-08-04 實測:dev 租戶累積到 **500 張表單**,全套 e2e 從 12 分鐘變成 23.6 分鐘、
+   54 條紅(而每一條單跑都過)。真因是回收只認 `E2E%`,而**至少七支 spec 用了別的前綴**
+   (`LNK…` / `日期格式…` / `貼上…` / `簽核進階…` 等)—— 上面那段「一律以 E2E 前綴命名」
+   的說明寫了兩個月,沒有任何東西在檢查。
+
+   同型教訓見 `memory/pitfall_rule_without_check_always_drifts`:
+   **寫規則的同一個 commit 就要做出檢查。** */
+function assertNamingConvention(): void {
+  const dir = new URL(".", import.meta.url).pathname
+  const offenders: string[] = []
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".spec.ts"))) {
+    const src = readFileSync(`${dir}${file}`, "utf8")
+    for (const m of src.matchAll(/name: `([^`]*)`/g)) {
+      const name = m[1] ?? ""
+      if (name.startsWith("E2E")) continue
+      /* ⚠️ 只認**建表**的那一種 —— `name:` 也大量出現在 Playwright 的定位器選項
+         (`getByRole("heading", { name: ... })`)。以「後面近處有 `fields:`」判別:
+         建表 payload 一定帶欄位定義,斷言不會。
+         初版沒有這一條,三條誤報裡有兩條是標題斷言。 */
+      const after = src.slice(m.index ?? 0, (m.index ?? 0) + 300)
+      if (!after.includes("fields:")) continue
+      offenders.push(`${file}: ${name}`)
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(
+      `e2e 建立的表單一律以 E2E 前綴命名(回收機制靠它)。不合規:\n  ${offenders.join("\n  ")}`,
+    )
+  }
 }
 
 async function purgePreviousRunArtifacts(pool: pg.Pool): Promise<void> {

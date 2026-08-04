@@ -135,7 +135,7 @@ test("填單:條件式隱藏即時生效,且條件不再成立時欄位會回來
   const res = await request.post("/api/engine/forms", {
     headers: DEV,
     data: {
-      name: `條件隱藏_${stamp}`,
+      name: `E2E條件隱藏_${stamp}`,
       fields: [
         { name: "單號", type: "text" },
         { name: "備註", type: "text" },

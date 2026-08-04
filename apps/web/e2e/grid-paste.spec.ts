@@ -26,7 +26,7 @@ async function seed(
   const res = await request.post("/api/engine/forms", {
     headers: DEV,
     data: {
-      name: `貼上_${String(Date.now()).slice(-6)}`,
+      name: `E2E貼上_${String(Date.now()).slice(-6)}`,
       fields: [
         { name: "品名", type: "text" },
         { name: "數量", type: "number" },
