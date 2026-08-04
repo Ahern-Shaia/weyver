@@ -88,6 +88,22 @@ export class ButtonService {
     idempotencyKey?: string,
   ): Promise<ActionResult> {
     const button = await this.requireButton(tenant, formId, buttonId)
+
+    /* 🔴 C-3|條件式的「隱藏 / 上鎖動作按鈕」**在這裡執法**。
+       前端不畫那顆按鈕只是體驗;按鈕的效果是伺服器跑的,擋也要擋在伺服器。
+       官方逐字:上鎖時「還可以**客製提醒訊息**」→ 規則上的 message 效果即為該文案。 */
+    const gate = await this.records.evaluateActionGate(tenant.tenantId, formId, recordId, {
+      buttonId,
+    })
+    if (gate.hidden || gate.locked) {
+      throw new ForbiddenException({
+        code: "BUTTON_BLOCKED_BY_RULE",
+        /* 沒設客製文案時給一句說得出原因的預設 —— 一個按不動又不說為什麼的按鈕,
+           使用者只會一直按,然後來問為什麼壞掉 */
+        message: gate.message ?? "此記錄目前的狀態不允許執行這個動作",
+      })
+    }
+
     const key = idempotencyKey ?? `btn:${buttonId}:rec:${recordId}`
     const existing = await this.repo.findAuditByKey(tenant.tenantId, key)
     if (existing !== null) return { outcome: "duplicate" }

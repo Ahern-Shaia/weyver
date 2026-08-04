@@ -1297,3 +1297,52 @@ describe("🔴 退回到指定關與鎖定逃生", () => {
     expect(noReason.statusCode).toBe(400)
   })
 })
+
+/* 🔴 C-3|條件式的「顯示或隱藏開始簽核按鈕」在伺服器執法。
+   官方的例子逐字是「總金額超過一萬元時才需要進行簽核流程」——
+   那是**流程規則**,只藏按鈕等於沒有規則。 */
+describe("條件式格式:開始簽核閘門", () => {
+  beforeAll(async () => {
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${formId}/layout`,
+      headers: A(),
+      payload: {
+        grid: { cols: 12 },
+        fields: {},
+        statics: [],
+        sections: [],
+        conditionalFormats: {
+          record: [
+            {
+              combinator: "and",
+              /* 官方逐字的例子就是金額:「當『銷售訂單』的總金額超過一萬元時
+                 才需要進行簽核流程」。這裡取反向:小額免簽。 */
+              conditions: [{ field: "金額", op: "lt", value: 100 }],
+              targets: [],
+              targetApproval: true,
+              effects: [{ kind: "hide" }, { kind: "message", text: "這類單據不需要簽核" }],
+            },
+          ],
+          list: [],
+        },
+      },
+    })
+  })
+
+  it("🔴 條件成立 → 送簽被擋(403),理由是設計者寫的那句", async () => {
+    const rec = await createRecord({ 品名: "免簽品", 金額: 50, 狀態: "草稿" })
+    const res = await submit((rec.json() as { id: number }).id)
+    expect(res.statusCode).toBe(403)
+    expect(res.json()).toMatchObject({
+      code: "APPROVAL_BLOCKED_BY_RULE",
+      message: "這類單據不需要簽核",
+    })
+  })
+
+  it("條件不成立 → 照常送簽", async () => {
+    const rec = await createRecord({ 品名: "一般品", 金額: 5000, 狀態: "草稿" })
+    const res = await submit((rec.json() as { id: number }).id)
+    expect(res.statusCode).toBe(200)
+  })
+})

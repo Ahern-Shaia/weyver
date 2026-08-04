@@ -1,5 +1,13 @@
 import { Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
+import {
+  type ActionGateState,
+  evaluateApprovalGate,
+  evaluateButtonGate,
+  evaluateFieldStates,
+  resolveFieldAttrs,
+  sectionMembers,
+} from "@weyver/rules"
 import type { Knex } from "knex"
 import { z } from "zod"
 import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
@@ -1160,6 +1168,40 @@ export class RecordService {
     })
   }
 
+  /* 🔴 C-3|動作按鈕與「開始簽核」的條件式閘門(伺服器側)。
+
+     ## 為什麼用**未遮罩**的值求值
+
+     這裡刻意不走 `getRecord(..., permissions)`。閘門問的是「這筆記錄的狀態
+     允不允許做這件事」,而不是「這個人看得到什麼」——
+     若拿遮罩後的值求值,一個看不到「金額」的人,他的條件就不成立,
+     於是「金額超過一萬才需要簽核」對他自動失效。**能不能看到,與規則成不成立無關。**
+
+     ⚠️ 反過來也成立:閘門的**理由訊息**可能插值到欄位值,那條路徑仍走
+     `renderMessage` 的遮罩處置 —— 但這裡的訊息是給有權按這顆按鈕的人看的,
+     且來源是設計者自己寫的文案。 */
+  async evaluateActionGate(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    target: { readonly buttonId: number } | { readonly approval: true },
+  ): Promise<ActionGateState> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    const rules = resolved.layout?.conditionalFormats?.record ?? []
+    if (rules.length === 0) return { hidden: false, locked: false, message: null }
+    const values = await this.inTenantTx(tenantId, async (trx) => {
+      const row = await this.baseQuery(trx, tenantId, resolved)
+        .where(`${resolved.table}.id`, recordId)
+        .first()
+      if (row === undefined) throw new RecordNotFoundError(recordId)
+      return this.toRecord(resolved, row as Record<string, unknown>).values
+    })
+    const names = resolved.fields.map((f) => f.row.name)
+    return "approval" in target
+      ? evaluateApprovalGate(rules, values, names)
+      : evaluateButtonGate(rules, values, names, target.buttonId)
+  }
+
   /* 🔴 actorId 為記錄範圍所需(#96 sweep):單筆讀取原本沒帶範圍 → 受 own 限制的人
      照樣能用 id 直接讀到別人的記錄(列表擋住了,單筆沒擋)。 */
   async getRecord(
@@ -1796,7 +1838,15 @@ export class RecordService {
     parentId: number | null,
     lineNo: number | null,
   ): Promise<RecordRow> {
-    const columns = await this.validateValues(trx, tenantId, resolved, values, "create")
+    /* 建立時條件求值吃的就是這一批值 —— 沒有既有記錄可合併 */
+    const columns = await this.validateValues(
+      trx,
+      tenantId,
+      resolved,
+      values,
+      "create",
+      this.conditionalAttrs(resolved, values),
+    )
     const insert: Record<string, unknown> = {
       tenant_id: tenantId,
       created_by: actorId,
@@ -1827,7 +1877,31 @@ export class RecordService {
     actorId: number,
     lineNo?: number,
   ): Promise<void> {
-    const columns = await this.validateValues(trx, tenantId, resolved, values, "update")
+    /* 🔴 更新是**部分**的:規則的條件可能引用這次沒送的欄位。
+       只拿 patch 去求值,條件會憑空不成立 —— 於是必填靜靜地消失。
+       故先讀回這一列再合併。走 trx 內的原始讀取,與後面的更新同一個交易,
+       中間不會被別人改掉。 */
+    const current = (await trx
+      .withSchema(DATA_SCHEMA)
+      .table(resolved.table)
+      .where({ tenant_id: tenantId, id: recordId })
+      .whereNull("deleted_at")
+      .first()) as Record<string, unknown> | undefined
+    const merged: RecordValues =
+      current === undefined ? values : { ...this.toRecord(resolved, current).values, ...values }
+    const attrs = this.conditionalAttrs(resolved, merged)
+    const columns = await this.validateValues(trx, tenantId, resolved, values, "update", attrs)
+
+    /* 🔴 部分更新不會經過「create 的補漏迴圈」——
+       一個**因規則而必填**的欄位若這次沒送、DB 裡又是空的,就會靜靜地漏掉。
+       這裡補上:條件成立時,那個欄位在合併後的狀態必須有值。 */
+    for (const field of resolved.fields) {
+      const name = field.row.name
+      if (attrs.get(name)?.required !== true) continue
+      if (fieldType(field.type).systemManaged) continue
+      if (normalizeEmpty(merged[name] ?? null) === null) throw new RequiredFieldError(name)
+    }
+
     let builder = trx
       .withSchema(DATA_SCHEMA)
       .table(resolved.table)
@@ -1854,6 +1928,49 @@ export class RecordService {
     }
   }
 
+  /* 🔴 C-3|條件式必填是**伺服器強制**的,不是畫面上的星號。
+
+     只在前端做的必填,直接打 API 就繞過去了 —— 第一約束逐字說「有 API 可以做」
+     不算解決,反過來也一樣:**只有 UI 擋得住不算擋得住**。
+
+     求值器與前端**共用同一份**(`@weyver/rules`)。兩份實作漂移的後果不是樣式
+     不一致,而是「畫面說可以存、伺服器說不行」,而使用者看不出自己錯在哪。
+
+     回傳每個欄位的**最終**必填 / 略過檢查 —— 兩個方向都要:
+     · 規則說必填 → 靜態沒設也要擋(否則是裝飾)
+     · 規則把欄位隱藏 → **放掉**必填(官方逐字「當欄位因條件式格式被隱藏時,
+       系統會略過檢查必填及輸入檢查」)。不放掉的話,使用者要填一個看不見的欄位,
+       畫面上完全無從得知為什麼存不了。 */
+  private conditionalAttrs(
+    resolved: ResolvedForm,
+    merged: RecordValues,
+  ): Map<string, { required: boolean; skipValidation: boolean }> {
+    const out = new Map<string, { required: boolean; skipValidation: boolean }>()
+    const layout = resolved.layout
+    const rules = layout?.conditionalFormats?.record ?? []
+    const names = resolved.fields.map((f) => f.row.name)
+    const members =
+      layout === null
+        ? undefined
+        : sectionMembers(
+            layout.sections,
+            new Map(
+              resolved.fields.map((f) => [f.row.name, layout.fields[String(f.row.id)]?.row ?? 0]),
+            ),
+          )
+    const states =
+      rules.length === 0 ? undefined : evaluateFieldStates(rules, merged, names, members)
+    for (const field of resolved.fields) {
+      const fl = layout?.fields[String(field.row.id)]
+      const attrs = resolveFieldAttrs(
+        { hidden: fl?.hidden, readonly: fl?.readonly, required: field.row.required },
+        states?.get(field.row.name),
+      )
+      out.set(field.row.name, { required: attrs.required, skipValidation: attrs.skipValidation })
+    }
+    return out
+  }
+
   /* 值驗證:name whitelist → systemManaged 拒寫 → 空值正規化 → required → 型別 Zod → DB 值轉換 */
   private async validateValues(
     trx: Knex.Transaction,
@@ -1861,6 +1978,7 @@ export class RecordService {
     resolved: ResolvedForm,
     values: RecordValues,
     mode: "create" | "update",
+    attrs?: ReadonlyMap<string, { required: boolean; skipValidation: boolean }>,
   ): Promise<Record<string, unknown>> {
     const columns: Record<string, unknown> = {}
     for (const [name, raw] of Object.entries(values)) {
@@ -1870,7 +1988,7 @@ export class RecordService {
       if (definition.systemManaged) throw new SystemManagedFieldError(name)
       const value = normalizeEmpty(raw)
       if (value === null) {
-        if (field.row.required) throw new RequiredFieldError(name)
+        if (attrs?.get(name)?.required ?? field.row.required) throw new RequiredFieldError(name)
         columns[field.column] = null
         continue
       }
@@ -1927,11 +2045,8 @@ export class RecordService {
     if (mode === "create") {
       for (const field of resolved.fields) {
         const definition = fieldType(field.type)
-        if (
-          field.row.required &&
-          !definition.systemManaged &&
-          columns[field.column] === undefined
-        ) {
+        const required = attrs?.get(field.row.name)?.required ?? field.row.required
+        if (required && !definition.systemManaged && columns[field.column] === undefined) {
           throw new RequiredFieldError(field.row.name)
         }
         if (field.type === "autoNumber") {

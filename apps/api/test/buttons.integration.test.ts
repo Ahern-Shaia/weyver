@@ -210,3 +210,83 @@ describe("R1·後續-1 M1 按鈕動作", () => {
     else expect([403, 404]).toContain(list.statusCode)
   })
 })
+
+/* 🔴 C-3|條件式的「顯示 / 隱藏 / 上鎖動作按鈕」**在伺服器執法**。
+   前端不畫那顆按鈕只是體驗;按鈕的效果是伺服器跑的,擋也要擋在伺服器。 */
+describe("條件式格式閘門(繞過畫面直接打 API)", () => {
+  let buttonId = 0
+  let gatedRecordId = 0
+  /* ⚠️ 不共用 `recordId` —— 前面的測試會把它的「狀態」改成已核准,
+     於是這裡的閘門條件跟著成立,而失敗訊息只說 403 vs 200。 */
+  let openRecordId = 0
+
+  beforeAll(async () => {
+    const created = await createButton(A(), {
+      label: "轉工單",
+      config: { actionType: "openUrl", url: "https://example.com/" },
+    })
+    expect(created.statusCode).toBe(201)
+    buttonId = (created.json() as { id: number }).id
+
+    const rec = await app.inject({
+      method: "POST",
+      url: `/api/forms/${poFormId}/records`,
+      headers: A(),
+      payload: { values: { 品名: "上鎖用", 狀態: "已核准" } },
+    })
+    gatedRecordId = (rec.json() as { id: number }).id
+
+    const open = await app.inject({
+      method: "POST",
+      url: `/api/forms/${poFormId}/records`,
+      headers: A(),
+      payload: { values: { 品名: "未核准", 狀態: "草稿" } },
+    })
+    openRecordId = (open.json() as { id: number }).id
+
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${poFormId}/layout`,
+      headers: A(),
+      payload: {
+        grid: { cols: 12 },
+        fields: {},
+        statics: [],
+        sections: [],
+        conditionalFormats: {
+          record: [
+            {
+              combinator: "and",
+              conditions: [{ field: "狀態", op: "eq", value: "已核准" }],
+              targets: [],
+              targetButtons: [buttonId],
+              effects: [{ kind: "readonly" }, { kind: "message", text: "已核准的單不可再轉" }],
+            },
+          ],
+          list: [],
+        },
+      },
+    })
+  })
+
+  const run = (recId: number) =>
+    app.inject({
+      method: "POST",
+      url: `/api/forms/${poFormId}/buttons/${buttonId}/run/${recId}`,
+      headers: A(),
+    })
+
+  it("🔴 條件成立 → 403,且理由是設計者寫的那句話", async () => {
+    const res = await run(gatedRecordId)
+    expect(res.statusCode).toBe(403)
+    expect(res.json()).toMatchObject({
+      code: "BUTTON_BLOCKED_BY_RULE",
+      message: "已核准的單不可再轉",
+    })
+  })
+
+  it("條件不成立 → 照常執行(閘門不得預設擋住)", async () => {
+    const res = await run(openRecordId)
+    expect(res.statusCode).toBe(200)
+  })
+})

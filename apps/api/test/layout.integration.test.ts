@@ -265,7 +265,10 @@ describe("條件式格式(conditionalFormats)", () => {
 
   it("未知效果種類 → 400(判別式聯集不得被任意 kind 撐開)", async () => {
     const res = await putFormats({
-      record: [{ conditions: [{ field: "備註", op: "isEmpty" }], effects: [{ kind: "required" }] }],
+      /* ⚠️ 這裡曾經拿 `required` 當「未知」的例子,C-3 把它變成合法的了 ——
+         於是這條測試靜靜地不再測任何東西(實際踩到:它回 200 而我以為是別的問題)。
+         挑一個不會變合法的。 */
+      record: [{ conditions: [{ field: "備註", op: "isEmpty" }], effects: [{ kind: "explode" }] }],
       list: [],
     })
     expect(res.statusCode).toBe(400)
@@ -374,5 +377,110 @@ describe("R1·FMT 欄位顯示格式", () => {
     })
     const otherField = (other.json() as { fields: { id: number }[] }).fields[0]?.id ?? 0
     expect((await setDisplay(otherField, "iso", formId)).statusCode).toBe(404)
+  })
+})
+
+/* 🔴 C-3|**伺服器強制**。這一段整組的意義只有一句話:
+   繞過畫面直接打 API,規則照樣擋得住。只在前端做的必填是裝飾。 */
+describe("條件式必填(伺服器強制)", () => {
+  let cfFormId = 0
+  let statusId = 0
+  let amountId = 0
+
+  const rec = (path = "") => `/api/forms/${cfFormId}/records${path}`
+
+  beforeAll(async () => {
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: "C3必填表",
+        fields: [
+          { name: "狀態", type: "text" },
+          { name: "金額", type: "text" },
+        ],
+      },
+    })
+    const body = form.json() as { id: number; fields: { id: number; name: string }[] }
+    cfFormId = body.id
+    statusId = body.fields.find((f) => f.name === "狀態")?.id ?? 0
+    amountId = body.fields.find((f) => f.name === "金額")?.id ?? 0
+
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${cfFormId}/layout`,
+      headers: A(),
+      payload: {
+        grid: { cols: 12 },
+        fields: {
+          [String(statusId)]: { row: 0, col: 0 },
+          [String(amountId)]: { row: 1, col: 0 },
+        },
+        statics: [],
+        sections: [],
+        conditionalFormats: {
+          record: [
+            {
+              combinator: "and",
+              conditions: [{ field: "狀態", op: "eq", value: "送審" }],
+              targets: ["金額"],
+              effects: [{ kind: "required" }],
+            },
+          ],
+          list: [],
+        },
+      },
+    })
+  })
+
+  const create = (values: Record<string, unknown>) =>
+    app.inject({ method: "POST", url: rec(), headers: A(), payload: { values } })
+
+  it("🔴 條件成立 + 該欄沒送 → 拒絕,即使欄位本身沒設必填", async () => {
+    const res = await create({ 狀態: "送審" })
+    expect(res.statusCode).toBe(422)
+    expect(res.json()).toMatchObject({ code: "INVALID_FIELD_INPUT" })
+    expect(JSON.stringify(res.json())).toContain("金額")
+  })
+
+  it("🔴 條件成立 + 明確送 null / 空字串 → 一樣拒絕", async () => {
+    for (const v of [null, ""]) {
+      const res = await create({ 狀態: "送審", 金額: v })
+      expect(res.statusCode).toBe(422)
+    }
+  })
+
+  it("條件不成立 → 不必填,照樣建得起來", async () => {
+    const res = await create({ 狀態: "草稿" })
+    expect(res.statusCode).toBe(201)
+  })
+
+  /* ⚠️ `expectedVersion` 一定要送。少送會得到 400,而那個 400 看起來
+     跟「必填擋下來」一模一樣 —— 第一版就是這樣假綠的:測試通過,
+     但測到的是 payload 驗證失敗,不是條件式必填。 */
+  const patchRecord = async (values: Record<string, unknown>) => {
+    const created = await create({ 狀態: "送審", 金額: "100" })
+    expect(created.statusCode).toBe(201)
+    const row = created.json() as { id: number; version: number }
+    return app.inject({
+      method: "PATCH",
+      url: rec(`/${String(row.id)}`),
+      headers: A(),
+      payload: { expectedVersion: row.version, values },
+    })
+  }
+
+  /* 🔴 更新是**部分**的:規則的條件引用的是這次沒送的欄位。
+     只拿 patch 求值,條件會憑空不成立 —— 於是必填靜靜地消失。 */
+  it("🔴 部分更新:條件欄不在 payload 裡,必填仍然成立", async () => {
+    const res = await patchRecord({ 金額: "" })
+    expect(res.statusCode).toBe(422)
+    expect(JSON.stringify(res.json())).toContain("金額")
+  })
+
+  it("部分更新:把條件改成不成立,同一次就可以清掉該欄", async () => {
+    const res = await patchRecord({ 狀態: "草稿", 金額: "" })
+    expect(res.statusCode).toBe(200)
   })
 })

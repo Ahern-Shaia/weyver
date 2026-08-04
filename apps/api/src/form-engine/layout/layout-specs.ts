@@ -118,7 +118,9 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
      兩者都只在前端生效,故本批不改變任何伺服器強制面(C-3 才會)。
      ⚠️ 沿用 Ragic / Airtable 的明文警告:**隱藏不是權限**,
      欄位級保護走權限設定(E-1 後端 assertWritable / maskRead)。 */
-  z.object({ kind: z.literal("hide") }).strict(),
+  z
+    .object({ kind: z.literal("hide") })
+    .strict(),
   z.object({ kind: z.literal("readonly") }).strict(),
   /* 🔴 C-2 後半|顯示訊息(OQ-CF-11)。**規則層效果,不落在任何欄位上**。
 
@@ -129,7 +131,20 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
 
      ⚠️ 插值與渲染的兩條硬約束在**前端**(求值在前端,OQ-CF-6=A):
      值取不到時回具名的「(無權檢視)」而非留空;訊息一律純文字,不吃 markdown/HTML。 */
-  z.object({ kind: z.literal("message"), text: z.string().min(1).max(500) }).strict(),
+  z
+    .object({ kind: z.literal("message"), text: z.string().min(1).max(500) })
+    .strict(),
+  /* 🔴 C-3|條件式必填 —— **本模組第一個伺服器強制的效果**。
+
+     只在前端做的必填是裝飾,直接打 API 就繞過去了。故求值器移進
+     `@weyver/rules` 由前後端共用,`RecordService` 在寫入時再判一次。
+
+     ⚠️ 官方對必填**沒有**「條件式優先於欄位屬性」那句(那句只給唯讀),
+     只說已設必填的欄位在設定條件式格式時**無法選擇** —— 故靜態必填仍必填,
+     規則只能再加上必填。詳見 `resolveFieldAttrs`。 */
+  z
+    .object({ kind: z.literal("required") })
+    .strict(),
 ])
 
 /* 🔴 OQ-CF-8 重裁 = 選項 C-1(2026-08-03):**規則的形狀現在定死,效果的覆蓋面分層補**。
@@ -163,6 +178,14 @@ export const formatRuleSchema = z
        跨分段級與欄位級規則自動一致;另立一軸就會重蹈 §10-bis 選項 A 的兩份真相。
        「上鎖」不需要新效果 —— 逐字「若選擇將分段上鎖,該分段會變為**唯讀**狀態」。 */
     targetSections: z.array(z.string().min(1).max(60)).max(20).default([]),
+    /* 🔴 C-3|動作按鈕。以 **id** 指涉:按鈕會改名,id 不會(同 `loadMap` 的理由)。
+       官方的動詞與分段那組完全一樣(顯示 / 隱藏 / 上鎖),故沿用同一組效果,
+       **不另立 `buttonHide` / `buttonLock`** —— 同一個心智動作不該有兩套名字。 */
+    targetButtons: z.array(z.number().int().positive()).max(50).default([]),
+    /* 🔴 C-3|「開始簽核」按鈕。它不是使用者建立的按鈕、沒有 id,故為布林。
+       官方逐字:「當『銷售訂單』的總金額超過一萬元時才需要進行簽核流程,
+       就可以設定條件式格式,讓『開始簽核』按鈕僅在總金額符合條件時顯示。」 */
+    targetApproval: z.boolean().default(false),
     effects: z.array(formatEffectSchema).min(1).max(10),
     /* Ragic 的規則清單有這兩欄 —— 規則多起來之後,沒有註解就沒人敢動別人設的規則 */
     note: z.string().max(200).optional(),

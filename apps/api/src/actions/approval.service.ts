@@ -93,6 +93,19 @@ export class ApprovalService {
     if (active !== null) {
       throw new ConflictException({ code: "APPROVAL_IN_PROGRESS", message: "此記錄已在簽核中" })
     }
+    /* 🔴 C-3|條件式的「顯示或隱藏開始簽核按鈕」在這裡執法。
+       官方的例子逐字是「總金額超過一萬元時才需要進行簽核流程」——
+       那是**流程規則**,只藏按鈕等於沒有規則。 */
+    const gate = await this.records.evaluateActionGate(tenant.tenantId, formId, recordId, {
+      approval: true,
+    })
+    if (gate.hidden || gate.locked) {
+      throw new ForbiddenException({
+        code: "APPROVAL_BLOCKED_BY_RULE",
+        message: gate.message ?? "此記錄目前的狀態不需要(或不允許)送簽",
+      })
+    }
+
     const defs = await this.repo.listApprovalDefs(tenant.tenantId, formId)
     const def = defs.find((d) => d.active)
     if (def === undefined) {

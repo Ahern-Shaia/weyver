@@ -24,6 +24,7 @@
     "@trpc/react-query": "^11.18.0",
     "@trpc/server": "^11.18.0",
     "@weyver/formula": "workspace:*",
+    "@weyver/rules": "workspace:*",
     "@weyver/ui": "workspace:*",
     "better-auth": "^1.6.23",
     "echarts": "^6.1.0",
