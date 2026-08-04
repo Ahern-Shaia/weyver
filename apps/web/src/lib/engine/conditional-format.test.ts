@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest"
 import {
   evaluateFieldStates,
   evaluateFormats,
+  evaluateMessages,
+  renderMessage,
+  sectionMembers,
   matchesCondition,
   resolveFieldAttrs,
 } from "./conditional-format"
@@ -19,6 +22,7 @@ const rule = (
 ): FormatRule => ({
   combinator: "and",
   targets: [],
+  targetSections: [],
   enabled: true,
   ...r,
   effects: [{ kind: "color", tone: r.tone }],
@@ -280,5 +284,158 @@ describe("C-2 S4:靜態欄位屬性 × 條件式規則的仲裁", () => {
     /* 靜態隱藏是設計者一開始就決定這張表不填這欄,必填與否由他自己設定;
        條件式隱藏是「此情境下不適用」,才需要連帶放掉必填。 */
     expect(resolveFieldAttrs({ hidden: true }, undefined).skipValidation).toBe(false)
+  })
+})
+
+/* ── C-2 後半|分段展開(OQ-CF-9)────────────────────────────────── */
+
+describe("sectionMembers", () => {
+  const rows = new Map([
+    ["單號", 0],
+    ["交期", 1],
+    ["狀態", 2],
+    ["金額", 5],
+  ])
+
+  it("以列區間推導成員 —— 上下界含端點", () => {
+    const m = sectionMembers([{ id: "s1", fromRow: 1, toRow: 2 }], rows)
+    expect(m.get("s1")).toEqual(["交期", "狀態"])
+  })
+
+  it("🔴 fromRow > toRow 也要吃得下 —— 設計器允許拖成反向,不該靜默變成空分段", () => {
+    const m = sectionMembers([{ id: "s1", fromRow: 2, toRow: 1 }], rows)
+    expect(m.get("s1")).toEqual(["交期", "狀態"])
+  })
+})
+
+describe("分段作為目標選擇器", () => {
+  const members = new Map([["s1", ["交期", "狀態"]]])
+  const base = rule({ conditions: [{ field: "單號", op: "isNotEmpty" }], tone: "warn" })
+
+  it("targetSections 展開成該段欄位,效果照套", () => {
+    const r: FormatRule = { ...base, targetSections: ["s1"], effects: [{ kind: "hide" }] }
+    const st = evaluateFieldStates([r], { 單號: "A" }, FIELDS, members)
+    expect(st.get("交期")?.hidden).toBe(true)
+    expect(st.get("狀態")?.hidden).toBe(true)
+    expect(st.get("金額")).toBeUndefined()
+  })
+
+  it("與 targets 併集,不是二選一", () => {
+    const r: FormatRule = {
+      ...base,
+      targets: ["金額"],
+      targetSections: ["s1"],
+      effects: [{ kind: "readonly" }],
+    }
+    const st = evaluateFieldStates([r], { 單號: "A" }, FIELDS, members)
+    expect(st.get("金額")?.readonly).toBe(true)
+    expect(st.get("交期")?.readonly).toBe(true)
+  })
+
+  /* 🔴 這一條是 OQ-CF-9 的理由本身:分段級與欄位級規則在**同一個仲裁空間**裡,
+     所以官方的「由上而下、後者覆蓋」跨兩者自動一致。若分段另立一軸就表達不出來。 */
+  it("🔴 後面的欄位級規則覆蓋前面的分段級規則", () => {
+    const secRule: FormatRule = { ...base, targetSections: ["s1"], effects: [{ kind: "hide" }] }
+    const fieldRule: FormatRule = {
+      ...base,
+      targets: ["交期"],
+      effects: [{ kind: "color", tone: "ok" }],
+    }
+    const st = evaluateFieldStates([secRule, fieldRule], { 單號: "A" }, FIELDS, members)
+    expect(st.get("交期")?.tone).toBe("ok")
+    expect(st.get("交期")?.hidden).toBe(true) // hide 仍在(不同效果,各自覆蓋)
+  })
+
+  it("分段不存在 → 略過該分段,其餘照套(同目標欄已刪的處置)", () => {
+    const r: FormatRule = {
+      ...base,
+      targets: ["金額"],
+      targetSections: ["不存在"],
+      effects: [{ kind: "hide" }],
+    }
+    const st = evaluateFieldStates([r], { 單號: "A" }, FIELDS, members)
+    expect(st.get("金額")?.hidden).toBe(true)
+    expect(st.size).toBe(1)
+  })
+})
+
+/* ── C-2 後半|顯示訊息(OQ-CF-11)──────────────────────────────── */
+
+describe("renderMessage", () => {
+  const known = new Set(FIELDS)
+
+  it("帶入欄位值與欄位標題", () => {
+    const out = renderMessage(
+      "{{fieldName:交期}} 是 {{fieldValue:交期}}",
+      { 交期: "2026-03-05" },
+      known,
+    )
+    expect(out).toBe("交期 是 2026-03-05")
+  })
+
+  /* 🔴 本模組最重要的一條:插值**不得成為遮罩的旁路**。
+     值不在 values 裡 = 這個人沒有權限看 → 具名,不留空。
+     留空會讓他以為那一欄沒資料,而真相是他看不到。 */
+  it("🔴 欄位對此人遮罩(不在 values 裡)→ 具名而非留空", () => {
+    expect(renderMessage("薪資:{{fieldValue:金額}}", { 單號: "A" }, known)).toBe("薪資:(無權檢視)")
+  })
+
+  it("值為 null → 空字串(那是真的沒填,與沒權限不同)", () => {
+    expect(renderMessage("[{{fieldValue:金額}}]", { 金額: null }, known)).toBe("[]")
+  })
+
+  it("欄位不存在 → 參數原樣留著,讓設計者看得出是名字打錯", () => {
+    expect(renderMessage("{{fieldValue:不存在}}", {}, known)).toBe("{{fieldValue:不存在}}")
+  })
+
+  it("未知前綴不處理 —— 不把任意 {{}} 都當參數", () => {
+    expect(renderMessage("{{whatever:交期}}", { 交期: "x" }, known)).toBe("{{whatever:交期}}")
+    expect(renderMessage("{{交期}}", { 交期: "x" }, known)).toBe("{{交期}}")
+  })
+
+  /* 🔴 欄名可以含冒號,Ragic 用欄位編號才沒有這個歧義 —— 故只切第一個 */
+  it("🔴 欄名含冒號:只切第一個分隔符", () => {
+    const k = new Set(["備註:內部"])
+    expect(renderMessage("{{fieldValue:備註:內部}}", { "備註:內部": "OK" }, k)).toBe("OK")
+  })
+
+  /* 🔴 訊息文字與帶入的值都是不可信輸入。這裡只保證**不做任何解碼或標記解析**;
+     渲染端一律純文字(禁 dangerouslySetInnerHTML),由 e2e 釘住。 */
+  it("🔴 值裡的標記原樣帶出,不解析", () => {
+    const out = renderMessage(
+      "{{fieldValue:單號}}",
+      { 單號: "<img src=x onerror=alert(1)>" },
+      known,
+    )
+    expect(out).toBe("<img src=x onerror=alert(1)>")
+  })
+})
+
+describe("evaluateMessages", () => {
+  const msg = (text: string, field = "狀態", value: unknown = "逾期"): FormatRule => ({
+    combinator: "and",
+    conditions: [{ field, op: "eq", value }],
+    targets: [],
+    targetSections: [],
+    effects: [{ kind: "message", text }],
+    enabled: true,
+  })
+
+  it("命中才出現,依規則順序", () => {
+    const rules = [msg("第一則"), msg("第二則")]
+    expect(evaluateMessages(rules, { 狀態: "逾期" }, FIELDS)).toEqual(["第一則", "第二則"])
+    expect(evaluateMessages(rules, { 狀態: "正常" }, FIELDS)).toEqual([])
+  })
+
+  it("停用的規則不出訊息", () => {
+    expect(evaluateMessages([{ ...msg("X"), enabled: false }], { 狀態: "逾期" }, FIELDS)).toEqual(
+      [],
+    )
+  })
+
+  it("插值後為空 → 不推一則空白訊息", () => {
+    expect(
+      evaluateMessages([msg("{{fieldValue:金額}}")], { 狀態: "逾期", 金額: null }, FIELDS),
+    ).toEqual([])
   })
 })

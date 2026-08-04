@@ -1,6 +1,12 @@
 "use client"
 
-import { evaluateFieldStates, resolveFieldAttrs } from "@/lib/engine/conditional-format"
+import { RuleMessages } from "@/components/form/rule-messages"
+import {
+  evaluateFieldStates,
+  evaluateMessages,
+  resolveFieldAttrs,
+  sectionMembers,
+} from "@/lib/engine/conditional-format"
 import {
   FORM_COLS,
   FORM_COL_W,
@@ -47,57 +53,65 @@ export function HeaderFields({
   const effective = effectiveLayout(fields, layout)
   const cols = layout?.grid.cols ?? FORM_COLS
   /* 記錄頁的規則(非列表頁)—— 這是填單畫面 */
-  const states = evaluateFieldStates(
-    layout?.conditionalFormats?.record ?? [],
-    values,
-    fields.map((f) => f.name),
+  const rules = layout?.conditionalFormats?.record ?? []
+  const fieldNames = fields.map((f) => f.name)
+  /* 分段成員以列區間推導(OQ-CF-9)—— 名稱 → 列,取自生效版面而非原始 layout,
+     因為未擺過的欄位由 `effectiveLayout` 自動排位,那也算在分段區間裡。 */
+  const members = sectionMembers(
+    effective.sections,
+    new Map(fields.map((f) => [f.name, effective.fields[String(f.id)]?.row ?? 0])),
   )
+  const states = evaluateFieldStates(rules, values, fieldNames, members)
+  const messages = evaluateMessages(rules, values, fieldNames)
 
   return (
-    <div
-      style={{
-        display: "grid",
-        /* 固定 px 不是 fr:設計畫布是固定 720px,填單若改成撐滿視窗,
+    <>
+      <RuleMessages messages={messages} />
+      <div
+        style={{
+          display: "grid",
+          /* 固定 px 不是 fr:設計畫布是固定 720px,填單若改成撐滿視窗,
            同一個 colSpan 兩邊寬度就不同 —— 「設計即所見」會在寬螢幕上失效。
            右側留白兩邊一模一樣,那是刻意的(表單是文件不是儀表板)。 */
-        gridTemplateColumns: `repeat(${String(cols)}, ${String(FORM_COL_W)}px)`,
-        gridAutoRows: `minmax(${String(FORM_ROW_H)}px, auto)`,
-        gap: 0,
-        width: cols * FORM_COL_W,
-      }}
-    >
-      {fields.map((field) => {
-        const fl = effective.fields[String(field.id)]
-        if (fl === undefined) return null
-        /* S4 仲裁:靜態屬性 × 條件式規則(見 resolveFieldAttrs 之逐字依據) */
-        const attrs = resolveFieldAttrs(fl, states.get(field.name))
-        if (attrs.hidden) return null
-        return (
-          <div
-            key={field.id}
-            style={{ ...cellPosition(fl), display: "grid", gridTemplateColumns: "112px 1fr" }}
-            className="-mr-px -mb-px border border-cell"
-          >
-            <FieldCellPair
-              borderB={false}
-              borderR={false}
-              flush
-              item={{
-                label: field.name,
-                /* 唯讀欄不標必填星號 —— 標了等於要求使用者填一個他填不了的欄 */
-                /* 唯讀欄不標必填星號;**因條件式被隱藏者亦略過必填**
+          gridTemplateColumns: `repeat(${String(cols)}, ${String(FORM_COL_W)}px)`,
+          gridAutoRows: `minmax(${String(FORM_ROW_H)}px, auto)`,
+          gap: 0,
+          width: cols * FORM_COL_W,
+        }}
+      >
+        {fields.map((field) => {
+          const fl = effective.fields[String(field.id)]
+          if (fl === undefined) return null
+          /* S4 仲裁:靜態屬性 × 條件式規則(見 resolveFieldAttrs 之逐字依據) */
+          const attrs = resolveFieldAttrs(fl, states.get(field.name))
+          if (attrs.hidden) return null
+          return (
+            <div
+              key={field.id}
+              style={{ ...cellPosition(fl), display: "grid", gridTemplateColumns: "112px 1fr" }}
+              className="-mr-px -mb-px border border-cell"
+            >
+              <FieldCellPair
+                borderB={false}
+                borderR={false}
+                flush
+                item={{
+                  label: field.name,
+                  /* 唯讀欄不標必填星號 —— 標了等於要求使用者填一個他填不了的欄 */
+                  /* 唯讀欄不標必填星號;**因條件式被隱藏者亦略過必填**
                    —— 官方逐字:「當欄位因條件式格式被隱藏時,系統會略過檢查必填及輸入檢查」。
                    要求使用者填一個看不見的欄位會讓他直接卡死。 */
-                required: field.required && !attrs.readonly && !attrs.skipValidation,
-                help: fl.help !== undefined && fl.help !== "" ? fl.help : false,
-                /* 這三型的輸入元件**自帶 `<label>`**(「選擇檔案」),外層不能再包一層 */
-                noLabelWrap: SELF_LABELLED.has(field.type),
-                value: renderInput(field, attrs.readonly, fl.placeholder),
-              }}
-            />
-          </div>
-        )
-      })}
-    </div>
+                  required: field.required && !attrs.readonly && !attrs.skipValidation,
+                  help: fl.help !== undefined && fl.help !== "" ? fl.help : false,
+                  /* 這三型的輸入元件**自帶 `<label>`**(「選擇檔案」),外層不能再包一層 */
+                  noLabelWrap: SELF_LABELLED.has(field.type),
+                  value: renderInput(field, attrs.readonly, fl.placeholder),
+                }}
+              />
+            </div>
+          )
+        })}
+      </div>
+    </>
   )
 }

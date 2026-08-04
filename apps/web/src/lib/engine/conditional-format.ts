@@ -100,10 +100,32 @@ export interface FieldEffectState {
   readonly readonly?: boolean
 }
 
+/* 🔴 分段 → 欄位的展開表(OQ-CF-9)。
+
+   成員關係由 `fromRow`/`toRow` 的**列區間**推導 —— 那是設計器實際在寫的東西。
+   ⚠️ `fieldLayoutSchema` 曾有一個 `sectionId` 欄位,**零 reader 零 writer**,
+   本批已移除:留著就會變成第二套成員關係,而兩套遲早不一致
+   (同 `a66f110` 移掉 `colWidths` / `rowHeights` 的理由)。 */
+export function sectionMembers(
+  sections: readonly { readonly id: string; readonly fromRow: number; readonly toRow: number }[],
+  fieldRows: ReadonlyMap<string, number>,
+): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  for (const sec of sections) {
+    const lo = Math.min(sec.fromRow, sec.toRow)
+    const hi = Math.max(sec.fromRow, sec.toRow)
+    const names: string[] = []
+    for (const [name, row] of fieldRows) if (row >= lo && row <= hi) names.push(name)
+    out.set(sec.id, names)
+  }
+  return out
+}
+
 export function evaluateFieldStates(
   rules: readonly FormatRule[],
   values: RecordValues,
   fieldNames: readonly string[],
+  members?: ReadonlyMap<string, readonly string[]>,
 ): Map<string, FieldEffectState> {
   const known = new Set(fieldNames)
   const out = new Map<string, FieldEffectState>()
@@ -126,7 +148,11 @@ export function evaluateFieldStates(
     }
     if (Object.keys(patch).length === 0) continue
 
-    const targets = rule.targets.length > 0 ? rule.targets : rule.conditions.map((c) => c.field)
+    /* 分段是**目標選擇器**不是效果 —— 展開後與 `targets` 併集,
+       於是仲裁空間仍然只有一個(每個欄位),後者覆蓋跨兩者自動一致。 */
+    const fromSections = (rule.targetSections ?? []).flatMap((id) => members?.get(id) ?? [])
+    const explicit = [...rule.targets, ...fromSections]
+    const targets = explicit.length > 0 ? explicit : rule.conditions.map((c) => c.field)
     for (const name of targets) {
       if (!known.has(name)) continue // 目標欄已刪 → 略過該欄,其餘照套
       out.set(name, { ...out.get(name), ...patch }) // 後者覆蓋(Ragic 語意)
@@ -168,4 +194,69 @@ export function resolveFieldAttrs(
     readonly: effect?.readonly ?? staticAttrs.readonly === true,
     skipValidation: hiddenByRule,
   }
+}
+
+/* 🔴 C-2 後半|顯示訊息(OQ-CF-11)。
+
+   ## 插值不得成為遮罩的旁路
+
+   求值在前端,而前端拿到的 `values` **已經過 `maskRead`** ——
+   對此人隱藏的欄位根本不在裡面。此時**不得留空**:留空會讓人以為那一欄沒有資料,
+   而他其實是沒有權限。回具名的「(無權檢視)」,沿用 `link-options` 回 `#id`
+   與 `pivot-and-charts` 的同一裁定 —— **寧可具名,不要靜默。**
+
+   ⚠️ 2026-08-04 才修過公式的同型洩漏(以隱藏欄算出來的公式值沒有一起遮)。
+   插值是**同一個形狀的第二個出口**,所以這裡從一開始就走可見值。
+
+   ⚠️ 條件式**隱藏**的欄位不在此列 —— 那只是版面層,官方逐字說明
+   「只會作用於排版介面上,於修改資料紀錄或通知信中仍會顯示該欄位的資料」。
+
+   ## 為什麼只切第一個冒號
+
+   Ragic 的參數是 `{{fieldValue_欄位編號}}`,底線後面是數字所以沒有歧義。
+   我方用**欄名**(與 `conditions.field` / `targets` 同一種指涉,不讓使用者學兩套),
+   而欄名可以含底線也可以含冒號 —— 故前綴為固定關鍵字,只切**第一個**分隔符。 */
+const MASKED = "(無權檢視)"
+
+export function renderMessage(
+  text: string,
+  values: RecordValues,
+  known: ReadonlySet<string>,
+): string {
+  return text.replace(/\{\{([^{}]{1,200})\}\}/g, (whole, inner: string) => {
+    const at = inner.indexOf(":")
+    if (at < 0) return whole
+    const kind = inner.slice(0, at).trim()
+    const name = inner.slice(at + 1).trim()
+    if (kind !== "fieldValue" && kind !== "fieldName") return whole
+    /* 欄位不存在(已刪 / 打錯)→ 原樣留著。**不要換成空字串** ——
+       設計者看到自己打的參數還在,才知道是名字寫錯了。 */
+    if (!known.has(name)) return whole
+    if (kind === "fieldName") return name
+    if (!(name in values)) return MASKED
+    const v = values[name]
+    return v === null || v === undefined ? "" : String(v)
+  })
+}
+
+/* 規則層效果 → 依規則順序回傳已插值的訊息。同一條規則可有多則。 */
+export function evaluateMessages(
+  rules: readonly FormatRule[],
+  values: RecordValues,
+  fieldNames: readonly string[],
+): string[] {
+  const known = new Set(fieldNames)
+  const out: string[] = []
+  for (const rule of rules) {
+    if (rule.enabled === false) continue
+    const effects = Array.isArray(rule.effects) ? rule.effects : []
+    if (!effects.some((e) => e.kind === "message")) continue
+    if (!ruleMatches(rule, values, known)) continue
+    for (const e of effects) {
+      if (e.kind !== "message") continue
+      const text = renderMessage(e.text, values, known).trim()
+      if (text !== "") out.push(text)
+    }
+  }
+  return out
 }

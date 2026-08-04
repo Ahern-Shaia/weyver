@@ -1,5 +1,10 @@
 "use client"
 
+import {
+  RuleEffects,
+  TONE_LABEL,
+  toneOf,
+} from "@/app/app/builder/_components/designer/conditional-format-effects"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { OPERATOR_LABEL, fieldOperators } from "@/lib/engine/field-filters"
 import type {
@@ -8,10 +13,11 @@ import type {
   FilterOperator,
   FormatRule,
   RecordRow,
+  Section,
 } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
-import { CHIP_TONES, type ChipTone, StatusChip } from "@weyver/ui/status-chip"
+import { type ChipTone, StatusChip } from "@weyver/ui/status-chip"
 import { Copy, Plus, X } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
@@ -26,43 +32,16 @@ import { type ReactNode, useState } from "react"
 type Face = "record" | "list"
 
 const EMPTY: ConditionalFormats = { record: [], list: [] }
-const TONE_LABEL: Partial<Record<ChipTone, string>> = {
-  ok: "完成",
-  warn: "待辦",
-  error: "異常",
-  neutral: "中性",
-}
 
 function newRule(field: string): FormatRule {
   return {
     combinator: "and",
     conditions: [{ field, op: "isNotEmpty" }],
     targets: [],
+    targetSections: [],
     effects: [{ kind: "color", tone: "warn" }],
     enabled: true,
   }
-}
-
-/* 🔴 OQ-CF-8 = C-1:規則已升為 `effects[]`,但**這個編輯器目前只編得了顏色**。
-   刻意如此 —— C-1 只改形狀不擴效果面。取最後一個 color 與求值器同語意。
-   C-2 落地時這裡才會出現效果種類的選擇器。 */
-function toneOf(rule: FormatRule): ChipTone {
-  return rule.effects.reduce<ChipTone>((acc, e) => (e.kind === "color" ? e.tone : acc), "neutral")
-}
-
-function toggleEffect(rule: FormatRule, kind: "hide" | "readonly"): Partial<FormatRule> {
-  const has = rule.effects.some((e) => e.kind === kind)
-  const next = has
-    ? rule.effects.filter((e) => e.kind !== kind)
-    : [...rule.effects, { kind } as const]
-  /* 規則至少要有一個效果(schema `min(1)`)—— 全關掉時退回無色的中性,
-     而不是送出一條會被後端擋下的規則 */
-  return { effects: next.length > 0 ? next : [{ kind: "color", tone: "neutral" }] }
-}
-
-function withTone(rule: FormatRule, tone: ChipTone): Partial<FormatRule> {
-  const rest = rule.effects.filter((e) => e.kind !== "color")
-  return { effects: [...rest, { kind: "color", tone }] }
 }
 
 function describe(rule: FormatRule): string {
@@ -78,12 +57,15 @@ function describe(rule: FormatRule): string {
 
 export function ConditionalFormatPanel({
   fields,
+  sections,
   formats,
   sample,
   onChange,
   onClose,
 }: {
   readonly fields: readonly FieldDto[]
+  /* 分段用作**目標選擇器**(OQ-CF-9);由畫布傳入現行版面的分段 */
+  readonly sections: readonly Section[]
   readonly formats: ConditionalFormats | undefined
   /* 即時預覽取本表第一筆(無記錄時預覽區顯示提示) */
   readonly sample: RecordRow | undefined
@@ -302,79 +284,13 @@ export function ConditionalFormatPanel({
               ＋ 加條件
             </button>
 
-            <div className="mt-3">
-              <div className="mb-1 text-[12px] text-ink-3">
-                套用到哪些欄位(不選 = 條件所涉之欄位)
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {fieldNames.map((n) => {
-                  const on = rule.targets.includes(n)
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() =>
-                        patch(selected, {
-                          targets: on ? rule.targets.filter((t) => t !== n) : [...rule.targets, n],
-                        })
-                      }
-                      className={`rounded-xs border px-1.5 py-0.5 text-[12px] ${
-                        on ? "border-primary bg-primary-t text-primary" : "border-line text-ink-3"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="mt-3">
-              {/* 🔴 C-2:效果種類。**加 schema 的同一批就要加寫入端** ——
-                  否則就是又造一個「欄位存在、沒人寫得進去」的陷阱,
-                  而 form-designer-2d 的 colWidths 剛因為同一個理由被移除。 */}
-              <div className="mb-1 text-[12px] text-ink-3">效果(可複選)</div>
-              <div className="mb-2 flex flex-wrap gap-1">
-                {(["hide", "readonly"] as const).map((kind) => {
-                  const on = rule.effects.some((e) => e.kind === kind)
-                  return (
-                    <button
-                      key={kind}
-                      type="button"
-                      onClick={() => patch(selected, toggleEffect(rule, kind))}
-                      aria-pressed={on}
-                      className={`rounded-xs border px-2 py-0.5 text-[12px] ${
-                        on
-                          ? "border-primary bg-primary-t text-primary"
-                          : "border-line-2 bg-card text-ink-2 hover:bg-hover"
-                      }`}
-                    >
-                      {kind === "hide" ? "隱藏欄位" : "設為唯讀"}
-                    </button>
-                  )
-                })}
-              </div>
-              {/* 隱藏不是權限 —— Ragic / Airtable 官方都明文警告過,這裡照講 */}
-              <p className="mb-2 text-[12px] text-ink-3">
-                隱藏與唯讀為版面層效果,擋不住 API。欄位級保護請用權限設定。
-              </p>
-              <div className="mb-1 text-[12px] text-ink-3">顏色(12 色受控色盤)</div>
-              <div className="flex flex-wrap gap-1">
-                {CHIP_TONES.map((tone) => (
-                  <button
-                    key={tone}
-                    type="button"
-                    onClick={() => patch(selected, withTone(rule, tone))}
-                    aria-label={`顏色 ${tone}`}
-                    className={
-                      toneOf(rule) === tone ? "outline-2 outline-primary outline-offset-1" : ""
-                    }
-                  >
-                    <StatusChip tone={tone}>{TONE_LABEL[tone] ?? tone}</StatusChip>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <RuleEffects
+              rule={rule}
+              fieldNames={fieldNames}
+              sections={sections}
+              face={face}
+              patch={(next) => patch(selected, next)}
+            />
           </div>
         ) : null}
 

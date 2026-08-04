@@ -492,6 +492,7 @@ export function DesignCanvas({
       {aux === "formats" ? (
         <ConditionalFormatPanel
           fields={form.fields}
+          sections={effective.sections}
           formats={effective.conditionalFormats}
           sample={sampleRecord}
           onChange={(conditionalFormats) => edit({ ...effective, conditionalFormats })}

@@ -4,9 +4,10 @@ import { Button } from "@weyver/ui/button"
 
 import { FieldInput } from "@/components/form/field-input"
 import { ImageThumb } from "@/components/form/image-input"
+import { RuleMessages } from "@/components/form/rule-messages"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
-import { evaluateFormats } from "@/lib/engine/conditional-format"
+import { evaluateFormats, evaluateMessages } from "@/lib/engine/conditional-format"
 import { displayValue, formatDateTime } from "@/lib/engine/display-value"
 import {
   useButtons,
@@ -126,8 +127,15 @@ export function ObjectPage({
 
   const { data: layoutResp } = useLayout(formId)
   /* R1·UP-3b 條件式格式(記錄頁那一組;純前端求值,規則來自 layout)*/
+  const recordRules = layoutResp?.layout?.conditionalFormats?.record ?? []
   const formatTones = evaluateFormats(
-    layoutResp?.layout?.conditionalFormats?.record ?? [],
+    recordRules,
+    record.values,
+    fields.map((f) => f.name),
+  )
+  /* 訊息是規則層效果 —— 顯示在內容區最上方,與欄位無關(OQ-CF-11) */
+  const ruleMessages = evaluateMessages(
+    recordRules,
     record.values,
     fields.map((f) => f.name),
   )
@@ -296,6 +304,7 @@ export function ObjectPage({
 
       {/* 區段 */}
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+        <RuleMessages messages={ruleMessages} />
         {summaryFields.length > 0 ? (
           <section
             id="sec-摘要"

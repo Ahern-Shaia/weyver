@@ -177,6 +177,9 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
      隱藏不是權限 —— 欄位級保護走 E-1。 */
   z.object({ kind: z.literal("hide") }),
   z.object({ kind: z.literal("readonly") }),
+  /* C-2 後半|顯示訊息 —— **規則層效果,不落在欄位上**。
+     文字可含 `{{fieldValue:欄名}}` / `{{fieldName:欄名}}`(見 `renderMessage`)。 */
+  z.object({ kind: z.literal("message"), text: z.string().min(1).max(500) }),
 ])
 export type FormatEffect = z.infer<typeof formatEffectSchema>
 
@@ -184,6 +187,8 @@ export const formatRuleSchema = z.object({
   combinator: z.enum(["and", "or"]).default("and"),
   conditions: z.array(formatConditionSchema).min(1).max(20),
   targets: z.array(z.string().min(1).max(100)).max(50).default([]),
+  /* C-2 後半|分段為**目標選擇器**(OQ-CF-9):求值時展開成該列區間內的欄位,與 targets 併集 */
+  targetSections: z.array(z.string().min(1).max(60)).max(20).default([]),
   effects: z.array(formatEffectSchema).min(1).max(10),
   note: z.string().max(200).optional(),
   enabled: z.boolean().default(true),
@@ -298,7 +303,6 @@ export const fieldLayoutSchema = z.object({
   row: z.number().int(),
   col: z.number().int(),
   colSpan: z.number().int().optional(),
-  sectionId: z.string().optional(),
   placeholder: z.string().optional(),
   help: z.string().optional(),
   readonly: z.boolean().optional(),

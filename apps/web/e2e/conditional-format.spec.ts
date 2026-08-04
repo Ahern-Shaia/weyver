@@ -187,3 +187,106 @@ test("填單:條件式隱藏即時生效,且條件不再成立時欄位會回來
   await 單號.fill("PO-001")
   await expect(fill.getByRole("textbox")).toHaveCount(2)
 })
+
+/* ── C-2 後半|分段目標(OQ-CF-9)+ 顯示訊息(OQ-CF-11)───────────── */
+
+async function seedSectionForm(
+  request: import("@playwright/test").APIRequestContext,
+  conditionalFormats: unknown,
+): Promise<number> {
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E分段訊息_${uniq()}`,
+      fields: [
+        { name: "單號", type: "text" },
+        { name: "聯絡人", type: "text" },
+        { name: "電話", type: "text" },
+      ],
+    },
+  })
+  const form = (await res.json()) as { id: number; fields: { id: number; name: string }[] }
+  const idOf = (n: string): string => String(form.fields.find((f) => f.name === n)?.id ?? 0)
+  await request.patch(`/api/engine/forms/${String(form.id)}/layout`, {
+    headers: DEV,
+    data: {
+      grid: { cols: 12 },
+      fields: {
+        [idOf("單號")]: { row: 0, col: 0, colSpan: 6 },
+        [idOf("聯絡人")]: { row: 1, col: 0, colSpan: 6 },
+        [idOf("電話")]: { row: 2, col: 0, colSpan: 6 },
+      },
+      statics: [],
+      /* 分段涵蓋第 1–2 列 = 聯絡人 + 電話,**不含**單號 */
+      sections: [{ id: "sec-contact", name: "聯絡資訊", fromRow: 1, toRow: 2 }],
+      conditionalFormats,
+    },
+  })
+  return form.id
+}
+
+/* 🔴 官方逐字:把相關欄位設成同一分段後「再透過條件式格式一次設定,
+   就無需逐一針對各欄位進行設定」—— 一條規則、零個 targets,卻要動到兩個欄位。 */
+test("🔴 分段目標:一條規則隱藏整段,段外的欄位不受影響", async ({ page, request }) => {
+  const formId = await seedSectionForm(request, {
+    record: [
+      {
+        combinator: "and",
+        conditions: [{ field: "單號", op: "eq", value: "HIDE" }],
+        targets: [],
+        targetSections: ["sec-contact"],
+        effects: [{ kind: "hide" }],
+      },
+    ],
+    list: [],
+  })
+
+  await page.goto(`/app/builder?form=${String(formId)}&mode=fill`)
+  await page.getByRole("tab", { name: "填單" }).click()
+  const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+  const 單號 = page.getByRole("textbox", { name: "單號" })
+  await expect(單號).toBeVisible({ timeout: 30_000 })
+  await expect(fill.getByRole("textbox")).toHaveCount(3)
+
+  await 單號.fill("HIDE")
+  /* 段內兩欄一起不見,段外的單號還在 —— 若只剩 0 個就是連條件欄也被掃到 */
+  await expect(fill.getByRole("textbox")).toHaveCount(1)
+  await expect(單號).toBeVisible()
+
+  await 單號.fill("PO-001")
+  await expect(fill.getByRole("textbox")).toHaveCount(3)
+})
+
+/* 🔴 訊息的插值 + **純文字**渲染。
+   文字由使用者自訂、值由資料帶入,兩者都是不可信輸入 ——
+   若哪天有人為了「支援粗體」接上 `dangerouslySetInnerHTML`,這條會紅。 */
+test("🔴 顯示訊息:條件成立才出現,帶入欄位值,且標記不被解析", async ({ page, request }) => {
+  const formId = await seedSectionForm(request, {
+    record: [
+      {
+        combinator: "and",
+        conditions: [{ field: "單號", op: "isNotEmpty" }],
+        targets: [],
+        targetSections: [],
+        effects: [{ kind: "message", text: "{{fieldName:單號}} {{fieldValue:單號}} 需主管核可" }],
+      },
+    ],
+    list: [],
+  })
+
+  await page.goto(`/app/builder?form=${String(formId)}&mode=fill`)
+  await page.getByRole("tab", { name: "填單" }).click()
+  const 單號 = page.getByRole("textbox", { name: "單號" })
+  await expect(單號).toBeVisible({ timeout: 30_000 })
+
+  const box = page.getByTestId("rule-messages")
+  await expect(box).toBeHidden() // 條件未成立 → 沒有訊息
+
+  await 單號.fill("<b>PO-9</b>")
+  await expect(box).toContainText("單號 <b>PO-9</b> 需主管核可")
+  /* 🔴 標記若被解析,這裡會是一個 <b> 元素而不是字面文字 */
+  await expect(box.locator("b")).toHaveCount(0)
+
+  await 單號.fill("")
+  await expect(box).toBeHidden()
+})
