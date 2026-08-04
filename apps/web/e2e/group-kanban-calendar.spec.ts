@@ -216,7 +216,21 @@ test("看板:純鍵盤即可換欄,且一次按鍵跳一整欄", async ({ page, 
   const live = page.locator('[role="status"]')
   await card.press("Space") // 拿起
   await expect(live).toContainText("甲欄")
-  await page.keyboard.press("ArrowRight") // 一次 = 一欄
+
+  /* 🔴 **位移是非同步生效的,放下之前必須先等它生效**。
+     dnd-kit 收到方向鍵後才重算碰撞(下一個 frame),而 Playwright 的按鍵間隔是毫秒級 ——
+     緊接著按 Space 會用**還沒更新的碰撞結果**放下,卡片就落回原欄。
+
+     診斷實測(三次跑):失敗的兩次 `afterDrop` 是「dropped over 甲欄」,
+     通過的那次是「dropped over 乙欄」,而三次的 `afterArrow` 都還停在甲欄
+     —— 也就是**成敗只差在 Space 有沒有等到那一個 frame**。
+     這是本 spec 長期 ~50% 不穩的真因(先前一度誤判為順序相依)。
+
+     ⚠️ 這條斷言不只是等待,它**就是「一次按鍵跳一整欄」的驗證** ——
+     原本那件事只能從最後的 DB 值間接推斷。 */
+  await page.keyboard.press("ArrowRight")
+  await expect(live).toContainText("乙欄")
+
   await page.keyboard.press("Space") // 放下
 
   await expect
