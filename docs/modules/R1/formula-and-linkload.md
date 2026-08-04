@@ -4,7 +4,7 @@
 > 🔴 **原本寫「M0–M6 全數達成」是過度宣稱** —— `_audit/giants-shoulders-audit-C.md` §2.2 查出
 > `RelationService` **零個生產注入點**,詳見 §11-bis。公式引擎(A1/A2/A5)與 Rollup 側確實已出貨且在跑;
 > **Link 的選記錄 UI 與 Load 帶入沒有任何生產路徑**。
-> ✅ **2026-08-04 更新**:**選記錄 UI 已由 `link-picker-and-load.md` M1 補上**(候選端點 + LinkInput + 送出邊界修正);**Load 帶入仍未做**(該模組 M2)。
+> ✅ **2026-08-04 更新**:**選記錄 UI 與 Load 帶入都已由 `link-picker-and-load.md` 補上**(M1 候選端點 + LinkInput + 送出邊界修正;M2 對映端點 + `onLoadMany` + 設計器 LoadMapPanel)。**本檔的 Link&Load 缺口自此結案**;`RelationService` 依 OQ-LNK-2 仍不接主路徑(形狀為伺服器端組值,與「選取當下帶入」不符),留待日後「同步為最新」再評估。
 >
 > 舊述 —— fork Teable `packages/formula`(MIT,clean-room);Tarjan SCC 依賴圖 + 讀時算 + Link&Load + Rollup(N+1);前端設計器啟用 formula 欄 + 即時預覽 + e2e 固化。FMEA §14 P0 F1–F4 全清、殘留 F6(N+1)/F7(刪欄保護)P1 已知。⚠️ 對外上 prod 前提同引擎(F-2 auth)。
 >
