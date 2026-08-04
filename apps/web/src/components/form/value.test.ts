@@ -41,10 +41,21 @@ describe("toSubmitValue", () => {
     expect(iso as string).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
   })
 
-  it("skips autoNumber / stub types entirely", () => {
+  it("skips autoNumber / formula(值由引擎產生,送了也會被忽略)", () => {
     expect(toSubmitValue(field("autoNumber"), "PO-1")).toBeUndefined()
     expect(toSubmitValue(field("formula"), "x")).toBeUndefined()
-    expect(toSubmitValue(field("link"), 5)).toBeUndefined()
+  })
+
+  /* 🔴 R1·LNK M1:`link` 原本在這裡斷言 `toBeUndefined()` ——
+     那是因為它當時被列為 stub(前端「即將推出」),而**那條斷言在釘住 bug**:
+     選記錄 UI 上線後它仍被丟掉,症狀是「畫面上明明選了供應商,存進去是 null」。
+     與 `member` 同型(#96 踩過一次),兩次都是瀏覽器實走才發現。 */
+  it("link 與 member 同型:送數字 id,不得落到字串分支被丟掉", () => {
+    expect(toSubmitValue(field("link"), 5)).toBe(5)
+    expect(toSubmitValue(field("member"), 5)).toBe(5)
+    /* null = 明確清除連結,與「沒碰過」(undefined)不同 */
+    expect(toSubmitValue(field("link"), null)).toBeNull()
+    expect(toSubmitValue(field("link"), "abc")).toBeUndefined()
   })
 
   it("trims text and omits empties", () => {

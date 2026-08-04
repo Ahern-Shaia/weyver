@@ -1093,6 +1093,21 @@ export function usePublicShares() {
 
 /* 🔴 可公開的欄位型別由**後端**回。前端不自己維護一份清單 ——
    兩份會漂移,而漂移的症狀是使用者挑得到一個必定失敗的欄位。 */
+/* 🔴 R1·LNK M1|連結欄的候選記錄。**候選由後端過權限** ——
+   來源表單的權限不蘊含目標表單的權限,且只在前端過濾等於沒做(OQ-PC-12 的教訓)。 */
+export function useLinkOptions(formId: number, fieldId: number, q: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["link-options", formId, fieldId, q] as const,
+    queryFn: () =>
+      engineFetch(
+        `/forms/${String(formId)}/fields/${String(fieldId)}/link-options?q=${encodeURIComponent(q)}`,
+        z.object({ options: z.array(z.object({ id: z.number(), label: z.string() })) }),
+      ),
+    enabled,
+    staleTime: 15_000,
+  })
+}
+
 export function usePublicSafeTypes() {
   return useQuery({
     queryKey: ["public-forms", "safe-types"],

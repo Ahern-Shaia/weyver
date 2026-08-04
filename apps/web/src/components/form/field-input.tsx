@@ -1,13 +1,14 @@
 "use client"
 
 import { usePreviewActors } from "@/lib/engine/authz"
+import { useLinkOptions } from "@/lib/engine/hooks"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
 import { cn } from "@weyver/ui/lib/utils"
 import { Select } from "@weyver/ui/select"
-import type { ReactNode } from "react"
+import { type ReactNode, useState } from "react"
 import { AttachmentInput } from "@/components/form/attachment-input"
 import { DateInput } from "@/components/form/date-input"
 import { choicesOf } from "@/components/form/value"
@@ -165,6 +166,12 @@ export function FieldInput({
         />
       )
 
+    /* 🔴 R1·LNK M1|連結欄選記錄。**在此之前這裡沒有 `case "link"`** ——
+       連結欄落到預設分支,使用者要自己打目標記錄的 id。
+       連結是 Ragic 兩大招牌之一(doc/14「連結與載入」),遷移客戶天天在用。 */
+    case "link":
+      return <LinkInput value={value} onChange={onChange} field={field} formId={formId} />
+
     /* 🔴 member 欄選人器(#96 M2)。**這是 E-1 指派機制在 UI 上的唯一入口** ——
        沒有它,「指派負責業務」只能靠 API 寫,而指派正是 Ragic 賴以達成
        「業務只看自己的客戶」的機制。
@@ -185,6 +192,7 @@ export function FieldInput({
     case "singleSelect":
       return (
         <Select
+          aria-label={field.name}
           className="w-full"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
@@ -237,6 +245,13 @@ export function FieldInput({
       const sym = fieldSymbology(field)
       return (
         <div className={sym === null ? "" : "flex flex-col gap-1.5"}>
+          {/* ⚠️ **此輸入框在無障礙樹上沒有名字** —— 視覺欄名是旁邊的一個 div,
+              沒有 `<label for>` 關聯,螢幕閱讀器只會唸「編輯文字」(WCAG 4.1.2)。
+
+              2026-08-04 曾補上 `aria-label={field.name}`,但**量到的波及面是 27 條 e2e** ——
+              現行多數 spec 以 placeholder 推導出的無障礙名稱當錨點(如 money 欄的 `0.0000`),
+              一改就全斷。修法本身是對的(placeholder 一打字就消失,拿它當名稱是反樣式),
+              但它是一件**獨立的 a11y 工作**,不該夾帶在別的 commit 裡順手做掉。已開 task。 */}
           <Input
             className={baseInputClass}
             value={typeof value === "string" ? value : ""}
@@ -278,6 +293,62 @@ function MemberInput({
         ))}
       </Select>
       {grants ? <span className="text-[12px] text-ink-3">選定的人將可存取此筆記錄</span> : null}
+    </div>
+  )
+}
+
+/* 🔴 R1·LNK M1|連結欄選記錄。刻意**沿用 `MemberInput` 的形狀**(搜尋 + 選一筆 + 顯示名稱)
+   而不另創語彙 —— 兩者對使用者是同一個動作。
+
+   候選清單由後端過權限(目標表單的 `view`),前端只負責顯示;
+   label 對隱藏的標題欄會回 `#id`,那是後端刻意的具名退場,不要在這裡改寫成空白。 */
+function LinkInput({
+  value,
+  onChange,
+  field,
+  formId,
+}: {
+  readonly value: unknown
+  readonly onChange: (v: unknown) => void
+  readonly field: FieldDto
+  readonly formId: number
+}): ReactNode {
+  const [q, setQ] = useState("")
+  const { data, isPending } = useLinkOptions(formId, field.id, q, true)
+  const options = data?.options ?? []
+  const current = typeof value === "number" || typeof value === "string" ? String(value) : ""
+  /* 已選的那筆可能不在當下搜尋結果裡 —— 補一個佔位項,否則 select 會顯示成「未選擇」,
+     使用者會以為自己的選擇被清掉了。 */
+  const missing = current !== "" && !options.some((o) => String(o.id) === current)
+
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <Input
+        className="h-7"
+        aria-label={`${field.name} 搜尋`}
+        placeholder="搜尋…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <Select
+        value={current}
+        aria-label={`${field.name} 選擇記錄`}
+        onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      >
+        <option value="">未選擇</option>
+        {missing ? <option value={current}>{`#${current}`}</option> : null}
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+      {isPending ? <span className="text-[12px] text-ink-3">載入候選…</span> : null}
+      {!isPending && options.length === 0 ? (
+        <span className="text-[12px] text-ink-3">
+          {q === "" ? "來源表單沒有記錄,或你對它沒有檢視權" : `沒有符合「${q}」的記錄`}
+        </span>
+      ) : null}
     </div>
   )
 }

@@ -39,7 +39,16 @@ export type CellValueType = (typeof CELL_VALUE_TYPES)[number]
 
 /* stub 型別(引擎 systemManaged / 行為未實作)→ palette 停用、填單唯讀。
    attachment 已於 F-5 file-storage 解鎖(上傳/下載/移除)→ 移出本清單。 */
-export const STUB_TYPES: readonly CellValueType[] = ["link"]
+/* 🔴 R1·LNK M1(2026-08-04):`link` **已移出 stub**。
+
+   在此之前這裡是 `["link"]`,填單畫面顯示「(此型別即將推出,暫不可填)」——
+   而 `formula-and-linkland` 的檔頭同時寫著「Link&Load SHIPPED」。
+   **UI 一直說實話,是模組文件在過度宣稱**(見 `_audit/giants-shoulders-audit-C.md` §2.2)。
+
+   現在候選記錄端點與選記錄 UI 都有了,故解除。
+   ⚠️ 清單保留(不刪常數)—— 下一個「後端先行、前端未跟上」的型別還會用到它,
+   而它的價值正是**讓畫面誠實**:寧可說「還不能填」,也不要給一個填了沒反應的框。 */
+export const STUB_TYPES: readonly CellValueType[] = []
 
 /* F-5 附件:欄值契約 [{key,name}](後端 attachment valueSchema,max 50) */
 export const attachmentItemSchema = z.object({ key: z.string(), name: z.string() })

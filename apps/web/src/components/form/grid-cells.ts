@@ -24,6 +24,10 @@ export function isGridEditable(field: FieldDto): boolean {
     field.type !== "signature" &&
     field.type !== "autoNumber" &&
     field.type !== "formula" &&
+    /* 🔴 link:網格內**沒有選記錄器**(M0 §1.3:需未安裝的 glide-data-grid-cells)。
+       開放在網格編輯等於讓使用者在格子裡打目標記錄的 id ——
+       那正是填單頁剛剛移除掉的東西,不要從另一個門放回來。 */
+    field.type !== "link" &&
     field.type !== "multiSelect"
   )
 }

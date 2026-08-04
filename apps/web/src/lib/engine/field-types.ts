@@ -50,6 +50,8 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
    member 在此而非 BUILDABLE:它牽動存取權(#96 指派即授權),不該與一般欄位並列隨手加;
    且 Excel 匯入建表無從把人名對回 actor id。 */
 export const ADVANCED_TYPES: readonly CellValueType[] = [
+  /* link 由設計器的進階設定建(需指定 targetFormId),不進基本 palette */
+  "link",
   "member",
   "createdAt",
   "createdBy",

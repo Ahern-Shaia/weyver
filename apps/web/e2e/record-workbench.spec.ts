@@ -97,7 +97,9 @@ test("inline 編輯:就地改狀態 → 版本遞增 + 清單與狀態章同步"
   await expect(page.getByText("#1 · v1")).toBeVisible({ timeout: 30_000 })
 
   await page.getByRole("button", { name: "編輯", exact: true }).click()
-  await page.getByRole("combobox").selectOption("已核准")
+  /* ⚠️ 不用整頁範圍的 `getByRole("combobox")` —— 這張表有連結欄,它的選記錄器也是 combobox。
+     改用欄位的無障礙名稱(2026-08-04 補:欄位輸入原本在無障礙樹上沒有名字)。 */
+  await page.getByLabel("狀態", { exact: true }).selectOption("已核准")
   await page.getByRole("button", { name: "儲存", exact: true }).click()
 
   await expect(page.getByText("已儲存")).toBeVisible({ timeout: 30_000 })
@@ -105,7 +107,7 @@ test("inline 編輯:就地改狀態 → 版本遞增 + 清單與狀態章同步"
   // 狀態章與左欄清單同步(同一份 query cache)
   await expect(page.getByRole("option", { name: /PO-.*已核准/ })).toBeVisible()
   // 已回到檢視模式(不再有輸入框)
-  await expect(page.getByRole("combobox")).toBeHidden()
+  await expect(page.getByLabel("狀態", { exact: true })).toBeHidden()
 })
 
 /* 🔴 未儲存變更防護。Fiori 逐字:「If the user has made changes in edit mode,
@@ -122,7 +124,7 @@ test("🔴 編輯中按取消 / 切換記錄,都必須先問過才丟", async ({
   await page.goto(`/app/forms/${poFormId}?mode=record`)
   await expect(page.getByText("#1 · v1")).toBeVisible({ timeout: 30_000 })
   await page.getByRole("button", { name: "編輯", exact: true }).click()
-  await page.getByRole("combobox").selectOption("已核准")
+  await page.getByLabel("狀態", { exact: true }).selectOption("已核准")
 
   // 1) 取消 —— 拒絕捨棄則留在編輯中
   page.once("dialog", (d) => {
@@ -130,7 +132,7 @@ test("🔴 編輯中按取消 / 切換記錄,都必須先問過才丟", async ({
     void d.dismiss()
   })
   await page.getByRole("button", { name: "取消", exact: true }).click()
-  await expect(page.getByRole("combobox")).toBeVisible()
+  await expect(page.getByLabel("狀態", { exact: true })).toBeVisible()
 
   // 2) 切換記錄 —— 同樣要先問;拒絕則停在原記錄且編輯中
   page.once("dialog", (d) => {
@@ -138,7 +140,7 @@ test("🔴 編輯中按取消 / 切換記錄,都必須先問過才丟", async ({
     void d.dismiss()
   })
   await page.getByRole("option", { name: /PO-第二筆/ }).click()
-  await expect(page.getByRole("combobox")).toBeVisible()
+  await expect(page.getByLabel("狀態", { exact: true })).toBeVisible()
   await expect(page.getByRole("heading", { level: 3 })).not.toContainText("第二筆")
 
   // 3) 確認捨棄才真的離開
@@ -146,14 +148,14 @@ test("🔴 編輯中按取消 / 切換記錄,都必須先問過才丟", async ({
     void d.accept()
   })
   await page.getByRole("button", { name: "取消", exact: true }).click()
-  await expect(page.getByRole("combobox")).toBeHidden()
+  await expect(page.getByLabel("狀態", { exact: true })).toBeHidden()
 
   /* 🔴 改了又改回來不算 dirty —— 否則使用者會被無謂的警告訓練成無視它 */
   await page.getByRole("button", { name: "編輯", exact: true }).click()
-  await page.getByRole("combobox").selectOption("已核准")
-  await page.getByRole("combobox").selectOption("待審")
+  await page.getByLabel("狀態", { exact: true }).selectOption("已核准")
+  await page.getByLabel("狀態", { exact: true }).selectOption("待審")
   await page.getByRole("button", { name: "取消", exact: true }).click()
-  await expect(page.getByRole("combobox")).toBeHidden()
+  await expect(page.getByLabel("狀態", { exact: true })).toBeHidden()
 })
 
 /* 🔴 #110 加了響應式斷點卻沒有任何測試釘住 —— 版面回歸在窄螢幕上看不見。

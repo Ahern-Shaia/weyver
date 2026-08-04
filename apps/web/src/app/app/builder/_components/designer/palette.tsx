@@ -32,7 +32,7 @@ export function FieldPalette({
   const [q, setQ] = useState("")
   const term = q.trim().toLowerCase()
   const all: readonly CellValueType[] = advanced
-    ? [...BUILDABLE_TYPES, ...ADVANCED_TYPES, "link"]
+    ? [...BUILDABLE_TYPES, ...ADVANCED_TYPES]
     : BUILDABLE_TYPES
   const matches = all.filter(
     (t) => fieldTypeMeta(t).label.toLowerCase().includes(term) || t.toLowerCase().includes(term),
@@ -71,7 +71,9 @@ export function FieldPalette({
                 進階 · 計算/關聯/指派
               </div>
               <PaletteGroup
-                types={[...ADVANCED_TYPES, "link"]}
+                /* link 已於 2026-08-04 移出 STUB 並列入 ADVANCED_TYPES —— 原本這裡硬寫 "link"
+                   是它還是 stub 時的 workaround,留著會重複出現 */
+                types={[...ADVANCED_TYPES]}
                 onPick={onPick}
                 disabled={disabled}
               />

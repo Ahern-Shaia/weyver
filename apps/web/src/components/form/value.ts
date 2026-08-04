@@ -51,7 +51,15 @@ export function toSubmitValue(field: FieldDto, value: unknown): unknown {
     /* 🔴 member 存 actor id(number)。不能落到 default 的字串分支 ——
        否則「指派誰」會在送出邊界被靜默丟掉,畫面上明明選了人,存進去卻是空的
        (#96 瀏覽器實走發現)。null = 明確取消指派,與「沒碰過」不同。 */
+    /* 🔴 R1·LNK M1:`link` 與 `member` **完全同型** —— 都存數字 id。
+       原本 link 沒有在這裡列出,落到 default 的字串分支 →
+       **畫面上明明選了供應商,存進去卻是 null**,而且沒有任何錯誤。
+
+       ⚠️ 上面那段註解(#96 member 欄)逐字寫過同一件事,而 link 還是踩了 ——
+       因為那條規則寫在註解裡,沒有任何機制在漏列時發出訊號。
+       兩次都是**瀏覽器實走**才發現的:單元測試不會送出、型別上 `unknown` 一路綠燈。 */
     case "member":
+    case "link":
       if (value === null) return null
       return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined
     case "money":
