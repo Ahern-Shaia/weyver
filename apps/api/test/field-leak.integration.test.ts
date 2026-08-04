@@ -197,3 +197,96 @@ describe("隱藏欄不得成為查詢旁路", () => {
     expect(res.records[0]?.values.姓名).toBe("丙")
   })
 })
+
+/* 🔴 旁路第 4 項:**公式 / 計算欄引用隱藏欄**(對照 CVE-2019-11780 ——
+   Odoo 可經 non-stored computed field 繞過存取權)。
+
+   讀取路徑是「先算公式,再遮罩隱藏欄」。遮罩刪的是**隱藏欄自己的值**,
+   而公式欄是**另一個欄**,不會被刪 —— 但它的值是用隱藏欄算出來的。
+   `月薪` 隱藏、`年薪 = 月薪 * 12` 沒隱藏 → 一除以 12 就還原。**遮了等於沒遮。** */
+describe("旁路:公式欄引用隱藏欄", () => {
+  let annualFieldId = 0
+  let doubledFieldId = 0
+
+  beforeAll(async () => {
+    const admin = { "x-dev-tenant": String(tenantId), "x-dev-actor": "1" }
+    for (const [name, expr] of [
+      ["年薪", "{月薪} * 12"],
+      /* ⚠️ 傳遞閉包:這一欄**沒有直接引用**隱藏欄,只引用了另一個公式欄 —— 但一樣洩漏 */
+      ["年薪兩倍", "{年薪} * 2"],
+    ]) {
+      const r = await app.inject({
+        method: "POST",
+        url: `/api/forms/${formId}/fields`,
+        headers: admin,
+        payload: { name, type: "formula", options: { expression: expr } },
+      })
+      expect(r.statusCode).toBeLessThan(300)
+    }
+    const detail = await app.inject({ method: "GET", url: `/api/forms/${formId}`, headers: admin })
+    const fields = (detail.json() as { fields: { id: number; name: string }[] }).fields
+    annualFieldId = fields.find((f) => f.name === "年薪")?.id ?? 0
+    doubledFieldId = fields.find((f) => f.name === "年薪兩倍")?.id ?? 0
+    expect(annualFieldId).toBeGreaterThan(0)
+    expect(doubledFieldId).toBeGreaterThan(0)
+  }, 60_000)
+
+  it("admin 看得到公式值(先證明公式真的有在算,否則下面的斷言是假綠)", async () => {
+    const res = await records.listRecords(
+      tenantId,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      undefined,
+    )
+    const values = res.records.map((r) => r.values)
+    expect(values.some((v) => v["年薪"] !== undefined && v["年薪"] !== null)).toBe(true)
+  })
+
+  it("🔴 隱藏月薪的人,**看不到年薪** —— 否則除以 12 就還原了", async () => {
+    const res = await records.listRecords(
+      tenantId,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      limitedPerms(),
+    )
+    for (const r of res.records) {
+      expect(r.values).not.toHaveProperty("月薪")
+      expect(r.values).not.toHaveProperty("年薪")
+    }
+  })
+
+  it("🔴 **傳遞閉包**:只引用公式欄、沒直接引用隱藏欄的公式也要遮", async () => {
+    const res = await records.listRecords(
+      tenantId,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      limitedPerms(),
+    )
+    for (const r of res.records) expect(r.values).not.toHaveProperty("年薪兩倍")
+  })
+
+  it("🔴 單筆讀取走的是另一條路徑,同樣不得洩", async () => {
+    const list = await records.listRecords(
+      tenantId,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      undefined,
+    )
+    const id = list.records[0]?.id ?? 0
+    expect(id).toBeGreaterThan(0)
+    const one = await records.getRecord(tenantId, formId, id, limitedPerms())
+    expect(one.values).not.toHaveProperty("月薪")
+    expect(one.values).not.toHaveProperty("年薪")
+    expect(one.values).not.toHaveProperty("年薪兩倍")
+  })
+
+  it("沒隱藏任何欄的人不受影響 —— 修法不得把功能一起關掉", async () => {
+    const res = await records.listRecords(
+      tenantId,
+      formId,
+      { filters: [], sort: [], limit: 50 },
+      undefined,
+    )
+    expect(res.records.some((r) => r.values["年薪兩倍"] !== undefined)).toBe(true)
+  })
+})

@@ -571,8 +571,9 @@ export class RecordService {
       actorId ?? undefined,
     )
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
+    const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
     return {
-      records: this.maskRead(resolved, formId, computed, policy),
+      records: this.maskRead(resolved, formId, computed, policy, tainted),
       truncated: result.truncated,
     }
   }
@@ -991,7 +992,8 @@ export class RecordService {
       actorId,
     )
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
-    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
+    const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
+    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy, tainted)
     return masked ?? injected ?? record
   }
 
@@ -1189,7 +1191,8 @@ export class RecordService {
     )
     const [enriched] = enrichedList
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
-    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy)
+    const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
+    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy, tainted)
     return masked ?? injected ?? record
   }
 
@@ -1308,8 +1311,9 @@ export class RecordService {
       actorId ?? undefined,
     )
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
+    const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
     return {
-      records: this.maskRead(resolved, formId, computed, policy),
+      records: this.maskRead(resolved, formId, computed, policy, tainted),
       nextCursor: result.nextCursor,
     }
   }
@@ -2091,15 +2095,25 @@ export class RecordService {
 
   /* P0-4a M4|欄位級讀遮罩:移除該角色不可見(hidden)欄 → 回應不含其值(後端不回,非前端隱藏)。
      policy 缺省(既有 service 呼叫 / dev 未帶)= 不遮罩。 */
+  /* 🔴 遮罩 = 刪值,**不是回 null** —— 回 null 與「這一筆真的沒填」分不出來。
+
+     `taintedFieldIds`:因公式引用隱藏欄而必須一併遮的欄(見
+     `FormulaService.fieldsTaintedByHidden`)。沒有它的話,遮了等於沒遮:
+     `成本` 隱藏但 `毛利 = 售價 - 成本` 沒隱藏,兩個一減就還原出成本。 */
   private maskRead(
     resolved: ResolvedForm,
     formId: number,
     records: readonly RecordRow[],
     policy?: FieldAccessPolicy,
+    taintedFieldIds?: ReadonlySet<number>,
   ): RecordRow[] {
     if (policy === undefined) return [...records]
     const hidden = resolved.fields
-      .filter((f) => policy.fieldVisibility(f.row.id, formId) === "hidden")
+      .filter(
+        (f) =>
+          policy.fieldVisibility(f.row.id, formId) === "hidden" ||
+          taintedFieldIds?.has(f.row.id) === true,
+      )
       .map((f) => f.row.name)
     if (hidden.length === 0) return [...records]
     return records.map((record) => {
@@ -2107,6 +2121,23 @@ export class RecordService {
       for (const name of hidden) delete values[name]
       return { ...record, values }
     })
+  }
+
+  /* 公式污染閉包。`policy` 缺省(內部路徑)時不計算 —— 與 maskRead 的短路一致。 */
+  private async taintedByHidden(
+    tenantId: number,
+    formId: number,
+    resolved: ResolvedForm,
+    policy?: FieldAccessPolicy,
+  ): Promise<ReadonlySet<number> | undefined> {
+    if (policy === undefined || this.formula === undefined) return undefined
+    const hidden = new Set(
+      resolved.fields
+        .filter((f) => policy.fieldVisibility(f.row.id, formId) === "hidden")
+        .map((f) => f.row.id),
+    )
+    if (hidden.size === 0) return undefined
+    return this.formula.fieldsTaintedByHidden(tenantId, formId, hidden)
   }
 
   /* P0-4a M4|欄位級寫白名單:提供的欄若非 write 權 → FieldForbiddenError(擋每角色動態 mass-assignment)。

@@ -162,6 +162,16 @@ export class DdlService {
         executedSql,
         "ok",
       )
+      /* 🔴 **事後加的公式欄也要註冊**。原本只有 `createForm` 呼叫 `defineFormulaFields`,
+         於是「建完表之後才加一個公式欄」的欄位**永遠算不出來** —— 而且是靜默的:
+         欄位出現在畫面上、值恆為 `null`、沒有任何錯誤。
+         而「建完表再加欄」正是 2D 設計器的日常動作。
+
+         `defineFormula` 對 `formula_def_field_uq` 走 upsert,故重跑整張表是冪等的;
+         整張重跑而非只跑新欄,是因為新欄可能被既有公式引用(依賴圖要一起重算)。 */
+      if (this.formula !== undefined) {
+        await this.defineFormulaFields(tenantId, await this.metadata.getForm(tenantId, formId))
+      }
       return row
     } catch (error) {
       await this.metadata.hardDeleteField(tenantId, row.id)

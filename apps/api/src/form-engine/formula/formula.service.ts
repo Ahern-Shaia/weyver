@@ -91,6 +91,44 @@ export class FormulaService {
     }))
   }
 
+  /* 🔴 公式欄的**污染傳遞**(authz 旁路清單第 4 項,對照 **CVE-2019-11780** ——
+     Odoo 可經 non-stored computed field 繞過存取權)。
+
+     問題形狀:讀取路徑是「先算公式,再遮罩隱藏欄」。遮罩刪掉的是**隱藏欄自己的值**,
+     而公式欄是**另一個欄**,它不會被刪 —— 但它的值是用隱藏欄算出來的。
+     例:`成本` 對業務隱藏,而 `毛利 = 售價 - 成本` 沒隱藏 →
+     業務看得到毛利與售價,**兩個一減就得到成本**。遮了等於沒遮。
+
+     ⚠️ **要傳遞閉包,不能只看一層**:`A = B * 2`、`B = 隱藏欄 + 1` ——
+     A 沒有直接引用隱藏欄,但一樣洩漏。
+
+     ⚠️ **不改成「把隱藏欄當 0 去算」** —— 那會讓使用者看到一個**看起來正常但錯的數字**,
+     比看不到更糟(同 `pivot-and-charts` 的裁定:寧可具名不可用,不要靜默給錯的值)。 */
+  async fieldsTaintedByHidden(
+    tenantId: number,
+    formId: number,
+    hiddenFieldIds: ReadonlySet<number>,
+  ): Promise<Set<number>> {
+    const tainted = new Set<number>()
+    if (hiddenFieldIds.size === 0) return tainted
+    const defs = await this.loadDefs(tenantId, formId)
+    if (defs.length === 0) return tainted
+
+    /* 反覆掃到不動點 —— 公式數量是設計期常數(個位到數十),不值得為它建圖 */
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const d of defs) {
+        if (tainted.has(d.fieldId)) continue
+        if (d.dependsOn.some((id) => hiddenFieldIds.has(id) || tainted.has(id))) {
+          tainted.add(d.fieldId)
+          changed = true
+        }
+      }
+    }
+    return tainted
+  }
+
   async defineFormula(
     tenantId: number,
     formId: number,
