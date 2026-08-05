@@ -96,6 +96,13 @@ export class BulkRowError extends DomainError {
   }
 }
 
+/* 🔴 R1·FTP v1.7|把遮罩值寫回去 = 用一串點蓋掉真值。拒絕,並講清楚要重新輸入。 */
+export class MaskedValueWriteError extends DomainError {
+  constructor(fieldName: string) {
+    super(`「${fieldName}」是遮罩欄位,顯示的不是真值。要修改請重新輸入完整內容`)
+  }
+}
+
 /* R1·H-4 v1.2|批次還原(`docs/modules/R1/record-revisions.md` §7) */
 export class BatchNotFoundError extends DomainError {
   constructor(batchId: number) {

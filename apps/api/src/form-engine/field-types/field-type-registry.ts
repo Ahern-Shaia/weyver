@@ -8,6 +8,7 @@ export const CELL_VALUE_TYPES = [
   "text",
   "longText",
   "markdown",
+  "textMask",
   "email",
   "url",
   "phone",
@@ -302,6 +303,42 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
     buildColumn: (t, col) => void t.text(col),
     valueSchema: () => z.string().max(100_000),
     filterOperators: TEXTUAL,
+    systemManaged: false,
+  }),
+  /* 🔴 R1·FTP v1.7|**文字遮罩**(Ragic「文字欄位 → 文字遮罩」)。
+
+     > 「這一欄位可以存入任何字元,並能夠設定**只顯示末幾碼**及**哪些群組可以瀏覽完整資料**。
+     >  當要儲存隱私資料時就能派上用場,例如:客戶的身分證字號或手機號碼等。」
+     >  「**遮罩模式**|你可以選擇**顯示前 N 碼**或**後 N 碼**……也可以選擇**遮罩中文姓名**」
+     >  「為了資料隱密性,目前文字遮罩欄位**不能再次修改**,當要重新編輯該欄位時,
+     >   欄位值就會被清空而必須重新輸入。」
+
+     🔴 **遮罩在伺服器端做,不是在畫面上做。** 這一點是這個型別的全部意義 ——
+     若後端回完整值、前端負責遮,任何人打開開發者工具就看得到,
+     那不叫遮罩叫裝飾。故遮罩掛在**讀取的咽喉**(`maskRead` 旁),
+     且**預設就遮**:不在 `policy === undefined` 的短路裡面
+     (內部路徑也不該看到身分證字號)。
+
+     🔴 **`revealRoleIds` 不是「誰看得到這一欄」,是「誰可以按眼睛看完整值」。**
+     欄位本身的可見性仍走既有的欄位級權限 —— 兩者正交,不合併。 */
+  textMask: def({
+    cellValueType: "textMask",
+    dbFieldType: "text",
+    optionsSchema: z
+      .object({
+        /* last=顯示末 N 碼 · first=顯示前 N 碼 · cjkName=遮中間字(中文姓名) */
+        mode: z.enum(["last", "first", "cjkName"]).default("last"),
+        keep: z.number().int().min(0).max(8).default(4),
+        /* 可按眼睛看完整值的群組。空 = 只有 admin(與 Ragic 的預設一致) */
+        revealRoleIds: z.array(z.number().int().positive()).max(20).default([]),
+      })
+      .strict(),
+    buildColumn: (t, col) => void t.text(col),
+    valueSchema: () => z.string().max(200),
+    /* 🔴 **不給任何篩選運算子**。可篩就可以用二分逼近把值猜出來 ——
+       這與「隱藏欄不得出現在 WHERE / ORDER BY」是同一條理由
+       (`assertReadable` 的檔頭逐字寫過:查完再遮擋不住用查詢反推值)。 */
+    filterOperators: [],
     systemManaged: false,
   }),
   email: def({

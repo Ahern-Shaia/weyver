@@ -22,6 +22,7 @@ import { Tenant } from "../../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../../http/zod-validation.pipe.js"
 import { calendarQuerySchema, listQuerySchema, pivotQuerySchema } from "../records/record-specs.js"
 import type { RecordRow } from "../records/record-specs.js"
+import { AuthzRepository } from "../../authz/authz.repository.js"
 import { RecordService } from "../records/record.service.js"
 import {
   type ReverseRelationGroup,
@@ -54,7 +55,15 @@ export class RecordsController {
   constructor(
     @Inject(RecordService) private readonly records: RecordService,
     @Inject(ReverseRelationService) private readonly reverseRelations: ReverseRelationService,
+    @Inject(AuthzRepository) private readonly authz: AuthzRepository,
   ) {}
+
+  /* 這個人屬於哪些群組。dev 車道的 superadmin 沒有真實角色 → 空陣列
+     (它本來就靠 `isAdmin` 過關,不需要群組)。 */
+  private async groupIdsOf(tenant: TenantContext): Promise<number[]> {
+    if (tenant.isSuperAdmin) return []
+    return this.authz.resolveActorRoleIds(tenant.tenantId, tenant.actorId)
+  }
 
   @Get()
   async list(
@@ -193,6 +202,33 @@ export class RecordsController {
       tenant.actorId,
       permissions,
     )
+  }
+
+  /* 🔴 R1·FTP v1.7|揭露遮罩欄的完整值(眼睛按鈕)。
+
+     ⚠️ **不是 GET 而是 POST**:它有副作用(寫稽核),而且不該被瀏覽器 / proxy 快取
+     —— 一個被快取的個資回應等於把遮罩繞過去。 */
+  @Post(":recordId/reveal")
+  @HttpCode(200)
+  @RequiresFormAction("view")
+  async reveal(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("recordId", ParseIntPipe) recordId: number,
+    @Body(new ZodValidationPipe(z.object({ field: z.string().min(1).max(100) })))
+    body: { field: string },
+  ): Promise<{ value: string }> {
+    const value = await this.records.revealMasked(
+      tenant.tenantId,
+      formId,
+      recordId,
+      body.field,
+      tenant.actorId,
+      { isAdmin: permissions.isAdmin, groupIds: await this.groupIdsOf(tenant) },
+      permissions,
+    )
+    return { value }
   }
 
   @Get(":recordId")

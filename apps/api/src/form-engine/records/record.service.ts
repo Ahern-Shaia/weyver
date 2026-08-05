@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto"
 import { ForbiddenException, Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
-import { asSelectOptions, isChoiceAllowed } from "@weyver/rules"
+import { asSelectOptions, isChoiceAllowed, looksMasked, maskText } from "@weyver/rules"
 import {
   type ActionGateState,
   evaluateApprovalGate,
@@ -21,6 +22,7 @@ import {
   BatchNotFoundError,
   BatchNotUndoableError,
   BulkTooLargeError,
+  MaskedValueWriteError,
   BulkValidationError,
   DomainError,
   FieldForbiddenError,
@@ -660,7 +662,10 @@ export class RecordService {
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
     const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
     return {
-      records: this.maskRead(resolved, formId, computed, policy, tainted),
+      records: this.maskTextFields(
+        resolved,
+        this.maskRead(resolved, formId, computed, policy, tainted),
+      ),
       truncated: result.truncated,
     }
   }
@@ -1105,7 +1110,10 @@ export class RecordService {
     )
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
-    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy, tainted)
+    const [masked] = this.maskTextFields(
+      resolved,
+      this.maskRead(resolved, formId, [injected ?? record], policy, tainted),
+    )
     return masked ?? injected ?? record
   }
 
@@ -1363,7 +1371,10 @@ export class RecordService {
     const [enriched] = enrichedList
     const [injected] = await this.withFormulas(tenantId, formId, resolved, [enriched ?? record])
     const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
-    const [masked] = this.maskRead(resolved, formId, [injected ?? record], policy, tainted)
+    const [masked] = this.maskTextFields(
+      resolved,
+      this.maskRead(resolved, formId, [injected ?? record], policy, tainted),
+    )
     return masked ?? injected ?? record
   }
 
@@ -1484,7 +1495,10 @@ export class RecordService {
     const computed = await this.withFormulas(tenantId, formId, resolved, enriched)
     const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
     return {
-      records: this.maskRead(resolved, formId, computed, policy, tainted),
+      records: this.maskTextFields(
+        resolved,
+        this.maskRead(resolved, formId, computed, policy, tainted),
+      ),
       nextCursor: result.nextCursor,
     }
   }
@@ -2295,9 +2309,26 @@ export class RecordService {
         action: r.action,
         actorId: r.actor_id === null ? null : Number(r.actor_id),
         createdAt: new Date(r.created_at).toISOString(),
-        changes: (Array.isArray(r.changes) ? r.changes : []).filter(
-          (c) => !hiddenNames.has(c.field),
-        ),
+        /* 🔴 v1.7|**修改紀錄是遮罩值的第五個出口**,而它存的是原始值。
+
+           2026-08-06 真瀏覽器實走抓到:記錄頁上半部顯示 `••••6789`,
+           下半部的修改紀錄卻把 `A123456789` 完整印出來 ——
+           整合測試只驗了 `getRecord` 與 `listRecords` 兩個出口,看不到這個。
+
+           「值只要有第二個出口就會漏」在這個 repo 已經是**第五次**
+           (公式污染閉包 / 連結標題 / 通知內容 / 修改紀錄本身 / 這次)。 */
+        changes: (Array.isArray(r.changes) ? r.changes : [])
+          .filter((c) => !hiddenNames.has(c.field))
+          .map((c) => {
+            const f = resolved.byName.get(c.field)
+            if (f?.type !== "textMask") return c
+            const opts = f.row.options as { mode?: "last" | "first" | "cjkName"; keep?: number }
+            return {
+              field: c.field,
+              before: typeof c.before === "string" ? maskText(c.before, opts) : c.before,
+              after: typeof c.after === "string" ? maskText(c.after, opts) : c.after,
+            }
+          }),
       }))
     })
   }
@@ -2862,6 +2893,100 @@ export class RecordService {
      `taintedFieldIds`:因公式引用隱藏欄而必須一併遮的欄(見
      `FormulaService.fieldsTaintedByHidden`)。沒有它的話,遮了等於沒遮:
      `成本` 隱藏但 `毛利 = 售價 - 成本` 沒隱藏,兩個一減就還原出成本。 */
+  /* 🔴 R1·FTP v1.7|文字遮罩。**掛在讀取的咽喉,而且預設就遮。**
+
+     刻意**不放進 `maskRead`**:那一支在 `policy === undefined` 時整個短路
+     (內部路徑不套欄位權限),而文字遮罩的語意是「**除非有人明示要看,否則都遮**」
+     —— 內部路徑也不該看到身分證字號。
+
+     `revealed` 只有在通過群組檢查的揭露端點才會有值(見 `revealMasked`)。 */
+  /* 🔴 R1·FTP v1.7|揭露一個遮罩欄的完整值(眼睛按鈕)。
+
+     Ragic 逐字:「設定**可瀏覽資料的群組**(預設為系統管理者群組),
+     該群組使用者就可以點擊預覽按鈕(眼睛符號)來檢視完整資料。」
+
+     三件事同時成立才回傳:
+     1. 這個人**看得到這筆記錄**(走既有的 `getRecord` + 權限,不另開一條讀路徑)
+     2. 這個人**屬於 `revealRoleIds`**(空 = 只有 admin,與 Ragic 預設一致)
+     3. 🔴 **每一次揭露都留稽核** —— 「誰在什麼時候看了誰的身分證」是內控要問的問題,
+        而看過就是看過,沒有回頭路。沒有稽核的揭露等於沒有管制。 */
+  async revealMasked(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    fieldName: string,
+    actorId: number,
+    perms: { isAdmin: boolean; groupIds: readonly number[] },
+    policy?: FieldAccessPolicy,
+  ): Promise<string> {
+    const resolved = await this.resolveForm(tenantId, formId)
+    const field = resolved.byName.get(fieldName)
+    if (field === undefined || field.type !== "textMask") {
+      throw new RecordNotFoundError(recordId)
+    }
+    const allowed = (field.row.options as { revealRoleIds?: number[] }).revealRoleIds ?? []
+    const ok = perms.isAdmin || allowed.some((r) => perms.groupIds.includes(r))
+    if (!ok) {
+      throw new ForbiddenException({ code: "FORBIDDEN", message: "沒有檢視完整內容的權限" })
+    }
+
+    /* 走同一條讀取路徑 → 記錄級與欄位級權限自動生效;拿到的是遮罩值,
+       所以下面再從資料庫取一次原值 —— **只取這一欄**。 */
+    await this.getRecord(tenantId, formId, recordId, policy, actorId)
+
+    const raw = await this.inTenantTx(
+      tenantId,
+      async (trx) =>
+        trx
+          .withSchema(DATA_SCHEMA)
+          .table(resolved.table)
+          .where({ tenant_id: tenantId, id: recordId })
+          .whereNull("deleted_at")
+          .first<Record<string, unknown> | undefined>(),
+      { actorId, own: policy?.isScopedToOwn?.(formId, "view") === true },
+    )
+    if (raw === undefined) throw new RecordNotFoundError(recordId)
+
+    /* 🔴 稽核與取值**同一個交易**:「取到了但沒記」比兩者都失敗更糟 ——
+       那正是稽核最需要成立的時刻。走 `action_audit`(它有 formId / recordId /
+       actorId 三個欄,結構最貼),`buttonId` 為 null 代表不是按鈕觸發的。
+       `idempotencyKey` 在此不是去重用,是那張表的 NOT NULL 契約 —— 每次揭露都是一次新事件。 */
+    await this.inTenantTx(tenantId, async (trx) => {
+      await trx("action_audit").insert({
+        tenant_id: tenantId,
+        button_id: null,
+        form_id: formId,
+        record_id: recordId,
+        actor_id: actorId,
+        idempotency_key: `reveal:${randomUUID()}`,
+        outcome: "pii_reveal",
+        detail: JSON.stringify({ field: fieldName }),
+      })
+    })
+    return String(raw[physicalColumnName(field.row.id)] ?? "")
+  }
+
+  private maskTextFields(
+    resolved: ResolvedForm,
+    records: readonly RecordRow[],
+    revealed?: ReadonlySet<string>,
+  ): RecordRow[] {
+    const masked = resolved.fields.filter((f) => f.type === "textMask")
+    if (masked.length === 0) return [...records]
+    return records.map((record) => {
+      const values = { ...record.values }
+      for (const f of masked) {
+        const name = f.row.name
+        if (revealed?.has(name) === true) continue
+        const v = values[name]
+        if (typeof v === "string" && v !== "") {
+          values[name] = maskText(v, f.row.options as { mode?: "last" | "first" | "cjkName" })
+        }
+      }
+      return { ...record, values }
+    })
+  }
+
   private maskRead(
     resolved: ResolvedForm,
     formId: number,
@@ -2910,6 +3035,22 @@ export class RecordService {
     values: RecordValues,
     policy?: FieldAccessPolicy,
   ): void {
+    /* 🔴 R1·FTP v1.7|**遮罩值不得被寫回去**。**這一段在 policy 短路之前。**
+
+       讀出來的是 `••••1234`,使用者按編輯又直接存檔的話,那串點就會蓋掉
+       真正的身分證字號 —— **一次無心的儲存永久毀掉一筆個資,而且沒有錯誤訊息**。
+
+       Ragic 的解法是「編輯時清空、必須重新輸入」(官方逐字)。前端照做,
+       但那是**體驗**;真正的保證在這裡:看起來像遮罩值的寫入一律拒絕。
+       ⚠️ 代價誠實記:使用者真的想存一個含 `•` 的字串會被擋 ——
+       對「儲存隱私資料」用途的欄位,這個誤擋遠比毀掉真值划算。 */
+    for (const [name, value] of Object.entries(values)) {
+      const field = resolved.byName.get(name)
+      if (field?.type === "textMask" && looksMasked(value)) {
+        throw new MaskedValueWriteError(name)
+      }
+    }
+
     if (policy === undefined) return
     for (const name of Object.keys(values)) {
       const field = resolved.byName.get(name)
