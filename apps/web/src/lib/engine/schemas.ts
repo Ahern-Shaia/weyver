@@ -162,9 +162,33 @@ export const FORMAT_TONES = [
   "c8",
 ] as const
 
+/* 🔴 與後端 `layout-specs.ts` 的 `FORMAT_OPERATORS` 對映。**不與 `FILTER_OPERATORS` 共用**
+   —— 那一份會編成 SQL WHERE,把 `between` / 群組運算子加進去會漏進查詢路徑,
+   而那裡沒有實作,結果是無聲的無效條件。 */
+export const FORMAT_OPERATORS = [
+  "eq",
+  "neq",
+  "contains",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "anyOf",
+  "isEmpty",
+  "isNotEmpty",
+  "between",
+  "dailyBetween",
+  "inAnyGroup",
+  "notInAnyGroup",
+  "inAllGroups",
+  "notInAllGroups",
+] as const
+
+export type FormatOperator = (typeof FORMAT_OPERATORS)[number]
+
 export const formatConditionSchema = z.object({
   field: z.string().min(1).max(100),
-  op: z.enum(FILTER_OPERATORS),
+  op: z.enum(FORMAT_OPERATORS),
   value: z.unknown().optional(),
 })
 

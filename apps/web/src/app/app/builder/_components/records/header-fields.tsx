@@ -1,4 +1,5 @@
-"use client"
+import { useRuleContext } from "@/lib/engine/authz"
+;("use client")
 
 import { RuleMessages } from "@/components/form/rule-messages"
 import {
@@ -68,7 +69,8 @@ export function HeaderFields({
     effective.sections,
     new Map(fields.map((f) => [f.name, effective.fields[String(f.id)]?.row ?? 0])),
   )
-  const states = evaluateFieldStates(rules, values, fieldNames, members)
+  const ruleCtx = useRuleContext()
+  const states = evaluateFieldStates(rules, values, fieldNames, members, ruleCtx)
   const messages = evaluateMessages(rules, values, fieldNames)
 
   return (

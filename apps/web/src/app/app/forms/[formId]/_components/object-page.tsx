@@ -8,7 +8,7 @@ import { RuleMessages } from "@/components/form/rule-messages"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { formatFieldValue } from "@/components/form/value"
-import { useMemberNames } from "@/lib/engine/authz"
+import { useMemberNames, useRuleContext } from "@/lib/engine/authz"
 import { evaluateFormats, evaluateMessages } from "@/lib/engine/conditional-format"
 import { formatDateTime } from "@/lib/engine/display-value"
 import {
@@ -148,6 +148,8 @@ export function ObjectPage({
   /* ⚠️ hook 一律放在任何提前 return 之前 —— 本檔上方 20 行就有這條警語,
      而我在別處剛違反過一次。 */
   const pdf = useRecordPdf()
+  /* 條件式格式的「登入使用者 / 群組」與「當前時間」條件要用 */
+  const ruleCtx = useRuleContext()
 
   const { data: userSettings } = useUserSettings()
   /* 顯示時區來自個人設定;未載入前用瀏覽器預設,不擋畫面 */
@@ -171,12 +173,14 @@ export function ObjectPage({
     recordRules,
     record.values,
     fields.map((f) => f.name),
+    ruleCtx,
   )
   /* 訊息是規則層效果 —— 顯示在內容區最上方,與欄位無關(OQ-CF-11) */
   const ruleMessages = evaluateMessages(
     recordRules,
     record.values,
     fields.map((f) => f.name),
+    ruleCtx,
   )
   /* R1·後續-2 M4 列印設定:依 layout.print 之列範圍,對該列欄位套列印樣式
      (頁首/頁尾列於每頁重複;換頁列後分頁)。紙張設定委派瀏覽器(OQ-PM-3)。 */

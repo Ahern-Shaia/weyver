@@ -7,7 +7,13 @@ import {
 } from "@/app/app/builder/_components/designer/conditional-format-effects"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
 import { useButtons } from "@/lib/engine/hooks"
-import { OPERATOR_LABEL, fieldOperators } from "@/lib/engine/field-filters"
+import type { FormatOperator } from "@/lib/engine/schemas"
+import {
+  FORMAT_OPERATOR_LABEL,
+  PSEUDO_FIELD_LABEL,
+  formatOperatorsFor,
+  operatorNeedsRange,
+} from "@/lib/engine/field-filters"
 import type {
   ConditionalFormats,
   FieldDto,
@@ -51,9 +57,9 @@ function describe(rule: FormatRule): string {
   const joiner = rule.combinator === "or" ? " 或 " : " 且 "
   return rule.conditions
     .map((c) => {
-      const op = OPERATOR_LABEL[c.op] ?? c.op
+      const op = FORMAT_OPERATOR_LABEL[c.op] ?? c.op
       const v = c.value === undefined || c.value === "" ? "" : ` ${String(c.value)}`
-      return `${c.field} ${op}${v}`
+      return `${PSEUDO_FIELD_LABEL[c.field] ?? c.field} ${op}${v}`
     })
     .join(joiner)
 }
@@ -217,12 +223,21 @@ export function ConditionalFormatPanel({
 
             {rule.conditions.map((cond, ci) => {
               const field = fields.find((f) => f.name === cond.field)
-              const ops: readonly FilterOperator[] = field ? fieldOperators(field.type) : []
+              const ops = formatOperatorsFor(cond.field, field?.type)
               const needsValue = cond.op !== "isEmpty" && cond.op !== "isNotEmpty"
+              const needsRange = operatorNeedsRange(cond.op)
+              /* 區間值以 `[from, to]` 存;非區間存單一值。UI 兩格,模型一個鍵。 */
+              const range = Array.isArray(cond.value) ? cond.value.map(String) : ["", ""]
+              const setRange = (i: 0 | 1, v: string): void => {
+                const next = [range[0] ?? "", range[1] ?? ""]
+                next[i] = v
+                setCondValue(next)
+              }
               const setCond = (next: Partial<typeof cond>): void =>
                 patch(selected, {
                   conditions: rule.conditions.map((c, i) => (i === ci ? { ...c, ...next } : c)),
                 })
+              const setCondValue = (v: unknown): void => setCond({ value: v })
               return (
                 <div key={`cond-${ci}`} className="mb-2 flex flex-col gap-1">
                   <Select
@@ -236,21 +251,45 @@ export function ConditionalFormatPanel({
                         {n}
                       </option>
                     ))}
+                    {/* 🔴 虛擬欄位(Ragic `doc/6`「指定當前時間」/「指定使用者或群組」)。
+                        放在同一個下拉裡而不是另開一種條件型別 —— 條件的形狀不變。 */}
+                    {Object.entries(PSEUDO_FIELD_LABEL).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
                   </Select>
                   <div className="flex items-center gap-1.5">
                     <Select
                       className="h-7 flex-1"
                       value={cond.op}
-                      onChange={(e) => setCond({ op: e.target.value as FilterOperator })}
+                      onChange={(e) => setCond({ op: e.target.value as FormatOperator })}
                       aria-label={`條件 ${ci + 1} 運算子`}
                     >
                       {ops.map((op) => (
                         <option key={op} value={op}>
-                          {OPERATOR_LABEL[op] ?? op}
+                          {FORMAT_OPERATOR_LABEL[op] ?? op}
                         </option>
                       ))}
                     </Select>
-                    {needsValue ? (
+                    {needsRange ? (
+                      <>
+                        <Input
+                          className="h-7 flex-1"
+                          value={range[0] ?? ""}
+                          onChange={(e) => setRange(0, e.target.value)}
+                          aria-label={`條件 ${ci + 1} 起`}
+                          placeholder={cond.op === "dailyBetween" ? "09:00" : "2026-03-01"}
+                        />
+                        <Input
+                          className="h-7 flex-1"
+                          value={range[1] ?? ""}
+                          onChange={(e) => setRange(1, e.target.value)}
+                          aria-label={`條件 ${ci + 1} 迄`}
+                          placeholder={cond.op === "dailyBetween" ? "18:00" : "2026-03-05"}
+                        />
+                      </>
+                    ) : needsValue ? (
                       <Input
                         className="h-7 flex-1"
                         value={typeof cond.value === "string" ? cond.value : ""}

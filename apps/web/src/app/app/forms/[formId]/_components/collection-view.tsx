@@ -2,7 +2,7 @@
 
 import { gridEditData, gridKind, isGridEditable } from "@/components/form/grid-cells"
 import { formatFieldValue, toSubmitValue } from "@/components/form/value"
-import { useMemberNames } from "@/lib/engine/authz"
+import { useMemberNames, useRuleContext } from "@/lib/engine/authz"
 import { useDisplayCtx } from "@/lib/engine/use-settings"
 import { describeEngineError } from "@/lib/engine/client"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
@@ -75,6 +75,8 @@ export function CollectionView({
   )
   const recordsQuery = useInfiniteRecordsQuery(formId, query)
   const [exporting, setExporting] = useState(false)
+  /* 條件式格式的「登入使用者 / 群組」與「當前時間」條件要用 */
+  const ruleCtx = useRuleContext()
   /* 🔴 凍結欄(`grid-paste.md` §8)。**讀出來再 clamp 一次** ——
      欄位可能在設定之後被刪掉,存的時候合法不代表現在合法(FMEA G3)。
      另外不讓凍結欄佔滿畫面:至多一半的欄(FMEA G4)。 */
@@ -209,7 +211,7 @@ export function CollectionView({
     const tones =
       record === undefined || listRules.length === 0
         ? new Map<string, ChipTone>()
-        : evaluateFormats(listRules, record.values, fieldNames)
+        : evaluateFormats(listRules, record.values, fieldNames, ruleCtx)
     toneCache.set(row, tones)
     return tones
   }

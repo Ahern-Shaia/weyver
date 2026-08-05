@@ -94,6 +94,10 @@ const defaultActionsSchema = z.object({ actions: z.array(z.enum(FORM_ACTIONS)) }
 const myCapabilitiesSchema = z.object({
   isAdmin: z.boolean(),
   forms: z.record(z.string(), z.array(z.enum(FORM_ACTIONS))),
+  /* v1.4|條件式格式的 `$actor` 虛擬欄位要用。**只給畫面** ——
+     伺服器強制的那一半在後端自己解析 actor,不吃這裡送的東西。 */
+  actorId: z.number(),
+  groupIds: z.array(z.number()),
 })
 export type MyCapabilities = z.infer<typeof myCapabilitiesSchema>
 
@@ -325,4 +329,16 @@ export function useSetDefaultActions() {
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: authzKeys.defaultActions }),
   })
+}
+
+/* 🔴 條件式格式的求值語境(`@weyver/rules` 之 `EvalContext`)。
+
+   前端與後端**用同一個求值器**,所以語境的形狀也要一致 ——
+   差別只在來源:這裡是 `/authz/me`,後端是 session。 */
+export function useRuleContext(): { actorId: number | null; actorGroupIds: readonly number[] } {
+  const { data } = useMyCapabilities()
+  return useMemo(
+    () => ({ actorId: data?.actorId ?? null, actorGroupIds: data?.groupIds ?? [] }),
+    [data],
+  )
 }
