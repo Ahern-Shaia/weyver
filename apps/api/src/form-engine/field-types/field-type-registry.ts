@@ -21,6 +21,7 @@ export const CELL_VALUE_TYPES = [
   "rating",
   "autoNumber",
   "member",
+  "group",
   "link",
   "attachment",
   // R1·UP-4b 影像類欄型(jsonb,與 attachment 同契約 → 零 migration;OQ-IS-1/2)
@@ -425,6 +426,26 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
        負責業務就寫在這個欄位,不必另外維護一份指派表(兩者必然不同步)。
        勾了之後,寫入記錄時該欄的值會同步到系統欄 assignees(RLS policy 讀那個)。 */
     optionsSchema: z.object({ grantsAccess: z.boolean().optional() }).strict(),
+    buildColumn: (t, col) => void t.bigint(col),
+    valueSchema: () => z.number().int().positive(),
+    filterOperators: EQUALITY,
+    systemManaged: false,
+  }),
+  /* 🔴 R1·FTP v1.5|**選擇群組**(Ragic「欄位種類 → 選項欄位 → 選擇群組」)。
+
+     與 `member` 同構(都是 `bigint` 指向一個主體),故不另立儲存形態。
+     差別只在指向的是**角色**而不是人。
+
+     ⚠️ **刻意不做 `grantsAccess`**。Ragic 有「給予選取的群組這筆資料管理權限」,
+     而我方的記錄級存取(E-1)目前讀的是 `assignees`(**actor 陣列**)——
+     要支援群組就得改 RLS policy 去展開「這個人屬於這個群組」。
+     那是安全邊界的變更,不該夾在一個欄位型別裡順手做掉:
+     **半接的授權比沒有更危險**(畫面顯示「已授權」而實際上沒有)。
+     本型別 v1 只做「存得下、看得懂、篩得到」。 */
+  group: def({
+    cellValueType: "group",
+    dbFieldType: "bigint",
+    optionsSchema: z.object({}).strict(),
     buildColumn: (t, col) => void t.bigint(col),
     valueSchema: () => z.number().int().positive(),
     filterOperators: EQUALITY,

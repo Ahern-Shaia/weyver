@@ -50,6 +50,17 @@ export class AccessPreviewService {
     return this.authz.listTenantActors(tenantId)
   }
 
+  /* 🔴 R1·FTP v1.5|群組欄位的選人器要用。
+
+     **只回 id 與名稱** —— `/authz/roles` 是 admin only 且回整個 `RoleRow`
+     (含層級 / 系統旗標 / 父角色)。填單者要選一個群組,不該需要管理權,
+     也不該看到組織結構;這與 `listActors` 掛 view 權是同一條理由
+     (逐字:「填單者要指派負責人,不該需要 design 權」)。 */
+  async listGroups(tenantId: number): Promise<{ id: number; name: string }[]> {
+    const roles = await this.authz.listRoles(tenantId)
+    return roles.map((r) => ({ id: r.id, name: r.name }))
+  }
+
   async preview(
     tenantId: number,
     formId: number,

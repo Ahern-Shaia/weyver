@@ -620,3 +620,61 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 | 2026-07-25 | v0.1 | 初版 DRAFT — docs/27 §6 順序 4（承 form-designer-2d）：系統欄/rollup/lookup/link 補完/autoNumber pattern/選項顏色+連動/barcode/mask;核心洞見(RollupService 已完整、formula 讀時注入範本、link 部分、系統欄投影);image/signature 依賴 file-storage 排除 P0（OQ-FTP-6）;OQ-FTP-1..7 待裁定 | Claude Code |
 | 2026-07-25 | v0.2 | **OQ-FTP-1..7 全裁定(全採建議=全 A);DRAFT → APPROVED,進 M1**。定調:讀時 systemManaged pseudo-field(承 formula)、系統欄投影 audit、options 加法擴充零遷移、link 補完(含 link&load)、autoNumber counter table 統一、image/signature 依 file-storage 排除 P0、§1.1 八項為 P0 | Claude Code |
 | 2026-07-25 | v1.0 | **M1–M5 SHIPPED**。M1 registry 加 6 virtual 型別(系統欄 4/lookup/rollup;no-op buildColumn,baseQuery 排除)+ RecordService.withComputed 讀時注入(系統欄投影/lookup 批次/rollup listByParents+純函式聚合,抽 rollup-agg 避服務循環)。M2 autoNumber pattern(counter 0011 + dateFormat + reset scope)+ 選項顏色/連動 + link displayFields(options 加法零遷移)。M3 barcode 型別 + text displayMask + 前端 enum 同步/渲染(計算型唯讀、barcode 輸入)。M4 設計器進階 palette + 設定編輯器(autoNumber pattern/link/lookup/rollup/系統欄)。M5 field-types.spec。FMEA T1–T4 P0 緩解(T1 lookup 欄位級權限為 ⚠️ 殘留);顯示層(QR 渲染/顏色 chip/連動過濾)+ image/signature(file-storage)+ member/rich-text 等為 P1。api 236 + web 17 e2e 綠 | Claude Code |
+
+---
+
+## v1.5|選擇群組(2026-08-06)
+
+### 站③|Ragic 官方「欄位種類」逐字(`doc/27`,本機鏡像,查證 2026-08-06)
+
+該頁是欄位型別的**權威清單**,分八類。與我方對照後,`docs/25` 記的五個缺口對應到:
+
+| docs/25 的說法 | Ragic 的名稱 | 本次 |
+|---|---|---|
+| 群組 | 選項欄位 → **選擇群組** | ✅ 本次 |
+| rich text | 文字欄位 → **文字編輯器** | 未起 |
+| Markdown | 文字欄位 → **Markdown** | 未起 |
+| 結構化地址 | 資訊欄位 → **地址** | 未起 |
+| 付款 | 動作欄位 → **付款** | 未起 |
+
+> 「**選擇群組**|選擇在資料庫中建立的群組。勾選**給予選取的群組這筆資料管理權限**,
+> 則被選取的群組也會與建立此筆資料的人一樣,擁有管理此筆資料的權力……同樣也可以允許**多選**。」
+
+⚠️ 順帶記下**這一頁還揭露了我方未列的型別**:文字遮罩(PII 遮罩 + 指定群組可揭露)、
+循環日期、匯率、統計、傳閱、動作條碼、編號/號碼。`docs/25` 的「28 型已建」是對的,
+但「缺哪些」那一欄**只列了五個** —— 之後要重新對一次這張表。
+
+### 裁定
+
+| # | 議題 | 裁定 |
+|---|---|---|
+| 儲存形態 | 與 `member` 同構:`bigint` 指向角色。不另立形態 |
+| 選人器的權限 | **view 權**的 `access-preview/groups`,不是 admin only 的 `/authz/roles` —— 填單者要選群組,不該需要管理權(同 `listActors` 逐字的理由);且只回 id 與名稱,不洩漏組織結構 |
+| 標籤怎麼翻 | 走**與連結欄同一張表**(`${fieldId}:${id}`)。`formatFieldValue` 的第五個參數就是「這一欄的 id → 看得懂的東西」,群組正是這個形狀。多開一個參數會讓**每個出口**都要多帶一個 |
+| 🔴 `grantsAccess` | **刻意不做**。記錄級存取讀的是 `assignees`(actor 陣列),要支援群組得改 RLS policy 去展開「這個人屬於這個群組」。那是安全邊界的變更,不該夾在欄位型別裡順手做 —— **半接的授權比沒有更危險**(畫面說「已授權」而實際上沒有) |
+| 多選 | v1 單選。多選是 `bigint[]`,與 member 的多選一起做才不會有兩套 |
+
+### 🔴 這次把檢查一起做了
+
+`value.ts` 的註解逐字寫著:
+
+> 「上面那段註解(#96 member 欄)逐字寫過同一件事,而 link 還是踩了 ——
+>  因為那條規則寫在註解裡,**沒有任何機制在漏列時發出訊號**。」
+
+指向 id 的型別要同時列進 `toSubmitValue`(否則值**送不出去**)與 `formatFieldValue`
+(否則畫面印**裸 id**),而**兩者漏列型別都抓不到**。加 `group` 時同一個坑就在正前方,
+故先寫 `id-fields.test.ts` 再改碼。
+
+**它立刻抓到兩件事**:`group` 的兩個漏列(意料中),以及
+🔴 **`member` 查不到名字時印裸數字**(`link` 是回 `#id`)—— 既有的不一致,順手修掉。
+
+### 兩個實走才會出現的
+
+1. **`"use client"` 被 import 擠到第二行** → 整頁 500。型別檢查與 lint 都不會抱怨,
+   只有真的載入那一頁才炸。**在檔首插 import 時要看清楚第一行是什麼。**
+2. **路由猜了兩次都錯**:`?mode=new` 不存在;builder 的 `mode=fill` 是**設計畫布**
+   (欄位顯示的是示例值不是輸入框)。最後走「記錄頁 → 編輯」這條真實路徑。
+   **路由要去讀,不要猜。**
+
+另外兩道既有的列舉檢查也各自發火了一次(`sample-value.test` 的「不得落到 default」、
+`Record<CellValueType, …>` 的型別完整性)—— 那正是它們存在的理由。

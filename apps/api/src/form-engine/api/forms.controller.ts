@@ -208,6 +208,13 @@ export class FormsController {
     return this.preview.listActors(tenant.tenantId)
   }
 
+  /* 群組清單:群組欄位的選人器用。權限同 actors —— view 即可(見 service 註解)。 */
+  @Get("access-preview/groups")
+  @RequiresFormAction("view")
+  previewGroups(@Tenant() tenant: TenantContext): Promise<{ id: number; name: string }[]> {
+    return this.preview.listGroups(tenant.tenantId)
+  }
+
   @Get(":formId/access-preview/:actorId")
   @RequiresFormAction("design")
   previewAccess(
