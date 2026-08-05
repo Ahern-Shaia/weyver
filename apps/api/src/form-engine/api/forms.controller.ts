@@ -407,6 +407,36 @@ export class FormsController {
     }
   }
 
+  /* 🔴 R1·H-4 v1.2|**資料庫設計變更**(Ragic 官方 `doc/81`:與資料修改紀錄同一頁的下半部)。
+     ⚠️ 回應**不含 `executed_sql`** —— 見 `DdlService.listDesignChanges` 的理由。 */
+  @Get("revisions/design-changes")
+  async designChanges(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+  ): Promise<{
+    changes: {
+      id: number
+      formId: number | null
+      formName: string | null
+      action: string
+      spec: Record<string, unknown>
+      result: string
+      errorMessage: string | null
+      createdAt: string
+    }[]
+  }> {
+    const forms = await this.metadata.listForms(tenant.tenantId)
+    const visible = permissions.readableFormIds(forms.map((f) => f.id))
+    const rows = await this.ddl.listDesignChanges(tenant.tenantId, visible, permissions.isAdmin)
+    const nameOf = new Map(forms.map((f) => [f.id, f.name]))
+    return {
+      changes: rows.map((r) => ({
+        ...r,
+        formName: r.formId === null ? null : (nameOf.get(r.formId) ?? `#${String(r.formId)}`),
+      })),
+    }
+  }
+
   @Get(":formId/fields/:fieldId/link-options")
   @RequiresFormAction("view")
   async linkOptions(

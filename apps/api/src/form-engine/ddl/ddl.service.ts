@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common"
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { ddlAudits } from "../../db/schema.js"
@@ -235,6 +235,61 @@ export class DdlService {
         WHERE tenant_id = ? AND deleted_at IS NULL AND ${col} IS NOT NULL`,
       [tenantId, conversionId, formId, fieldId, table, tenantId],
     )
+  }
+
+  /* 🔴 R1·H-4 v1.2|**資料庫設計變更**(Ragic 官方 `doc/81` 逐字:
+     「頁面下方,可以看到**資料庫設計變更**。」與資料修改紀錄同一頁的下半部)。
+
+     資料早就在 `ddl_audit` 裡,缺的只是讀出來。
+
+     ## 🔴 `executed_sql` 一律不回
+
+     那欄存的是真正跑過的 DDL,含**物理識別字**(`t123` / `f456`)與完整語句。
+     使用者要看的是「表單結構被改了什麼」,不是引擎的內部表示;
+     而把物理名與語句攤在畫面上等於免費奉送一份攻擊面地圖
+     —— 本專案的第一大威脅正是動態 identifier 注入。
+     它留在 DB 供維運排查,**不進 API**。
+
+     ## 可見範圍
+
+     `formId` 為 null 者是**租戶層**變更 → 只給 admin;其餘依呼叫端給的可讀表單白名單。
+     與 `listTenantRevisions` 同一形狀:權限判斷不在這裡重寫一次。 */
+  async listDesignChanges(
+    tenantId: number,
+    visibleFormIds: readonly number[],
+    isAdmin: boolean,
+    limit = 100,
+  ): Promise<
+    {
+      id: number
+      formId: number | null
+      action: string
+      spec: Record<string, unknown>
+      result: string
+      errorMessage: string | null
+      createdAt: string
+    }[]
+  > {
+    const rows = await this.db
+      .select()
+      .from(ddlAudits)
+      .where(eq(ddlAudits.tenantId, tenantId))
+      .orderBy(desc(ddlAudits.id))
+      .limit(Math.min(Math.max(limit, 1), 200))
+
+    const visible = new Set(visibleFormIds)
+    return rows
+      .filter((r) => (r.formId === null ? isAdmin : visible.has(r.formId)))
+      .map((r) => ({
+        id: r.id,
+        formId: r.formId,
+        action: r.action,
+        spec: (r.spec ?? {}) as Record<string, unknown>,
+        result: r.result,
+        errorMessage: r.errorMessage,
+        createdAt: new Date(r.createdAt).toISOString(),
+        /* ⚠️ `executedSql` 刻意不在此 —— 見上方註解 */
+      }))
   }
 
   /* 🔴 還原一次 lossy 轉換(#105)。

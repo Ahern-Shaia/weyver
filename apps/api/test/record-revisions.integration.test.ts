@@ -185,3 +185,41 @@ describe("R1·H-4 記錄修改紀錄", () => {
     expect((after.rows[0] as { n: number }).n - base).toBe(4)
   })
 })
+
+/* 🔴 R1·H-4 v1.2|**資料庫設計變更**(Ragic 官方 `doc/81`:同一頁的下半部)。 */
+describe("資料庫設計變更", () => {
+  const changes = async (): Promise<Record<string, unknown>[]> => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/forms/revisions/design-changes",
+      headers: A(),
+    })
+    expect(res.statusCode).toBe(200)
+    return (res.json() as { changes: Record<string, unknown>[] }).changes
+  }
+
+  it("建表與加欄都看得到,且標示是哪張表單", async () => {
+    const add = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(formId)}/fields`,
+      headers: A(),
+      payload: { name: "備註", type: "text" },
+    })
+    expect(add.statusCode).toBeLessThan(300)
+
+    const rows = await changes()
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.some((r) => r.formId === formId && r.formName === "修改紀錄表")).toBe(true)
+  })
+
+  /* 🔴 本檔這一段存在的理由。物理識別字(`t123` / `f456`)與完整 DDL 語句
+     不得離開後端 —— 攤在畫面上等於奉送一份動態 identifier 注入的地圖。 */
+  it("🔴 回應裡沒有 executed_sql,也沒有任何物理識別字", async () => {
+    const rows = await changes()
+    const body = JSON.stringify(rows)
+    expect(body).not.toMatch(/executedSql|executed_sql/)
+    expect(body).not.toMatch(/CREATE TABLE|ALTER TABLE/i)
+    /* 物理表名 / 欄名的形狀 —— metadata catalog 用 `t<id>` / `f<id>` */
+    expect(body).not.toMatch(/\bt\d{2,}\b|\bf\d{2,}\b/)
+  })
+})
