@@ -33,7 +33,10 @@ test("條碼欄:記錄頁渲染 QR(SVG)", async ({ page, request }) => {
   await expect(page.getByText("基本資料").first()).toBeVisible({ timeout: 30_000 })
   // qrcode.react 產出 <svg>;批號欄位置應有 QR
   await expect(page.locator("svg").first()).toBeVisible()
-  await expect(page.getByText(/^LOT-/)).toBeVisible()
+  /* 🔴 收斂到基本資料區。整頁範圍的查詢在 2026-08-05 記錄頁多出「修改紀錄」區塊之後
+     就會撞到兩個(那裡也印同一個值)—— 而失敗訊息說的是 strict mode violation,
+     指不到「有人在同一頁多加了一個區塊」這個真正的原因。 */
+  await expect(page.locator("#sec-基本資料").getByText(/^LOT-/)).toBeVisible()
 })
 
 test("標籤:設計器建立 → 列印頁依份數展開 + 平舖", async ({ page, request }) => {

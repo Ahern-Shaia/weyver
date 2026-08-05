@@ -11,54 +11,11 @@ import { type ChannelStatus, useSaveChannel, useTestChannel } from "@/lib/engine
    後端不回值,前端也就沒有值可填回去。留白時送出 = 保留原憑證,
    所以畫面必須把這件事講出來,否則使用者會以為自己剛把它清空了。 */
 
-/* 各通道要填什麼。與後端 `channel-registry.ts` 對應 ——
-   ⚠️ 兩邊都改才算改完;不一致時後端為準(它才是執法的一方)。 */
-const SPEC: Readonly<
-  Record<
-    ChannelStatus["channel"],
-    {
-      readonly secretLabel: string
-      readonly hint: string
-      readonly fields: readonly { readonly key: string; readonly label: string }[]
-    }
-  >
-> = {
-  slack: {
-    secretLabel: "Incoming Webhook URL",
-    hint: "Slack App → Incoming Webhooks 產生。此網址本身即為機密。",
-    fields: [],
-  },
-  teams: {
-    secretLabel: "Incoming Webhook URL",
-    hint: "Teams 頻道 → 連接器 → Incoming Webhook 產生。",
-    fields: [],
-  },
-  discord: {
-    secretLabel: "Webhook URL",
-    hint: "頻道設定 → 整合 → Webhook 產生。",
-    fields: [],
-  },
-  telegram: {
-    secretLabel: "Bot Token",
-    hint: "與 @BotFather 對話建立 bot 後取得。",
-    fields: [{ key: "chatId", label: "Chat ID" }],
-  },
-  line: {
-    secretLabel: "Channel Access Token",
-    hint: "LINE Developers → Messaging API channel 取得(LINE Notify 已於 2025 年停止服務)。",
-    fields: [{ key: "to", label: "推送對象 ID" }],
-  },
-  smtp: {
-    secretLabel: "SMTP 密碼",
-    hint: "寄件信箱的密碼或應用程式專用密碼。",
-    fields: [
-      { key: "host", label: "SMTP 主機" },
-      { key: "port", label: "連接埠" },
-      { key: "user", label: "帳號" },
-      { key: "from", label: "寄件人" },
-    ],
-  },
-}
+/* 🔴 這裡原本有**第三份**通道規格的複本(secretLabel / hint / fields),
+   而它自己的註解寫著「兩邊都改才算改完」—— 那是一條沒有檢查的規則,所以 2026-08-05
+   加 WhatsApp 時它漏了。**與其再加一道守衛,不如讓那份複本不存在**:
+   後端本來就有這三個欄位,現在由 API 回傳(`channel-config.service.ts`)。
+   ⚠️ 一份資料只有一個來源時,「兩邊都改」這個問題就不存在了。 */
 
 /* 可廣播的事件。**與後端 `notification-specs` 同源的六個事件碼**;
    標籤沿用通知設定頁的說法,免得同一件事在兩頁有兩個名字。 */
@@ -72,7 +29,12 @@ const EVENTS: readonly { readonly code: string; readonly label: string }[] = [
 ]
 
 export function ChannelCard({ status }: { readonly status: ChannelStatus }): React.ReactNode {
-  const spec = SPEC[status.channel]
+  /* 規格由後端給(單一來源) */
+  const spec = {
+    secretLabel: status.secretLabel,
+    hint: status.secretHint,
+    fields: status.configFields,
+  }
   const save = useSaveChannel()
   const test = useTestChannel()
   const [open, setOpen] = useState(false)

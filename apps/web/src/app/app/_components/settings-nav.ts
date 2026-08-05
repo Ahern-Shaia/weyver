@@ -6,6 +6,7 @@ import {
   Radio,
   ShieldCheck,
   Share2,
+  History,
   Trash2,
   UserRound,
   UserRoundCheck,
@@ -89,6 +90,15 @@ export const SETTINGS_NAV: readonly SettingsNavItem[] = [
     label: "資料匯出",
     desc: "把整個工作區的資料下載成一份完整副本",
     icon: HardDriveDownload,
+    scope: "tenant",
+  },
+  {
+    /* R1·H-4|Ragic 官方在「資料庫管理」下有這一頁(`doc/81`);
+       我方設定中心沒有那一層分組,故與回收桶並列 —— 兩者都是「資料的後台」。 */
+    href: "/app/settings/revisions",
+    label: "資料修改紀錄",
+    desc: "誰在什麼時候動過哪一筆",
+    icon: History,
     scope: "tenant",
   },
   {

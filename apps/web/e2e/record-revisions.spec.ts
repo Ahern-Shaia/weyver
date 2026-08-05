@@ -80,3 +80,42 @@ test("🔴 修改紀錄端點吃記錄檢視權(沒有 view 權就取不到)", a
   )
   expect(other.status()).toBeGreaterThanOrEqual(400)
 })
+
+/* 🔴 R1·H-4 收尾|**全庫「資料修改紀錄」**(Ragic 官方 `doc/81`:漢堡選單 → 資料庫管理)。
+   官方逐字:「用來檢視所有資料的修改歷程。想要瀏覽特定表單或時間的修改紀錄,可以進一步篩選。」 */
+test("🔴 設定中心看得到全庫修改紀錄,且可依表單篩選", async ({ page, request }) => {
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: { name: `E2E全庫紀錄_${uniq()}`, fields: [{ name: "品名", type: "text" }] },
+  })
+  const form = (await res.json()) as { id: number; name: string }
+  const created = await request.post(`/api/engine/forms/${String(form.id)}/records`, {
+    headers: DEV,
+    data: { values: { 品名: "醬油" } },
+  })
+  const row = (await created.json()) as { id: number; version: number }
+  await request.patch(`/api/engine/forms/${String(form.id)}/records/${String(row.id)}`, {
+    headers: DEV,
+    data: { expectedVersion: row.version, values: { 品名: "醬油2" } },
+  })
+
+  await page.goto("/app/settings/revisions")
+  await expect(page.getByRole("heading", { name: "資料修改紀錄" })).toBeVisible({ timeout: 30_000 })
+
+  /* 篩到這張表 —— 否則 dev DB 累積的資料會讓「看得到」失去鑑別力 */
+  await page.getByLabel("篩選表單").selectOption(String(form.id))
+  const table = page.locator("table")
+  await expect(table).toContainText(form.name, { timeout: 15_000 })
+  await expect(table).toContainText("建立")
+  await expect(table).toContainText("更新 · v2")
+  /* 🔴 這一頁**只列動了哪些欄,不列值** —— 它橫跨數十張表,不做逐欄遮罩 */
+  await expect(table).toContainText("品名")
+  await expect(table).not.toContainText("醬油")
+
+  /* 點得回那一筆(全庫頁的用途是找線索,線索要能追下去) */
+  await table
+    .getByRole("link", { name: `#${String(row.id)}` })
+    .first()
+    .click()
+  await expect(page.getByTestId("record-revisions")).toBeVisible({ timeout: 30_000 })
+})

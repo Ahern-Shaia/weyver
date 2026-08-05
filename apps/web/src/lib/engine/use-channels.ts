@@ -10,8 +10,17 @@ import { engineFetch } from "./client"
    故這裡也沒有「憑證」欄位可讀 —— 型別本身就讓「顯示明文」寫不出來。 */
 
 const statusSchema = z.object({
-  channel: z.enum(["slack", "teams", "discord", "telegram", "line", "smtp"]),
+  /* 🔴 **必須與後端 `channel-registry.ts` 的 `ChannelId` 同步**。
+     2026-08-05 加 WhatsApp 時漏了這裡 → `z.enum` 解不到 → **整個通道設定頁掛掉**,
+     畫面上只剩一段 zod 錯誤。這與 audit-D §2.2 抓到的簽核 `fieldRef` 是**同一形狀**:
+     前後端兩份鏡射,加了一邊沒加另一邊,而後果不是「少一個選項」是**整頁不能用**。
+     ⚠️ 前一次的結論是「補上就好」,而它又發生了 —— 下面那條測試就是為此而加。 */
+  channel: z.enum(["slack", "teams", "discord", "telegram", "line", "whatsapp", "smtp"]),
   label: z.string(),
+  /* 設定表單的規格由後端給 —— 前端曾有第三份複本,加通道時漏改導致整頁掛掉 */
+  secretLabel: z.string(),
+  secretHint: z.string(),
+  configFields: z.array(z.object({ key: z.string(), label: z.string() })),
   config: z.record(z.string(), z.unknown()),
   /* 只說「有沒有設」,永不回值 */
   secretSet: z.boolean(),
