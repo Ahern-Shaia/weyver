@@ -600,6 +600,30 @@ export function useCreateApprovalDef(formId: number) {
 
 const recordApprovalSchema = z.object({ instance: approvalInstanceDtoSchema.nullable() })
 
+/* 🔴 R1·H-4|這一筆被誰改了什麼。**逐欄遮罩在後端**(隱藏欄的歷史值就是隱藏欄的值),
+   前端拿到的已經是可以看的那些。 */
+export const recordRevisionSchema = z.object({
+  version: z.number(),
+  action: z.string(),
+  actorId: z.number().nullable(),
+  createdAt: z.string(),
+  changes: z.array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() })),
+})
+export type RecordRevision = z.infer<typeof recordRevisionSchema>
+
+export function useRecordRevisions(formId: number | null, recordId: number | null) {
+  return useQuery({
+    queryKey: ["forms", formId ?? -1, "revisions", recordId ?? -1] as const,
+    queryFn: () =>
+      engineFetch(
+        `/forms/${String(formId)}/records/${String(recordId)}/revisions`,
+        z.object({ revisions: z.array(recordRevisionSchema) }),
+      ),
+    enabled: formId !== null && recordId !== null,
+    staleTime: 10_000,
+  })
+}
+
 export function useRecordApproval(formId: number | null, recordId: number | null) {
   return useQuery({
     queryKey: actionKeys.recordApproval(formId ?? -1, recordId ?? -1),

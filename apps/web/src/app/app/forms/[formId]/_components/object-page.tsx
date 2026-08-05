@@ -18,7 +18,7 @@ import {
   useRecordApproval,
   useUserNames,
 } from "@/lib/engine/hooks"
-import { useLayout, useLinkLabels } from "@/lib/engine/hooks"
+import { useLayout, useLinkLabels, useRecordRevisions } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
 import { useUserSettings } from "@/lib/engine/use-settings"
@@ -54,6 +54,26 @@ function statusFieldOf(fields: readonly FieldDto[]): FieldDto | undefined {
 /* 金額彙總:money / percent / formula / rollup 之現值(單筆的「算」的結果)。
    與「基本資料」重複呈現是刻意的 —— 摘要區讓人不必往下捲就看到數字(信任訊號,docs/14)。 */
 const SUMMARY_TYPES = new Set(["money", "percent", "formula", "rollup"])
+
+/* 歷史存的是**原始值**(OQ-RV-6:顯示格式會變,存顯示值等於把當時的格式凍進歷史)。
+   這裡做最小的可讀化:空值講「(空)」而不是印 null,物件走 JSON。
+   ⚠️ 刻意**不**套 `formatFieldValue` —— 那需要當下的欄位設定,而歷史裡的欄位可能已經
+   改過型別甚至被刪掉;硬套會把「當時的值」渲染成今天的樣子,那是另一種說謊。 */
+function revValue(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "(空)"
+  if (typeof v === "object") return JSON.stringify(v)
+  const raw = String(v)
+  /* 🔴 前值來自 DB(`numeric(19,4)` 回 `3.0000000000`),後值來自送進來的 payload(`10`)
+     —— 同一個數字兩種寫法,畫面上會變成「3.0000000000 → 10」,看起來像壞掉。
+     只去掉尾隨的零,**不套欄位格式**:歷史裡的欄位可能已改型別或被刪,
+     硬套會把「當時的值」渲染成今天的樣子,那是另一種說謊。
+     ⚠️ 超出安全整數範圍的不動 —— 那多半是 bigint id,轉數字會失真。 */
+  if (/^-?\d+\.\d+$/.test(raw)) {
+    const n = Number(raw)
+    if (Number.isFinite(n) && Math.abs(n) <= Number.MAX_SAFE_INTEGER) return String(n)
+  }
+  return raw
+}
 
 const SELF_LABELLED = new Set(["attachment", "image", "signature"])
 
@@ -101,8 +121,11 @@ export function ObjectPage({
   const statusField = statusFieldOf(fields)
   const summaryFields = fields.filter((f) => SUMMARY_TYPES.has(f.type))
   const { data: userNames } = useUserNames([record.createdBy, record.updatedBy])
-  const nameOf = (actorId: number): string =>
-    userNames?.find((u) => u.id === actorId)?.name ?? `actor #${actorId}`
+  /* 系統動作(排程 / 還原)沒有 actor —— 講「系統」而不是印 `actor #null` */
+  const nameOf = (actorId: number | null): string =>
+    actorId === null
+      ? "系統"
+      : (userNames?.find((u) => u.id === actorId)?.name ?? `actor #${String(actorId)}`)
   const createRecord = useCreateRecord(formId)
   const deleteRecord = useDeleteRecord(formId)
 
@@ -135,6 +158,9 @@ export function ObjectPage({
 
   const { data: layoutResp } = useLayout(formId)
   /* R1·UP-3b 條件式格式(記錄頁那一組;純前端求值,規則來自 layout)*/
+  /* R1·H-4|修改紀錄(逐欄遮罩在後端) */
+  const { data: revResp } = useRecordRevisions(formId, record.id)
+  const revisions = revResp?.revisions ?? []
   const recordRules = layoutResp?.layout?.conditionalFormats?.record ?? []
   const formatTones = evaluateFormats(
     recordRules,
@@ -468,6 +494,49 @@ export function ObjectPage({
               now
             />
           </div>
+
+          {/* 🔴 R1·H-4|**修改紀錄**。上面那條時間軸只說得出「誰、何時」,
+              而 Ragic 使用者天天在看的是「**把什麼改成什麼**」(官方 `doc/81` 逐字:
+              「點選修改紀錄後,會列出該筆資料**詳細的修改內容**」)。
+              逐欄遮罩在後端 —— 看不到的欄位,其歷史也看不到。 */}
+          <h4 className="mt-4 mb-2 text-[12px] font-semibold text-ink-3">修改紀錄</h4>
+          {revisions.length === 0 ? (
+            <p className="text-[12px] text-ink-3">尚無修改紀錄。</p>
+          ) : (
+            <ul data-testid="record-revisions" className="flex flex-col">
+              {revisions.map((rev) => (
+                <li
+                  key={`${String(rev.version)}-${rev.createdAt}`}
+                  className="border-b border-line-2 py-1.5 last:border-b-0"
+                >
+                  <div className="flex items-baseline gap-2 text-[12px] text-ink-3">
+                    <span className="text-ink-2">
+                      {rev.action === "create" ? "建立" : `更新 · v${String(rev.version)}`}
+                    </span>
+                    <span>{nameOf(rev.actorId)}</span>
+                    <span className="ml-auto font-mono">{fmtDate(rev.createdAt)}</span>
+                  </div>
+                  <ul className="mt-0.5 flex flex-col gap-0.5">
+                    {rev.changes.map((c) => (
+                      <li key={c.field} className="flex items-baseline gap-1.5 text-[12px]">
+                        <span className="w-20 shrink-0 truncate text-ink-3">{c.field}</span>
+                        {/* 建立時沒有「前值」 —— 不畫一個空的箭頭 */}
+                        {rev.action === "create" ? (
+                          <span className="text-ink">{revValue(c.after)}</span>
+                        ) : (
+                          <>
+                            <span className="text-ink-3 line-through">{revValue(c.before)}</span>
+                            <span className="text-ink-3">→</span>
+                            <span className="text-ink">{revValue(c.after)}</span>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
 
