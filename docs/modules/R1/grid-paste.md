@@ -298,3 +298,97 @@ undo 時用同一支 bulk update 寫回。**不重用 layout 的草稿模型**(�
 | 2026-08-03 | v0.3 | **§0.3 競品研究完成,五條 OQ 建議依證據改寫,並新增兩條**。**OQ-GP-2 的 1000 列換成有出處的 500**(Smartsheet 官方明文「You can paste up to 500 rows at a time」,查到唯一官方明列的列數;Airtable 另建議 200–300 筆/批)。**OQ-GP-3 由「自動加列」改為「自動加列但先確認」** —— Airtable 有確認關卡而**加列是改變資料形狀不是改值**;並新增硬約束「篩選檢視下必須擋或明確處理」(Teable 踩過「in a filtered view could append new rows instead of updating visible ones」,而我方有 view 篩選)。**新增 OQ-GP-9 冪等**(Airtable 官方就有貼上端的 duplicate-block;對 ERP 而言重試一次就是多開 200 張單)與 **OQ-GP-10 貼上須走與表單儲存同一條計算路徑**(Ragic doc/139 自白「從列表頁編輯可能造成公式沒有重算」,而它的解法竟是建議把列表頁編輯整個關掉 —— B 選項就是複製這個問題,故視為硬約束非選項)。**最大的反面教材**:超量就整批不做且不出聲,四家四種形態(Ragic 2000 筆整批不重算 / 3500 筆連修改紀錄都不寫、Teable「success message while the cell content remained unchanged」、Airtable「unmatched values are dropped」、AG Grid「will not be pasted」),共同點是**使用者看到成功、系統其實少做了事**。**最大的空位**:「貼上前標紅問題格」查無任何一家(標未查證非「沒有」),正對上我方「所見即後果」 | Claude Code |
 | 2026-08-03 | v0.2 | **裁定前覆查,修正 v0.1 的一處現況誤述**。原寫「貼上相關 props 全無」,實際 `getCellsForSelection` **已設為 `true`** —— 依 Glide 型別註解逐字「Used for copy/paste, **if unset copy will not work**」,**複製很可能早就能用**。故 OQ-GP-7 的工作性質由「實作複製」改為「實測複製的還原度並補齊」,M4 範圍縮小。⚠️ 這是同一個形狀第三次:**寫現況時沒把那一行讀完**(前兩次見 approval-advanced v0.3)。貼上仍確實不可能(`onPaste` / `onCellsEdited` 未曝露),模組必要性不變 | Claude Code |
 | 2026-08-03 | v0.1 | M0 草擬。**起因**:review 裁定「先做功能,採用建議 #153」。走查發現關鍵事實 —— **有 bulk create,沒有 bulk update**,故本模組必然動後端,不是純前端(避免重演 UP-3c 誤判為「純前端渲染層」)。承 `grid-and-excel-import` v1.0(SHIPPED),貼上不在其 §1.3「不做的事」中,屬**新能力**故另立 M0 |
+
+---
+
+## 8. v1.1|凍結欄 + 填滿把手(2026-08-06)
+
+`docs/25` B 段的網格那一列(20 人月)是 R1 **絕對缺口最大的單一列**,
+而剩的兩項就是這兩個。兩者都在 §1.2 被記為殘留。
+
+### 8.1 站②|自己的相依套件(**本模組上次正是在這裡踩的**)
+
+逐字讀 `@glideapps/glide-data-grid@6.0.3` 已安裝版本的型別,不引官網:
+
+| 能力 | 型別出處 | 我方使用 |
+|---|---|---|
+| `freezeColumns?: number` | `dist/dts/data-editor/data-editor.d.ts:368` → `internal/data-grid/data-grid.d.ts:17`「`readonly freezeColumns: number`」 | **零** |
+| `fillHandle?: boolean` | `internal/data-grid/data-grid.d.ts:77`;未列在 `DataEditor` Props 的 `Omit` 清單中 → 可設 | **零** |
+| `onFillPattern?: (e: FillPatternEventArgs) => void` | `data-editor.d.ts:64`;逐字「Emitted whenever the user initiats a pattern fill using the fill handle. This event provides both a **patternSource** region and a **fillDestination** region, and **can be prevented**」 | **零** |
+| `FillPatternEventArgs { patternSource: Rectangle; fillDestination: Rectangle }` + `PreventableEvent` | `internal/data-grid/event-args.d.ts:90` | — |
+
+> **兩件事都是「打開一個開關 + 接一個事件」**,不是自己畫。
+> v0.5 的稽核已經因為漏查這一站而把結論寫錯過一次,這次先查再寫。
+
+### 8.2 站③|Ragic 官方逐字(`doc/107 設定凍結`,本機鏡像,查證 2026-08-06)
+
+> 「如需讓使用者即便將頁面滑到任何地方都可以看到指定的欄或列,您可以**設定凍結**。
+> 在**設計模式**中的**表單工具**內選取**設定凍結**。並且設定您**凍結欄或列的數量**
+> (欄是從左邊算起,列是從上方算起)。……
+> 您也可以在列表頁以相同的操作方式來設定凍結,但要注意
+> **列表頁只能設定凍結欄,無法設定凍結列**。」
+
+**三個可直接用的判讀**:
+1. 語意是**數量**(從左邊算起 N 欄),不是「選哪幾欄」—— 與 Glide 的 `freezeColumns: number` **完全同構**。
+2. **列表頁只凍結欄** —— 我方的網格就是列表頁,故**不做凍結列**,這是 parity 不是偷懶。
+3. 設定入口在**設計模式**,不是使用者臨時拖拉。
+
+⚠️ **填滿把手在 Ragic 文件中未查到**(全庫搜「填滿 / 拖曳填滿 / fill」無對應功能頁)。
+依〈向上設計三條〉①,「文件沒寫」≠「沒有」→ 標**未查證**,
+**不得**寫成「Ragic 沒有填滿把手」,也不拿它當差異化宣稱。
+做它的理由是 **Excel 使用者的肌肉記憶**,不是「競品沒有」。
+
+### 8.3 裁定(OQ-GF-N)— ✅ 已裁定 2026-08-06
+
+| # | 議題 | 選項 | 裁定 |
+|---|---|---|---|
+| **OQ-GF-1** ⭐⭐ | 凍結欄數存哪裡 | A. 表單層設計屬性<br>B. **`view_def.config.freezeColumns`(逐檢視)**<br>C. 個人偏好 | **B** —— 欄位的**選取與順序**已經是逐檢視的(`config.fields`),那麼「從左邊數 2 欄」在不同檢視就是不同的欄。存在表單層會讓同一個數字在 A 檢視凍對、在 B 檢視凍錯。Ragic 的「設計模式」對應到我方的預設檢視 |
+| **OQ-GF-2** ⭐⭐ | 🔴 schema 要不要同步加 | — | **要,而且是這條的重點**。`viewConfigSchema` 是 **non-strict zod**,未知鍵**靜默 strip** —— `groupBy` 就是這樣「前端一直在送、存進去是空的、而且沒有任何錯誤」(§view-specs 逐字)。**只改前端 = 什麼都沒改** |
+| **OQ-GF-3** | 凍結列做不做 | A. 做<br>B. **不做** | **B** —— Ragic 逐字「列表頁只能設定凍結欄」。我方網格即列表頁 |
+| **OQ-GF-4** ⭐ | 填充規則 | A. 複製來源區塊(循環)<br>B. 數列遞增(Excel 式)<br>C. 兩者依內容猜 | **A** —— C 是**猜**,而猜錯的代價是使用者以為填對了(靜默錯值)。B 的邊界極多(日期 / 月份 / 前綴數字 / 混合)。先給可預期的 A,遞增列 P1 並且要有明確的 UI 表達 |
+| **OQ-GF-5** ⭐⭐ | 填充走哪條寫入路徑 | A. 自己寫一條<br>B. **與貼上共用 `planPasteCell` + 批次端點** | **B** —— §0.2 的教訓逐字:兩者**共用 `onCellsEdited` 出口**。自己寫一條就會出現「貼上擋得住的東西,拖曳填得進去」 |
+| **OQ-GF-6** | 填充要不要擋計算欄 | — | **擋,且回報跳過幾格** —— 與 OQ-GP-4 同一個處置,不另立語意 |
+
+### 8.4 FMEA
+
+| # | 失效 | 嚴重度 | 緩解 |
+|---|---|---|---|
+| G1 | 填充把計算欄 / 唯讀欄寫壞 | **P0** | 走 `planPasteCell` 同一條白名單 |
+| G2 | 填充範圍超出既有列 → 靜默丟掉 | **P0** | 只填**既有列**;不自動加列(加列是貼上才有的語意,拖曳沒有「我要多少列」的表達) |
+| G3 | 凍結數大於欄數 → 版面壞掉 | P1 | 存入時 clamp,讀出時再 clamp 一次(欄可能事後被刪) |
+| G4 | 凍結欄把整個畫面佔滿 | P1 | 上限(≤ 半數欄且 ≤ 5) |
+
+### 8.5 落地紀錄(2026-08-06)
+
+| 交付 | 位置 |
+|---|---|
+| `view_def.config.freezeColumns`(後端 + 前端 schema **兩邊**) | `views/view-specs.ts` · `lib/engine/schemas.ts` |
+| `GridSheet` 接 `freezeColumns` / `fillHandle` / `onFillPattern` | `packages/ui/src/components/grid-sheet.tsx` |
+| 填滿 = 平鋪後餵給**同一支 `onPaste`** | `use-grid-paste.ts` `onFillPattern` |
+| 工具列「凍結」面板 | `list-controls.tsx` |
+
+### 8.6 三件量測推翻直覺的事
+
+1. **`scrollWidth` 不隨 `freezeColumns` 改變**(實測 0 / 2 / 3 都是 924)。
+   原本想用「可捲寬度變小」當斷言 —— **沒有這個幾何訊號**。
+2. **像素全等比對必紅**:Glide 在凍結邊界會畫一道分隔陰影,而且**只在捲動時出現**。
+   那是對的行為,不是要擋的東西。
+3. **對照組的門檻不能憑感覺設**:右側取樣區只差 **~2.4%**,因為大多是空白格底,
+   文字只佔一小部分像素。第一版設 5% 直接紅在**對照組**上,而功能是好的。
+   最後改成**相對**斷言(凍結區的變動 < 右側的 1/3),不必為字型或欄寬調參。
+
+### 8.7 e2e 的兩個 canvas 教訓
+
+- **Glide 不吃合成事件**:`PointerEvent` 選不到格(實測),必須用 Playwright 的
+  真實滑鼠(CDP input)。
+- **座標要含 Glide 自己的列號欄**(`rowMarkers="both"`,實測 ≈ 35px)。
+  第一版漏掉它,填滿把手的座標落在格子中間而不是右下角,**拖了什麼都沒發生**。
+  canvas 上沒有 DOM 可問,只能照著畫面量 —— 量到的值記在測試檔裡,不憑印象。
+
+### 8.8 殘留
+
+| 殘留 | 說明 |
+|---|---|
+| 遞增數列填充 | OQ-GF-4 裁定先做複製。要做遞增必須有**看得見的表達**(填完之後讓人知道它猜了什麼),否則靜默錯值 |
+| 凍結列 | 刻意不做 —— Ragic 逐字「列表頁只能設定凍結欄」 |
+| 設計器面的凍結 | 目前只在列表檢視;表單頁的凍結(Ragic 有)未起 |

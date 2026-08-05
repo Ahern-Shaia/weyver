@@ -14,7 +14,7 @@ import type {
 } from "@/lib/engine/schemas"
 import { Input } from "@weyver/ui/input"
 import { Select } from "@weyver/ui/select"
-import { Filter, Plus, Save, Star, Trash2, X } from "lucide-react"
+import { Filter, Pin, Plus, Save, Star, Trash2, X } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
 /* R1·UP-2 集合視圖控制列:儲存檢視三態選擇 + facet 篩選(型別感知 operator,單層 AND|OR)+ 多鍵排序。
@@ -54,7 +54,7 @@ export function ListControls({
   readonly onSetDefault: () => void
   readonly onDelete: () => void
 }): ReactNode {
-  const [panel, setPanel] = useState<"filter" | "sort" | "group" | null>(null)
+  const [panel, setPanel] = useState<"filter" | "sort" | "group" | "freeze" | null>(null)
   const activeView = views.find((v) => v.id === activeViewId) ?? null
   // formula/計算型讀時算(無可篩物理欄)、attachment 無序 → 皆不入篩選欄(空 operator 亦排除)
   const filterable = form.fields.filter(
@@ -63,6 +63,7 @@ export function ListControls({
   const conditions = config.filter.conditions
   const sorts = config.sorts
   const groups = config.groupBy
+  const frozen = config.freezeColumns
   const aggregates = config.aggregates
   /* 小計只對數值型別有意義(count 例外,但它已是每組的預設顯示) */
   const numericFields = form.fields.filter((f) => ["number", "money", "percent"].includes(f.type))
@@ -133,6 +134,15 @@ export function ListControls({
         >
           分組{groups.length > 0 ? ` ${groups.length}` : ""}
         </ToggleChip>
+        {/* 🔴 凍結欄(`grid-paste.md` §8)。Ragic 放在「設計模式 → 表單工具 → 設定凍結」,
+            我方對應到檢視工具列 —— 它是**這個檢視**的欄位版面,與選欄同層級。 */}
+        <ToggleChip
+          active={panel === "freeze"}
+          onClick={() => setPanel(panel === "freeze" ? null : "freeze")}
+        >
+          <Pin size={13} strokeWidth={1.9} />
+          凍結{frozen > 0 ? ` ${frozen}` : ""}
+        </ToggleChip>
 
         <div className="ml-auto flex items-center gap-1.5">
           <ActBtn onClick={saveNew}>
@@ -193,6 +203,33 @@ export function ListControls({
               加條件
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {panel === "freeze" ? (
+        <div className="border-t border-line bg-surface px-4 py-2.5">
+          <label className="flex items-center gap-2 text-[12px] text-ink-2">
+            <span>從左邊起凍結</span>
+            <Select
+              className="h-7 w-20"
+              aria-label="凍結欄數"
+              value={String(frozen)}
+              onChange={(e) => {
+                onConfigChange({ ...config, freezeColumns: Number(e.target.value) })
+              }}
+            >
+              {[0, 1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={String(n)}>
+                  {n === 0 ? "不凍結" : `${String(n)} 欄`}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {/* 🔴 講清楚它只凍欄不凍列 —— Ragic 逐字「列表頁只能設定凍結欄」,
+              使用者若期待凍結列而找不到,會以為是壞的。 */}
+          <p className="mt-1.5 text-[12px] text-ink-3">
+            凍結的欄橫向捲動時固定在左側。列表頁只能凍結欄。
+          </p>
         </div>
       ) : null}
 

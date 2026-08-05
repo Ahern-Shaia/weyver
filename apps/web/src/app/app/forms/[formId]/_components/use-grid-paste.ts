@@ -10,7 +10,7 @@ import {
   planPasteCell,
 } from "@/lib/engine/paste-plan"
 import type { FieldDto, RecordRow } from "@/lib/engine/schemas"
-import type { Item } from "@glideapps/glide-data-grid"
+import type { Item, Rectangle } from "@glideapps/glide-data-grid"
 import { useCallback, useMemo, useState } from "react"
 
 /* 🔴 R1·GP M3 UI + M4|貼上的編排層。
@@ -54,6 +54,10 @@ export function useGridPaste(input: {
 }): {
   readonly state: PasteState
   readonly onPaste: (target: Item, values: readonly (readonly string[])[]) => boolean
+  /* 🔴 填滿把手(`grid-paste.md` §8)。**它不是第二條寫入路徑,它就是貼上** ——
+     把來源區塊平鋪成一個二維陣列,然後餵給同一支 `onPaste`。
+     於是計算欄跳過、型別先驗、標紅整批不送、一步 undo **全部自動成立**。 */
+  readonly onFillPattern: (source: Rectangle, destination: Rectangle) => void
   readonly confirmAddRows: () => void
   readonly pasteExistingOnly: () => void
   readonly cancel: () => void
@@ -226,7 +230,67 @@ export function useGridPaste(input: {
     [invalidKeys],
   )
 
-  return { state, onPaste, confirmAddRows, pasteExistingOnly, cancel, undo, isCellInvalid }
+  /* 🔴 填滿把手 = 把來源區塊平鋪成二維陣列,再走 `onPaste`。
+
+     ## 為什麼是「複製」而不是「數列遞增」(OQ-GF-4)
+
+     遞增要猜:1,2 是等差還是兩個獨立的數?「一月」下一格是二月還是又一個一月?
+     **猜錯的代價是使用者以為填對了** —— 靜默的錯值比明顯的沒填更貴。
+     先給可預期的複製,遞增列 P1 且屆時要有看得見的表達。
+
+     ## 只填既有列(FMEA G2)
+
+     拖曳沒有「我要幾列」的表達,所以**不自動加列**(那是貼上才有的語意,
+     而貼上會先問過)。超出既有列數的部分直接截掉。 */
+  const onFillPattern = (source: Rectangle, destination: Rectangle): void => {
+    const rows = Math.min(destination.height, input.records.length - destination.y)
+    if (rows <= 0 || destination.width <= 0 || source.width <= 0 || source.height <= 0) return
+
+    const values: string[][] = []
+    for (let r = 0; r < rows; r += 1) {
+      const line: string[] = []
+      for (let c = 0; c < destination.width; c += 1) {
+        /* 平鋪:超出來源就從頭循環,與 Excel 的行為一致 */
+        const srcRow = source.y + ((destination.y + r - source.y) % source.height)
+        const srcCol = source.x + ((destination.x + c - source.x) % source.width)
+        line.push(readCellText(input, srcRow, srcCol))
+      }
+      values.push(line)
+    }
+    onPaste([destination.x, destination.y], values)
+  }
+
+  return {
+    state,
+    onPaste,
+    onFillPattern,
+    confirmAddRows,
+    pasteExistingOnly,
+    cancel,
+    undo,
+    isCellInvalid,
+  }
+}
+
+/* 讀一格的**原始值**並轉成字串。
+
+   ⚠️ 刻意**不用** `formatFieldValue` —— 那是給人看的(`3,600.00`、`—`),
+   餵回貼上的解析器會被千分位與破折號打敗。填充要的是值不是顯示。 */
+function readCellText(
+  input: {
+    readonly fields: readonly FieldDto[]
+    readonly records: readonly RecordRow[]
+    readonly colOffset: number
+  },
+  row: number,
+  col: number,
+): string {
+  const field = input.fields[col - input.colOffset]
+  const record = input.records[row]
+  if (field === undefined || record === undefined) return ""
+  const raw = record.values[field.name]
+  if (raw === null || raw === undefined) return ""
+  return String(raw)
 }
 
 /* 🔴 快照的舊值**不能原封送回去**。

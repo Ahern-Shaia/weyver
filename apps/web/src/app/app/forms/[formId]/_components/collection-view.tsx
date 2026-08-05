@@ -70,6 +70,11 @@ export function CollectionView({
     [view, quickSearch, collapsed],
   )
   const recordsQuery = useInfiniteRecordsQuery(formId, query)
+  /* 🔴 凍結欄(`grid-paste.md` §8)。**讀出來再 clamp 一次** ——
+     欄位可能在設定之後被刪掉,存的時候合法不代表現在合法(FMEA G3)。
+     另外不讓凍結欄佔滿畫面:至多一半的欄(FMEA G4)。 */
+  const freezeColumns = Math.max(0, Math.min(view?.freezeColumns ?? 0, 5))
+
   const grouped = (view?.groupBy ?? []).length > 0
   const stats = useGroupStats(formId, query, view?.aggregates ?? [])
   const records: RecordRow[] = useMemo(
@@ -298,6 +303,8 @@ export function CollectionView({
             rowCount={records.length}
             getCell={getCell}
             onPaste={paste.onPaste}
+            onFillPattern={paste.onFillPattern}
+            {...(freezeColumns > 0 ? { freezeColumns } : {})}
             onCellEdited={onCellEdited}
             onCellClicked={onCellClicked}
             rowMarkers="both"

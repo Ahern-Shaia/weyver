@@ -8,6 +8,7 @@ import {
   type GridColumn,
   type GridSelection,
   type Item,
+  type Rectangle,
   type Theme,
 } from "@glideapps/glide-data-grid"
 import "@glideapps/glide-data-grid/dist/index.css"
@@ -30,6 +31,15 @@ export interface GridSheetProps {
      且**超出列數的部分會靜默丟掉**(`if (row + targetRow >= rows) break`)。 */
   readonly onPaste?: ((target: Item, values: readonly (readonly string[])[]) => boolean) | boolean
   readonly onCellClicked?: (cell: Item) => void
+  /* 🔴 凍結欄數(從左邊算起)。Ragic 官方 `doc/107` 逐字:「設定您凍結**欄或列的數量**
+     (欄是從左邊算起)……**列表頁只能設定凍結欄**」—— 語意是數量不是選欄,
+     與 Glide 的 `freezeColumns: number` 同構,故不自己包一層。 */
+  readonly freezeColumns?: number
+  /* 🔴 填滿把手。`fillHandle` 開啟拖曳點,`onFillPattern` 給 patternSource 與
+     fillDestination 兩個區域且**可以 prevent** —— 我方一律 prevent 並自己套用,
+     因為填充必須走與貼上同一條寫入路徑(計算欄跳過 / 型別先驗)。
+     兩者都給才有意義:只開 `fillHandle` 而不接事件,拖了會走 Glide 的預設寫入。 */
+  readonly onFillPattern?: (source: Rectangle, destination: Rectangle) => void
   readonly rowMarkers?: "number" | "checkbox" | "both" | "none"
   readonly gridSelection?: GridSelection
   readonly onGridSelectionChange?: (selection: GridSelection) => void
@@ -49,6 +59,8 @@ export function GridSheet({
   onCellsEdited,
   onPaste,
   onCellClicked,
+  freezeColumns = 0,
+  onFillPattern,
   rowMarkers = "number",
   gridSelection,
   onGridSelectionChange,
@@ -98,6 +110,21 @@ export function GridSheet({
         {...(onCellsEdited ? { onCellsEdited } : {})}
         {...(onPaste === undefined ? {} : { onPaste })}
         {...(onCellClicked ? { onCellClicked } : {})}
+        freezeColumns={freezeColumns}
+        fillHandle={onFillPattern !== undefined}
+        {...(onFillPattern
+          ? {
+              onFillPattern: (e: {
+                patternSource: Rectangle
+                fillDestination: Rectangle
+                preventDefault: () => void
+              }) => {
+                /* 一律接管:Glide 的預設寫入不認識計算欄與型別驗證 */
+                e.preventDefault()
+                onFillPattern(e.patternSource, e.fillDestination)
+              },
+            }
+          : {})}
         {...(gridSelection ? { gridSelection } : {})}
         {...(onGridSelectionChange ? { onGridSelectionChange } : {})}
         theme={theme}

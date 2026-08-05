@@ -257,6 +257,10 @@ export const viewConfigSchema = z.object({
     .default([]),
   search: z.string().optional(),
   pageSize: z.number().int().optional(),
+  /* 凍結欄數(從左邊算起)。⚠️ **後端的 `viewConfigSchema` 也要有這一鍵** ——
+     它是 non-strict zod,未知鍵靜默 strip,只加前端等於什麼都沒加
+     (`groupBy` 就是這樣掉了一次)。上限與後端同為 5。 */
+  freezeColumns: z.number().int().min(0).max(5).default(0),
 })
 export type ViewConfig = z.infer<typeof viewConfigSchema>
 
