@@ -26,11 +26,12 @@ export const STORAGE_DRIVER = Symbol("STORAGE_DRIVER")
    兩種物件:
    · 表單附件|`t{tenantId}/f{formId}/{uuid}{ext}`
    · 資料匯出|`t{tenantId}/exports/{uuid}.zip`(R1·I-1)
+   · 單據 PDF|`t{tenantId}/pdf/{uuid}.pdf`(R1·後續-2b)
 
    🔴 匯出用 **uuid 而非 job id**:物件名會出現在存取日誌與簽名 URL 裡,
    流水號等於把「猜下一包」變成加一。 */
 const KEY_RE =
-  /^t\d+\/(f\d+\/[0-9a-f-]{36}(\.thumb)?(\.[A-Za-z0-9]{1,8})?|exports\/[0-9a-f-]{36}\.zip)$/
+  /^t\d+\/(f\d+\/[0-9a-f-]{36}(\.thumb)?(\.[A-Za-z0-9]{1,8})?|exports\/[0-9a-f-]{36}\.zip|pdf\/[0-9a-f-]{36}\.pdf)$/
 
 export function isValidKey(key: string): boolean {
   return KEY_RE.test(key)

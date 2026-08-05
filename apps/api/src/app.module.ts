@@ -12,6 +12,7 @@ import { UsageModule } from "./billing/usage.module.js"
 import { validateEnv } from "./config/env.js"
 import { DbModule } from "./db/db.module.js"
 import { ExportModule } from "./export/export.module.js"
+import { PdfModule } from "./pdf/pdf.module.js"
 import { FilesModule } from "./files/files.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
 import { WidgetsModule } from "./form-engine/widgets/widgets.module.js"
@@ -43,6 +44,7 @@ import { ViewsModule } from "./views/views.module.js"
        此為單元/整合測試結構上抓不到的失效,故以 `schedule-registration.test.ts` 斷言註冊次數。 */
     ScheduleModule.forRoot(),
     ExportModule,
+    PdfModule,
     TemplatesModule,
     WidgetsModule,
     DbModule,

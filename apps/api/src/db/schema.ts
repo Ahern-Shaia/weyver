@@ -1442,6 +1442,36 @@ export const authAudits = pgTable(
 
 /* 🔴 R1·I-1|資料匯出的工作佇列(#145)。狀態機 queued → running → ready|failed,
    到期後 ready → expired(**列不刪** —— 誰把整包公司資料帶走了是內控要問的)。 */
+/* 🔴 R1·後續-2b|伺服器端 PDF 工作(`docs/modules/R1/server-pdf.md`)。
+   佇列形狀沿用 `export_job`:狀態欄就是佇列,一支 worker 以 SKIP LOCKED 取件。
+
+   `ticketHash` 是 OQ-PDF-6 的落點:渲染器是**沒有身分的瀏覽器**,
+   而 PDF 必須以請求者的權限產生 —— 票讓它換得到資料,而換資料時
+   後端以**該工作的 actor** 去讀,遮罩走既有的同一條路。只存雜湊。 */
+export const pdfJobs = pgTable(
+  "pdf_job",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    requestedByActorId: bigint("requested_by_actor_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    recordIds: bigint("record_ids", { mode: "number" }).array().notNull(),
+    status: text("status").notNull().default("queued"),
+    objectKey: text("object_key"),
+    sizeBytes: bigint("size_bytes", { mode: "number" }),
+    ticketHash: text("ticket_hash"),
+    ticketUsedAt: timestamp("ticket_used_at", { withTimezone: true }),
+    downloadCount: integer("download_count").notNull().default(0),
+    /* 給使用者看的訊息 —— 不得放內部細節 */
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    readyAt: timestamp("ready_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+  },
+  (t) => [index("pdf_job_tenant_idx").on(t.tenantId, t.createdAt)],
+)
+
 export const exportJobs = pgTable(
   "export_job",
   {
