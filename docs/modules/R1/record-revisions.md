@@ -1,5 +1,7 @@
 # record-revisions.md — [R1·H-4] 記錄修改紀錄(誰、什麼時候、把什麼改成什麼)
 
+> **v1.2 SHIPPED 2026-08-05**|§7 批次還原 + 資料庫設計變更頁。H-4 至此完成。
+
 > ✅ **狀態:SHIPPED v1.1(2026-08-05;M1–M5)** —— 建立與更新皆留紀錄、逐欄遮罩、
 > 記錄頁看得到、**全庫管理頁**、**保留期清理**。
 > **殘留**:批次還原(需「一次操作 = 一個批次 id」的地基)· 資料庫設計變更頁(`ddl_audit` 已有資料,缺頁面)。
@@ -165,3 +167,94 @@ record_revision (Tier-1 系統表,**開 RLS FORCE**,只增不改;app 車道只�
 而查證後 **Ragic 沒有這個功能**(本機鏡像零命中)。它不是 parity,是我方自己加的舒適功能 ——
 在 R1「仿 Ragic」的脈絡下**現在不做**,也不該用「H 段還有一列沒收」當理由去做它。
 若日後要做,它必須以〈向上設計三條〉重新立案,而不是混在 parity 收尾裡。
+
+---
+
+## 7. v1.2|批次還原(2026-08-05)
+
+### 7.1 站③|Ragic 官方逐字(`doc/81` §復原大量修改及匯入資料,本機鏡像,查證 2026-08-05)
+
+> 「如果想要復原**大量修改**或是**匯入**的資料,可以點擊該筆修改或匯入紀錄旁的**還原符號**來復原修改前的資料。」
+
+限制六條(逐字):
+
+1. 「只有大量修改和匯入的紀錄可以被還原。」
+2. 「此動作一旦被執行便無法復原。」
+3. 「不建議針對以下兩種狀況進行大量修改還原:(1) 大量修改後有對相關欄位做設計變更。(2) 嘗試還原非常久以前的大量修改。」
+4. 「針對匯入還原有以下兩點限制 (1) 無法還原匯入過程中透過由連結與載入、公式重算和 workflow 觸發的修改。(2) 無法觸發連結與載入、公式重算和 workflow。」
+5. 「部分操作在資料修改紀錄沒辦法直接還原(例如:批次執行動作按鈕)。」
+6. 「表單中已移除的欄位在還原時會被忽略;若還原後的選項已不在目前的選項欄位中,則無法復原。」
+
+官方截圖(`_clipboard1705636980103.png`)顯示**整批折成一列**:
+「2024/01/19 12:02:03 黃志銘 在 **倉庫管理** 上 **修改** 了 **4 筆資料** (大量修改) ↺」
+—— 不是 4 列各帶一個還原鈕。**版面照它。**
+
+### 7.2 站①|自家 repo(對碼,2026-08-05)
+
+| 事實 | 出處 |
+|---|---|
+| 批次寫入只有兩條:`createManyRecords`(匯入)/ `updateManyRecords`(貼上) | `record.service.ts:1048` / `:1152` |
+| 兩條都逐列走 `insertOne` / `updateOne` → **每列已經有修改紀錄了**,缺的只是「這些列屬於同一次操作」 | `:1982` / `:2069` |
+| 沒有「大量修改」(選取多筆一起改)功能 —— Ragic 的 mass edit 我方尚未做 | 全庫 grep 無 |
+| 交易與租戶 context 統一走 `inTenantTx`,以 GUC 傳 `tenant_id` / `record_scope` / `actor_id` / `tenant_tz` | `:972` |
+| 軟刪與回收桶 entry 同一 tx | `:1459` |
+
+### 7.3 開放問題(OQ-RV-7..12)— ✅ 已裁定 2026-08-05
+
+| # | 議題 | 選項 | 裁定 |
+|---|---|---|---|
+| **OQ-RV-7** ⭐⭐ | 批次 id 怎麼傳到咽喉 | A. 每個私有方法加一個參數<br>B. **交易範圍 GUC `app.batch_id`**<br>C. 服務上的欄位 | **B** —— 批次是**交易的性質**,與 `tenant_id` / `actor_id` / `record_scope` 完全同類,而那三個已經是 GUC(`:972`)。A 要動 `insertOne` / `updateOne` / `writeRevision` 三支簽章與六條呼叫路徑,而**改簽章就是改所有呼叫端**,漏一條就是漏一條。C 在 singleton 上放請求狀態,是併發下的錯誤答案 |
+| **OQ-RV-8** ⭐ | 批次是一張表還是一個欄位 | A. `record_revision.batch_id` 加個 uuid 就好<br>B. **另立 `record_batch` 表** | **B** —— 「這批被還原過了」需要一個**可寫一次的狀態**,掛在 N 列修改紀錄上等於同一事實存 N 份。且修改紀錄是**只增不改**(v1.0 鐵則),為了記還原狀態去開 UPDATE 權限會毀掉那個保證。`record_batch` 只開 `UPDATE (undone_at, undone_by)` 兩個欄的欄位級授權 |
+| **OQ-RV-9** | 筆數存不存 | A. `row_count` 欄位<br>B. **讀時 `count(distinct record_id)`** | **B** —— 存了就要在批次結束時回寫,於是又要開一個 UPDATE 權限,而且**會漂移**(寫入失敗回滾但計數已加)。這個數字讀時算得出來,就不要存 |
+| **OQ-RV-10** ⭐⭐ | 還原時該筆已被別人改過怎麼辦 | A. 照還原(Ragic 的行為)<br>B. 整批拒絕<br>C. **跳過那幾格,還原其餘,並回報跳過了什麼** | **C** —— A 會**銷毀別人的工作**,而那正是官方限制 3 只寫「不建議」卻不擋的地方。B 太嚴:99 筆沒動、1 筆有動就整批不能還原。C 與本 repo 既有裁定同形(貼上的計算欄 OQ-GP-4:跳過 + 回報,**不靜默**)。判定法:該欄現值 ≠ 當時的 `after` → 有人動過 |
+| **OQ-RV-11** | 還原要不要觸發公式 / 事件 / 索引 | A. 直接寫 SQL(Ragic 明說它不觸發,限制 4-2)<br>B. **走與一般編輯同一條路** | **B** —— 我方的公式是**讀時計算**(`withFormulas`),沒有 Ragic 那種「寫時算好存起來」的包袱,所以它的限制在我方不存在。走 `updateManyRecords` 則索引 / 事件 / 修改紀錄自動跟上;繞過去寫 SQL 是重演「資料進去了但衍生值沒動」 |
+| **OQ-RV-12** | 還原本身可不可以再還原 | A. 可以(等於 redo)<br>B. **不可以**(Ragic 限制 2) | **B** —— 匯入的還原是**軟刪**,再還原它就變成「從回收桶救回來」,那是另一條路徑(`restoreRecord`)。讓兩條路徑在同一個按鈕底下分岔,使用者不會知道自己按下去會發生什麼。還原產生的批次標 `kind='undo'` 並拒絕再還原;要救回來就去回收桶 —— 那裡本來就有 |
+
+### 7.4 資料模型
+
+```
+record_batch (Tier-1,RLS FORCE;app 車道 SELECT / INSERT / UPDATE(undone_at, undone_by))
+  id          bigint PK
+  tenant_id   bigint NOT NULL
+  form_id     bigint NOT NULL
+  kind        text NOT NULL     -- import | paste | undo
+  actor_id    bigint NULL
+  created_at  timestamptz NOT NULL
+  undone_at   timestamptz NULL  -- 還原過就不再給還原(OQ-RV-12)
+  undone_by   bigint NULL
+  index (tenant_id, created_at DESC)
+
+record_revision
+  + batch_id  bigint NULL REFERENCES record_batch(id)
+  index (batch_id) WHERE batch_id IS NOT NULL
+```
+
+### 7.5 FMEA(pre-mortem)
+
+| # | 失效 | 嚴重度 | 緩解 |
+|---|---|---|---|
+| B1 | 還原把別人後來的修改蓋掉 | **P0** | OQ-RV-10 逐欄比對現值,不符即跳過並回報 |
+| B2 | 還原一半失敗,留下半還原的批次 | **P0** | 全程單一交易(`updateManyRecords` / 批次軟刪各自已是單 tx),失敗整批 rollback |
+| B3 | 沒有編輯權的人按得到還原 | **P0** | 端點掛 `@RequiresFormAction`;匯入還原是刪除,另要 delete 權 |
+| B4 | 同一批被按兩次還原 | **P1** | `undone_at` 在同一交易內以條件更新設定,第二次影響 0 列即拒 |
+| B5 | 已移除的欄位讓還原整批炸掉 | **P1** | 還原前逐欄查 `resolved.byName`,查無即略過(官方限制 6) |
+| B6 | 選項值已不在選項清單中 | **P1** | 預檢(比照匯入的「一次回報全部問題列」),**還原前**回報,不進交易 |
+
+### 7.6 落地紀錄(2026-08-05)
+
+| 交付 | 位置 |
+|---|---|
+| `record_batch` 表 + `record_revision.batch_id` | `drizzle/0053_record_batch.sql` |
+| 批次 id 以 GUC 傳到咽喉;**每個交易先清掉** | `record.service.ts` `inTenantTx` / `openBatch` |
+| `listBatches` / `undoBatch` | `record.service.ts` |
+| 軟刪本體抽成 `softDeleteOne`(還原要用,不複製第二份) | 同上 |
+| `GET /forms/revisions/recent` 併回 batches;`POST /forms/revisions/batches/:id/undo` | `forms.controller.ts` |
+| 同一條時間軸的合併列表 + 還原鈕 | `app/settings/revisions/page.tsx` |
+| 資料庫設計變更(拆檔) | `app/settings/revisions/design-changes.tsx` |
+
+**兩個只有把值從歷史餵回寫入端才會浮現的落差**(此前沒有任何功能會這樣做,所以一直看不見):
+
+1. `numeric` 欄寫進去是 `50`、讀回來是 `"50.0000000000"` → 字串比會判成「後來被改過」,於是**靜默少還原一格**。改以型別感知比較(`sameStoredValue` 帶 `dbFieldType`)。
+2. 把 `before` 原樣寫回去會被寫入端的型別驗證擋下 —— **它擋的是它自己剛剛寫進去的值**。加 `toApiValue` 做 DB 形態 → API 形態的轉換。
+
+**一個回頭修掉的噪音**:匯入的還原是軟刪,而軟刪不寫修改紀錄(它記在回收桶)→ 還原批次會是空的,列出來就是一列「0 筆」加一個按了沒反應的鈕。`listBatches` 加 `HAVING count > 0`。

@@ -145,3 +145,54 @@ test("🔴 同一頁下方看得到資料庫設計變更,且不外洩實際執�
   expect(body).not.toMatch(/CREATE TABLE|ALTER TABLE/i)
   expect(body).not.toMatch(/\bt\d{2,}\b|\bf\d{2,}\b/)
 })
+
+/* 🔴 R1·H-4 v1.2|**批次還原**。Ragic 官方 `doc/81`:
+   「點擊該筆修改或匯入紀錄旁的還原符號來復原修改前的資料。」
+   官方截圖把整批折成一列:「修改了 4 筆資料 (大量修改) ↺」。
+
+   這條釘的是第一約束:貼錯一整塊 Excel 之後,**不用打 API 就救得回來**。 */
+test("🔴 貼上批次可以在紀錄頁一鍵還原成修改前的值", async ({ page, request }) => {
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E批次還原_${uniq()}`,
+      fields: [
+        { name: "品名", type: "text" },
+        { name: "數量", type: "number" },
+      ],
+    },
+  })
+  const form = (await res.json()) as { id: number; name: string }
+  const created = await request.post(`/api/engine/forms/${String(form.id)}/records`, {
+    headers: DEV,
+    data: { values: { 品名: "原本的名字", 數量: 1 } },
+  })
+  const row = (await created.json()) as { id: number }
+
+  const paste = await request.post(`/api/engine/forms/${String(form.id)}/records/bulk-update`, {
+    headers: DEV,
+    data: { rows: [{ recordId: row.id, values: { 品名: "貼錯的名字", 數量: 999 } }] },
+  })
+  expect(paste.status()).toBe(200)
+
+  await page.goto("/app/settings/revisions")
+  await page.getByLabel("篩選表單").selectOption(String(form.id))
+
+  /* 整批一列:筆數 + 種類,不是逐筆展開 */
+  const table = page.getByTestId("revision-log")
+  await expect(table).toContainText("1 筆", { timeout: 15_000 })
+  await expect(table).toContainText("貼上")
+
+  /* ⚠️ 兩個對話框(確認 + 結果)。用兩個 `once` 會壞:兩個 handler 都在第一個
+     對話框出現前就掛上了,於是**同一個對話框被兩個 handler 各接一次**,
+     第二個拿到「已被處理」的錯。用 `on` 接全部。 */
+  page.on("dialog", (d) => void d.accept())
+  await table.getByRole("button", { name: "還原" }).first().click()
+
+  /* 還原完那一列不再提供還原 */
+  await expect(table.getByRole("button", { name: "還原" })).toHaveCount(0, { timeout: 15_000 })
+
+  const after = await request.get(`/api/engine/forms/${String(form.id)}/records`, { headers: DEV })
+  const records = (await after.json()) as { records: { values: Record<string, unknown> }[] }
+  expect(records.records[0]?.values).toMatchObject({ 品名: "原本的名字" })
+})
