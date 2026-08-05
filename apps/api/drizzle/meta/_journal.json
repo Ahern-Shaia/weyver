@@ -372,6 +372,13 @@
       "when": 1785946405001,
       "tag": "0052_record_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1785946405002,
+      "tag": "0053_record_batch",
+      "breakpoints": true
     }
   ]
 }

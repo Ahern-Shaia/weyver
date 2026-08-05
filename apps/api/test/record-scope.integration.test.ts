@@ -597,3 +597,63 @@ describe("🔒 連結欄候選:記錄範圍(audit-E §2.5)", () => {
     expect(got).toHaveLength(3)
   })
 })
+
+/* 🔴 R1·H-4 v1.2|批次還原的權限。路由上沒有 `:formId`(表單 id 要載入批次之後
+   才知道)→ PermissionGuard 判不了,判斷落在 service。**沒有測試的話這一層
+   等於不存在** —— 而它擋的是「按一下就把整批資料刪掉」。 */
+describe("🔴 批次還原吃表單權限", () => {
+  const viewOnly = (formId: number): EffectivePermissions =>
+    new EffectivePermissions(
+      false,
+      new Map([[formId, new Set(["view"] as const)]]),
+      new Map(),
+      new Set(),
+    )
+
+  const editNoDelete = (formId: number): EffectivePermissions =>
+    new EffectivePermissions(
+      false,
+      new Map([[formId, new Set(["view", "edit"] as const)]]),
+      new Map(),
+      new Set(),
+    )
+
+  const seedImportBatch = async (): Promise<{ formId: number; batchId: number }> => {
+    const { form } = await ddl.createForm(
+      tenantA,
+      createFormSpecSchema.parse({
+        name: `批次權限_${String(Date.now()).slice(-6)}`,
+        fields: [{ name: "品名", type: "text" }],
+      }),
+      ALICE,
+    )
+    await records.createManyRecords(tenantA, form.id, [{ 品名: "甲" }, { 品名: "乙" }], ALICE)
+    const list = await records.listBatches(tenantA, [form.id])
+    const batchId = list[0]?.id ?? 0
+    return { formId: form.id, batchId }
+  }
+
+  it("只有 view 權的人不能還原", async () => {
+    const { formId, batchId } = await seedImportBatch()
+    await expect(records.undoBatch(tenantA, batchId, BOB, viewOnly(formId))).rejects.toThrow()
+  })
+
+  /* 🔴 匯入的還原是**軟刪**。能改不等於能刪 —— 只驗 edit 的話,
+     一個只有編輯權的人可以用還原鈕把整批資料刪掉。 */
+  it("🔴 能改但不能刪的人,不能還原匯入批次(那是刪除)", async () => {
+    const { formId, batchId } = await seedImportBatch()
+    await expect(records.undoBatch(tenantA, batchId, BOB, editNoDelete(formId))).rejects.toThrow()
+  })
+
+  it("權限齊全就還原得了", async () => {
+    const { formId, batchId } = await seedImportBatch()
+    const full = new EffectivePermissions(
+      false,
+      new Map([[formId, new Set(["view", "edit", "delete"] as const)]]),
+      new Map(),
+      new Set(),
+    )
+    const result = await records.undoBatch(tenantA, batchId, ALICE, full)
+    expect(result.undoneRecords).toBe(2)
+  })
+})

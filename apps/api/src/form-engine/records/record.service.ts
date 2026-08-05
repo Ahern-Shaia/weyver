@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from "@nestjs/common"
+import { ForbiddenException, Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
 import { asSelectOptions, isChoiceAllowed } from "@weyver/rules"
 import {
@@ -9,6 +9,7 @@ import {
   resolveFieldAttrs,
   sectionMembers,
 } from "@weyver/rules"
+import type { FormAction } from "../../authz/authz-model.js"
 import type { Knex } from "knex"
 import { z } from "zod"
 import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
@@ -17,6 +18,8 @@ import { FilesService } from "../../files/files.service.js"
 import { QuotaService } from "../../reliability/quota.service.js"
 import {
   BulkRowError,
+  BatchNotFoundError,
+  BatchNotUndoableError,
   BulkTooLargeError,
   BulkValidationError,
   DomainError,
@@ -33,6 +36,7 @@ import {
 } from "../errors.js"
 import {
   type CellValueType,
+  type DbFieldType,
   fieldType,
   isSnapshotLookup,
 } from "../field-types/field-type-registry.js"
@@ -215,19 +219,56 @@ interface ResolvedForm {
 
    ⚠️ 比較用寬鬆相等的字串化:DB 回來的 `numeric` 是字串、`bigint` 也是字串,
    而送進來的可能是數字。嚴格比較會把「沒改」判成「改了」。 */
+/* 🔴 「同一個值嗎」只能有一份答案。
+
+   `diffValues` 用它決定「這一欄真的變了嗎」,而 v1.2 的批次還原用它決定
+   「這一格後來被別人改過嗎」。兩邊若各寫一份,還原的守門就會在
+   **DB 回傳形態與寫入形態不同**的地方誤判 —— `numeric` 欄寫進去是 `3`、
+   讀回來是 `"3.0000000000"`,那正是這個 repo 已經踩過一次的形狀。 */
+function sameStoredValue(a: unknown, b: unknown, dbFieldType?: DbFieldType): boolean {
+  /* 🔴 `numeric` 欄:寫進去是 `50`,讀回來是 `"50.0000000000"`。
+     字串比會判成「不一樣」,於是批次還原會把**沒人動過的那一格**當成
+     「後來被改過」而跳過 —— 而且是靜默地少還原一格。以數值比才對得上。 */
+  if (dbFieldType === "numeric" && a !== null && a !== undefined && b !== null && b !== undefined) {
+    const x = Number(a)
+    const y = Number(b)
+    if (Number.isFinite(x) && Number.isFinite(y)) return x === y
+  }
+  if (a === b) return true
+  if (a === null || a === undefined) return b === null || b === undefined
+  if (b === null || b === undefined) return false
+  if (typeof a === "object" || typeof b === "object") return JSON.stringify(a) === JSON.stringify(b)
+  return String(a) === String(b)
+}
+
+/* 🔴 修改紀錄存的是**資料庫形態**的值,而寫入端要的是 **API 形態**。
+
+   `numeric` / `bigint` 在 pg 一律回字串(精度不能靠 JS number 保),於是
+   「把 `before` 原樣寫回去」會被寫入端的型別驗證擋下 ——
+   而它擋的是**它自己剛剛寫進去的那個值**。批次還原是第一個把值從歷史
+   餵回寫入端的功能,這個落差在此之前沒有出口,所以一直沒被看見。 */
+function toApiValue(dbFieldType: DbFieldType, value: unknown): unknown {
+  if (value === null || value === undefined) return null
+  if (dbFieldType === "numeric" || dbFieldType === "bigint" || dbFieldType === "int2") {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : value
+  }
+  return value
+}
+
+/* R1·H-4 v1.2|批次還原時跳過的格子。`field` 為 null 表示整筆跳過 */
+export type BatchUndoSkip = {
+  recordId: number
+  field: string | null
+  reason: string
+}
+
 function diffValues(
   resolved: ResolvedForm,
   before: Record<string, unknown> | undefined,
   columns: Record<string, unknown>,
 ): { field: string; before: unknown; after: unknown }[] {
-  const same = (a: unknown, b: unknown): boolean => {
-    if (a === b) return true
-    if (a === null || a === undefined) return b === null || b === undefined
-    if (b === null || b === undefined) return false
-    if (typeof a === "object" || typeof b === "object")
-      return JSON.stringify(a) === JSON.stringify(b)
-    return String(a) === String(b)
-  }
+  const same = sameStoredValue
   const out: { field: string; before: unknown; after: unknown }[] = []
   for (const field of resolved.fields) {
     if (!(field.column in columns)) continue
@@ -986,8 +1027,33 @@ export class RecordService {
          時區值不進 SQL 文本。未設時 groupExpression 端 coalesce 成 UTC。 */
       const tz = await this.tenantTimeZone(trx, tenantId)
       await trx.raw(`SELECT set_config('app.tenant_tz', ?, true)`, [tz])
+      /* 🔴 H-4 v1.2|批次 id **每個交易都清掉**,由 `openBatch` 在需要時設上。
+         同上一段的理由,而且這一個更兇:沒清乾淨的話,連線池重用之後
+         一次單筆編輯會被歸進**上一次匯入**的批次 —— 於是那批的「還原」
+         會把一筆毫不相干的修改一起還原掉。 */
+      await trx.raw(`SELECT set_config('app.batch_id', '', true)`)
       return fn(trx)
     })
+  }
+
+  /* 🔴 H-4 v1.2|開一個批次,並以**交易範圍 GUC** 傳給咽喉(OQ-RV-7)。
+
+     批次是**交易的性質**,與 `tenant_id` / `actor_id` / `record_scope` 完全同類,
+     而那三個已經是 GUC。改走參數的話要動 `insertOne` / `updateOne` /
+     `writeRevision` 三支簽章與六條呼叫路徑,**而改簽章就是改所有呼叫端**。 */
+  private async openBatch(
+    trx: Knex.Transaction,
+    tenantId: number,
+    formId: number,
+    kind: "import" | "paste" | "undo",
+    actorId: number | null,
+  ): Promise<number> {
+    const [row] = (await trx("record_batch")
+      .insert({ tenant_id: tenantId, form_id: formId, kind, actor_id: actorId })
+      .returning("id")) as { id: number | string }[]
+    const id = Number(row?.id ?? 0)
+    await trx.raw(`SELECT set_config('app.batch_id', ?, true)`, [String(id)])
+    return id
   }
 
   async createRecord(
@@ -1061,6 +1127,8 @@ export class RecordService {
       this.quota.assertRecordCount(existing, rows.length, limit)
     }
     return this.inTenantTx(tenantId, async (trx) => {
+      /* v1.2|整批共用一個批次 id,之後才還原得回來(§7) */
+      await this.openBatch(trx, tenantId, formId, "import", actorId)
       /* 🔴 先全列預檢再寫入(追溯稽核)。
 
          原本第一列出錯即拋 → 5000 列有 30 個錯,使用者要來回試 30 次。
@@ -1183,6 +1251,8 @@ export class RecordService {
     await this.inTenantTx(
       tenantId,
       async (trx) => {
+        /* v1.2|同上。貼錯一整塊 Excel 是最需要「還原」的那個場景 */
+        await this.openBatch(trx, tenantId, formId, "paste", actorId)
         for (const row of prepared) {
           if (Object.keys(row.values).length === 0) continue
           /* expectedVersion 傳 null:一次貼上涵蓋數百格,要求逐列版本不切實際
@@ -1467,61 +1537,75 @@ export class RecordService {
     await this.inTenantTx(
       tenantId,
       async (trx) => {
-        /* 🔴 標題必須在刪除**當下**取,而且要是首欄值不是 id ——
-           回收桶列出「#1」等於什麼都沒說,使用者要看的是「醬油」。
-           取法對齊前端 `titleOf`(首欄值,fallback 記錄 #id)。 */
-        const before = await trx
-          .withSchema(DATA_SCHEMA)
-          .table(resolved.table)
-          .where({ tenant_id: tenantId, id: recordId })
-          .whereNull("deleted_at")
-          .first<Record<string, unknown> | undefined>()
-        const firstField = resolved.fields[0]
-        const head =
-          before === undefined || firstField === undefined
-            ? undefined
-            : before[physicalColumnName(firstField.row.id)]
-
-        const count = await trx
-          .withSchema(DATA_SCHEMA)
-          .table(resolved.table)
-          .where({ tenant_id: tenantId, id: recordId })
-          .whereNull("deleted_at")
-          .update({ deleted_at: trx.fn.now(), updated_by: actorId })
-        if (count === 0) throw new RecordNotFoundError(recordId)
-        /* 🔴 H-2:回收桶 entry 與軟刪**同一 tx**。分開寫會出現「刪掉了但回收桶裡沒有」——
-           那正是使用者永遠找不回來的情況。此處走 knex 而非 TrashService(drizzle),
-           純粹因為**車道不同就是不同交易**,同 tx 的保證優先於服務邊界的整潔。 */
-        await trx("trash_entry")
-          .insert({
-            tenant_id: tenantId,
-            resource_type: "record",
-            resource_id: recordId,
-            form_id: formId,
-            title:
-              head === undefined || head === null || head === ""
-                ? `記錄 #${String(recordId)}`
-                : String(head).slice(0, 120),
-            /* 表單名也存快照:表單被刪之後,回收桶裡的記錄若靠即時查表就只剩「表單 #729」,
-               使用者無從得知那批記錄原本屬於什麼。與 title 同理 —— 顯示所需的一切在刪除當下固化。 */
-            detail: JSON.stringify({ formName: resolved.name }),
-            deleted_by: actorId,
-            purge_after: trx.raw(`now() + interval '${String(TRASH_RETENTION_DAYS)} days'`),
-          })
-          .onConflict()
-          .ignore()
-        await this.events?.emitInTx(trx, {
-          tenantId,
-          type: EVENT_TYPES.recordDeleted,
-          formId,
-          recordId,
-          actorId,
-        })
-        /* soft delete 的記錄在使用者眼中已不存在 —— 搜得到就是缺陷 */
-        await this.searchIndex?.removeInTx(trx, tenantId, formId, recordId)
+        await this.softDeleteOne(trx, tenantId, resolved, recordId, actorId)
       },
       { actorId, own: policy?.isScopedToOwn?.(formId, "delete") === true },
     )
+  }
+
+  /* 🔴 軟刪的**本體**。抽成私有的理由不是整潔,是 v1.2 的批次還原也要刪記錄,
+     而把這段(軟刪 + 回收桶 entry + 事件 + 移索引)複製第二份就是
+     「兩份鏡射必然漂移」—— 這個 repo 這一輪已經踩了四次。 */
+  private async softDeleteOne(
+    trx: Knex.Transaction,
+    tenantId: number,
+    resolved: ResolvedForm,
+    recordId: number,
+    actorId: number,
+  ): Promise<void> {
+    const formId = resolved.formId
+    /* 🔴 標題必須在刪除**當下**取,而且要是首欄值不是 id ——
+       回收桶列出「#1」等於什麼都沒說,使用者要看的是「醬油」。
+       取法對齊前端 `titleOf`(首欄值,fallback 記錄 #id)。 */
+    const before = await trx
+      .withSchema(DATA_SCHEMA)
+      .table(resolved.table)
+      .where({ tenant_id: tenantId, id: recordId })
+      .whereNull("deleted_at")
+      .first<Record<string, unknown> | undefined>()
+    const firstField = resolved.fields[0]
+    const head =
+      before === undefined || firstField === undefined
+        ? undefined
+        : before[physicalColumnName(firstField.row.id)]
+
+    const count = await trx
+      .withSchema(DATA_SCHEMA)
+      .table(resolved.table)
+      .where({ tenant_id: tenantId, id: recordId })
+      .whereNull("deleted_at")
+      .update({ deleted_at: trx.fn.now(), updated_by: actorId })
+    if (count === 0) throw new RecordNotFoundError(recordId)
+    /* 🔴 H-2:回收桶 entry 與軟刪**同一 tx**。分開寫會出現「刪掉了但回收桶裡沒有」——
+       那正是使用者永遠找不回來的情況。此處走 knex 而非 TrashService(drizzle),
+       純粹因為**車道不同就是不同交易**,同 tx 的保證優先於服務邊界的整潔。 */
+    await trx("trash_entry")
+      .insert({
+        tenant_id: tenantId,
+        resource_type: "record",
+        resource_id: recordId,
+        form_id: formId,
+        title:
+          head === undefined || head === null || head === ""
+            ? `記錄 #${String(recordId)}`
+            : String(head).slice(0, 120),
+        /* 表單名也存快照:表單被刪之後,回收桶裡的記錄若靠即時查表就只剩「表單 #729」,
+           使用者無從得知那批記錄原本屬於什麼。與 title 同理 —— 顯示所需的一切在刪除當下固化。 */
+        detail: JSON.stringify({ formName: resolved.name }),
+        deleted_by: actorId,
+        purge_after: trx.raw(`now() + interval '${String(TRASH_RETENTION_DAYS)} days'`),
+      })
+      .onConflict()
+      .ignore()
+    await this.events?.emitInTx(trx, {
+      tenantId,
+      type: EVENT_TYPES.recordDeleted,
+      formId,
+      recordId,
+      actorId,
+    })
+    /* soft delete 的記錄在使用者眼中已不存在 —— 搜得到就是缺陷 */
+    await this.searchIndex?.removeInTx(trx, tenantId, formId, recordId)
   }
 
   /* H-2 M2|記錄還原。動態表在 knex 車道 → 由本服務執行,TrashService 只結案 entry。
@@ -2102,6 +2186,8 @@ export class RecordService {
       action,
       actor_id: actorId,
       changes: JSON.stringify(changes),
+      /* 批次由 GUC 傳入(OQ-RV-7);不在批次裡就是 null */
+      batch_id: trx.raw(`NULLIF(current_setting('app.batch_id', true), '')::bigint`),
     })
   }
 
@@ -2249,6 +2335,10 @@ export class RecordService {
       const rows = (await trx("record_revision")
         .where({ tenant_id: tenantId })
         .whereIn("form_id", [...scope])
+        /* 🔴 v1.2|屬於批次的列不逐筆列 —— Ragic 官方截圖把整批折成一列
+           「修改了 4 筆資料 (大量修改)」。匯入 5000 筆若逐列展開,
+           這一頁就只剩那一次匯入,別的什麼都看不到了。批次由 `listBatches` 供給。 */
+        .whereNull("batch_id")
         .orderBy("id", "desc")
         .limit(Math.min(Math.max(filter.limit ?? 100, 1), 200))
         .select("*")) as {
@@ -2272,6 +2362,213 @@ export class RecordService {
         changedFields: (Array.isArray(r.changes) ? r.changes : []).map((c) => c.field),
       }))
     })
+  }
+
+  /* 🔴 R1·H-4 v1.2|批次清單(`docs/modules/R1/record-revisions.md` §7)。
+
+     筆數讀時算(OQ-RV-9)。`undoable` 由後端算而不是讓前端判 —— 判斷條件
+     (kind 不是 undo、還沒被還原過)日後會長,兩邊各判一次必然分岔。 */
+  async listBatches(
+    tenantId: number,
+    visibleFormIds: readonly number[],
+    filter: { formId?: number | undefined; limit?: number | undefined } = {},
+  ): Promise<
+    {
+      id: number
+      formId: number
+      kind: string
+      actorId: number | null
+      createdAt: string
+      recordCount: number
+      undoneAt: string | null
+      undoable: boolean
+    }[]
+  > {
+    const scope =
+      filter.formId === undefined
+        ? visibleFormIds
+        : visibleFormIds.filter((id) => id === filter.formId)
+    if (scope.length === 0) return []
+
+    return this.inTenantTx(tenantId, async (trx) => {
+      const rows = (await trx("record_batch as b")
+        .where({ "b.tenant_id": tenantId })
+        .whereIn("b.form_id", [...scope])
+        .leftJoin("record_revision as r", "r.batch_id", "b.id")
+        .groupBy("b.id")
+        /* 🔴 一筆修改紀錄都沒有的批次不列。兩種情況會產生它:
+           (a) 匯入的還原是**軟刪**,而軟刪不寫修改紀錄(它記在回收桶)
+           (b) 貼上的內容與原值相同 → 沒有任何欄真的變了
+           列出來會變成一列「0 筆」還附一個按下去什麼都不會發生的還原鈕。
+           原批次「被還原過」這件事仍看得到 —— 它自己那一列會標時間。 */
+        .havingRaw("count(distinct r.record_id) > 0")
+        .orderBy("b.id", "desc")
+        .limit(Math.min(Math.max(filter.limit ?? 50, 1), 200))
+        .select("b.*")
+        .count({ n: trx.raw("distinct r.record_id") })) as {
+        id: number | string
+        form_id: number | string
+        kind: string
+        actor_id: number | string | null
+        created_at: Date | string
+        undone_at: Date | string | null
+        n: number | string
+      }[]
+
+      return rows.map((r) => ({
+        id: Number(r.id),
+        formId: Number(r.form_id),
+        kind: r.kind,
+        actorId: r.actor_id === null ? null : Number(r.actor_id),
+        createdAt: new Date(r.created_at).toISOString(),
+        recordCount: Number(r.n),
+        undoneAt: r.undone_at === null ? null : new Date(r.undone_at).toISOString(),
+        undoable: r.undone_at === null && r.kind !== "undo",
+      }))
+    })
+  }
+
+  /* 🔴 R1·H-4 v1.2|**批次還原**。Ragic 官方 `doc/81` 逐字:
+     「點擊該筆修改或匯入紀錄旁的還原符號來復原修改前的資料。」
+
+     ## 全程單一交易(FMEA B2)
+
+     半還原的批次比沒還原更糟 —— 使用者看到「已還原」卻有一半的資料還是新的,
+     而他無從得知是哪一半。故軟刪與回填都走同一個 `inTenantTx`。
+
+     ## 別人後來改過的欄位不還原(OQ-RV-10 / FMEA B1)
+
+     官方限制 3 只寫「不建議」,不擋。照還原會**銷毀別人的工作**。
+     判定法:該欄現值 ≠ 當時寫進去的 `after` → 有人動過 → 跳過並回報。
+     跳過而不整批拒絕,與貼上的計算欄同形(OQ-GP-4):不靜默、不過嚴。 */
+  async undoBatch(
+    tenantId: number,
+    batchId: number,
+    actorId: number,
+    policy?: FieldAccessPolicy,
+  ): Promise<{ formId: number; undoneRecords: number; skipped: BatchUndoSkip[] }> {
+    const meta = await this.inTenantTx(tenantId, async (trx) =>
+      trx("record_batch")
+        .where({ tenant_id: tenantId, id: batchId })
+        .first<{ id: number | string; form_id: number | string; kind: string } | undefined>(),
+    )
+    if (meta === undefined) throw new BatchNotFoundError(batchId)
+    /* 官方限制 1:只有大量修改和匯入的紀錄可以被還原。
+       限制 2 的 undo 分支見 OQ-RV-12 —— 要救回被刪的就去回收桶。 */
+    if (meta.kind === "undo") throw new BatchNotUndoableError("還原動作本身不能再還原,請到回收桶")
+    const formId = Number(meta.form_id)
+
+    /* 🔴 權限在這裡驗,因為**表單 id 要載入批次之後才知道** ——
+       路由上沒有 `:formId`,PermissionGuard 判不了。
+       匯入的還原是軟刪,故除了 edit 另要 delete:能改不等於能刪。 */
+    if (policy?.hasAction !== undefined) {
+      const needed: FormAction[] = meta.kind === "import" ? ["edit", "delete"] : ["edit"]
+      for (const action of needed) {
+        if (!policy.hasAction(formId, action)) {
+          throw new ForbiddenException({
+            code: "FORBIDDEN",
+            message: "insufficient permission for this form",
+          })
+        }
+      }
+    }
+
+    const resolved = await this.resolveForm(tenantId, formId)
+
+    return this.inTenantTx(
+      tenantId,
+      async (trx) => {
+        /* 🔴 先以條件更新「認領」這個批次(FMEA B4)。兩人同時按還原時,
+           後到者影響 0 列即拒 —— 靠先讀後寫檢查會有競態窗。 */
+        const claimed = await trx("record_batch")
+          .where({ tenant_id: tenantId, id: batchId })
+          .whereNull("undone_at")
+          .update({ undone_at: trx.fn.now(), undone_by: actorId })
+        if (claimed === 0) throw new BatchNotUndoableError("這個批次已經還原過了")
+
+        const revisions = (await trx("record_revision")
+          .where({ tenant_id: tenantId, batch_id: batchId })
+          .orderBy("id", "desc")
+          .select("record_id", "action", "changes")) as {
+          record_id: number | string
+          action: string
+          changes: { field: string; before: unknown; after: unknown }[]
+        }[]
+
+        /* 還原本身也是一次批次:它的修改紀錄要記,但不得再被還原 */
+        await this.openBatch(trx, tenantId, formId, "undo", actorId)
+
+        const skipped: BatchUndoSkip[] = []
+        const touched = new Set<number>()
+
+        for (const rev of revisions) {
+          const recordId = Number(rev.record_id)
+          if (rev.action === "create") {
+            /* 匯入進來的:還原 = 它本來不存在 → 軟刪(進回收桶,救得回來) */
+            await this.softDeleteOne(trx, tenantId, resolved, recordId, actorId)
+            touched.add(recordId)
+            continue
+          }
+
+          const current = await trx
+            .withSchema(DATA_SCHEMA)
+            .table(resolved.table)
+            .where({ tenant_id: tenantId, id: recordId })
+            .whereNull("deleted_at")
+            .first<Record<string, unknown> | undefined>()
+          if (current === undefined) {
+            /* 已被刪掉的記錄不叫回來 —— 使用者按的是「還原這次修改」,
+               不是「把刪掉的東西救回來」 */
+            skipped.push({ recordId, field: null, reason: "記錄已刪除" })
+            continue
+          }
+
+          const revert: RecordValues = {}
+          for (const change of Array.isArray(rev.changes) ? rev.changes : []) {
+            const field = resolved.byName.get(change.field)
+            /* 官方限制 6:表單中已移除的欄位在還原時會被忽略 */
+            if (field === undefined) {
+              skipped.push({ recordId, field: change.field, reason: "欄位已移除" })
+              continue
+            }
+            const now = current[physicalColumnName(field.row.id)]
+            if (!sameStoredValue(now, change.after, fieldType(field.type).dbFieldType)) {
+              skipped.push({ recordId, field: change.field, reason: "這一格後來被改過" })
+              continue
+            }
+            revert[change.field] = toApiValue(fieldType(field.type).dbFieldType, change.before)
+          }
+          if (Object.keys(revert).length === 0) continue
+          await this.updateOne(trx, tenantId, resolved, recordId, null, revert, actorId)
+          await this.events?.emitInTx(trx, {
+            tenantId,
+            type: EVENT_TYPES.recordUpdated,
+            formId,
+            recordId,
+            actorId,
+          })
+          await this.searchIndex?.upsertInTx(trx, {
+            tenantId,
+            formId,
+            recordId,
+            fields: toIndexable(resolved.fields),
+            values: revert,
+          })
+          touched.add(recordId)
+        }
+
+        return { formId, undoneRecords: touched.size, skipped }
+      },
+      {
+        actorId,
+        /* 🔴 取**兩者中較嚴的**:匯入的還原會刪記錄,只看 edit 範圍的話,
+           一個「只能改自己的、但刪也只能刪自己的」使用者會經由這條路徑
+           碰到別人的記錄。範圍限制是逐動作的,不能拿一個動作的範圍代替另一個。 */
+        own:
+          policy?.isScopedToOwn?.(formId, "edit") === true ||
+          policy?.isScopedToOwn?.(formId, "delete") === true,
+      },
+    )
   }
 
   /* 🔴 audit-D §2.4|**連動選項的伺服器強制**。

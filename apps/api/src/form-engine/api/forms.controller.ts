@@ -38,7 +38,7 @@ import { z } from "zod"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { LayoutService } from "../layout/layout.service.js"
 import { FieldNotFoundError } from "../errors.js"
-import { RecordService } from "../records/record.service.js"
+import { type BatchUndoSkip, RecordService } from "../records/record.service.js"
 import { LinkOptionsService } from "../relations/link-options.service.js"
 import { MetadataService } from "../metadata/metadata.service.js"
 import {
@@ -390,21 +390,52 @@ export class FormsController {
       createdAt: string
       changedFields: string[]
     }[]
+    /* v1.2|批次(匯入 / 貼上)折成一列,與上面那串合併成同一條時間軸 */
+    batches: {
+      id: number
+      formId: number
+      formName: string
+      kind: string
+      actorId: number | null
+      createdAt: string
+      recordCount: number
+      undoneAt: string | null
+      undoable: boolean
+    }[]
   }> {
     const forms = await this.metadata.listForms(tenant.tenantId)
     const visible = permissions.readableFormIds(forms.map((f) => f.id))
     const wanted = formIdRaw === undefined ? undefined : Number(formIdRaw)
-    const rows = await this.records.listTenantRevisions(tenant.tenantId, visible, {
+    const filter = {
       ...(wanted !== undefined && Number.isInteger(wanted) ? { formId: wanted } : {}),
       limit: 100,
-    })
-    const nameOf = new Map(forms.map((f) => [f.id, f.name]))
-    return {
-      revisions: rows.map((r) => ({
-        ...r,
-        formName: nameOf.get(r.formId) ?? `#${String(r.formId)}`,
-      })),
     }
+    const rows = await this.records.listTenantRevisions(tenant.tenantId, visible, filter)
+    const batches = await this.records.listBatches(tenant.tenantId, visible, filter)
+    const nameOf = new Map(forms.map((f) => [f.id, f.name]))
+    const named = (id: number): string => nameOf.get(id) ?? `#${String(id)}`
+    return {
+      revisions: rows.map((r) => ({ ...r, formName: named(r.formId) })),
+      batches: batches.map((b) => ({ ...b, formName: named(b.formId) })),
+    }
+  }
+
+  /* 🔴 R1·H-4 v1.2|**批次還原**(Ragic 官方 `doc/81` 的「還原符號」)。
+
+     權限:批次的表單必須可編輯;匯入的還原是**軟刪**,故另要 delete 權。
+     兩者都在這裡驗 —— service 不重寫一份權限判斷。 */
+  @Post("revisions/batches/:batchId/undo")
+  @HttpCode(200)
+  /* 路由上沒有 `:formId` → Guard 的預設會退成「寫入需 admin」,那會讓
+     自己貼錯資料的一般使用者連還原都按不了。標成 view 讓 Guard 放行,
+     **真正的判斷在 service**(它載入批次後才知道是哪張表單)。 */
+  @RequiresFormAction("view")
+  async undoBatch(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("batchId", ParseIntPipe) batchId: number,
+  ): Promise<{ formId: number; undoneRecords: number; skipped: BatchUndoSkip[] }> {
+    return this.records.undoBatch(tenant.tenantId, batchId, tenant.actorId, permissions)
   }
 
   /* 🔴 R1·H-4 v1.2|**資料庫設計變更**(Ragic 官方 `doc/81`:與資料修改紀錄同一頁的下半部)。

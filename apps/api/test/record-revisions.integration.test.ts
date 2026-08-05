@@ -223,3 +223,190 @@ describe("資料庫設計變更", () => {
     expect(body).not.toMatch(/\bt\d{2,}\b|\bf\d{2,}\b/)
   })
 })
+
+/* 🔴 R1·H-4 v1.2|**批次還原**(`docs/modules/R1/record-revisions.md` §7)。
+   Ragic 官方 `doc/81`:「點擊該筆修改或匯入紀錄旁的還原符號來復原修改前的資料。」 */
+describe("批次還原", () => {
+  let undoFormId = 0
+
+  const rows = async (): Promise<Record<string, unknown>[]> => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/forms/${String(undoFormId)}/records`,
+      headers: A(),
+    })
+    return (res.json() as { records: Record<string, unknown>[] }).records
+  }
+
+  const batches = async (): Promise<Record<string, unknown>[]> => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/forms/revisions/recent?formId=${String(undoFormId)}`,
+      headers: A(),
+    })
+    return (res.json() as { batches: Record<string, unknown>[] }).batches
+  }
+
+  const undo = async (batchId: number): Promise<ReturnType<typeof app.inject>> =>
+    app.inject({
+      method: "POST",
+      url: `/api/forms/revisions/batches/${String(batchId)}/undo`,
+      headers: A(),
+    })
+
+  beforeAll(async () => {
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: {
+        name: "批次還原表",
+        fields: [
+          { name: "品名", type: "text" },
+          { name: "數量", type: "number" },
+        ],
+      },
+    })
+    undoFormId = (form.json() as { id: number }).id
+  })
+
+  it("匯入的批次折成一列,標示筆數且可還原", async () => {
+    const bulk = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records/bulk`,
+      headers: A(),
+      payload: { rows: [{ values: { 品名: "甲" } }, { values: { 品名: "乙" } }] },
+    })
+    expect(bulk.statusCode).toBeLessThan(300)
+
+    const list = await batches()
+    const b = list[0] as { id: number; kind: string; recordCount: number; undoable: boolean }
+    expect(b.kind).toBe("import")
+    /* Ragic 折成一列並寫「N 筆資料」—— 筆數是 distinct 記錄數 */
+    expect(b.recordCount).toBe(2)
+    expect(b.undoable).toBe(true)
+
+    /* 🔴 批次的列不得同時又逐筆出現在修改紀錄裡,否則匯入 5000 筆會把整頁淹掉 */
+    const recent = await app.inject({
+      method: "GET",
+      url: `/api/forms/revisions/recent?formId=${String(undoFormId)}`,
+      headers: A(),
+    })
+    expect((recent.json() as { revisions: unknown[] }).revisions).toHaveLength(0)
+
+    const res = await undo(b.id)
+    expect(res.statusCode).toBe(200)
+    expect((res.json() as { undoneRecords: number }).undoneRecords).toBe(2)
+    /* 匯入的還原 = 那些記錄本來不存在 → 軟刪 */
+    expect(await rows()).toHaveLength(0)
+
+    /* 🔴 還原完不得留下一列「0 筆」的空批次。匯入的還原是軟刪,而軟刪不寫
+       修改紀錄(它記在回收桶)—— 那個批次會是空的,列出來就是一個
+       按下去什麼都不會發生的還原鈕。「被還原過」由原批次自己標。 */
+    const after = await batches()
+    expect(after).toHaveLength(1)
+    expect(after[0]).toMatchObject({ kind: "import", undoable: false })
+    expect(after[0]?.undoneAt).not.toBeNull()
+  })
+
+  it("還原過的批次不能再還原一次", async () => {
+    await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records/bulk`,
+      headers: A(),
+      payload: { rows: [{ values: { 品名: "丙" } }] },
+    })
+    const b = (await batches())[0] as { id: number }
+    expect((await undo(b.id)).statusCode).toBe(200)
+    expect((await undo(b.id)).statusCode).toBeGreaterThanOrEqual(400)
+  })
+
+  it("貼上批次還原後回到修改前的值", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records`,
+      headers: A(),
+      payload: { values: { 品名: "原值", 數量: 1 } },
+    })
+    const row = created.json() as { id: number }
+
+    const paste = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records/bulk-update`,
+      headers: A(),
+      payload: { rows: [{ recordId: row.id, values: { 品名: "貼上值", 數量: 99 } }] },
+    })
+    expect(paste.statusCode).toBe(200)
+
+    const b = (await batches()).find((x) => x.kind === "paste") as { id: number }
+    expect((await undo(b.id)).statusCode).toBe(200)
+
+    const after = (await rows()).find((r) => Number(r.id) === row.id)
+    expect(after?.values).toMatchObject({ 品名: "原值" })
+  })
+
+  /* 🔴 本檔這一段存在的理由(OQ-RV-10 / FMEA B1)。
+
+     Ragic 官方限制 3 只寫「不建議還原很久以前的大量修改」,不擋 ——
+     照還原會把別人後來的工作**銷毀**。這條釘住:動過的那一格不還原,而且會回報。 */
+  it("🔴 貼上之後別人又改過的那一格不還原,並回報跳過", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records`,
+      headers: A(),
+      payload: { values: { 品名: "起點", 數量: 1 } },
+    })
+    const row = created.json() as { id: number }
+
+    await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records/bulk-update`,
+      headers: A(),
+      payload: { rows: [{ recordId: row.id, values: { 品名: "貼上", 數量: 50 } }] },
+    })
+    const b = (await batches()).find((x) => x.kind === "paste") as { id: number }
+
+    /* 貼上之後,有人手動把「品名」再改掉 —— 這一格不屬於那次貼上了 */
+    const current = (await rows()).find((r) => Number(r.id) === row.id) as { version: number }
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(undoFormId)}/records/${String(row.id)}`,
+      headers: A(),
+      payload: { expectedVersion: current.version, values: { 品名: "同事後來寫的" } },
+    })
+
+    const res = await undo(b.id)
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { skipped: { field: string | null; reason: string }[] }
+    expect(body.skipped.some((s) => s.field === "品名")).toBe(true)
+
+    const after = (await rows()).find((r) => Number(r.id) === row.id)
+    /* 同事的字還在(沒被還原蓋掉),而沒人動過的數量回到 1 */
+    expect(after?.values).toMatchObject({ 品名: "同事後來寫的" })
+    expect(Number((after?.values as { 數量: unknown }).數量)).toBe(1)
+  })
+
+  /* 🔴 GUC 是連線層狀態,連線池會重用 —— 沒清乾淨的話,匯入之後的一筆單筆編輯
+     會被歸進那次匯入的批次,於是「還原那次匯入」會順手還原一筆無關的修改。 */
+  it("🔴 批次之後的單筆編輯不得被歸進該批次", async () => {
+    await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records/bulk`,
+      headers: A(),
+      payload: { rows: [{ values: { 品名: "批次內" } }] },
+    })
+    const b = (await batches())[0] as { id: number; recordCount: number }
+    expect(b.recordCount).toBe(1)
+
+    const solo = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(undoFormId)}/records`,
+      headers: A(),
+      payload: { values: { 品名: "批次外" } },
+    })
+    expect(solo.statusCode).toBeLessThan(300)
+
+    const again = (await batches()).find((x) => x.id === b.id) as { recordCount: number }
+    expect(again.recordCount).toBe(1)
+  })
+})

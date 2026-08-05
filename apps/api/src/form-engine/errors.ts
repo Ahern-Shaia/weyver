@@ -96,6 +96,17 @@ export class BulkRowError extends DomainError {
   }
 }
 
+/* R1·H-4 v1.2|批次還原(`docs/modules/R1/record-revisions.md` §7) */
+export class BatchNotFoundError extends DomainError {
+  constructor(batchId: number) {
+    super(`找不到批次 #${String(batchId)}`)
+  }
+}
+
+/* 訊息由呼叫端給 —— 不能還原的理由有好幾種(已還原過 / 是還原動作本身),
+   而使用者要看的是哪一種,不是一句共用的「不能還原」。 */
+export class BatchNotUndoableError extends DomainError {}
+
 export class BulkTooLargeError extends DomainError {
   constructor(limit: number) {
     super(`too many rows in one request; max ${limit}`)

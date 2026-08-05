@@ -22,6 +22,10 @@ export interface FieldAccessPolicy {
   /* 🔴 lookup 越權(FMEA D3):帶入值來自**另一張表**,必須以讀取者對該表的權限判斷,
      否則沒有客戶主檔權限的人可以透過訂單上的帶入欄把客戶資料整批讀出來。 */
   canRead?(formId: number): boolean
+  /* 🔴 H-4 v1.2 批次還原:表單 id 要**載入批次之後**才知道,Guard 拿不到
+     `:formId` 就判不了 → 由服務以同一個 EffectivePermissions 補判。
+     這不是第二份權限來源,是同一個來源在較晚的時機被問到。 */
+  hasAction?(formId: number, action: FormAction): boolean
 }
 
 /* 清單三態(OQ-ARI-8=折衷):可讀完整 / 非敏感無權=鎖定 stub(顯示+申請)/ 敏感無權=隱藏(不入任一)。 */

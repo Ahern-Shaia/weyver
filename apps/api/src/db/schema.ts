@@ -671,12 +671,38 @@ export const recordRevisions = pgTable(
        顯示格式會變,存顯示值等於把當時的格式凍進歷史 */
     changes: jsonb("changes").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /* v1.2|同一次批次操作(匯入 / 貼上)產生的列共用一個批次 id。
+       絕大多數修改紀錄不屬於任何批次 → nullable + 部分索引。 */
+    batchId: bigint("batch_id", { mode: "number" }),
   },
   (t) => [
     index("record_revision_record_idx").on(t.tenantId, t.formId, t.recordId, t.id),
     /* P1 的全庫「資料修改紀錄」頁 —— 結構先留好 */
     index("record_revision_recent_idx").on(t.tenantId, t.createdAt),
   ],
+)
+
+/* 🔴 R1·H-4 v1.2|**批次**(`docs/modules/R1/record-revisions.md` §7)。
+
+   Ragic 官方 `doc/81` 把整批折成一列:「黃志銘 在 倉庫管理 上 修改 了 4 筆資料
+   (大量修改) ↺」—— 不是 4 列各帶一個還原鈕。這張表就是那一列。
+
+   筆數**不存**(OQ-RV-9):讀時 `count(distinct record_id)` 算得出來,
+   存了就要回寫、就要再開一個 UPDATE 權限、而且會在回滾時漂移。 */
+export const recordBatches = pgTable(
+  "record_batch",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    /* import | paste | undo —— `undo` 不得再被還原(OQ-RV-12) */
+    kind: text("kind").notNull(),
+    actorId: bigint("actor_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+    undoneBy: bigint("undone_by", { mode: "number" }),
+  },
+  (t) => [index("record_batch_recent_idx").on(t.tenantId, t.createdAt)],
 )
 
 /* R1·後續-1 簽核定義(metadata 車道)。steps JSONB:[{stepNo, approverRoleId, minAmount?, amountField?}]
