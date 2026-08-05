@@ -214,6 +214,42 @@
 | **A2 版面設計器** | 目前是固定版面(欄位表)。單據要抬頭 / 公司資訊 / 簽核欄 → 需設計器 |
 | **列印頁是第二份排版實作** | 值的格式化已共用 `formatFieldValue`(會漏東西的那一半),排版未統一 —— 列 M2 |
 | **A3 浮水印 / 附件 PDF 合併** | parity 收尾 |
-| **子表明細未印** | 目前只印獨立欄位 |
-| **產出物到期未清理** | `expires_at` 已寫入但沒有清理排程 → 應掛進既有 `trash.purge`,不另開 |
-| **多筆合併未走過真實驗證** | 上限 200 有 CHECK,但只手測過單筆 |
+| ~~子表明細未印~~ | ✅ **M1.1** 依 `form_def.parent_form_id` 取,依 parent 分組並照 `line_no` 排序;子表單另過一次 `canRead`(「看得到採購單」不蘊含「看得到採購明細」) |
+| ~~產出物到期未清理~~ | ✅ **M1.1** `pdf.expire` 每小時,刪 storage 物件、列標 expired(與 `export.expire` 同處置) |
+| ~~多筆合併未走過真實驗證~~ | ✅ **M1.1** 整合測試釘住 |
+
+---
+
+## 7. M1.1(2026-08-05)—— 清 M1 殘留三項
+
+**到期清理 / 子表明細 / 多筆合併** 三項完成。剩 A2 設計器、排版統一、浮水印與附件合併。
+
+### 7.1 🔴 一個差點出貨的 bug:`UPDATE ... RETURNING` 回的是**新值**
+
+到期清理的直覺寫法是:
+
+```sql
+UPDATE pdf_job SET status='expired', object_key = NULL
+WHERE ... RETURNING id, object_key
+```
+
+而 PostgreSQL 的 `RETURNING` 在 UPDATE 之後回的是**修改後**的內容 ——
+於是 `object_key` 全是 NULL、**storage 物件永遠刪不掉**,
+而列已標成 `expired`,**看起來一切正常**。改用 CTE 先取舊值再改。
+
+⚠️ **本測試的第一版對這個 bug 是空過的**:它只斷言了狀態與 `object_key IS NULL`,
+而兩種寫法下那兩條都會過。真正有鑑別力的只有 `storage.stat(key)` 變成 null。
+已補,並以還原成錯誤寫法實測過會紅。
+
+### 7.2 測試harness 的兩個坑
+
+1. **只有一個 actor 的測試表達不出權限缺口**(`pitfall-tenant-scoped-is-not-authorized`)。
+   本檔現在有兩個:無角色的 actor 證明「渲染時真的重新解析權限」,
+   系統 admin 才測得到明細。
+2. 租戶用 drizzle 直接插的話,**系統角色不會自己出現**(正常路徑是 `seedSystemRoles`)。
+   少了那一步,指派 admin 的 INSERT 會影響 0 列而且**不報錯** —— 已加 `rowCount !== 1` 即拋。
+
+### 7.3 順手修的 N+1
+
+子表明細第一版把 `listRecords` 放在 `for (parentId)` 迴圈裡 ——
+200 筆就是 200 次一模一樣的查詢。改成撈一次在記憶體分組。

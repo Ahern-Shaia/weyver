@@ -11,6 +11,13 @@ export const renderPayloadSchema = z.object({
   records: z.array(recordRowSchema),
   linkLabels: z.record(z.string(), z.string()),
   members: z.record(z.string(), z.string()),
+  lines: z
+    .object({
+      form: z.object({ id: z.number().int(), name: z.string() }),
+      fields: z.array(fieldDtoSchema),
+      byParent: z.record(z.string(), z.array(recordRowSchema)),
+    })
+    .nullable(),
   tenant: z.object({ name: z.string() }),
   ctx: z.object({ locale: z.string(), timeZone: z.string() }),
 })
@@ -78,10 +85,59 @@ export function PrintDocument({ payload }: { payload: RenderPayload }): ReactNod
                 ))}
               </tbody>
             </table>
+
+            {/* 🔴 明細。採購單這類單據的重點就在這裡 —— 只印表頭等於沒印。 */}
+            <LineTable payload={payload} parentId={record.id} />
           </section>
         ))}
       </body>
     </html>
+  )
+}
+
+function LineTable({
+  payload,
+  parentId,
+}: {
+  payload: RenderPayload
+  parentId: number
+}): ReactNode {
+  const lines = payload.lines
+  const rows = lines?.byParent[String(parentId)] ?? []
+  if (lines === null || rows.length === 0) return null
+
+  const members = new Map(Object.entries(payload.members).map(([k, v]) => [Number(k), v]))
+  const linkLabels = new Map(Object.entries(payload.linkLabels))
+  /* 自動編號在紙上沒有意義(它是系統的序號不是單據的);
+     與記錄頁的明細表格同一個取捨。 */
+  const cols = lines.fields.filter((f) => f.type !== "autoNumber" && !SKIP_TYPES.has(f.type))
+
+  return (
+    <div className="mt-5">
+      <div className="mb-1.5 text-[12px] font-semibold text-ink-3">{lines.form.name}</div>
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="border-b border-ink text-left">
+            {cols.map((f) => (
+              <th key={f.id} className="py-1 font-medium text-ink-3">
+                {f.name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((line) => (
+            <tr key={line.id} className="border-b border-line-2 align-top">
+              {cols.map((f) => (
+                <td key={f.id} className="py-1 text-ink">
+                  {formatFieldValue(f, line.values[f.name], members, payload.ctx, linkLabels)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
