@@ -21,9 +21,10 @@ import {
 import { useLayout, useLinkLabels, useRecordRevisions } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
+import { useRecordPdf } from "@/lib/engine/use-pdf"
 import { useUserSettings } from "@/lib/engine/use-settings"
 import { StatusChip, chipToneTextClass } from "@weyver/ui/status-chip"
-import { Copy, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
+import { Copy, FileDown, Paperclip, Pencil, Printer, Trash2 } from "lucide-react"
 import Link from "next/link"
 import type { CSSProperties } from "react"
 import { type ReactElement, type ReactNode, useEffect, useMemo, useRef, useState } from "react"
@@ -143,6 +144,10 @@ export function ObjectPage({
     cancelEdit,
     saveEdit,
   } = useRecordEdit(formId, record, fields, onDirtyChange)
+
+  /* ⚠️ hook 一律放在任何提前 return 之前 —— 本檔上方 20 行就有這條警語,
+     而我在別處剛違反過一次。 */
+  const pdf = useRecordPdf()
 
   const { data: userSettings } = useUserSettings()
   /* 顯示時區來自個人設定;未載入前用瀏覽器預設,不擋畫面 */
@@ -303,6 +308,14 @@ export function ObjectPage({
               icon={<Printer size={13} strokeWidth={1.9} />}
               label="列印"
               onClick={() => window.print()}
+            />
+            {/* 🔴 「列印」與「下載 PDF」是兩件事:前者要人站在電腦前,
+                後者才寄得出去、存得回附件欄。R1·後續-2b。 */}
+            <ActBtn
+              icon={<FileDown size={13} strokeWidth={1.9} />}
+              label={pdf.state.kind === "working" ? "產生中…" : "下載 PDF"}
+              onClick={() => pdf.request(formId, [record.id])}
+              disabled={pdf.state.kind === "working"}
             />
             <Link
               href={`/app/builder?form=${formId}`}

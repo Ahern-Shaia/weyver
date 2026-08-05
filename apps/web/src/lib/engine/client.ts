@@ -214,6 +214,25 @@ export async function downloadFile(key: string, name: string): Promise<void> {
   }
 }
 
+/* 🔴 R1·後續-2b|下載任意受保護端點的產物。
+
+   **不能用 `window.location.href` 導覽** —— 那是一次沒有 `engineHeaders()` 的
+   請求,dev 車道的租戶標頭不會被帶上,結果是 401。真瀏覽器實走才會出現,
+   單元測試與整合測試都看不到(它們都自己帶標頭)。 */
+export async function downloadFromPath(path: string, name: string): Promise<void> {
+  const response = await fetch(`${BASE}${path}`, { headers: engineHeaders() })
+  if (!response.ok) throw new Error(`下載失敗(${String(response.status)})`)
+  const url = URL.createObjectURL(await response.blob())
+  try {
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = name
+    anchor.click()
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 export async function deleteFile(key: string): Promise<void> {
   await fetch(`${BASE}/files/${key}`, {
     method: "DELETE",
