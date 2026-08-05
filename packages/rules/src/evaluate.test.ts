@@ -524,3 +524,81 @@ describe("動作按鈕與開始簽核的閘門", () => {
     })
   })
 })
+
+/* 🔴 R1·UP-3b v1.4|條件側三項(Ragic `doc/6`)。
+
+   三項用**同一個機制**:虛擬欄位 + 求值語境。條件的形狀不變,
+   只是 `field` 的值從記錄裡取還是從語境取。 */
+describe("條件側:日期區間 / 當前時間 / 使用者與群組", () => {
+  const rule = (c: { field: string; op: string; value?: unknown }): FormatRule => ({
+    combinator: "and",
+    conditions: [c],
+    targets: ["甲"],
+    targetSections: [],
+    effects: [{ kind: "hide" }],
+  })
+  const hidden = (
+    r: FormatRule,
+    values: Record<string, unknown>,
+    ctx?: Parameters<typeof evaluateFieldStates>[4],
+  ): boolean =>
+    evaluateFieldStates([r], values, ["甲", "日期"], undefined, ctx).get("甲")?.hidden === true
+
+  it("日期區間 between:兩端皆含", () => {
+    const r = rule({ field: "日期", op: "between", value: ["2026-03-01", "2026-03-05"] })
+    expect(hidden(r, { 日期: "2026-03-01" })).toBe(true)
+    expect(hidden(r, { 日期: "2026-03-05" })).toBe(true)
+    expect(hidden(r, { 日期: "2026-03-06" })).toBe(false)
+    expect(hidden(r, { 日期: "2026-02-28" })).toBe(false)
+  })
+
+  it("當前時間 $now:以注入的時鐘求值(不必等到那個時刻)", () => {
+    const r = rule({ field: "$now", op: "between", value: ["2026-03-01", "2026-03-31"] })
+    expect(hidden(r, {}, { now: new Date("2026-03-15T00:00:00Z") })).toBe(true)
+    expect(hidden(r, {}, { now: new Date("2026-04-01T00:00:00Z") })).toBe(false)
+  })
+
+  /* 🔴 跨午夜是這個運算子存在的理由:22:00–02:00 不是單純的大小比較。 */
+  it("每日指定時間 dailyBetween:跨午夜也要成立", () => {
+    const night = rule({ field: "$now", op: "dailyBetween", value: ["22:00", "02:00"] })
+    expect(hidden(night, {}, { now: new Date("2026-03-01T23:30:00Z") })).toBe(true)
+    expect(hidden(night, {}, { now: new Date("2026-03-01T01:00:00Z") })).toBe(true)
+    expect(hidden(night, {}, { now: new Date("2026-03-01T12:00:00Z") })).toBe(false)
+
+    const day = rule({ field: "$now", op: "dailyBetween", value: ["09:00", "18:00"] })
+    expect(hidden(day, {}, { now: new Date("2026-03-01T12:00:00Z") })).toBe(true)
+    expect(hidden(day, {}, { now: new Date("2026-03-01T20:00:00Z") })).toBe(false)
+  })
+
+  it("登入使用者 $actor:比的是人", () => {
+    const r = rule({ field: "$actor", op: "anyOf", value: [7, 9] })
+    expect(hidden(r, {}, { actorId: 7 })).toBe(true)
+    expect(hidden(r, {}, { actorId: 8 })).toBe(false)
+    /* 沒有登入者 → 條件不成立,而不是誤判為成立 */
+    expect(hidden(r, {}, {})).toBe(false)
+  })
+
+  it("群組四種語意:任一 / 非任一 / 全部 / 非全部", () => {
+    const mine = { actorGroupIds: [1, 2] }
+    const t = (op: string, value: number[]): boolean =>
+      hidden(rule({ field: "$actor", op, value }), {}, mine)
+    expect(t("inAnyGroup", [2, 9])).toBe(true)
+    expect(t("inAnyGroup", [8, 9])).toBe(false)
+    expect(t("notInAnyGroup", [8, 9])).toBe(true)
+    expect(t("inAllGroups", [1, 2])).toBe(true)
+    expect(t("inAllGroups", [1, 9])).toBe(false)
+    /* 「不屬於全部」≠「不屬於任一」:屬於其中一個時,前者成立、後者不成立 */
+    expect(t("notInAllGroups", [1, 9])).toBe(true)
+    expect(t("notInAnyGroup", [1, 9])).toBe(false)
+  })
+
+  it("🔴 虛擬欄位不因「不在欄位清單裡」被整條略過", () => {
+    /* 既有規則:引用不存在欄位 → 整條略過。虛擬欄位必須豁免,
+       否則這三項永遠不會生效,而且是**靜默**的。 */
+    const r = rule({ field: "$now", op: "between", value: ["2000-01-01", "2999-01-01"] })
+    expect(hidden(r, {}, { now: new Date("2026-03-01T00:00:00Z") })).toBe(true)
+    /* 對照組:真的不存在的欄位仍然略過 */
+    const bad = rule({ field: "不存在", op: "isNotEmpty" })
+    expect(hidden(bad, {})).toBe(false)
+  })
+})

@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { FILTER_OPERATORS } from "../records/record-specs.js"
 
 /* R1·UP-3 2D 設計器版面 metadata(form_def.layout;OQ-FD2-1=A 單一 JSONB 承載整表)。
    版面與資料正交:座標/設定/靜態/分段皆此;DDL/DML 鏈不動。 */
@@ -104,10 +103,42 @@ export const FORMAT_TONES = [
   "c8",
 ] as const
 
+/* 🔴 條件式格式的運算子**自成一份**,不與 `FILTER_OPERATORS` 共用。
+
+   兩者是不同的領域:`FILTER_OPERATORS` 會編成 **SQL WHERE**,
+   而這一份是**規則求值器**(`@weyver/rules`,前後端共用)在跑的。
+   把 `between` / 群組運算子加進前者,它們會漏進查詢路徑 ——
+   而那裡沒有實作,結果是**無聲的無效條件**(篩選看起來套了卻沒作用)。
+
+   共用的那幾個刻意重列而不是展開 `FILTER_OPERATORS`:兩份清單的演化速度不同,
+   自動同步只會讓某一天多出來的 SQL 運算子悄悄變成合法的格式條件。 */
+export const FORMAT_OPERATORS = [
+  "eq",
+  "neq",
+  "contains",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "anyOf",
+  "isEmpty",
+  "isNotEmpty",
+  /* v1.4|Ragic `doc/6`「指定日期欄位時間或區間」/「指定當前時間」 */
+  "between",
+  "dailyBetween",
+  /* v1.4|「指定使用者或群組」—— 四種都給,「不屬於任一」與「不屬於全部」是兩件事 */
+  "inAnyGroup",
+  "notInAnyGroup",
+  "inAllGroups",
+  "notInAllGroups",
+] as const
+
 export const formatConditionSchema = z
   .object({
+    /* 欄位顯示名,或虛擬欄位 `$now` / `$actor`(`@weyver/rules` 之 `PSEUDO_FIELDS`)。
+       `$` 撞不到使用者欄位:動態 identifier 鎖 `^[a-z_][a-z0-9_]{0,62}$`。 */
     field: z.string().min(1).max(100),
-    op: z.enum(FILTER_OPERATORS),
+    op: z.enum(FORMAT_OPERATORS),
     value: z.unknown().optional(),
   })
   .strict()

@@ -512,3 +512,94 @@ describe("條件式必填(伺服器強制)", () => {
     expect(res.statusCode).toBe(200)
   })
 })
+
+/* 🔴 R1·UP-3b v1.4|條件側的虛擬欄位(Ragic `doc/6`「指定當前時間」/「指定使用者或群組」)。
+
+   這一段只測**伺服器強制**那一半 —— 前端會不會標星號是體驗,
+   伺服器收不收才是規則。而 `$actor` 必須取自**後端解析出來的 actor**:
+   若吃 client 送的東西,「只有某人才必填」的規則,打 API 的人自己說他是那個人就繞過去了。 */
+describe("條件式格式:虛擬欄位($now / $actor)", () => {
+  let vFormId = 0
+  let noteId = 0
+
+  const putRule = async (cond: { field: string; op: string; value?: unknown }): Promise<void> => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(vFormId)}/layout`,
+      headers: A(),
+      payload: {
+        grid: { cols: 12 },
+        fields: { [String(noteId)]: { row: 0, col: 0 } },
+        statics: [],
+        sections: [],
+        conditionalFormats: {
+          record: [
+            {
+              combinator: "and",
+              conditions: [cond],
+              targets: ["備註"],
+              effects: [{ kind: "required" }],
+            },
+          ],
+          list: [],
+        },
+      },
+    })
+    expect(res.statusCode).toBeLessThan(300)
+  }
+
+  const create = async (headers: Record<string, string>) =>
+    app.inject({
+      method: "POST",
+      url: `/api/forms/${String(vFormId)}/records`,
+      headers,
+      payload: { values: {} },
+    })
+
+  beforeAll(async () => {
+    const form = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: A(),
+      payload: { name: "虛擬欄位表", fields: [{ name: "備註", type: "text" }] },
+    })
+    const body = form.json() as { id: number; fields: { id: number; name: string }[] }
+    vFormId = body.id
+    noteId = body.fields.find((f) => f.name === "備註")?.id ?? 0
+  })
+
+  it("$now 落在區間內 → 條件成立,備註變必填", async () => {
+    await putRule({ field: "$now", op: "between", value: ["2000-01-01", "2999-12-31"] })
+    const res = await create(A())
+    expect(res.statusCode).toBeGreaterThanOrEqual(400)
+    expect(res.body).toContain("備註")
+  })
+
+  it("$now 落在區間外 → 條件不成立,存得進去", async () => {
+    await putRule({ field: "$now", op: "between", value: ["1990-01-01", "1990-12-31"] })
+    const res = await create(A())
+    expect(res.statusCode).toBeLessThan(300)
+  })
+
+  /* 🔴 這一條是本段的重點:同一條規則,**換一個人就換一個結果**。
+     若 `$actor` 沒有真的接到後端的 actor,兩次會一模一樣 —— 而那正是空過。 */
+  it("🔴 $actor:規則指名的人才必填,別人存得進去", async () => {
+    await putRule({ field: "$actor", op: "anyOf", value: [7] })
+
+    const asSeven = await create({ ...A(), "x-dev-actor": "7" })
+    expect(asSeven.statusCode).toBeGreaterThanOrEqual(400)
+
+    const asOther = await create({ ...A(), "x-dev-actor": "8" })
+    expect(asOther.statusCode).toBeLessThan(300)
+  })
+
+  it("虛擬欄位不因「不在欄位清單裡」被整條略過", async () => {
+    /* 既有行為:引用不存在的欄位 → 整條規則略過。虛擬欄位必須豁免,
+       否則這三項永遠不生效,而且是**靜默**的。 */
+    await putRule({ field: "$now", op: "between", value: ["2000-01-01", "2999-12-31"] })
+    expect((await create(A())).statusCode).toBeGreaterThanOrEqual(400)
+
+    await putRule({ field: "不存在的欄位", op: "isNotEmpty" })
+    expect((await create(A())).statusCode).toBeLessThan(300)
+  })
+})

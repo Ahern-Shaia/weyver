@@ -31,9 +31,45 @@ export const FORMAT_TONES = [
 export type FormatTone = (typeof FORMAT_TONES)[number]
 
 export interface FormatCondition {
+  /* 一般欄位名,或**虛擬欄位**(見 `PSEUDO_FIELDS`)。 */
   readonly field: string
   readonly op: string
   readonly value?: unknown
+}
+
+/* 🔴 R1·UP-3b v1.4|條件側的虛擬欄位。
+
+   Ragic 官方 `doc/6` 把「條件欄位」分成兩類:記錄上的欄位,以及**不在記錄上**的
+   兩件事 —— 逐字:「你也可以針對**當前時間**設定指定日期、時間或區間」、
+   「另外也可以針對**登入使用者**設定特定使用者或是群組為指定條件」。
+
+   兩者用**同一個機制**收斂成虛擬欄位,而不是各開一種條件型別:
+   條件的形狀不變(field / op / value),只是 `field` 的值從記錄裡取還是從語境取。
+   多開一種型別會讓求值器、schema、設計器三處各多一個分支。
+
+   ⚠️ 前綴 `$` 是安全的:欄位名的白名單不允許 `$`(動態 identifier 鎖
+   `^[a-z_][a-z0-9_]{0,62}$`),所以撞不到使用者的欄位。 */
+export const PSEUDO_FIELDS = {
+  /** 求值當下的時間 */
+  now: "$now",
+  /** 正在看這筆記錄的人 */
+  actor: "$actor",
+} as const
+
+export function isPseudoField(field: string): boolean {
+  return field === PSEUDO_FIELDS.now || field === PSEUDO_FIELDS.actor
+}
+
+/* 🔴 求值語境。**兩側都要給**:前端給的是畫面上的人,後端給的是 session 上的人,
+   而**說了算的是後端**(C-3 的必填是伺服器強制)。
+
+   `now` 可注入是為了測試 —— 讓「每日 09:00-18:00」這種條件測得起來,
+   不必等到那個時刻(凍結時鐘,`rule_full_green_check` 的可重現要求)。 */
+export interface EvalContext {
+  readonly now?: Date
+  readonly actorId?: number | null
+  /* 這個人所屬的群組 / 角色 id。空陣列 = 不屬於任何群組(不是「未知」)。 */
+  readonly actorGroupIds?: readonly number[]
 }
 
 export type FormatEffect =

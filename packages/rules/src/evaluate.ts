@@ -1,9 +1,13 @@
 import {
+  type EvalContext,
   FORMAT_TONES,
+  type FormatCondition,
   type FormatRule,
   type FormatTone,
   type RecordValues,
+  PSEUDO_FIELDS,
   type SectionRange,
+  isPseudoField,
 } from "./types"
 
 /* tone 白名單第二道 —— 第一道在兩側的 zod schema。渲染前最後一關不信型別 */
@@ -56,6 +60,41 @@ function compare(left: unknown, right: unknown): number | null {
 
 export function matchesCondition(value: unknown, op: string, target: unknown): boolean {
   switch (op) {
+    /* 🔴 Ragic `doc/6` 逐字:「也可以設定為**是否處於指定日期、時間區間**」。
+       兩端皆含(closed interval)—— 使用者說「3/1 到 3/5」時心裡想的就是含 3/5。 */
+    case "between": {
+      const range = Array.isArray(target) ? target : []
+      const lo = compare(value, range[0])
+      const hi = compare(value, range[1])
+      return lo !== null && hi !== null && lo >= 0 && hi <= 0
+    }
+    /* 🔴 每日指定時間(「還能將**每日指定時間**設為指定條件」)。
+       比的是**時分**不是日期 —— 跨午夜的區間(22:00–02:00)也要成立,
+       故不是單純的大小比較。 */
+    case "dailyBetween": {
+      const range = Array.isArray(target) ? target.map(asText) : []
+      const at = asText(value)
+      const [from, to] = [range[0] ?? "", range[1] ?? ""]
+      if (at === "" || from === "" || to === "") return false
+      return from <= to ? at >= from && at <= to : at >= from || at <= to
+    }
+    /* 群組條件。Ragic 逐字:「當條件包含**多個群組**時,可以設定為:
+       需屬於／不屬於其中任一群組,或必須屬於／不屬於所有指定群組。」四種都給,
+       因為「不屬於任一」與「不屬於全部」在實務上是兩件不同的事。 */
+    case "inAnyGroup":
+    case "notInAnyGroup":
+    case "inAllGroups":
+    case "notInAllGroups": {
+      const mine = new Set((Array.isArray(value) ? value : []).map(asText))
+      const wanted = (Array.isArray(target) ? target : []).map(asText).filter((t) => t !== "")
+      if (wanted.length === 0) return false
+      const any = wanted.some((g) => mine.has(g))
+      const all = wanted.every((g) => mine.has(g))
+      if (op === "inAnyGroup") return any
+      if (op === "notInAnyGroup") return !any
+      if (op === "inAllGroups") return all
+      return !all
+    }
     case "isEmpty":
       return isEmpty(value)
     case "isNotEmpty":
@@ -87,10 +126,37 @@ export function matchesCondition(value: unknown, op: string, target: unknown): b
   }
 }
 
-function ruleMatches(rule: FormatRule, values: RecordValues, known: ReadonlySet<string>): boolean {
-  // 引用不存在欄位之條件 → 整條規則略過(不靜默誤判為 true)
-  if (rule.conditions.some((c) => !known.has(c.field))) return false
-  const results = rule.conditions.map((c) => matchesCondition(values[c.field], c.op, c.value))
+/* 條件要比的那個值:一般欄位取自記錄,虛擬欄位取自語境。
+
+   🔴 `$actor` 對群組運算子回**群組清單**,對其他運算子回 **actor id** ——
+   同一個虛擬欄位依運算子給不同形狀,是因為 Ragic 的 UI 也是這樣:
+   選了「登入使用者」之後,才決定要比「是哪個人」還是「屬於哪個群組」。 */
+function conditionValue(c: FormatCondition, values: RecordValues, ctx: EvalContext): unknown {
+  if (c.field === PSEUDO_FIELDS.now) {
+    const now = ctx.now ?? new Date()
+    /* 每日時間比的是「時:分」,其餘比的是完整時刻(ISO 字串,字典序即時序) */
+    return c.op === "dailyBetween" ? now.toISOString().slice(11, 16) : now.toISOString()
+  }
+  if (c.field === PSEUDO_FIELDS.actor) {
+    return c.op.includes("Group")
+      ? [...(ctx.actorGroupIds ?? [])]
+      : (ctx.actorId ?? null)
+  }
+  return values[c.field]
+}
+
+function ruleMatches(
+  rule: FormatRule,
+  values: RecordValues,
+  known: ReadonlySet<string>,
+  ctx: EvalContext,
+): boolean {
+  /* 引用不存在欄位之條件 → 整條規則略過(不靜默誤判為 true)。
+     虛擬欄位不在 `known` 裡,但它們永遠「存在」。 */
+  if (rule.conditions.some((c) => !isPseudoField(c.field) && !known.has(c.field))) return false
+  const results = rule.conditions.map((c) =>
+    matchesCondition(conditionValue(c, values, ctx), c.op, c.value),
+  )
   return rule.combinator === "or" ? results.some(Boolean) : results.every(Boolean)
 }
 
@@ -135,6 +201,9 @@ export function evaluateFieldStates(
   values: RecordValues,
   fieldNames: readonly string[],
   members?: ReadonlyMap<string, readonly string[]>,
+  /* 🔴 選填且**尾綴**:既有呼叫端一行不動,而給了就吃得到虛擬欄位。
+     沒給時 `$now` 用當下時間、`$actor` 為 null(= 沒有登入者 → 使用者條件不成立)。 */
+  ctx: EvalContext = {},
 ): Map<string, FieldEffectState> {
   const known = new Set(fieldNames)
   const out = new Map<string, FieldEffectState>()
@@ -145,7 +214,7 @@ export function evaluateFieldStates(
        型別不是執行期保證,而 FMEA G1 測的正是「壞資料闖到這裡」。 */
     const effects = Array.isArray(rule.effects) ? rule.effects : []
     if (effects.length === 0) continue
-    if (!ruleMatches(rule, values, known)) continue
+    if (!ruleMatches(rule, values, known, ctx)) continue
 
     /* 同一規則內後者覆蓋,與跨規則同語意 */
     let patch: FieldEffectState = {}
@@ -176,9 +245,10 @@ export function evaluateFormats(
   rules: readonly FormatRule[],
   values: RecordValues,
   fieldNames: readonly string[],
+  ctx: EvalContext = {},
 ): Map<string, FormatTone> {
   const out = new Map<string, FormatTone>()
-  for (const [name, st] of evaluateFieldStates(rules, values, fieldNames)) {
+  for (const [name, st] of evaluateFieldStates(rules, values, fieldNames, undefined, ctx)) {
     if (st.tone !== undefined) out.set(name, st.tone)
   }
   return out
@@ -242,6 +312,7 @@ function gate(
   values: RecordValues,
   fieldNames: readonly string[],
   applies: (rule: FormatRule) => boolean,
+  ctx: EvalContext = {},
 ): ActionGateState {
   const known = new Set(fieldNames)
   let state = OPEN
@@ -249,7 +320,7 @@ function gate(
     if (rule.enabled === false) continue
     if (!applies(rule)) continue
     const effects = Array.isArray(rule.effects) ? rule.effects : []
-    if (!ruleMatches(rule, values, known)) continue
+    if (!ruleMatches(rule, values, known, ctx)) continue
     let hidden = state.hidden
     let locked = state.locked
     let message = state.message
@@ -268,16 +339,18 @@ export function evaluateButtonGate(
   values: RecordValues,
   fieldNames: readonly string[],
   buttonId: number,
+  ctx: EvalContext = {},
 ): ActionGateState {
-  return gate(rules, values, fieldNames, (r) => (r.targetButtons ?? []).includes(buttonId))
+  return gate(rules, values, fieldNames, (r) => (r.targetButtons ?? []).includes(buttonId), ctx)
 }
 
 export function evaluateApprovalGate(
   rules: readonly FormatRule[],
   values: RecordValues,
   fieldNames: readonly string[],
+  ctx: EvalContext = {},
 ): ActionGateState {
-  return gate(rules, values, fieldNames, (r) => r.targetApproval === true)
+  return gate(rules, values, fieldNames, (r) => r.targetApproval === true, ctx)
 }
 
 /* 🔴 C-2 後半|顯示訊息(OQ-CF-11)。
@@ -328,6 +401,7 @@ export function evaluateMessages(
   rules: readonly FormatRule[],
   values: RecordValues,
   fieldNames: readonly string[],
+  ctx: EvalContext = {},
 ): string[] {
   const known = new Set(fieldNames)
   const out: string[] = []
@@ -335,7 +409,7 @@ export function evaluateMessages(
     if (rule.enabled === false) continue
     const effects = Array.isArray(rule.effects) ? rule.effects : []
     if (!effects.some((e) => e.kind === "message")) continue
-    if (!ruleMatches(rule, values, known)) continue
+    if (!ruleMatches(rule, values, known, ctx)) continue
     for (const e of effects) {
       if (e.kind !== "message") continue
       const text = renderMessage(e.text, values, known).trim()

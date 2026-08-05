@@ -2042,7 +2042,7 @@ export class RecordService {
       resolved,
       values,
       "create",
-      this.conditionalAttrs(resolved, values),
+      this.conditionalAttrs(resolved, values, { actorId }),
     )
     const insert: Record<string, unknown> = {
       tenant_id: tenantId,
@@ -2097,7 +2097,7 @@ export class RecordService {
       .first()) as Record<string, unknown> | undefined
     const merged: RecordValues =
       current === undefined ? values : { ...this.toRecord(resolved, current).values, ...values }
-    const attrs = this.conditionalAttrs(resolved, merged)
+    const attrs = this.conditionalAttrs(resolved, merged, { actorId })
     const columns = await this.validateValues(
       trx,
       tenantId,
@@ -2204,9 +2204,13 @@ export class RecordService {
      · 規則把欄位隱藏 → **放掉**必填(官方逐字「當欄位因條件式格式被隱藏時,
        系統會略過檢查必填及輸入檢查」)。不放掉的話,使用者要填一個看不見的欄位,
        畫面上完全無從得知為什麼存不了。 */
+  /* 🔴 v1.4|求值語境。**伺服器才是說了算的那一邊**(C-3 的必填是伺服器強制),
+     所以 `$actor` 一律取自後端的 actor,不吃 client 送來的任何東西 ——
+     否則「只有主管才必填」這種規則,打 API 的人自己說他是主管就繞過去了。 */
   private conditionalAttrs(
     resolved: ResolvedForm,
     merged: RecordValues,
+    ctx: { actorId?: number | null; actorGroupIds?: readonly number[] } = {},
   ): Map<string, { required: boolean; skipValidation: boolean }> {
     const out = new Map<string, { required: boolean; skipValidation: boolean }>()
     const layout = resolved.layout
@@ -2222,7 +2226,7 @@ export class RecordService {
             ),
           )
     const states =
-      rules.length === 0 ? undefined : evaluateFieldStates(rules, merged, names, members)
+      rules.length === 0 ? undefined : evaluateFieldStates(rules, merged, names, members, ctx)
     for (const field of resolved.fields) {
       const fl = layout?.fields[String(field.row.id)]
       const attrs = resolveFieldAttrs(
