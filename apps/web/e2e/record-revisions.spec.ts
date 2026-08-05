@@ -104,7 +104,7 @@ test("🔴 設定中心看得到全庫修改紀錄,且可依表單篩選", async
 
   /* 篩到這張表 —— 否則 dev DB 累積的資料會讓「看得到」失去鑑別力 */
   await page.getByLabel("篩選表單").selectOption(String(form.id))
-  const table = page.locator("table")
+  const table = page.getByTestId("revision-log")
   await expect(table).toContainText(form.name, { timeout: 15_000 })
   await expect(table).toContainText("建立")
   await expect(table).toContainText("更新 · v2")
@@ -118,4 +118,30 @@ test("🔴 設定中心看得到全庫修改紀錄,且可依表單篩選", async
     .first()
     .click()
   await expect(page.getByTestId("record-revisions")).toBeVisible({ timeout: 30_000 })
+})
+
+/* 🔴 R1·H-4 v1.2|**資料庫設計變更**。Ragic 官方 `doc/81` 逐字:
+   「頁面下方,可以看到**資料庫設計變更**。」—— 同一頁的下半部,不另開一頁。 */
+test("🔴 同一頁下方看得到資料庫設計變更,且不外洩實際執行的語句", async ({ page, request }) => {
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: { name: `E2E設計變更_${uniq()}`, fields: [{ name: "品名", type: "text" }] },
+  })
+  const form = (await res.json()) as { id: number; name: string }
+  const add = await request.post(`/api/engine/forms/${String(form.id)}/fields`, {
+    headers: DEV,
+    data: { name: "備註", type: "text" },
+  })
+  expect(add.status()).toBeLessThan(300)
+
+  await page.goto("/app/settings/revisions")
+  const table = page.getByTestId("design-changes")
+  await expect(table).toContainText(form.name, { timeout: 30_000 })
+  await expect(table).toContainText("createForm")
+
+  /* 🔴 物理識別字與 DDL 語句不得出現在畫面上 —— 那是動態 identifier 注入的地圖。
+     整頁檢查而非只查表格:洩漏可能來自任何一格。 */
+  const body = (await page.locator("body").innerText()).replace(/\s+/g, " ")
+  expect(body).not.toMatch(/CREATE TABLE|ALTER TABLE/i)
+  expect(body).not.toMatch(/\bt\d{2,}\b|\bf\d{2,}\b/)
 })
