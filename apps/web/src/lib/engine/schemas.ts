@@ -6,6 +6,7 @@ export const CELL_VALUE_TYPES = [
   "text",
   "longText",
   "markdown",
+  "textMask",
   "email",
   "url",
   "phone",

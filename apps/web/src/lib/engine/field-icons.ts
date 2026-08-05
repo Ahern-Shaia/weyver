@@ -24,6 +24,7 @@ import {
   Type,
   Link as UrlIcon,
   Users,
+  EyeOff,
 } from "lucide-react"
 import type { CellValueType } from "./schemas"
 
@@ -39,6 +40,7 @@ const ICONS: Record<CellValueType, LucideIcon> = {
   text: Type,
   longText: Text,
   markdown: Hash,
+  textMask: EyeOff,
   email: AtSign,
   url: UrlIcon,
   phone: Phone,

@@ -42,6 +42,10 @@ export function fieldOperators(type: CellValueType): FilterOperator[] {
     case "image":
     case "signature":
       return EMPTINESS
+    /* 🔴 遮罩欄**不給任何篩選** —— 可篩就可以用二分逼近把值猜出來
+       (同「隱藏欄不得出現在 WHERE / ORDER BY」的理由)。與後端 registry 一致。 */
+    case "textMask":
+      return []
     // R1·UP-4 讀時計算虛擬欄:無物理欄 → 不可篩(比照後端 filterOperators [])
     case "createdAt":
     case "createdBy":

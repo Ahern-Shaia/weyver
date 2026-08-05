@@ -5,6 +5,7 @@ import { Button } from "@weyver/ui/button"
 import { FieldInput } from "@/components/form/field-input"
 import { ImageThumb } from "@/components/form/image-input"
 import { MarkdownView } from "@/components/form/markdown-view"
+import { MaskedValue } from "@/components/form/masked-value"
 import { RuleMessages } from "@/components/form/rule-messages"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
@@ -471,6 +472,15 @@ export function ObjectPage({
                     />
                   ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />
+                  ) : f.type === "textMask" ? (
+                    /* 遮罩欄:值已在**伺服器端**遮好,這裡只負責眼睛按鈕。
+                       前端不判斷「有沒有權限」—— 那是第二份權限來源,必然分岔。 */
+                    <MaskedValue
+                      formId={formId}
+                      recordId={record.id}
+                      field={f.name}
+                      masked={fmtVal(f, record.values[f.name])}
+                    />
                   ) : f.type === "markdown" ? (
                     /* 🔴 由 token 產 React 元素,**整條路徑不存在 HTML 字串** ——
                        XSS 在構造上不可能,不是靠淨化擋住(見 `markdown-view.tsx`)。 */

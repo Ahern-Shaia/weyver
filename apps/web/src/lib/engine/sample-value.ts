@@ -70,6 +70,8 @@ export function sampleValue(field: Pick<FieldDto, "type" | "options" | "name">):
     case "updatedBy":
     case "markdown":
       return "## 標題\n- 項目一\n- 項目二"
+    case "textMask":
+      return "••••6789"
     case "member":
       return "王小明"
     case "group":

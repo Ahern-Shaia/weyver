@@ -18,6 +18,7 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   text: { label: "單行文字", ...D },
   longText: { label: "多行文字", ...D },
   markdown: { label: "Markdown", ...D },
+  textMask: { label: "文字遮罩", ...D },
   email: { label: "Email", ...D },
   url: { label: "網址", ...D },
   phone: { label: "電話", ...D },
