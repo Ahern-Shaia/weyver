@@ -3,10 +3,12 @@ import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
-import { tenants } from "../src/db/schema.js"
+import { tenants, users } from "../src/db/schema.js"
 import { PDF_RENDERER } from "../src/pdf/pdf-renderer.js"
+import { STORAGE_DRIVER, type StorageDriver } from "../src/storage/storage-driver.js"
 import { PdfWorkerService } from "../src/pdf/pdf-worker.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
@@ -24,6 +26,8 @@ let container: StartedPostgreSqlContainer
 let pool: pg.Pool
 let app: NestFastifyApplication
 let worker: PdfWorkerService
+let storage: StorageDriver
+let adminActor = 0
 let tenantA = 0
 let formId = 0
 let recordId = 0
@@ -36,6 +40,8 @@ let recordId = 0
 let lastRender: { url: string; ticket: string; status: number; body: string } | null = null
 
 const A = (): Record<string, string> => ({ "x-dev-tenant": String(tenantA), "x-dev-actor": "7" })
+/* 系統 admin —— 渲染時解析得出真正的權限 */
+const ADMIN = (): Record<string, string> => ({ ...A(), "x-dev-actor": String(adminActor) })
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
@@ -66,6 +72,29 @@ beforeAll(async () => {
   await app.init()
   await app.getHttpAdapter().getInstance().ready()
   worker = app.get(PdfWorkerService)
+  storage = app.get<StorageDriver>(STORAGE_DRIVER)
+
+  /* 🔴 兩個 actor 是刻意的:
+     · actor 7 —— **沒有任何角色**,用來證明渲染時真的重新解析權限(值被遮掉)
+     · `adminActor` —— 系統 admin,用來測明細等需要真的看得到資料的行為
+     只有一個 actor 的測試,正是 `pitfall-tenant-scoped-is-not-authorized` 的根因。 */
+  /* ⚠️ 租戶是用 drizzle 直接插的,**系統角色不會自己出現**
+     (正常路徑是 `seedSystemRoles`,由租戶建立流程呼叫)。
+     少了這一步,下面的指派會影響 0 列而且**不會報錯** —— actor 8 靜靜地不是 admin。 */
+  await app.get(AuthzRepository).seedSystemRoles(tenantA)
+  /* actor 就是 `users.id`(有外鍵),所以要先有這個人 */
+  const [adminUser] = await db
+    .insert(users)
+    .values({ authUserId: "pdf-admin", email: "pdf-admin@t.test", name: "PDF 管理員" })
+    .returning({ id: users.id })
+  adminActor = adminUser?.id ?? 0
+  const assigned = await pool.query(
+    `INSERT INTO role_members (tenant_id, role_id, actor_id)
+     SELECT $1, id, $2 FROM roles WHERE tenant_id = $1 AND is_system = true AND key = 'admin'`,
+    [tenantA, adminActor],
+  )
+  /* 影響 0 列就是沒指派成功 —— 讓它在這裡炸掉,而不是變成一條看不懂的斷言失敗 */
+  if (assigned.rowCount !== 1) throw new Error("admin role assignment failed")
 
   const form = await app.inject({
     method: "POST",
@@ -107,13 +136,20 @@ const createJob = async (): Promise<number> => {
   return (res.json() as { id: number }).id
 }
 
+/* 🔴 讀出替身記下的結果。**必須經一個函式**:`lastRender` 是模組層的 `let`,
+   TS 的控制流分析會在 `lastRender = null` 之後把它窄化成 `null`,
+   於是 `if (lastRender === null) throw` 之後型別變成 `never`。 */
+function takeRender(): { url: string; ticket: string; status: number; body: string } {
+  if (lastRender === null) throw new Error("renderer was not called")
+  return lastRender
+}
+
 /* 跑一件並回傳渲染當下的核銷結果 */
 const renderOnce = async (): Promise<NonNullable<typeof lastRender>> => {
   lastRender = null
   await createJob()
   expect(await worker.drainOne()).toBe(true)
-  if (lastRender === null) throw new Error("renderer was not called")
-  return lastRender
+  return takeRender()
 }
 
 describe("伺服器端 PDF", () => {
@@ -198,6 +234,150 @@ describe("伺服器端 PDF", () => {
     /* 物理識別字(`f123`)不該出現在給瀏覽器的 payload 裡 ——
        與資料庫設計變更頁同一條理由:那是攻擊面地圖。 */
     expect(render.body).not.toMatch(/"f\d{2,}"/)
+  })
+
+  /* 🔴 產出物會長大,而且是二進位檔 —— 沒有清理就是無上限成長。 */
+  it("🔴 到期後:storage 物件真的被刪,而紀錄留著標 expired", async () => {
+    const id = await createJob()
+    expect(await worker.drainOne()).toBe(true)
+
+    /* 物件此刻存在。**先斷言存在**,否則下面的「已刪」會空過 */
+    const before = await app.inject({
+      method: "GET",
+      url: `/api/pdf/jobs/${String(id)}/download`,
+      headers: A(),
+    })
+    expect(before.statusCode).toBe(200)
+
+    /* 🔴 先把 key 抓下來 —— 清理之後列上就沒有它了,而**「物件有沒有真的被刪」
+       正是這條測試唯一擋得住那個 bug 的斷言**(見下)。 */
+    const keyRow = await pool.query<{ object_key: string }>(
+      "SELECT object_key FROM pdf_job WHERE id = $1",
+      [id],
+    )
+    const key = keyRow.rows[0]?.object_key ?? ""
+    expect(key).not.toBe("")
+    expect(await storage.stat(key)).not.toBeNull()
+
+    /* 把到期日推到過去,再跑清理 */
+    await pool.query("UPDATE pdf_job SET expires_at = now() - interval '1 day' WHERE id = $1", [id])
+    await worker.expire()
+
+    /* 🔴 **這一行才是釘 `RETURNING` 陷阱的那一行。**
+
+       PostgreSQL 的 `UPDATE ... RETURNING` 回的是**新值**,所以照直覺寫
+       `SET object_key = NULL RETURNING object_key` 會拿到一整排 NULL,
+       物件永遠刪不掉 —— 而**列仍然會被標成 expired**,看起來一切正常。
+
+       ⚠️ 本測試的第一版只斷言了狀態與 `object_key IS NULL`,那**兩種寫法下都會過**
+       —— 又一次「否定斷言空過」。真正有鑑別力的只有「物件不見了」。 */
+    expect(await storage.stat(key)).toBeNull()
+
+    const row = await pool.query<{ status: string; object_key: string | null }>(
+      "SELECT status, object_key FROM pdf_job WHERE id = $1",
+      [id],
+    )
+    expect(row.rows[0]?.status).toBe("expired")
+    expect(row.rows[0]?.object_key).toBeNull()
+
+    const after = await app.inject({
+      method: "GET",
+      url: `/api/pdf/jobs/${String(id)}/download`,
+      headers: A(),
+    })
+    expect(after.statusCode).toBe(404)
+  })
+
+  /* 🔴 採購單這類單據的重點就在明細 —— 只印表頭等於沒印。 */
+  it("🔴 子表明細進 payload,依 parent 分組且照 lineNo 排序", async () => {
+    const parentForm = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: ADMIN(),
+      payload: { name: "PDF 主檔", fields: [{ name: "單號", type: "text" }] },
+    })
+    const parentId = (parentForm.json() as { id: number }).id
+
+    const childForm = await app.inject({
+      method: "POST",
+      url: "/api/forms",
+      headers: ADMIN(),
+      payload: {
+        name: "PDF 明細",
+        parentFormId: parentId,
+        fields: [
+          { name: "品項", type: "text" },
+          { name: "數量", type: "number" },
+        ],
+      },
+    })
+    expect(childForm.statusCode).toBeLessThan(300)
+    const childId = (childForm.json() as { id: number }).id
+
+    const saved = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(parentId)}/records/save-with-lines`,
+      headers: ADMIN(),
+      payload: {
+        childFormId: childId,
+        header: { values: { 單號: "PO-001" } },
+        lines: [{ values: { 品項: "乙", 數量: 2 } }, { values: { 品項: "甲", 數量: 1 } }],
+      },
+    })
+    expect(saved.statusCode).toBeLessThan(300)
+    const header = (saved.json() as { header: { id: number } }).header
+
+    lastRender = null
+    const job = await app.inject({
+      method: "POST",
+      url: "/api/pdf",
+      headers: ADMIN(),
+      payload: { formId: parentId, recordIds: [header.id] },
+    })
+    expect(job.statusCode).toBe(200)
+    expect(await worker.drainOne()).toBe(true)
+    const render = takeRender()
+    expect(render.status).toBe(200)
+
+    const payload = JSON.parse(render.body) as {
+      lines: {
+        form: { name: string }
+        byParent: Record<string, { lineNo: number | null }[]>
+      } | null
+    }
+    /* 對照組:明細區塊真的在(否則下面的排序斷言會在空陣列上空過) */
+    expect(payload.lines?.form.name).toBe("PDF 明細")
+    const rows = payload.lines?.byParent[String(header.id)] ?? []
+    expect(rows).toHaveLength(2)
+    /* 建立順序是 乙 → 甲,而輸出要照 lineNo 走 */
+    expect(rows.map((r) => r.lineNo)).toEqual([1, 2])
+  })
+
+  it("🔴 多筆合併成一份:每一筆都在 payload 裡", async () => {
+    const second = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(formId)}/records`,
+      headers: A(),
+      payload: { values: { 品名: "米" } },
+    })
+    const secondId = (second.json() as { id: number }).id
+
+    lastRender = null
+    const job = await app.inject({
+      method: "POST",
+      url: "/api/pdf",
+      headers: A(),
+      payload: { formId, recordIds: [recordId, secondId] },
+    })
+    expect((job.json() as { recordCount: number }).recordCount).toBe(2)
+    expect(await worker.drainOne()).toBe(true)
+    const render = takeRender()
+    expect(render.status).toBe(200)
+
+    const payload = JSON.parse(render.body) as { records: { id: number }[] }
+    expect(payload.records.map((r) => r.id).sort((a, b) => a - b)).toEqual(
+      [recordId, secondId].sort((a, b) => a - b),
+    )
   })
 
   it("超過上限的筆數拒收(DB 亦有 CHECK,雙保險)", async () => {

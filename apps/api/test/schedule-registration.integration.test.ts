@@ -35,6 +35,10 @@ const EXPECTED_CRON_JOBS = [
   /* audit-D §3-3|認證稽核的保留期原本**沒有執行者** —— `purgeExpiredAudit` 零呼叫者,
      而 `settings-center` §4.1 寫著「保留 6 個月」。這條清單當場把新 cron 攔下來要求具名。 */
   "security.purgeAudit",
+  /* R1·後續-2b|PDF 產出物到期清理。與 `export.expire` 同節奏同處置
+     (刪 storage 物件、列留著標 expired)—— 加這一支時本測試立刻轉紅,
+     這正是它存在的用途。 */
+  "pdf.expire",
 ] as const
 
 let container: StartedPostgreSqlContainer

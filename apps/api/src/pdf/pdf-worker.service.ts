@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto"
 import { Inject, Injectable, Logger } from "@nestjs/common"
-import { Interval } from "@nestjs/schedule"
+import { Cron, CronExpression, Interval } from "@nestjs/schedule"
 import { ConfigService } from "@nestjs/config"
 import { STORAGE_DRIVER, type StorageDriver } from "../storage/storage-driver.js"
 import { PDF_RENDERER, type PdfRenderer } from "./pdf-renderer.js"
@@ -60,5 +60,28 @@ export class PdfWorkerService {
       await this.repo.markFailed(job.id, "產生 PDF 失敗,請稍後再試或聯絡管理員")
     }
     return true
+  }
+
+  /* 🔴 到期清理。**刪 storage 物件,列留著標 expired** ——
+     「誰在什麼時候把哪一筆資料印出來帶走了」是內控要問的問題,
+     那筆紀錄不能跟著檔案一起消失。與 `export.expire` 同一個處置與同一個節奏。
+
+     ⚠️ 具名是硬性要求:未具名的 cron 以 UUID 進 registry,重複註冊偵測不到
+     (`schedule-registration` 測試釘住這件事)。 */
+  @Cron(CronExpression.EVERY_HOUR, { name: "pdf.expire" })
+  async expire(): Promise<void> {
+    const due = await this.repo.expireDue(new Date())
+    for (const row of due) {
+      /* 刪不掉也已經標成 expired(repo 在同一個語句裡做了)—— 否則下載端點
+         會放行一個其實已經該消失的檔案,或反過來一直重試同一列。
+         孤兒物件由儲存層的生命週期規則收。 */
+      await this.storage.delete(row.objectKey).catch((error: unknown) => {
+        this.logger.error(
+          `PDF #${String(row.id)} 的產出物刪除失敗`,
+          error instanceof Error ? error.stack : "",
+        )
+      })
+    }
+    if (due.length > 0) this.logger.log(`已清理 ${String(due.length)} 份到期 PDF`)
   }
 }

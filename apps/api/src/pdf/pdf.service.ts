@@ -18,6 +18,10 @@ export const TICKET_TTL_SECONDS = 60
 export const PDF_TTL_DAYS = 7
 /* 一次最多幾筆(DB 亦有 CHECK,雙保險) */
 export const PDF_MAX_RECORDS = 200
+/* 一次取多少明細列。一份單據的明細不會有五百列 —— 超過代表資料有問題。 */
+const LINES_LIMIT = 500
+
+type RecordLike = { lineNo: number | null }
 
 export interface RenderPayload {
   readonly form: { readonly id: number; readonly name: string }
@@ -26,6 +30,12 @@ export interface RenderPayload {
   readonly records: readonly unknown[]
   readonly linkLabels: Readonly<Record<string, string>>
   readonly members: Readonly<Record<string, string>>
+  /* 子表明細。採購單這類單據的重點就在明細 —— 只印表頭等於沒印。 */
+  readonly lines: {
+    readonly form: { readonly id: number; readonly name: string }
+    readonly fields: readonly unknown[]
+    readonly byParent: Readonly<Record<string, readonly unknown[]>>
+  } | null
   readonly tenant: { readonly name: string }
   readonly ctx: { readonly locale: string; readonly timeZone: string }
 }
@@ -108,6 +118,7 @@ export class PdfService {
       fields: fields.map(toFieldDto),
       layout: await this.layout.getLayout(job.tenantId, job.formId),
       records,
+      lines: await this.resolveLines(job, perms),
       linkLabels: await this.resolveLinkLabels(job, fields, records, perms),
       members: await this.resolveMembers(job.tenantId, fields),
       tenant: { name: tenant.name },
@@ -116,6 +127,47 @@ export class PdfService {
          `autoNumber` 的日期分界已經為同一個理由踩過一次)。 */
       ctx: { locale: tenant.defaultLocale, timeZone: tenant.timezone },
     }
+  }
+
+  /* 🔴 子表明細。父子關係來自 `form_def.parent_form_id`,與記錄頁同一個來源
+     (記錄頁是靠 `childForm` prop,值也是從那裡推的)。
+
+     權限:子表是**另一張表單**,故 `canRead` 要對子表單再問一次 ——
+     「看得到採購單」不蘊含「看得到採購明細」。這與連結欄的 lookup 越權
+     (FMEA D3)是同一條理由。 */
+  private async resolveLines(
+    job: PdfJobRow,
+    perms: EffectivePermissions,
+  ): Promise<RenderPayload["lines"]> {
+    const forms = await this.metadata.listForms(job.tenantId)
+    const child = forms.find((f) => f.parentFormId === job.formId)
+    if (child === undefined || !perms.canRead(child.id)) return null
+
+    const { fields } = await this.metadata.getForm(job.tenantId, child.id)
+    /* ⚠️ **撈一次,在記憶體裡分組**。第一版把 `listRecords` 放在
+       `for (parentId)` 迴圈裡 —— 200 筆就是 200 次一模一樣的查詢(AGENTS ⚙️ N+1)。
+       上限 500 列是刻意的:一份單據的明細不會有五百列,超過就是資料有問題,
+       而讓它靜靜地截斷比拒絕更糟 —— 故超過時明確記錄。 */
+    const page = await this.records.listRecords(
+      job.tenantId,
+      child.id,
+      { filters: [], sort: [], limit: LINES_LIMIT },
+      perms,
+      job.requestedByActorId,
+    )
+    const wanted = new Set(job.recordIds.map(Number))
+    const byParent: Record<string, unknown[]> = {}
+    for (const id of wanted) byParent[String(id)] = []
+    for (const row of page.records) {
+      if (row.parentId === null || !wanted.has(row.parentId)) continue
+      byParent[String(row.parentId)]?.push(row)
+    }
+    for (const key of Object.keys(byParent)) {
+      byParent[key]?.sort(
+        (a, b) => ((a as RecordLike).lineNo ?? 0) - ((b as RecordLike).lineNo ?? 0),
+      )
+    }
+    return { form: { id: child.id, name: child.name }, fields: fields.map(toFieldDto), byParent }
   }
 
   private async resolveLinkLabels(

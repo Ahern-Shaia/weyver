@@ -141,6 +141,32 @@ export class PdfRepository {
     `)
   }
 
+  /* 🔴 到期清理。**刪的是 storage 物件,列留著標 expired** ——
+     「誰在什麼時候把哪一筆資料印出來帶走了」是內控要問的問題,
+     那筆紀錄不能跟著檔案一起消失。與 `export_job` 同一個處置。
+
+     `object_key` 一併清空:留著一個指向已刪物件的 key,
+     下載端點就會去撈一個不存在的東西,而錯誤訊息會很難懂。 */
+  async expireDue(now: Date): Promise<{ id: number; objectKey: string }[]> {
+    /* 🔴 **不能用 `UPDATE ... RETURNING object_key`** —— PostgreSQL 的 RETURNING
+       在 UPDATE 之後回的是**新值**,而我們正要把它設成 NULL,於是拿到一整排 NULL,
+       物件永遠刪不掉而且不會有人發現(列已標 expired,看起來一切正常)。
+       用 CTE 先把舊值取下來再改,而且是同一個語句 —— 原子且只有一次往返。 */
+    const res = await this.db.execute<Record<string, unknown>>(sql`
+      WITH due AS (
+        SELECT id, object_key FROM pdf_job
+        WHERE status = 'ready' AND expires_at IS NOT NULL AND expires_at <= ${now}
+          AND object_key IS NOT NULL
+        FOR UPDATE
+      ), upd AS (
+        UPDATE pdf_job SET status = 'expired', object_key = NULL
+        WHERE id IN (SELECT id FROM due)
+      )
+      SELECT id, object_key FROM due ORDER BY id
+    `)
+    return res.rows.map((r) => ({ id: Number(r.id), objectKey: String(r.object_key) }))
+  }
+
   async countDownload(id: number): Promise<void> {
     await this.db.execute(sql`
       UPDATE pdf_job SET download_count = download_count + 1 WHERE id = ${id}
