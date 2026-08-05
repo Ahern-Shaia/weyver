@@ -22,6 +22,7 @@ function fakeRow(o: Partial<ViewRow> = {}): ViewRow {
       sorts: [],
       groupBy: [],
       aggregates: [],
+      freezeColumns: 0,
     },
     position: o.position ?? 0,
     createdBy: o.createdBy ?? 5,
@@ -64,6 +65,7 @@ const cfg = {
   sorts: [],
   groupBy: [],
   aggregates: [],
+  freezeColumns: 0,
 }
 
 describe("ViewService admin-gating", () => {

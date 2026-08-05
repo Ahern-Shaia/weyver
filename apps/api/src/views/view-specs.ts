@@ -49,6 +49,17 @@ export const viewConfigSchema = z.object({
   aggregates: z.array(aggregateSpecSchema).max(10).default([]),
   search: z.string().max(200).optional(),
   pageSize: z.number().int().min(1).max(200).optional(),
+  /* 🔴 v1.1|凍結欄數(`grid-paste.md` §8)。Ragic 官方 `doc/107` 逐字:
+     「設定您凍結**欄或列的數量**(欄是從左邊算起)……**列表頁只能設定凍結欄**」
+     —— 語意是**數量**不是「選哪幾欄」,與 Glide 的 `freezeColumns: number` 同構。
+
+     ⚠️ **存在檢視而不是表單**:欄位的選取與順序已經是逐檢視的(`fields`),
+     所以「從左邊數 2 欄」在不同檢視就是不同的欄。
+
+     🔴 **這一行本身就是重點**:`viewConfigSchema` 是 non-strict zod,未知鍵**靜默 strip**
+     —— `groupBy` 就是這樣「前端一直在送、存進去是空的、而且沒有任何錯誤」(見上方註解)。
+     只改前端等於什麼都沒改。上限 5:凍太多欄等於把畫面佔滿,而那時使用者只會覺得「壞了」。 */
+  freezeColumns: z.number().int().min(0).max(5).default(0),
 })
 export type ViewConfig = z.infer<typeof viewConfigSchema>
 
