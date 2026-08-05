@@ -19,6 +19,7 @@ export const CELL_VALUE_TYPES = [
   "rating",
   "autoNumber",
   "member",
+  "group",
   "link",
   "attachment",
   // R1·UP-4b 影像類欄型(與 attachment 同 [{key,name}] 契約)

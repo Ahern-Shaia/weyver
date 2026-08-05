@@ -32,6 +32,7 @@ export function fieldOperators(type: CellValueType): FilterOperator[] {
       return ["anyOf", ...EMPTINESS]
     case "checkbox":
     case "member":
+    case "group":
     case "link":
       return EQUALITY
     case "barcode":

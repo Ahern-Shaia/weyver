@@ -79,6 +79,7 @@ export function toSubmitValue(field: FieldDto, value: unknown): unknown {
        因為那條規則寫在註解裡,沒有任何機制在漏列時發出訊號。
        兩次都是**瀏覽器實走**才發現的:單元測試不會送出、型別上 `unknown` 一路綠燈。 */
     case "member":
+    case "group":
     case "link":
       if (value === null) return null
       return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined
@@ -135,7 +136,20 @@ export function formatFieldValue(
   /* bigint 經 pg 回傳為字串,兩種都要吃 */
   if (field.type === "member") {
     const id = typeof value === "number" ? value : Number(value)
-    return members?.get(id) ?? String(value)
+    /* 🔴 查不到時回 `#id` 而不是裸數字 —— 與 `link` 一致。
+       原本回 `String(value)`,畫面上就是一個孤零零的「58」,
+       看起來像資料而其實是指標。**由 `id-fields.test.ts` 抓到**,
+       而那支測試正是為了加 `group` 時不要當第三個踩坑的人才寫的。 */
+    if (!Number.isFinite(id)) return String(value)
+    return members?.get(id) ?? `#${String(id)}`
+  }
+  /* 🔴 群組欄:標籤走**與連結欄同一張表**(`${fieldId}:${id}`)。
+     不另加參數 —— `formatFieldValue` 的第五個參數就是「這一欄的 id → 看得懂的東西」,
+     而群組正是這個形狀;多一個參數會讓每個出口都要多帶一個。 */
+  if (field.type === "group") {
+    const id = typeof value === "number" ? value : Number(value)
+    if (!Number.isFinite(id)) return String(value)
+    return linkLabels?.get(`${String(field.id)}:${String(id)}`) ?? `#${String(id)}`
   }
   /* 🔴 `link` 與 `member` 同型(都存數字 id),而這裡原本只有 member ——
      於是連結欄一路落到 `displayValue` 把 id 印出來。

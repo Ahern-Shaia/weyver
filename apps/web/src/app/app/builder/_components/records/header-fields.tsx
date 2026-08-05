@@ -1,6 +1,6 @@
-import { useRuleContext } from "@/lib/engine/authz"
-;("use client")
+"use client"
 
+import { useRuleContext } from "@/lib/engine/authz"
 import { RuleMessages } from "@/components/form/rule-messages"
 import {
   evaluateFieldStates,

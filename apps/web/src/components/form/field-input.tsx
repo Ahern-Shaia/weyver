@@ -1,6 +1,9 @@
 "use client"
 
+import { useQuery } from "@tanstack/react-query"
+import { z } from "zod"
 import { usePreviewActors } from "@/lib/engine/authz"
+import { engineFetch } from "@/lib/engine/client"
 import { fetchLinkRecordValues, useLinkOptions } from "@/lib/engine/hooks"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { isStubType } from "@/lib/engine/field-types"
@@ -206,6 +209,10 @@ export function FieldInput({
     case "member":
       return <MemberInput value={value} onChange={onChange} field={field} />
 
+    /* 群組欄(Ragic「選項欄位 → 選擇群組」)。與 member 同構,選的是角色不是人。 */
+    case "group":
+      return <GroupInput value={value} onChange={onChange} field={field} />
+
     case "checkbox":
       return (
         <input
@@ -297,6 +304,42 @@ export function FieldInput({
 
 /* 使用者選擇器。以 select 而非自由輸入 —— member 欄存的是 actor id,
    讓使用者打字只會得到打錯的 id。 */
+function GroupInput({
+  value,
+  onChange,
+  field,
+}: {
+  readonly value: unknown
+  readonly onChange: (v: unknown) => void
+  readonly field: FieldDto
+}): ReactNode {
+  /* 走 view 權的群組清單,不是 admin only 的 `/authz/roles` ——
+     填單者要選一個群組,不該需要管理權(同 `listActors` 的理由)。 */
+  const { data: groups } = useQuery({
+    queryKey: ["authz", "preview", "groups"] as const,
+    queryFn: () =>
+      engineFetch(
+        "/forms/access-preview/groups",
+        z.array(z.object({ id: z.number(), name: z.string() })),
+      ),
+    staleTime: 60_000,
+  })
+  return (
+    <Select
+      value={typeof value === "number" || typeof value === "string" ? String(value) : ""}
+      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      aria-label={`${field.name} 選擇群組`}
+    >
+      <option value="">未指定</option>
+      {(groups ?? []).map((g) => (
+        <option key={g.id} value={g.id}>
+          {g.name}
+        </option>
+      ))}
+    </Select>
+  )
+}
+
 function MemberInput({
   value,
   onChange,

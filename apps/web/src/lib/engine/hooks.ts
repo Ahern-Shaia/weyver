@@ -1184,8 +1184,26 @@ export function useLinkLabels(
     })),
   })
 
+  /* 🔴 群組欄的標籤走**同一張表**(`${fieldId}:${id}`)。
+
+     為什麼不另加一個參數:`formatFieldValue` 的第五個參數就是「這一欄的 id → 看得懂的東西」,
+     而群組正是這個形狀。多開一個 `groups` 參數會讓所有出口都要多帶一個,
+     而 `display-outlets.test.ts` 正是在數那幾個參數 —— 少帶一個就印出裸 id。 */
+  const groupFields = fields.filter((f) => f.type === "group")
+  const { data: groups } = useQuery({
+    queryKey: ["authz", "preview", "groups"] as const,
+    queryFn: () =>
+      engineFetch(
+        "/forms/access-preview/groups",
+        z.array(z.object({ id: z.number(), name: z.string() })),
+      ),
+    enabled: groupFields.length > 0,
+    staleTime: 60_000,
+  })
+
   const key = wanted.map((w) => `${String(w.fieldId)}:${w.ids.join("|")}`).join(";")
   const payload = results.map((r) => r.data?.options ?? []).flat().length
+  const groupKey = `${groupFields.map((f) => f.id).join(",")}|${(groups ?? []).length}`
   // biome-ignore lint/correctness/useExhaustiveDependencies: results 每次 render 皆為新陣列,以內容摘要為依賴
   return useMemo(() => {
     const out = new Map<string, string>()
@@ -1194,8 +1212,11 @@ export function useLinkLabels(
         out.set(`${String(w.fieldId)}:${String(o.id)}`, o.label)
       }
     })
+    for (const f of groupFields) {
+      for (const g of groups ?? []) out.set(`${String(f.id)}:${String(g.id)}`, g.name)
+    }
     return out
-  }, [key, payload])
+  }, [key, payload, groupKey])
 }
 
 /* 🔴 R1·LNK M2|Load 帶入。**對映在後端解讀** —— 前端拿到 `本地欄名 → 值` 可直接 spread。

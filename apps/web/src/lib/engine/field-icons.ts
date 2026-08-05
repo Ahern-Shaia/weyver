@@ -23,6 +23,7 @@ import {
   Text,
   Type,
   Link as UrlIcon,
+  Users,
 } from "lucide-react"
 import type { CellValueType } from "./schemas"
 
@@ -51,6 +52,7 @@ const ICONS: Record<CellValueType, LucideIcon> = {
   rating: Star,
   autoNumber: Hash,
   member: CircleUser,
+  group: Users,
   link: Link2,
   attachment: Paperclip,
   image: Image,

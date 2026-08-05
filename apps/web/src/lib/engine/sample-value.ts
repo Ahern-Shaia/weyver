@@ -70,6 +70,8 @@ export function sampleValue(field: Pick<FieldDto, "type" | "options" | "name">):
     case "updatedBy":
     case "member":
       return "王小明"
+    case "group":
+      return "業務部"
     case "singleSelect":
       return firstChoice(field) ?? "選項一"
     case "multiSelect": {

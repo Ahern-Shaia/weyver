@@ -31,6 +31,7 @@ const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   rating: { label: "評分", ...D },
   autoNumber: { label: "自動編號", ...D, needsPrefix: true },
   member: { label: "人員", ...D },
+  group: { label: "群組", ...D },
   link: { label: "關聯", ...D },
   attachment: { label: "附件", ...D },
   image: { label: "圖片", ...D },
@@ -53,6 +54,9 @@ export const ADVANCED_TYPES: readonly CellValueType[] = [
   /* link 由設計器的進階設定建(需指定 targetFormId),不進基本 palette */
   "link",
   "member",
+  /* group 與 member 同列進階:它同樣指向系統主體(角色),
+     Excel 匯入建表也無從把群組名對回 id */
+  "group",
   "createdAt",
   "createdBy",
   "updatedAt",
