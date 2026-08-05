@@ -3,6 +3,7 @@
 > **分類依據**|對齊 `docs/23 產品功能發布藍圖`(R1 完整 Ragic → R2 ERP+計算層 → R3 MES+ISO → R4 對標+AI)+ Foundation(Phase -1 基礎/橫切)。sprint 代號沿用 `docs/13`(P0-x=Phase 1、P1-x=Phase 2,歷史代號)。
 > **檔案組織**|各模組 design doc 依所屬 release 置於子資料夾 `docs/modules/<R1|R2|R3|R4|foundation>/`;`_template.md`(骨架)與本索引留在根層。**新模組動工前先寫 M0 design doc,依 release 放對資料夾,並在本表登錄。**
 > **流程**(每模組)|M0 DRAFT → OQ 裁定 APPROVED → M1..MN 實作(每 milestone 一 commit)→ FMEA 收尾 SHIPPED。詳見 `_template.md` + `memory/rule_module_design_flow`。
+> 🔴 **動工前先查 [`_research-index.md`](_research-index.md)** —— 那是「這個問題**已經有人查過了**」的索引,含**反向索引**(哪一份 Ragic 官方文件已被誰逐字抄過)。它是**產生檔**,由 `packages/docs-check` 從模組 doc 掃出並在 CI 比對,不會漂。⚠️ 重複查證最貴的不是時間,是**兩次查出不同結論卻沒人發現**。
 > **[P0] 研究即寫入 doc**|競品 / 規範 / 實測研究**當下就寫進模組 doc §0 並附來源連結**,不得只留在 task 或 commit message —— 2026-07-28 稽核發現六個模組的研究成果全散落在 repo 外,**來源 URL 差點永久遺失**。追溯補寫用 `## 0-bis`。
 > ⚠️ **「附連結」不是形式要求**|2026-07-29 複核 `print-merge` 時,其只記文件編號未附 URL 的引用**被查出兩處歸屬錯誤**(把「紙張委派瀏覽器」記在 `doc/149` 名下,實際出處是 `doc/4`)。**編號無法自我驗證,錯了也看不出來**;連上去一看即知。凡引用外部文件一律附可點 URL。
 > **[P0] 收尾必回填 `docs/25`**|模組 SHIPPED 時,除本表標 ✅ 外**必須**同步更新 `docs/25 功能完整對照清單` 之對應子功能列(✅ / 🟡 並註明界線)並重算覆蓋率 —— docs/25 是「仿 Ragic 進度」唯一權威,不回填則該數字失真。

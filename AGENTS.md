@@ -66,6 +66,10 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 **推論**|「競品沒有 X」是**風險最高的句型**。寫下它之前先查;查不到就寫「未查證」,不要寫「沒有」。
 競品的功能會變,一手依據要附**查證日期**。
 
+**動工前先查索引**|`docs/modules/_research-index.md` 記著**哪些問題已經有人查過**,
+以及**哪一份 Ragic 官方文件已被誰逐字抄過**(反向索引)。它是產生檔、在 CI 比對,不會漂。
+先查它,再決定要不要重查 —— ⚠️ 但**競品會變**,承重斷言仍須看該 doc 內的查證日期。
+
 **參考**|[[feedback-verify-load-bearing-claims]] · [[feedback-design-evidence-anchored]] ·
 [[pitfall-unread-schema-field-drift]](巨人的第一站是**自家 repo** —— 上游 design doc 與 schema 常已裁定過)
 
