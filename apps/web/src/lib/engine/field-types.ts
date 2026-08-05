@@ -17,6 +17,7 @@ const D = { needsChoices: false, needsPrefix: false, needsExpression: false }
 const META: Record<CellValueType, Omit<FieldTypeMeta, "type">> = {
   text: { label: "單行文字", ...D },
   longText: { label: "多行文字", ...D },
+  markdown: { label: "Markdown", ...D },
   email: { label: "Email", ...D },
   url: { label: "網址", ...D },
   phone: { label: "電話", ...D },

@@ -5,6 +5,7 @@ import { z } from "zod"
 export const CELL_VALUE_TYPES = [
   "text",
   "longText",
+  "markdown",
   "email",
   "url",
   "phone",

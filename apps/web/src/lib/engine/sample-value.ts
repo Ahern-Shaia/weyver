@@ -68,6 +68,8 @@ export function sampleValue(field: Pick<FieldDto, "type" | "options" | "name">):
       return `${dateStr(now)} 09:12`
     case "createdBy":
     case "updatedBy":
+    case "markdown":
+      return "## 標題\n- 項目一\n- 項目二"
     case "member":
       return "王小明"
     case "group":

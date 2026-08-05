@@ -11,6 +11,7 @@ export function fieldOperators(type: CellValueType): FilterOperator[] {
   switch (type) {
     case "text":
     case "longText":
+    case "markdown":
     case "email":
     case "url":
     case "phone":

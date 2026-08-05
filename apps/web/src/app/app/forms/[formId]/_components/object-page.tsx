@@ -4,6 +4,7 @@ import { Button } from "@weyver/ui/button"
 
 import { FieldInput } from "@/components/form/field-input"
 import { ImageThumb } from "@/components/form/image-input"
+import { MarkdownView } from "@/components/form/markdown-view"
 import { RuleMessages } from "@/components/form/rule-messages"
 import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { describeEngineError, downloadFile } from "@/lib/engine/client"
@@ -470,6 +471,10 @@ export function ObjectPage({
                     />
                   ) : f.type === "attachment" ? (
                     <AttachmentLinks value={record.values[f.name]} />
+                  ) : f.type === "markdown" ? (
+                    /* 🔴 由 token 產 React 元素,**整條路徑不存在 HTML 字串** ——
+                       XSS 在構造上不可能,不是靠淨化擋住(見 `markdown-view.tsx`)。 */
+                    <MarkdownView text={String(record.values[f.name] ?? "")} />
                   ) : fieldSymbology(f) === null ? (
                     fmtVal(f, record.values[f.name])
                   ) : (

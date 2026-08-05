@@ -697,7 +697,7 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 | 自由輸入 | `text` / `longText` | ✅ |
 | **文字編輯器**(粗體/表格/圖片/錨點,似簡易 Word) | — | ❌ |
 | **文字遮罩**(只顯示末幾碼 + **指定群組可揭露**;存後不可再編輯) | — | ❌ 🔴 與 PII 相關 |
-| **Markdown** | — | ❌ |
+| **Markdown** | `markdown` | ✅ **v1.6** |
 | 從選單選擇 | `singleSelect` | ✅ |
 | 從選單多選 | `multiSelect` | ✅ |
 | 打勾選項(**30 種圖示**的單選,值是文字) | `checkbox`(布林) | 🟡 |
@@ -743,3 +743,58 @@ Airtable / Baserow / NocoDB / Teable / Notion 皆無;Salesforce 最接近(強制
 4. **循環日期** —— 要有提醒排程才有意義(H 段通知已出貨,可接)
 5. **地址** —— 先補查語意再談
 6. 動作條碼 / 匯率 / 付款 —— 各自有前置裁定
+
+---
+
+## v1.6|Markdown 欄位(2026-08-06)
+
+### 🔴 做法:由 token 直接產 React 元素,整條路徑不存在 HTML 字串
+
+常見做法是 `marked.parse()` → HTML → `dangerouslySetInnerHTML` → 補一層 sanitiser。
+**本模組不走那條路**:`lexer()` 只解析,由 token 產 React 元素,
+白名單之外的 token 一律當**純文字**印出(不是丟掉 —— 使用者打的東西不該無聲消失)。
+
+於是 XSS **在構造上不可能**,而不是靠淨化擋住 ——
+繞過 sanitiser 是一整個持續進化的研究領域,「不產生 HTML」不會被繞。
+代價是要自己列舉支援的 token,而那正好與 parity 對齊:
+
+> Ragic `doc/27` 逐字:「透過簡單的語法,即可在欄位中加入**標題、清單、簡易表格與文字格式**」
+> 「此欄位**不支援**以 Markdown 語法插入**連結與圖片**」
+
+**「不支援連結與圖片」在它是產品取捨,在我方兼作安全邊界**:沒有 `<a href>` 就沒有
+`javascript:` 協定問題,沒有 `<img src>` 就沒有外連追蹤與 SSRF。
+⚠️ **不宣稱那是它的理由** —— 官方沒這樣說。
+
+後端**完全不參與**:儲存與 `longText` 相同(純文字),不做任何轉換。存的是使用者打的原字。
+
+### 站②|`marked` 早就裝了但零使用
+
+`packages/ui` 的直接相依(18.0.6,**MIT**,讀 `LICENSE` 檔本文確認),而全 repo 零 import
+—— 這一輪第二個「裝了沒用」的套件(前一個是 `next-intl`)。
+
+### 🔴 順手解掉一個更大的:apps/web 的元件測試**根本跑不起來**
+
+`vitest.config.ts` 的 `include` 一直寫著 `.test.tsx`,但 **JSX transform 從沒接上** ——
+於是 `apps/web` 裡任何元件測試都會以 parse error 失敗,而既有測試全是純邏輯的 `.ts`,
+所以**沒有人發現**。AGENTS.md 的測試分層把「元件互動」列為**佔多數的快層**,
+而那一層在 apps/web **等於不存在**。
+
+根因是 tsconfig 的 `jsx: "preserve"`(Next.js 慣例:JSX 留給 Next 自己轉),
+於是 vite 原封不動地把 JSX 交給 parser。修法是在 vitest config 明講 `oxc.jsx.runtime = "automatic"`
+—— **不必裝 `@vitejs/plugin-react`**。
+
+⚠️ 這是「設定寫了但沒接完」的形狀:`include` 那一行**看起來**已經支援了。
+
+### 測試上的一個自我更正
+
+安全測試第一版斷言「輸出不含 `onerror=`」→ **直接紅,而功能是對的**:
+跳脫後的文字裡本來就會有那幾個字元,那是無害的。
+要驗的是「**有沒有被跳脫**」(`&lt;img`),不是「有沒有出現這串字」。
+
+### 殘留
+
+| 殘留 | 說明 |
+|---|---|
+| 網格內編輯 | 目前網格顯示攤平後的純文字;要在格子裡編輯 Markdown 需要一個彈出編輯器 |
+| 語法提示 | 只在 placeholder 講了三種語法 |
+| Ragic 的兩個怪癖 | 底線 `_` 預設不解析(要前後加空格)、行內語法用三個 `` ` `` —— **刻意不抄**,那是它的實作副作用不是語意 |

@@ -38,6 +38,7 @@ import type { CellValueType } from "./schemas"
 const ICONS: Record<CellValueType, LucideIcon> = {
   text: Type,
   longText: Text,
+  markdown: Hash,
   email: AtSign,
   url: UrlIcon,
   phone: Phone,

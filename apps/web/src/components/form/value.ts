@@ -1,5 +1,6 @@
 import { allowedChoices, asSelectOptions } from "@weyver/rules"
 import { displayValue } from "@/lib/engine/display-value"
+import { markdownToPlain } from "./markdown-view"
 import { isStubType } from "@/lib/engine/field-types"
 import type { FieldDto } from "@/lib/engine/schemas"
 
@@ -134,6 +135,11 @@ export function formatFieldValue(
   if (value === null || value === undefined) return "—"
   if (typeof value === "string" && value in SOURCE_MARKERS) return SOURCE_MARKERS[value] ?? value
   /* bigint 經 pg 回傳為字串,兩種都要吃 */
+  /* 🔴 網格 / 匯出 / PDF 是**一行**的地方 —— Markdown 原字印上去會看到滿滿的
+     `##` 與 `|`。取 token 的文字而不是刪符號(刪符號會把 `a*b` 的星號也刪掉)。 */
+  if (field.type === "markdown") {
+    return markdownToPlain(String(value))
+  }
   if (field.type === "member") {
     const id = typeof value === "number" ? value : Number(value)
     /* 🔴 查不到時回 `#id` 而不是裸數字 —— 與 `link` 一致。
