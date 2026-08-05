@@ -7,6 +7,7 @@ import { z } from "zod"
 export const CELL_VALUE_TYPES = [
   "text",
   "longText",
+  "markdown",
   "email",
   "url",
   "phone",
@@ -277,6 +278,25 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
   }),
   longText: def({
     cellValueType: "longText",
+    dbFieldType: "text",
+    optionsSchema: emptyOptions,
+    buildColumn: (t, col) => void t.text(col),
+    valueSchema: () => z.string().max(100_000),
+    filterOperators: TEXTUAL,
+    systemManaged: false,
+  }),
+  /* 🔴 R1·FTP v1.6|**Markdown 欄位**(Ragic「文字欄位 → Markdown」)。
+
+     儲存與 `longText` 完全相同(純文字),差別**只在渲染**。
+     故不另立物理形態,也不做任何伺服器端的轉換 ——
+     **存進去的是使用者打的原字**,轉成什麼樣子是讀取端的事。
+
+     🔴 **不在後端渲染成 HTML**。整條路徑上不存在 HTML 字串:
+     前端由 token 直接產 React 元素(見 `markdown-view.tsx`),
+     於是 XSS **在構造上不可能**,而不是靠一層淨化擋住。
+     淨化會漏(繞過 sanitiser 是一整個研究領域),不產生 HTML 不會。 */
+  markdown: def({
+    cellValueType: "markdown",
     dbFieldType: "text",
     optionsSchema: emptyOptions,
     buildColumn: (t, col) => void t.text(col),
