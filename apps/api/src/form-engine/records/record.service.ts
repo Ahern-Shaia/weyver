@@ -198,12 +198,49 @@ function computeResetKey(
 }
 
 interface ResolvedForm {
+  readonly formId: number
   readonly table: string
   readonly name: string
   readonly byName: ReadonlyMap<string, ResolvedField>
   readonly fields: readonly ResolvedField[]
   readonly isSubtable: boolean
   readonly layout: Layout | null
+}
+
+/* 🔴 R1·H-4|欄位差異。以**顯示名**為鍵(與 `record.values` 同一種指涉,前端不必再查表);
+   欄位日後改名時歷史保留當時的名字 —— 那是對的:那次修改當時就叫那個名字。
+
+   ⚠️ 只列**真的變了**的欄。送了但沒變的不進紀錄,否則按一下儲存就多一筆
+   「什麼都沒改」的歷史,而那會把真正的修改淹掉。
+
+   ⚠️ 比較用寬鬆相等的字串化:DB 回來的 `numeric` 是字串、`bigint` 也是字串,
+   而送進來的可能是數字。嚴格比較會把「沒改」判成「改了」。 */
+function diffValues(
+  resolved: ResolvedForm,
+  before: Record<string, unknown> | undefined,
+  columns: Record<string, unknown>,
+): { field: string; before: unknown; after: unknown }[] {
+  const same = (a: unknown, b: unknown): boolean => {
+    if (a === b) return true
+    if (a === null || a === undefined) return b === null || b === undefined
+    if (b === null || b === undefined) return false
+    if (typeof a === "object" || typeof b === "object")
+      return JSON.stringify(a) === JSON.stringify(b)
+    return String(a) === String(b)
+  }
+  const out: { field: string; before: unknown; after: unknown }[] = []
+  for (const field of resolved.fields) {
+    if (!(field.column in columns)) continue
+    const after = columns[field.column]
+    /* Knex 的 raw(如 autoNumber 的 sequence)無法比較也無法序列化 → 略過 */
+    if (typeof after === "object" && after !== null && !Array.isArray(after)) {
+      if (!("toString" in after) || after.constructor?.name === "Raw") continue
+    }
+    const prev = before === undefined ? null : (before[field.column] ?? null)
+    if (same(prev, after)) continue
+    out.push({ field: field.row.name, before: prev ?? null, after: after ?? null })
+  }
+  return out
 }
 
 /* 🔴 「沒填」在使用者眼中只有一種,JSON 卻可以傳三種:`null` / `""` / `[]`。
@@ -1845,6 +1882,7 @@ export class RecordService {
     const layoutParsed =
       loaded.form.layout === null ? null : layoutSchema.safeParse(loaded.form.layout)
     return {
+      formId: loaded.form.id,
       table: physicalTableName(loaded.form.id),
       name: loaded.form.name,
       byName: new Map(fields.map((f) => [f.row.name, f])),
@@ -1939,6 +1977,17 @@ export class RecordService {
       .returning("*")) as Record<string, unknown>[]
     const row = rows[0]
     if (row === undefined) throw new Error("insert returned no row")
+    /* 建立時記全部欄位(OQ-RV-3:視為「從無到有」)——
+       「這筆單子一開始長什麼樣」是查帳時的第一個問題,而每筆記錄一生只有一次。 */
+    await this.writeRevision(
+      trx,
+      tenantId,
+      resolved,
+      Number(row.id),
+      "create",
+      actorId,
+      diffValues(resolved, undefined, columns),
+    )
     return this.toRecord(resolved, row)
   }
 
@@ -2009,6 +2058,51 @@ export class RecordService {
       if (exists === undefined) throw new RecordNotFoundError(recordId)
       throw new VersionConflictError(recordId, expectedVersion ?? -1)
     }
+
+    /* 🔴 R1·H-4|修改紀錄寫在**咽喉**,不在各個呼叫端。
+
+       這一輪已經數過:寫入路徑有建立 / 匯入 / 更新 / 貼上 / 主檔明細 / 還原六條,
+       而**橫切關注點掛在單筆路徑上就會被繞過** —— 索引漏過三次、事件漏過兩次。
+       `insertOne` / `updateOne` 是唯二的咽喉,掛在這裡任何路徑都繞不過。
+
+       同一交易是刻意的(FMEA V3):查帳用途下,「資料存了但沒紀錄」比兩個都失敗更糟。 */
+    await this.writeRevision(
+      trx,
+      tenantId,
+      resolved,
+      recordId,
+      "update",
+      actorId,
+      diffValues(resolved, current, columns),
+    )
+  }
+
+  /* 差異:只列**真的變了**的欄。送了但沒變的欄不進紀錄 ——
+     否則按一下儲存就多一筆「什麼都沒改」的歷史,而那會把真正的修改淹掉。 */
+  private async writeRevision(
+    trx: Knex.Transaction,
+    tenantId: number,
+    resolved: ResolvedForm,
+    recordId: number,
+    action: "create" | "update",
+    actorId: number | null,
+    changes: { field: string; before: unknown; after: unknown }[],
+  ): Promise<void> {
+    if (changes.length === 0) return
+    const [row] = (await trx
+      .withSchema(DATA_SCHEMA)
+      .table(resolved.table)
+      .where({ tenant_id: tenantId, id: recordId })
+      .select("version")) as { version: number | string }[]
+    await trx("record_revision").insert({
+      tenant_id: tenantId,
+      form_id: resolved.formId,
+      record_id: recordId,
+      version: Number(row?.version ?? 1),
+      action,
+      actor_id: actorId,
+      changes: JSON.stringify(changes),
+    })
   }
 
   /* 🔴 C-3|條件式必填是**伺服器強制**的,不是畫面上的星號。
@@ -2052,6 +2146,70 @@ export class RecordService {
       out.set(field.row.name, { required: attrs.required, skipValidation: attrs.skipValidation })
     }
     return out
+  }
+
+  /* 🔴 R1·H-4|讀取某一筆的修改紀錄。
+
+     ## 遮罩(OQ-RV-4)
+
+     隱藏欄的**歷史值就是隱藏欄的值**。這一輪已經修過三次同一個形狀
+     (公式污染閉包 / 連結標題 / 通知內容)——**值只要有第二個出口就會漏**,
+     而歷史正是最容易被忘記的那個出口。
+
+     逐欄過濾而不是整筆擋掉:一筆修改可能同時動了看得到與看不到的欄,
+     整筆擋掉會讓使用者以為「那次沒改東西」,那是錯的答案。
+     ⚠️ 公式污染閉包一併套用 —— 以隱藏欄算出來的公式值同樣不能從歷史流出去。 */
+  async listRevisions(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    limit = 50,
+    policy?: FieldAccessPolicy,
+  ): Promise<
+    {
+      version: number
+      action: string
+      actorId: number | null
+      createdAt: string
+      changes: { field: string; before: unknown; after: unknown }[]
+    }[]
+  > {
+    const resolved = await this.resolveForm(tenantId, formId)
+    /* 沿用既有的污染閉包 helper —— 不自己再算一遍(兩份必然分岔) */
+    const tainted = await this.taintedByHidden(tenantId, formId, resolved, policy)
+    const hiddenNames = new Set(
+      resolved.fields
+        .filter(
+          (f) =>
+            policy?.fieldVisibility(f.row.id, formId) === "hidden" ||
+            tainted?.has(f.row.id) === true,
+        )
+        .map((f) => f.row.name),
+    )
+
+    return this.inTenantTx(tenantId, async (trx) => {
+      const rows = (await trx("record_revision")
+        .where({ tenant_id: tenantId, form_id: formId, record_id: recordId })
+        .orderBy("id", "desc")
+        .limit(Math.min(Math.max(limit, 1), 200))
+        .select("*")) as {
+        version: number | string
+        action: string
+        actor_id: number | string | null
+        created_at: Date | string
+        changes: { field: string; before: unknown; after: unknown }[]
+      }[]
+
+      return rows.map((r) => ({
+        version: Number(r.version),
+        action: r.action,
+        actorId: r.actor_id === null ? null : Number(r.actor_id),
+        createdAt: new Date(r.created_at).toISOString(),
+        changes: (Array.isArray(r.changes) ? r.changes : []).filter(
+          (c) => !hiddenNames.has(c.field),
+        ),
+      }))
+    })
   }
 
   /* 🔴 audit-D §2.4|**連動選項的伺服器強制**。

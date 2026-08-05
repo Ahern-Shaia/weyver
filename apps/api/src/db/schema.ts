@@ -643,6 +643,42 @@ export const actionAudits = pgTable(
   ],
 )
 
+/* 🔴 R1·H-4 記錄修改紀錄(`docs/modules/R1/record-revisions.md`)。
+
+   Ragic 使用者每天在看的「這筆單子被誰改了什麼」。我方原本只有 `updated_by` /
+   `updated_at` —— 知道誰、何時,**不知道改了哪一欄、從什麼變成什麼**。
+
+   Tier-1 系統表、不走 RLS、**只增不改**(同 `ddl_audit` / `action_audit` 的形狀)。
+   ⚠️ 只存**差異**不存快照(OQ-RV-2):Ragic 逐字「列出該筆資料**詳細的修改內容**」
+   就是差異視圖;而快照的成本隨欄數 × 筆數相乘。代價是不能直接還原到某個版本 ——
+   **而 Ragic 本來就不給單筆還原**(官方只給大量修改與匯入),代價與 parity 對齊。
+
+   `changes` 以**欄位顯示名**為鍵,與 `record.values` 同一種指涉;
+   欄位日後改名時歷史保留當時的名字 —— 那是對的,那次修改當時就叫那個名字。 */
+export const recordRevisions = pgTable(
+  "record_revision",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    /* 動態表的 `version` 欄(更新後的值)—— 序號現成,不必另外發號 */
+    version: integer("version").notNull(),
+    action: text("action").notNull(),
+    /* 系統動作(排程 / 還原)可為 null */
+    actorId: bigint("actor_id", { mode: "number" }),
+    /* [{ field, before, after }];值存**原始值**不存顯示字串(OQ-RV-6)——
+       顯示格式會變,存顯示值等於把當時的格式凍進歷史 */
+    changes: jsonb("changes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("record_revision_record_idx").on(t.tenantId, t.formId, t.recordId, t.id),
+    /* P1 的全庫「資料修改紀錄」頁 —— 結構先留好 */
+    index("record_revision_recent_idx").on(t.tenantId, t.createdAt),
+  ],
+)
+
 /* R1·後續-1 簽核定義(metadata 車道)。steps JSONB:[{stepNo, approverRoleId, minAmount?, amountField?}]
    —— 金額條件由 ZEN 決策(OQ-AA-4);onCompleteButtonId = 簽核完自動執行之按鈕。 */
 export const approvalDefs = pgTable(

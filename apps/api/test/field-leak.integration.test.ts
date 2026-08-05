@@ -493,3 +493,35 @@ describe("Load 帶入", () => {
     expect(res.statusCode).toBeGreaterThanOrEqual(400)
   })
 })
+
+/* 🔴 R1·H-4|**修改紀錄是值的第二個出口**。
+
+   這一輪已經修過三次同一個形狀:公式污染閉包 · 連結欄標題 · 通知內容 ——
+   每次都是「主路徑遮好了,而值從另一個地方流出去」。
+   歷史正是最容易被忘記的那個出口:它存的就是欄位值本身。 */
+describe("修改紀錄的欄位遮罩(OQ-RV-4)", () => {
+  it("🔴 看不到「月薪」的人,歷史裡也看不到月薪的前後值", async () => {
+    const created = await records.createRecord(tenantId, formId, { 姓名: "丙", 月薪: "50000" }, 1)
+    await records.updateRecord(tenantId, formId, created.id, 1, { 月薪: "60000" }, 1)
+
+    /* 有全權的人看得到 */
+    const full = await records.listRevisions(tenantId, formId, created.id, 50, undefined)
+    expect(full.flatMap((r) => r.changes.map((c) => c.field))).toContain("月薪")
+
+    /* 受限的人看不到 —— 但**其他欄的修改仍然看得到**(逐欄過濾不是整筆擋掉:
+       整筆擋掉會讓人以為「那次沒改東西」,那是錯的答案)。 */
+    const limited = await records.listRevisions(tenantId, formId, created.id, 50, limitedPerms())
+    const fields = limited.flatMap((r) => r.changes.map((c) => c.field))
+    expect(fields).not.toContain("月薪")
+    expect(fields).toContain("姓名")
+    /* 值本身也不得從 before / after 漏出去 */
+    expect(JSON.stringify(limited)).not.toContain("60000")
+    expect(JSON.stringify(limited)).not.toContain("50000")
+  })
+
+  it("🔴 以隱藏欄算出來的**公式欄**,其歷史同樣不得流出(污染閉包)", async () => {
+    const created = await records.createRecord(tenantId, formId, { 姓名: "丁", 月薪: "70000" }, 1)
+    const limited = await records.listRevisions(tenantId, formId, created.id, 50, limitedPerms())
+    expect(JSON.stringify(limited)).not.toContain("70000")
+  })
+})

@@ -216,6 +216,34 @@ export class RecordsController {
     return this.reverseRelations.listReferencing(tenant.tenantId, formId, recordId, permissions)
   }
 
+  /* 🔴 R1·H-4|這一筆被誰改了什麼。`@RequiresFormAction("view")` 由 controller 級守衛提供
+     —— 看得到記錄才看得到它的歷史;**逐欄遮罩在 service**(隱藏欄的歷史值就是隱藏欄的值)。 */
+  @Get(":recordId/revisions")
+  async revisions(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("recordId", ParseIntPipe) recordId: number,
+  ): Promise<{
+    revisions: {
+      version: number
+      action: string
+      actorId: number | null
+      createdAt: string
+      changes: { field: string; before: unknown; after: unknown }[]
+    }[]
+  }> {
+    return {
+      revisions: await this.records.listRevisions(
+        tenant.tenantId,
+        formId,
+        recordId,
+        50,
+        permissions,
+      ),
+    }
+  }
+
   @Patch(":recordId")
   async update(
     @Tenant() tenant: TenantContext,
