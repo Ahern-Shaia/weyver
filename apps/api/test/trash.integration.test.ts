@@ -470,3 +470,50 @@ describe("H-2 保留期硬刪", () => {
     expect(still).toBeDefined()
   })
 })
+
+/* 🔴 R1·H-4|修改紀錄的保留期。
+
+   `record-revisions.md` FMEA V4 逐字寫著這**不是可選項**:
+   一張高頻表一年可以到數百萬列,而那張表只增不改。
+
+   ⚠️ 掛進既有的 `trash.purge` 而不是另開排程 —— 同一個維運動作在不同檔案裡
+   有兩套做法本身就是缺陷(audit-E §3-4 才剛記過)。 */
+describe("記錄修改紀錄的保留期清理", () => {
+  it("🔴 逾期的清掉、未逾期的留著", async () => {
+    /* 直接插:這一層測的是清理條件,不是寫入路徑(那有自己的測試)。
+       ⚠️ 用不會撞的 form_id —— 本檔其他測試會建 form #1 / record #1,
+       它們現在也會留修改紀錄,拿 1 當 id 會讓斷言看到別人的資料(第一版就是這樣紅的)。 */
+    const FORM = 990_001
+    await ddlKnex("record_revision").insert([
+      {
+        tenant_id: tenantA,
+        form_id: FORM,
+        record_id: 1,
+        version: 1,
+        action: "update",
+        actor_id: 1,
+        changes: JSON.stringify([{ field: "品名", before: "a", after: "b" }]),
+        created_at: ddlKnex.raw("now() - interval '400 days'"),
+      },
+      {
+        tenant_id: tenantA,
+        form_id: FORM,
+        record_id: 2,
+        version: 1,
+        action: "update",
+        actor_id: 1,
+        changes: JSON.stringify([{ field: "品名", before: "a", after: "b" }]),
+        created_at: ddlKnex.raw("now() - interval '10 days'"),
+      },
+    ])
+
+    const removed = await purge.purgeRevisions()
+    expect(removed).toBeGreaterThanOrEqual(1)
+
+    const left = (await ddlKnex("record_revision")
+      .where({ tenant_id: tenantA, form_id: FORM })
+      .select("record_id")) as { record_id: number | string }[]
+    /* 400 天前的走了、10 天前的留著 */
+    expect(left.map((r) => Number(r.record_id))).toEqual([2])
+  })
+})

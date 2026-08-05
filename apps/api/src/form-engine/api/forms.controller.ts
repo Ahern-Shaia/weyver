@@ -38,6 +38,7 @@ import { z } from "zod"
 import { type Layout, layoutSchema } from "../layout/layout-specs.js"
 import { LayoutService } from "../layout/layout.service.js"
 import { FieldNotFoundError } from "../errors.js"
+import { RecordService } from "../records/record.service.js"
 import { LinkOptionsService } from "../relations/link-options.service.js"
 import { MetadataService } from "../metadata/metadata.service.js"
 import {
@@ -72,6 +73,8 @@ export class FormsController {
     @Inject(RelookupService) private readonly relookup: RelookupService,
     @Inject(ImportService) private readonly imports: ImportService,
     @Inject(AccessPreviewService) private readonly preview: AccessPreviewService,
+    /* R1·H-4|全庫修改紀錄 */
+    @Inject(RecordService) private readonly records: RecordService,
   ) {}
 
   @Post()
@@ -367,6 +370,43 @@ export class FormsController {
   /* 🔴 R1·LNK M1|連結欄的候選記錄。**目標表單的 view 權在 service 內再驗一次** ——
      來源表單的權限不蘊含目標表單的權限(你在填採購單不代表你看得到供應商),
      而只在前端過濾等於沒做(同 OQ-PC-12 的教訓,直接打 API 就能繞)。 */
+  /* 🔴 R1·H-4|**全庫資料修改紀錄**(Ragic 官方 `doc/81`:漢堡選單 → 資料庫管理 → 資料修改紀錄)。
+
+     掛在 `api/forms` 之下而非 `:formId` 之下 —— 它跨表單。
+     **可見範圍由 `readableFormIds` 決定**,不在 service 裡再判一次權限(第二份權限來源必然分岔)。 */
+  @Get("revisions/recent")
+  async recentRevisions(
+    @Tenant() tenant: TenantContext,
+    @Permissions() permissions: EffectivePermissions,
+    @Query("formId") formIdRaw?: string,
+  ): Promise<{
+    revisions: {
+      formId: number
+      formName: string
+      recordId: number
+      version: number
+      action: string
+      actorId: number | null
+      createdAt: string
+      changedFields: string[]
+    }[]
+  }> {
+    const forms = await this.metadata.listForms(tenant.tenantId)
+    const visible = permissions.readableFormIds(forms.map((f) => f.id))
+    const wanted = formIdRaw === undefined ? undefined : Number(formIdRaw)
+    const rows = await this.records.listTenantRevisions(tenant.tenantId, visible, {
+      ...(wanted !== undefined && Number.isInteger(wanted) ? { formId: wanted } : {}),
+      limit: 100,
+    })
+    const nameOf = new Map(forms.map((f) => [f.id, f.name]))
+    return {
+      revisions: rows.map((r) => ({
+        ...r,
+        formName: nameOf.get(r.formId) ?? `#${String(r.formId)}`,
+      })),
+    }
+  }
+
   @Get(":formId/fields/:fieldId/link-options")
   @RequiresFormAction("view")
   async linkOptions(

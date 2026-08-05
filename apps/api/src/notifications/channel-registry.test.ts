@@ -61,3 +61,21 @@ describe("通道註冊表", () => {
     expect(isChannelId(null)).toBe(false)
   })
 })
+
+/* 🔴 WhatsApp Business(H 段最後一個 ⬜ 的通道)。走 Meta Cloud API。 */
+describe("WhatsApp", () => {
+  it("只允許 graph.facebook.com —— 後綴伎倆擋得住", () => {
+    expect(isAllowedUrl("whatsapp", "https://graph.facebook.com/v21.0/123/messages")).toBe(true)
+    expect(isAllowedUrl("whatsapp", "https://graph.facebook.com.evil.example/x")).toBe(false)
+  })
+
+  /* ⚠️ 這一條釘的是**誠實**:WhatsApp 與其他通道有本質差異(24 小時服務窗),
+     設定頁若不講,設定者會以為是自己填錯而反覆重試。 */
+  it("hint 必須講出 24 小時服務窗的限制", () => {
+    expect(CHANNELS.whatsapp.secretHint).toContain("24 小時")
+  })
+
+  it("需要 Phone Number ID 與收訊號碼兩個設定值", () => {
+    expect(CHANNELS.whatsapp.configFields.map((f) => f.key).sort()).toEqual(["phoneNumberId", "to"])
+  })
+})

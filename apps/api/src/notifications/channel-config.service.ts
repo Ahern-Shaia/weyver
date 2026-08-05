@@ -27,6 +27,15 @@ import { CHANNELS, CHANNEL_IDS, type ChannelId, isAllowedUrl } from "./channel-r
 export interface ChannelStatus {
   readonly channel: ChannelId
   readonly label: string
+  /* 🔴 **設定表單的規格由後端給**,前端不再自己抄一份。
+
+     2026-08-05 加 WhatsApp 時發現前端有**第三份**鏡射(`channel-card.tsx` 的 `SPEC`),
+     而它自己的註解就寫著「兩邊都改才算改完」—— 那是一條沒有檢查的規則,
+     所以它漏了。與其再加一道守衛,不如**讓那份複本不存在**:
+     後端本來就有 `secretLabel` / `secretHint` / `configFields`,回傳即可。 */
+  readonly secretLabel: string
+  readonly secretHint: string
+  readonly configFields: readonly { readonly key: string; readonly label: string }[]
   readonly config: Record<string, unknown>
   /* Grafana `secureJsonFields` 語意:只說「有沒有設」,永不回值 */
   readonly secretSet: boolean
@@ -64,6 +73,9 @@ export class ChannelConfigService {
       return {
         channel: id,
         label: CHANNELS[id].label,
+        secretLabel: CHANNELS[id].secretLabel,
+        secretHint: CHANNELS[id].secretHint,
+        configFields: CHANNELS[id].configFields,
         config: (row?.config as Record<string, unknown>) ?? {},
         secretSet: row?.secretSealed != null,
         secretFingerprint: row?.secretFingerprint ?? null,

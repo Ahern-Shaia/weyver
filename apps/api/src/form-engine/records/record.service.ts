@@ -2212,6 +2212,68 @@ export class RecordService {
     })
   }
 
+  /* 🔴 R1·H-4|**全庫**修改紀錄(Ragic 官方 `doc/81`:漢堡選單 → 資料庫管理 → 資料修改紀錄。
+     「用來檢視所有資料的修改歷程。想要瀏覽特定表單或時間的修改紀錄,可以進一步篩選。」)
+
+     ⚠️ **可見範圍由呼叫端給的表單白名單決定** —— 不在這裡判「誰能看哪張表」:
+     那個判斷已經在 `EffectivePermissions` 裡,再實作一次就是第二份權限來源。
+     白名單為空 = 一張表都看不到 → 直接回空,不要送一個沒有 `IN` 條件的查詢
+     (那正是「無 WHERE 的查詢」那類事故的形狀)。
+
+     ⚠️ **這一支不做逐欄遮罩** —— 它只回「哪張表的哪一筆在什麼時候被誰動過」,
+     `changes` 一律不回。要看內容請進那一筆的記錄頁(那裡有遮罩)。
+     全庫頁一次橫跨數十張表,逐欄遮罩要為每張表各算一次污染閉包,
+     而它的用途本來就是**找線索**不是看內容。 */
+  async listTenantRevisions(
+    tenantId: number,
+    visibleFormIds: readonly number[],
+    filter: { formId?: number | undefined; limit?: number | undefined } = {},
+  ): Promise<
+    {
+      formId: number
+      recordId: number
+      version: number
+      action: string
+      actorId: number | null
+      createdAt: string
+      changedFields: string[]
+    }[]
+  > {
+    const scope =
+      filter.formId === undefined
+        ? visibleFormIds
+        : visibleFormIds.filter((id) => id === filter.formId)
+    if (scope.length === 0) return []
+
+    return this.inTenantTx(tenantId, async (trx) => {
+      const rows = (await trx("record_revision")
+        .where({ tenant_id: tenantId })
+        .whereIn("form_id", [...scope])
+        .orderBy("id", "desc")
+        .limit(Math.min(Math.max(filter.limit ?? 100, 1), 200))
+        .select("*")) as {
+        form_id: number | string
+        record_id: number | string
+        version: number | string
+        action: string
+        actor_id: number | string | null
+        created_at: Date | string
+        changes: { field: string }[]
+      }[]
+
+      return rows.map((r) => ({
+        formId: Number(r.form_id),
+        recordId: Number(r.record_id),
+        version: Number(r.version),
+        action: r.action,
+        actorId: r.actor_id === null ? null : Number(r.actor_id),
+        createdAt: new Date(r.created_at).toISOString(),
+        /* 只回**動了哪些欄**,不回值 —— 見上方註解 */
+        changedFields: (Array.isArray(r.changes) ? r.changes : []).map((c) => c.field),
+      }))
+    })
+  }
+
   /* 🔴 audit-D §2.4|**連動選項的伺服器強制**。
 
      `parentField` / `choices[].parents` 自 M2 出貨以來只有 schema —— 沒有 UI、

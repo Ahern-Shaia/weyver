@@ -22,7 +22,7 @@
    Telegram / LINE 是「POST 到固定端點 + 帶 token」。
    兩者都只是 HTTPS POST,故用一份設定描述,不寫五個 driver。 */
 
-export type ChannelId = "slack" | "teams" | "discord" | "telegram" | "line" | "smtp"
+export type ChannelId = "slack" | "teams" | "discord" | "telegram" | "line" | "whatsapp" | "smtp"
 
 export interface ChannelSpec {
   readonly id: ChannelId
@@ -87,6 +87,27 @@ export const CHANNELS: Readonly<Record<ChannelId, ChannelSpec>> = {
     secretHint: "LINE Developers → Messaging API channel 取得(LINE Notify 已於 2025 停止服務)。",
     configFields: [{ key: "to", label: "推送對象 ID(user / group / room)" }],
     allowedHosts: ["api.line.me"],
+    secretIsUrl: false,
+  },
+  /* 🔴 WhatsApp Business。走 **Meta Cloud API**(`graph.facebook.com`)——
+     `/{phone-number-id}/messages` + Bearer token。
+
+     ⚠️ **與其他通道有一個本質差異,必須讓設定者知道**:
+     WhatsApp 只允許在使用者主動來訊後的 **24 小時服務窗**內自由發訊息;
+     窗外只能送**事先核准的範本訊息**。我方送的是純文字通知,
+     故實務上**只在對方近期回過訊息時送得出去** —— 這不是我方的限制,是平台規則。
+     不在此假裝它與 Slack 一樣即插即用:設定頁的 hint 會照講。 */
+  whatsapp: {
+    id: "whatsapp",
+    label: "WhatsApp Business",
+    secretLabel: "存取權杖(Access Token)",
+    secretHint:
+      "Meta for Developers → WhatsApp → API Setup 取得。⚠️ 平台規則:僅能在對方來訊後的 24 小時服務窗內送自由文字,窗外需事先核准的範本訊息。",
+    configFields: [
+      { key: "phoneNumberId", label: "Phone Number ID" },
+      { key: "to", label: "收訊號碼(含國碼,如 886912345678)" },
+    ],
+    allowedHosts: ["graph.facebook.com"],
     secretIsUrl: false,
   },
   smtp: {

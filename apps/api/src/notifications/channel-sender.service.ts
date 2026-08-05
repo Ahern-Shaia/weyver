@@ -148,6 +148,28 @@ export class ChannelSenderService {
           headers: { ...json, authorization: `Bearer ${secret}` },
         }
       }
+      case "whatsapp": {
+        const phoneNumberId = String(config.phoneNumberId ?? "")
+        const to = String(config.to ?? "")
+        if (phoneNumberId === "" || to === "")
+          throw new BadRequestException({
+            code: "CHANNEL_CONFIG_INCOMPLETE",
+            message: "請填寫 Phone Number ID 與收訊號碼",
+          })
+        /* Meta Cloud API。`messaging_product` 是必填的常數,漏了會 400 而訊息很不好懂。
+           ⚠️ 24 小時服務窗外會回 `131047`(re-engagement message)—— 那是**平台規則**
+           不是設定錯誤,錯誤訊息會原樣帶回讓設定者看得出差別。 */
+        return {
+          url: `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+          body: {
+            messaging_product: "whatsapp",
+            to,
+            type: "text",
+            text: { body: text },
+          },
+          headers: { ...json, authorization: `Bearer ${secret}` },
+        }
+      }
       case "smtp":
         throw new BadRequestException({
           code: "CHANNEL_TEST_UNSUPPORTED",

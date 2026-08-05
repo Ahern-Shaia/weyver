@@ -28,6 +28,10 @@ const PURGE_LOCK_TIMEOUT = "3s"
 const PURGE_STATEMENT_TIMEOUT = "60s"
 const PURGE_LOCK_KEY = 909_002
 
+/* 修改紀錄的保留期。**比回收桶長** —— 回收桶留「可能要救回來的東西」,
+   修改紀錄留「查帳用的事實」,後者的價值衰減得慢。一年對齊年度盤點與稽核週期。 */
+export const REVISION_RETENTION_DAYS = 365
+
 /* 7 個 Tier-1 `deleted_at` 實體。漏一個就是合規破口留在角落(FMEA R6),
    所以列成表而不是散在各處 if。`view_def` 等純 metadata 直接 DELETE。 */
 const TIER1_TABLES = [
@@ -43,6 +47,8 @@ export interface PurgeResult {
   readonly fields: number
   readonly forms: number
   readonly metadata: number
+  /* R1·H-4|逾期的記錄修改紀錄 */
+  readonly revisions: number
   readonly skipped: boolean
 }
 
@@ -86,7 +92,7 @@ export class TrashPurgeService {
       [PURGE_LOCK_KEY],
     )
     if (gate.rows[0]?.locked !== true) {
-      return { records: 0, fields: 0, forms: 0, metadata: 0, skipped: true }
+      return { records: 0, fields: 0, forms: 0, metadata: 0, revisions: 0, skipped: true }
     }
     try {
       return {
@@ -94,11 +100,32 @@ export class TrashPurgeService {
         fields: await this.purgeFields(),
         forms: await this.purgeForms(),
         metadata: await this.purgeTier1Metadata(),
+        revisions: await this.purgeRevisions(),
         skipped: false,
       }
     } finally {
       await this.knex.raw("SELECT pg_advisory_unlock(?)", [PURGE_LOCK_KEY])
     }
+  }
+
+  /* 🔴 R1·H-4|逾期的記錄修改紀錄。
+
+     `record-revisions.md` FMEA V4 逐字寫著這**不是可選項**:
+     一張高頻表一年可以到數百萬列,而那張表只增不改。
+
+     ⚠️ **掛進既有的 `trash.purge` 而不是另開一個排程** ——
+     同一個維運動作在不同檔案裡有兩套做法本身就是缺陷(audit-E §3-4 才剛記過),
+     而且它已經有 advisory lock 與「一類失敗不拖垮其他類」的形狀。
+
+     ⚠️ **保留期比回收桶長**:回收桶留的是「可能要救回來的東西」,
+     修改紀錄留的是「查帳用的事實」—— 後者的價值隨時間衰減得慢得多。
+     一年是相對於稽核與年度盤點的常見週期。 */
+  async purgeRevisions(): Promise<number> {
+    if (this.dryRun) return 0
+    const res = await this.knex.raw<{ rowCount?: number }>(
+      `DELETE FROM record_revision WHERE created_at < now() - interval '${String(REVISION_RETENTION_DAYS)} days'`,
+    )
+    return res.rowCount ?? 0
   }
 
   /* 逾期的軟刪記錄 → 真 DELETE。
