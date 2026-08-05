@@ -128,3 +128,49 @@ test("🔴 切換記錄必須重置編輯狀態 —— 否則 A 的值會寫進 
   )
   expect(names.sort()).toEqual(["記錄乙", "記錄甲"])
 })
+
+/* 🔴 匯出**不得只給已載入的頁**。
+
+   原本 `onExport` 直接用 `records`(= 已抓回來的分頁),於是使用者捲了兩頁按匯出,
+   拿到 100 筆而畫面上有數千筆,**而且沒有任何提示** —— 檔案打得開、格式也對,
+   只是資料少了,他不會發現。這是這個 repo 反覆踩的「靜默少做」。 */
+test("🔴 匯出 Excel:超過一頁時要把剩下的抓完,不是只給已載入的", async ({ page, request }) => {
+  const DEV = { "x-dev-tenant": "1", "content-type": "application/json" }
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E匯出分頁_${String(Date.now()).slice(-6)}`,
+      fields: [{ name: "品名", type: "text" }],
+    },
+  })
+  const form = (await res.json()) as { id: number }
+  /* ⚠️ 一頁是 **200** 筆(`useInfiniteRecordsQuery` 的 `pageSize` 預設)——
+     第一版照著另一支 hook 的 `limit=50` 建了 70 筆,結果只有一頁、
+     「載更多」根本不出現,對照組直接紅。**分頁大小要去讀實際用的那一支。** */
+  const TOTAL = 250
+  const rows = Array.from({ length: TOTAL }, (_, i) => ({
+    values: { 品名: `品項${String(i + 1)}` },
+  }))
+  const bulk = await request.post(`/api/engine/forms/${String(form.id)}/records/bulk`, {
+    headers: DEV,
+    data: { rows },
+  })
+  expect(bulk.status()).toBeLessThan(300)
+
+  await page.goto(`/app/forms/${String(form.id)}?mode=list`)
+  /* 對照組:畫面此刻**還有沒載入的頁** —— 否則這條測不到任何東西。
+     以「載入更多」按鈕為訊號(它只在 `hasNextPage` 時出現),
+     不去比對「已載入 N 筆」的字面 —— 分頁大小改了那個字面就會變。 */
+  await expect(page.getByRole("button", { name: /載更多/ })).toBeVisible({ timeout: 30_000 })
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 60_000 }),
+    page.getByRole("button", { name: /匯出 Excel/ }).click(),
+  ])
+  const path = await download.path()
+  const { read, utils } = await import("xlsx")
+  const wb = read(await readFile(path), { type: "buffer" })
+  const sheet = wb.Sheets[wb.SheetNames[0] ?? ""]
+  const out = utils.sheet_to_json<Record<string, unknown>>(sheet ?? {})
+  expect(out).toHaveLength(TOTAL)
+})

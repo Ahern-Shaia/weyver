@@ -39,6 +39,10 @@ const EMPTY_SELECTION: GridSelection = {
   rows: CompactSelection.empty(),
 }
 
+/* 瀏覽器端匯出的列數上限。超過就該走設定中心的租戶級匯出(非同步產檔)。
+   一萬列的 xlsx 在瀏覽器裡組已經接近痛的邊緣,而再上去只會變成分頁當掉。 */
+const EXPORT_MAX_ROWS = 10_000
+
 /* R1·UP-2 集合(browse)視圖:Glide 網格套 view 選欄/篩選/排序 + 快速搜尋;前導「開啟」欄下鑽記錄頁;
    inline 編輯依欄位寫入權限(後端 assertWritable 強制;編輯後不即時 re-sort,留位至 refetch)。 */
 export function CollectionView({
@@ -70,6 +74,7 @@ export function CollectionView({
     [view, quickSearch, collapsed],
   )
   const recordsQuery = useInfiniteRecordsQuery(formId, query)
+  const [exporting, setExporting] = useState(false)
   /* 🔴 凍結欄(`grid-paste.md` §8)。**讀出來再 clamp 一次** ——
      欄位可能在設定之後被刪掉,存的時候合法不代表現在合法(FMEA G3)。
      另外不讓凍結欄佔滿畫面:至多一半的欄(FMEA G4)。 */
@@ -103,8 +108,46 @@ export function CollectionView({
   /* 🔴 `xlsx` **動態載入**。它是整個路由裡最大的第三方相依,但只有按下「匯出」
      才用得到 —— 靜態匯入等於讓每個只是來看資料的人先下載一份試算表函式庫。 */
   const onExport = async (): Promise<void> => {
+    /* 🔴 **匯出前先把剩下的頁抓完**。
+
+       原本只匯出「已載入的頁」—— 使用者捲了兩頁就按匯出,拿到的是 100 筆,
+       而畫面上有 5000 筆,**沒有任何提示**。那是這個 repo 反覆踩的
+       「靜默少做」:檔案打得開、格式也對,只是資料少了,而他不會發現。
+
+       上限存在是因為這是**瀏覽器端**的匯出:再多就該走設定中心的
+       租戶級匯出(R1·I-1,非同步產檔)。超過上限**明說**,並指得出去哪裡拿完整的。 */
+    /* 🔴 **一律用 `fetchNextPage()` 的回傳值,不要讀元件上的 `records` / `hasNextPage`。**
+
+       它們是 render 當下捕捉的閉包:非同步迴圈裡它們**永遠不會變**,
+       於是迴圈只跑一次就以為抓完了,匯出的仍是第一頁。
+       e2e 抓到(建 250 筆、匯出只有 200),而型別檢查完全不會抱怨。 */
+    setExporting(true)
+    let pages = recordsQuery.data
+    let hasNext = recordsQuery.hasNextPage
+    const countOf = (d: typeof pages): number =>
+      d?.pages.reduce((n, p) => n + p.records.length, 0) ?? 0
+    try {
+      let guard = 0
+      /* 迴圈上限:`hasNextPage` 若因為任何原因恆真,這裡不會轉到天亮 */
+      while (hasNext && countOf(pages) < EXPORT_MAX_ROWS && guard < 200) {
+        guard += 1
+        const next = await recordsQuery.fetchNextPage()
+        pages = next.data
+        hasNext = next.hasNextPage
+      }
+    } finally {
+      setExporting(false)
+    }
+    const all = pages?.pages.flatMap((p) => p.records) ?? []
+    if (hasNext) {
+      window.alert(
+        `資料超過瀏覽器匯出上限(${String(EXPORT_MAX_ROWS)} 筆),本次只會匯出前 ${String(all.length)} 筆。\n` +
+          "要完整資料請用「設定 → 資料匯出」,那一條是非同步產檔、不受此限。",
+      )
+    }
+
     const { utils, writeFile } = await import("xlsx")
-    const rows = records.map((r) => {
+    const rows = all.map((r) => {
       const o: Record<string, unknown> = {}
       for (const f of displayFields) {
         const disp = formatFieldValue(f, r.values[f.name], memberNames, fmtCtx, linkLabels)
@@ -337,11 +380,11 @@ export function CollectionView({
         ) : null}
         <button
           type="button"
-          onClick={onExport}
-          disabled={records.length === 0}
+          onClick={() => void onExport()}
+          disabled={records.length === 0 || exporting}
           className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-50"
         >
-          匯出 Excel
+          {exporting ? "準備中…" : "匯出 Excel"}
         </button>
         {recordsQuery.hasNextPage ? (
           <>
@@ -353,7 +396,9 @@ export function CollectionView({
             >
               {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
             </button>
-            <span className="text-ink-3">(匯出僅含已載入 {records.length} 筆)</span>
+            {/* ⚠️ 這裡原本寫「(匯出僅含已載入 N 筆)」—— 匯出改成會先抓完之後
+                那句話就**反過來變成假的**了。功能改了而畫面上的說明沒改,
+                比一開始就沒寫更糟:使用者會照著它做錯的決定。 */}
           </>
         ) : null}
       </div>
