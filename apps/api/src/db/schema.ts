@@ -644,6 +644,9 @@ export const triggerDefs = pgTable(
     conditions: jsonb("conditions").notNull().default([]),
     actionType: text("action_type").notNull(),
     config: jsonb("config").notNull(),
+    /* 🔴 已發布的定義快照。**runtime 只讀這一欄**,上面那些是草稿。
+       NULL = 從未發布 → 不會跑。`enabled` 刻意不在裡面(kill switch 要即時)。 */
+    published: jsonb("published"),
     position: integer("position").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

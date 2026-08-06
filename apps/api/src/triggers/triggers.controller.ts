@@ -74,6 +74,29 @@ export class TriggersController {
     return this.triggers.update(tenant, formId, triggerId, body)
   }
 
+  /* 🔴 發布 = 讓草稿生效。與**改表單設計**同級的權限,理由同 create。 */
+  @Post(":triggerId/publish")
+  @HttpCode(200)
+  @RequiresFormAction("design")
+  async publish(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("triggerId", ParseIntPipe) triggerId: number,
+  ): Promise<TriggerDto> {
+    return this.triggers.publish(tenant, formId, triggerId)
+  }
+
+  @Post(":triggerId/discard")
+  @HttpCode(200)
+  @RequiresFormAction("design")
+  async discard(
+    @Tenant() tenant: TenantContext,
+    @Param("formId", ParseIntPipe) formId: number,
+    @Param("triggerId", ParseIntPipe) triggerId: number,
+  ): Promise<TriggerDto> {
+    return this.triggers.discardDraft(tenant, formId, triggerId)
+  }
+
   @Delete(":triggerId")
   @HttpCode(204)
   @RequiresFormAction("design")

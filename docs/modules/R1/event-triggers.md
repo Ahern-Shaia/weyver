@@ -315,11 +315,48 @@ M0 原寫「以觸發者身分執行,權限不足記 `denied`」。**實作時�
 | M4 | 設計器 UI(觸發時機 / 條件 / 動作 / 試跑 / 執行紀錄)| ✅ 2026-08-06 |
 | M5 | e2e 固化 + FMEA | 🟡 e2e ✅;FMEA 待補 |
 
+## §5 v1.1|草稿 / 已發布分離(2026-08-06)
+
+站三補查發現的第一個缺陷,同日修掉。**這不是我方想到的,是 Teable 官方文件逐字提醒的。**
+
+### 落地
+
+| 決定 | 內容 |
+|---|---|
+| **`trigger_def.published` jsonb 快照** | runtime **只讀這一欄**,平鋪欄位降為草稿。`NULL` = 從未發布 → 不會跑 |
+| 🔴 **`enabled` 不進草稿** | 它是 **kill switch**。發現觸發器在亂跑時,「先按停用、再按發布才會停」不可接受 —— 停用與啟用都即時生效。`position` 同理(只影響順序,不會算錯) |
+| **新建直接發布,編輯才進草稿** | Teable 的用語是「**Editing** a live workflow」。草稿要解的是「改到一半的東西在動」,新建沒有這個問題;反過來若新建也要按發布,使用者會看到一條**什麼都不做**的觸發器而畫面不說為什麼 |
+| **`listActiveSync` 的過濾打在 jsonb 上** | 不用平鋪欄位過濾 —— 否則會撈到「草稿說 updateSelf、已發布的其實是 pushTo」這種執行不了的列。**同一個真相只讀一個地方** |
+| **設計器顯示「有未發布的變更 —— 目前跑的是上一版」+ 發布 / 丟棄** | 後端擋住了但畫面不說,設計者改完就走以為生效了,**那和沒擋一樣糟** |
+
+### ⚠️ 兩個實作期的坑
+
+**① jsonb 會重排鍵順序 → `JSON.stringify` 比對恆不相等**
+
+`published` 是 jsonb,Postgres 依鍵長度再字典序**重排物件的鍵**。
+於是剛發布完的兩份內容相同、字串不同 → 「發布了但永遠顯示有未發布的變更」。
+第一版就是這樣寫的,兩條測試同時紅在 `expected true to be false`。
+改為遞迴排序鍵後再序列化;**陣列不排序**(條件順序有語意)。
+
+**② migration 必須回填,否則會靜默停掉所有既有觸發器**
+
+runtime 改讀 `published` 而它預設 `NULL`。純加法**不等於**零回歸 ——
+`0057` 用 `jsonb_build_object` 把既有列的定義回填進去。
+
+### 🔴 還原時把未提交的工作洗掉了(記在這裡)
+
+驗證「這條測試會不會紅」時,我用 `git checkout -- <path>` 還原刻意改壞的程式碼 ——
+**而那個檔案的改動根本還沒 commit**,於是整支 repository 的草稿/發布實作被洗掉,只能重寫。
+
+`git checkout --` 還原的是**最後一次 commit 的版本**,不是「我剛剛改壞之前的版本」。
+要驗紅燈就用**反向編輯**還原,或先 `git stash`。
+memory 已記過同型(`pitfall_git_checkout_dot_destroys_work`),這次是指定了路徑仍然中招 ——
+**指定路徑只防「波及其他檔案」,不防「這個檔案本身沒 commit」。**
+
 ### 🔴 站三補查後新增的殘留(2026-08-06)
 
 | 殘留 | 依據 |
 |---|---|
-| **改了立刻生效,沒有草稿 / Apply Update** | Teable 逐字「live workflow keeps running on the previous version until you click Apply Update」。目前設計者改到一半就在對真實資料動作 |
 | **執行紀錄不能重跑** | Teable 給 full rerun + resume-from-failed 並明講重複風險;Airtable 給 Rerun 且**用當時的設定重跑**。我方連重跑都沒有 |
 | **執行紀錄無保留期** | Airtable 依方案 2 週 – 3 年。我方無政策,`trigger_run` 會無限長 |
 | **條件只有 and** | Airtable 有 and / or(但明文不支援巢狀)|

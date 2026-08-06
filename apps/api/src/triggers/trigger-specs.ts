@@ -79,6 +79,18 @@ export interface TriggerDto {
   readonly config: TriggerConfig
   readonly position: number
   readonly enabled: boolean
+  /* 編輯中的版本。上面的 `config` / `conditions` 等是**正在跑的**那一版。 */
+  readonly draft: {
+    readonly onCreate: boolean
+    readonly onUpdate: boolean
+    readonly watchFields: readonly string[]
+    readonly conditions: readonly { field: string; op: string; value?: unknown }[]
+    readonly actionType: TriggerConfig["actionType"]
+    readonly config: TriggerConfig
+  }
+  /* false = 從未發布 → **不會跑**。設計器要講清楚,否則使用者以為它在動。 */
+  readonly isPublished: boolean
+  readonly hasUnpublishedChanges: boolean
 }
 
 export const TRIGGER_OUTCOMES = ["ran", "skipped", "denied", "failed", "depth"] as const

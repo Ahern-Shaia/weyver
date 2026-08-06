@@ -612,3 +612,112 @@ describe("事件觸發器 · 非同步 pushTo", () => {
     expect(await runsOf(srcId), "應記下 denied").toContain("denied")
   })
 })
+
+/* 🔴 R1·C-4 v1.1|草稿 / 已發布分離。
+
+   出貨當下是**改了立刻生效** —— 設計者改到一半的觸發器,當下就在對真實資料動作。
+   一條「金額 > 10000 → 待審」改到剩「金額 >」的瞬間,條件是壞的而它照跑。
+
+   站三補查時由 Teable 官方逐字發現(「the live workflow keeps running on the
+   previous version until you click Apply Update」),不是我方自己想到的。 */
+describe("事件觸發器 · 草稿與發布", () => {
+  it("🔴 改了但沒發布 → 跑的仍是舊版", async () => {
+    const formId = await makeForm("發布A")
+    const id = await makeTrigger(formId, {
+      name: "設為舊值",
+      onCreate: true,
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "舊版" } },
+      },
+    })
+    /* 新建即發布 —— 建完就該會動,否則使用者看到一條什麼都不做的觸發器 */
+    expect((await read(formId, await save(formId, { 金額: 1 }))).狀態).toBe("舊版")
+
+    // 改成新值,**不發布**
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(formId)}/triggers/${String(id)}`,
+      headers: H(),
+      payload: {
+        config: {
+          actionType: "updateSelf",
+          setFields: { 狀態: { from: "literal", value: "新版" } },
+        },
+      },
+    })
+    expect(patched.statusCode, patched.body).toBe(200)
+    const dto = patched.json() as { hasUnpublishedChanges: boolean; draft: { config: unknown } }
+    expect(dto.hasUnpublishedChanges, "改完要標示有未發布的變更").toBe(true)
+
+    /* 🔴 本檔存在的理由:跑的還是舊版 */
+    expect((await read(formId, await save(formId, { 金額: 1 }))).狀態).toBe("舊版")
+
+    // 發布後才換
+    const pub = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(formId)}/triggers/${String(id)}/publish`,
+      headers: H(),
+    })
+    expect(pub.statusCode, pub.body).toBe(200)
+    expect((pub.json() as { hasUnpublishedChanges: boolean }).hasUnpublishedChanges).toBe(false)
+    expect((await read(formId, await save(formId, { 金額: 1 }))).狀態).toBe("新版")
+  })
+
+  it("丟棄草稿 → 回到已發布的版本", async () => {
+    const formId = await makeForm("發布B")
+    const id = await makeTrigger(formId, {
+      name: "設為甲",
+      onCreate: true,
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "甲" } },
+      },
+    })
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(formId)}/triggers/${String(id)}`,
+      headers: H(),
+      payload: {
+        config: { actionType: "updateSelf", setFields: { 狀態: { from: "literal", value: "乙" } } },
+      },
+    })
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(formId)}/triggers/${String(id)}/discard`,
+      headers: H(),
+    })
+    expect(res.statusCode, res.body).toBe(200)
+    const dto = res.json() as {
+      hasUnpublishedChanges: boolean
+      draft: { config: { setFields: Record<string, { value: string }> } }
+    }
+    expect(dto.hasUnpublishedChanges).toBe(false)
+    expect(dto.draft.config.setFields.狀態?.value, "草稿要被還原成已發布的內容").toBe("甲")
+  })
+
+  /* 🔴 停用是 kill switch,**不能等發布才生效**。
+     發現觸發器在亂跑的時候,「先按停用、再按發布才會停」是不可接受的。 */
+  it("🔴 停用即時生效,不必發布", async () => {
+    const formId = await makeForm("發布C")
+    const id = await makeTrigger(formId, {
+      name: "會動的",
+      onCreate: true,
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "動了" } },
+      },
+    })
+    expect((await read(formId, await save(formId, { 金額: 1 }))).狀態).toBe("動了")
+
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(formId)}/triggers/${String(id)}`,
+      headers: H(),
+      payload: { enabled: false },
+    })
+    /* 沒有按發布 —— 但它必須立刻停 */
+    const after = await save(formId, { 金額: 1, 狀態: "沒被動" })
+    expect((await read(formId, after)).狀態).toBe("沒被動")
+  })
+})

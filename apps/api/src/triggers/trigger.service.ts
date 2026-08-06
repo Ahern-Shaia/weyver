@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common"
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common"
 
 import type { FormatCondition } from "@weyver/rules"
 import type { TenantContext } from "../http/tenant-context.js"
@@ -40,6 +40,13 @@ export class TriggerService {
       config: body.config,
       enabled: body.enabled,
     })
+    /* 🔴 **新建直接發布,編輯才進草稿。**
+
+       Teable 的用語是「Editing a live workflow」—— 草稿要解的是「改到一半的東西
+       在對真實資料動作」,而新建沒有這個問題(它之前不存在)。
+       反過來若新建也要按發布,使用者建完會看到一條**什麼都不做**的觸發器,
+       而畫面上沒有任何東西告訴他為什麼。 */
+    await this.repo.publish(tenant.tenantId, id)
     return toDto(await this.require(tenant, formId, id))
   }
 
@@ -65,6 +72,30 @@ export class TriggerService {
       patch.actionType = body.config.actionType
     }
     await this.repo.update(tenant.tenantId, triggerId, patch)
+    return toDto(await this.require(tenant, formId, triggerId))
+  }
+
+  /* 把草稿發布上線。**這是唯一讓定義變更生效的動作。** */
+  async publish(tenant: TenantContext, formId: number, triggerId: number): Promise<TriggerDto> {
+    await this.require(tenant, formId, triggerId)
+    await this.repo.publish(tenant.tenantId, triggerId)
+    return toDto(await this.require(tenant, formId, triggerId))
+  }
+
+  /* 丟掉草稿。從未發布過的觸發器不能丟(丟了會變成空的)—— 那種要刪不是丟。 */
+  async discardDraft(
+    tenant: TenantContext,
+    formId: number,
+    triggerId: number,
+  ): Promise<TriggerDto> {
+    const row = await this.require(tenant, formId, triggerId)
+    if (row.published === null) {
+      throw new BadRequestException({
+        code: "TRIGGER_NEVER_PUBLISHED",
+        message: "這條觸發器從未發布過,沒有可以還原的版本",
+      })
+    }
+    await this.repo.discardDraft(tenant.tenantId, triggerId)
     return toDto(await this.require(tenant, formId, triggerId))
   }
 
@@ -128,5 +159,9 @@ function toDto(row: TriggerRow): TriggerDto {
     config: row.config,
     position: row.position,
     enabled: row.enabled,
+    /* 設計器要編輯的是草稿,要顯示的是「跑的是哪一版」。兩者都給。 */
+    draft: row.draft,
+    isPublished: row.published !== null,
+    hasUnpublishedChanges: row.hasUnpublishedChanges,
   }
 }

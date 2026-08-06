@@ -6,6 +6,16 @@ import { TenantDb } from "../db/db.module.js"
 import { triggerDefs, triggerRuns } from "../db/schema.js"
 import type { TriggerConfig, TriggerOutcome } from "./trigger-specs.js"
 
+/* 已發布的定義快照。**runtime 只吃這個形狀。** */
+export interface PublishedDef {
+  readonly onCreate: boolean
+  readonly onUpdate: boolean
+  readonly watchFields: readonly string[]
+  readonly conditions: readonly FormatCondition[]
+  readonly actionType: TriggerConfig["actionType"]
+  readonly config: TriggerConfig
+}
+
 export interface TriggerRow {
   readonly id: number
   readonly formId: number
@@ -17,6 +27,11 @@ export interface TriggerRow {
   readonly config: TriggerConfig
   readonly position: number
   readonly enabled: boolean
+  /* `null` = 從未發布 → 這條觸發器**不會跑**。 */
+  readonly published: PublishedDef | null
+  /* 設計器編輯中的版本(平鋪欄位的原值)。 */
+  readonly draft: PublishedDef
+  readonly hasUnpublishedChanges: boolean
 }
 
 export interface TriggerRunRow {
@@ -67,7 +82,13 @@ export class TriggersRepository {
 
      🔴 動作型別的過濾放在**查詢**裡而不是迴圈裡 —— 同步側每次存檔都會跑,
      把整張表的觸發器撈回來再丟掉一半是白費的 I/O。 */
+  /* 🔴 **runtime 專用:一律讀 `published`,不讀草稿。**
+
+     過濾條件全部打在 jsonb 上而不是那幾個平鋪欄位 —— 那些是草稿。
+     用草稿欄位過濾會出現「草稿說是 updateSelf、已發布的其實是 pushTo」
+     這種撈到卻執行不了的列。**同一個真相只讀一個地方。** */
   async listActiveSync(tenantId: number, formId: number, isCreate: boolean): Promise<TriggerRow[]> {
+    const timing = isCreate ? "onCreate" : "onUpdate"
     return this.tdb.withTenant(tenantId, async (tx) => {
       const rows = await tx
         .select()
@@ -78,12 +99,54 @@ export class TriggersRepository {
             eq(triggerDefs.formId, formId),
             isNull(triggerDefs.deletedAt),
             eq(triggerDefs.enabled, true),
-            eq(triggerDefs.actionType, "updateSelf"),
-            eq(isCreate ? triggerDefs.onCreate : triggerDefs.onUpdate, true),
+            sql`${triggerDefs.published} IS NOT NULL`,
+            sql`${triggerDefs.published} ->> 'actionType' = 'updateSelf'`,
+            sql`(${triggerDefs.published} -> ${timing})::boolean IS TRUE`,
           ),
         )
         .orderBy(asc(triggerDefs.position), asc(triggerDefs.id))
       return rows.map(toRow)
+    })
+  }
+
+  /* 把草稿複製成已發布。**這是唯一讓定義變更生效的動作。** */
+  async publish(tenantId: number, triggerId: number): Promise<void> {
+    await this.tdb.withTenant(tenantId, async (tx) => {
+      await tx
+        .update(triggerDefs)
+        .set({
+          published: sql`jsonb_build_object(
+            'onCreate', ${triggerDefs.onCreate},
+            'onUpdate', ${triggerDefs.onUpdate},
+            'watchFields', ${triggerDefs.watchFields},
+            'conditions', ${triggerDefs.conditions},
+            'actionType', ${triggerDefs.actionType},
+            'config', ${triggerDefs.config})`,
+        })
+        .where(and(eq(triggerDefs.tenantId, tenantId), eq(triggerDefs.id, triggerId)))
+    })
+  }
+
+  /* 丟掉草稿,回到已發布的版本。 */
+  async discardDraft(tenantId: number, triggerId: number): Promise<void> {
+    await this.tdb.withTenant(tenantId, async (tx) => {
+      await tx
+        .update(triggerDefs)
+        .set({
+          onCreate: sql`(${triggerDefs.published} -> 'onCreate')::boolean`,
+          onUpdate: sql`(${triggerDefs.published} -> 'onUpdate')::boolean`,
+          watchFields: sql`${triggerDefs.published} -> 'watchFields'`,
+          conditions: sql`${triggerDefs.published} -> 'conditions'`,
+          actionType: sql`${triggerDefs.published} ->> 'actionType'`,
+          config: sql`${triggerDefs.published} -> 'config'`,
+        })
+        .where(
+          and(
+            eq(triggerDefs.tenantId, tenantId),
+            eq(triggerDefs.id, triggerId),
+            sql`${triggerDefs.published} IS NOT NULL`,
+          ),
+        )
     })
   }
 
@@ -204,17 +267,58 @@ export class TriggersRepository {
   }
 }
 
+/* 🔴 比對草稿與已發布**不能用 `JSON.stringify`**。
+
+   `published` 是 jsonb,而 Postgres 的 jsonb **會重排物件的鍵**
+   (依鍵長度再字典序),所以剛發布完的兩份內容相同、字串卻不同 ——
+   結果是「發布了但永遠顯示有未發布的變更」。
+   第一版就是這樣寫的,兩條測試同時紅在 `expected true to be false`。
+
+   遞迴排序鍵後再序列化。**陣列不排序**:條件的順序有語意(由上而下、後者覆蓋)。 */
+function canonical(v: unknown): string {
+  const norm = (x: unknown): unknown => {
+    if (Array.isArray(x)) return x.map(norm)
+    if (x !== null && typeof x === "object") {
+      const o = x as Record<string, unknown>
+      return Object.fromEntries(
+        Object.keys(o)
+          .sort()
+          .map((k) => [k, norm(o[k])]),
+      )
+    }
+    return x
+  }
+  return JSON.stringify(norm(v))
+}
+
 function toRow(row: typeof triggerDefs.$inferSelect): TriggerRow {
-  return {
-    id: row.id,
-    formId: row.formId,
-    name: row.name,
+  const published = (row.published ?? null) as PublishedDef | null
+  const draft: PublishedDef = {
     onCreate: row.onCreate,
     onUpdate: row.onUpdate,
     watchFields: row.watchFields as string[],
     conditions: row.conditions as FormatCondition[],
+    actionType: row.actionType as TriggerConfig["actionType"],
     config: row.config as TriggerConfig,
+  }
+  return {
+    id: row.id,
+    formId: row.formId,
+    name: row.name,
+    /* 🔴 平鋪欄位一律回**已發布的值**(沒發布過才回草稿)。
+
+       `listActiveSync` 回來的列也會經過這裡 —— 若這裡回草稿,
+       同步側就會拿草稿去執行,整個分離等於沒做。
+       設計器要編輯的草稿走 `draft`,兩者刻意分名不共用。 */
+    onCreate: published?.onCreate ?? draft.onCreate,
+    onUpdate: published?.onUpdate ?? draft.onUpdate,
+    watchFields: published?.watchFields ?? draft.watchFields,
+    conditions: published?.conditions ?? draft.conditions,
+    config: published?.config ?? draft.config,
+    draft,
     position: row.position,
     enabled: row.enabled,
+    published,
+    hasUnpublishedChanges: published !== null && canonical(published) !== canonical(draft),
   }
 }
