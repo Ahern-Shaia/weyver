@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weyver · 工作區 A/B 對照(視覺尺度)</title>
+<title>Weyver · 工作區 A/B/C 對照</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -53,6 +53,68 @@
   --frame-shadow:none;     /* 無 resting 陰影 */
   --fx-cell-bg:transparent;/* 公式欄不上底色,靠字色 + mono */
 }
+
+/* ── C:B 的色彩 + 層級。變數同 B,只加刻度 ──────────────── */
+.vc{
+  --bg:#f6f8fa;--card:#fcfdfe;--head:#eef1f5;--field:#eef1f5;
+  --ink:#0f1720;--ink2:#3a4553;--ink3:#5c6876;--ink4:#9aa6b4;
+  --line:#e6eaf0;--line2:#e6eaf0;--line3:#eef1f5;
+  --brand:#22568a;--brand-d:#1b4570;--brand-tint:#e8eef7;
+  --fx:#0b6b5d;--fx-bg:#e8f4f1;--rel:#4a3d86;
+  --ok:#1a7a43;--ok-t:#eaf4ee;--ok-line:#c4e0ce;
+  --wn:#8a5200;--wn-t:#f6efe2;--wn-line:#e2d3b4;
+  --er:#b3261e;--er-t:#f9ecea;--er-line:#e9c9c6;
+  --nt:#5c6876;--nt-t:#eef1f5;--nt-line:#d3dae3;
+  --r-chip:3px;--r-ctl:4px;--r-card:6px;
+  --frame-shadow:none;
+  /* 🔴 從 A 拿回來的唯一一項:公式欄底色。理由是**資訊**不是裝飾 ——
+     「哪些數字是算出來的」一眼可見,而「算」是 docs/18 的向上軸。 */
+  --fx-cell-bg:#e8f4f1;
+  /* 🔴 側欄選取:B 量到 1.021:1(幾乎看不見)是缺陷不是風格。
+     這裡拉到 1.156:1 **並加左側 2px 主色條** —— 位置訊號不吃對比預算。 */
+  --side-sel:#d8e2ee;
+}
+/* C 的字階:目前 17/13/12.5/11 擠在 6px 之內,整個畫面只有一種節奏。
+   docs/37 §1 實測結論①逐字:「重量感來自**尺寸**,無人用 900」——
+   而現況是「小而重」(17px / wght 650),正好相反。故 C 放大字級、**降字重**。
+   ⚠️ 該表量的是**公開行銷頁**的展示字,不能拿 64px 當 app 內的目標;
+   可比的只有它的「UI 主字級 13–15px」,而現況 12.5px 在下緣外。 */
+.vc .sh-title h1{font-size:24px;font-weight:500;letter-spacing:-.4px;}
+.vc{font-size:13.5px;}
+.vc tbody td{font-size:13px;height:34px;padding:6px 12px;}
+.vc .th{font-size:11px;padding:10px 12px;}
+.vc .sheet{font-size:13px;padding:7px 8px;}
+.vc .views button{font-size:13px;padding:8px 12px 10px;}
+.vc .fgrid{font-size:13px;grid-template-columns:80px 1fr;gap:12px 16px;}
+.vc .fgrid .k{font-size:12px;}
+/* 🔴 殼放鬆、資料收緊 —— **密度差本身就是層級**。
+   這是 tokens.css v4「殼靠面、單據靠框」的延伸:兩套語言不只顏色不同,節奏也不同。 */
+.vc .top{height:56px;padding:0 20px;gap:16px;}
+.vc .sh-head{padding:20px 24px 0;}
+.vc .sh-title{gap:12px;}
+.vc .views{margin-top:16px;}
+.vc .tools{padding:12px 24px;}
+.vc thead th{background:var(--card);}          /* 表頭不再另上底,靠字重與框線 */
+.vc .th{color:var(--ink3);font-weight:600;letter-spacing:.02em;}
+.vc thead th{border-bottom:1.5px solid var(--s7,#d3dae3);}
+.vc .grid table{margin:0;}
+.vc tbody td:first-child,.vc thead th:first-child{padding-left:24px;}
+.vc tbody td:last-child,.vc thead th:last-child{padding-right:24px;}
+.vc .ws{padding:16px;}
+.vc .sheets{padding:8px 12px 16px;}
+.vc .grp{margin-bottom:12px;}
+.vc .grp>.gh{padding:8px 8px 6px;font-size:10.5px;}
+.vc .dt-head{padding:16px 20px;}
+.vc .dt-body{padding:20px;}
+.vc .dt-foot{padding:14px 20px;}
+.vc .sub-h{font-size:10.5px;margin-bottom:10px;}
+/* 側欄選取:色底 + 左側主色條(位置訊號) */
+.vc .sheet.on{background:var(--side-sel);color:var(--brand-d);box-shadow:inset 2px 0 0 var(--brand);}
+.vc .pill i{display:none;}
+.vc .pill{padding:1px 7px;font-weight:600;}
+.vc .appr b{margin-left:2px;border:1px solid var(--line);border-radius:3px;}
+.vc .subtable .tot{background:transparent;border-top:2px solid var(--ink);color:var(--ink);}
+.vc .btn.pri{height:34px;padding:0 14px;}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;font-size:13px;color:#1B1F24;background:#eceff2;-webkit-font-smoothing:antialiased;padding-bottom:40px;}
@@ -184,12 +246,13 @@ td.fx{font-family:'IBM Plex Mono';text-align:right;background:var(--fx-cell-bg);
 <body>
 
 <div class="hdr">
-  <h1>工作區 A/B 對照 —— 只有視覺尺度不同,結構完全相同</h1>
+  <h1>工作區 A/B/C 對照 —— 結構完全相同</h1>
   <p>
     兩版的 DOM、欄位、資料、版面**一模一樣**,差別只在四項:圓角 · 狀態章形狀 · resting 陰影 · 公式欄要不要整格上色。<br>
     <b>A</b> = <code>workspace-ragic.html</code> 的尺度(7–10px 圓角 / pill / 陰影浮起 / 彩色底)。
     <b>B</b> = <code>packages/ui/src/styles/tokens.css</code> <b>v4 實際值</b>(radius 3/4/6px / 帶框方形章 / 無 resting 陰影 / 公式欄不上底)。<br>
-    ⚠️ B 不是稻草人:它照 tokens.css v4 檔頭自己的裁定「<b>殼靠面、單據靠框</b>」,所以側欄選取<b>一樣是色底不畫框</b>。
+    ⚠️ B 不是稻草人:它照 tokens.css v4 檔頭自己的裁定「<b>殼靠面、單據靠框</b>」,所以側欄選取<b>一樣是色底不畫框</b>。<br>
+    <b>C</b> = B 的色彩 + <b>把字階與間距節奏拉開</b>,測試一個不同的假設:「後台感」的來源是<b>沒有層級</b>,不是缺裝飾。
   </p>
 </div>
 
@@ -373,14 +436,107 @@ td.fx{font-family:'IBM Plex Mono';text-align:right;background:var(--fx-cell-bg);
   </div>
 </div>
 
+<div class="tag">C|B 的色彩 + 層級 <span>標題 24px/wght 500(大而輕)· 內文 13.5px · 間距刻度 4/8/12/16/24 · 殼放鬆資料收緊 · 取回 fx 底色 · 側欄選取加左條</span></div>
+<div class="app vc" id="verC">
+  <div class="top">
+    <div class="mk">W</div><div class="bd">Weyver<small>織雲</small></div>
+    <div class="gs"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>全域搜尋 表單 · 記錄 · 欄位<kbd>⌘K</kbd></div>
+    <div class="rt"><button class="btn pri">＋ 建立記錄</button><div class="av">鮮</div></div>
+  </div>
+  <div class="mainrow">
+    <div class="side">
+      <div class="ws"><div class="l">工作區</div><div class="n">鮮勇食品</div></div>
+      <div class="sheets">
+        <div class="grp"><div class="gh">採購 · 進貨</div>
+          <div class="sheet on"><span class="si">▦</span>採購單<span class="cap fx">GL</span></div>
+          <div class="sheet"><span class="si">▦</span>供應商</div>
+          <div class="sheet"><span class="si">▦</span>進貨檢驗</div></div>
+        <div class="grp"><div class="gh">銷售 · 出貨</div>
+          <div class="sheet"><span class="si">▦</span>銷貨單<span class="cap fx">GL</span></div>
+          <div class="sheet"><span class="si">▦</span>客戶</div></div>
+        <div class="grp"><div class="gh">生產 · 現場</div>
+          <div class="sheet"><span class="si">▦</span>生產工單<span class="cap edge">Edge</span></div>
+          <div class="sheet"><span class="si">▦</span>BOM 用料<span class="cap fx">MRP</span></div></div>
+        <div class="grp"><div class="gh">品保 · ISO</div>
+          <div class="sheet"><span class="si">▦</span>不合格品 / CAPA</div>
+          <div class="sheet"><span class="si">▦</span>受控文件<span class="cap lock">受控</span></div></div>
+      </div>
+      <div class="foot"><div class="add">＋ 新增表單 / 匯入 Excel</div></div>
+    </div>
+    <div class="main">
+      <div class="sh-head">
+        <div class="sh-title"><h1>採購單</h1><span class="meta">248 筆</span><span class="gl">已連 GL 過帳 · 應付</span></div>
+        <div class="views"><button class="on">列表</button><button>看板</button><button>日曆</button><button>樞紐</button><button>單筆表單</button><button>＋ 設計</button></div>
+      </div>
+      <div class="tools">
+        <button class="tbtn">篩選</button><button class="tbtn">排序</button><button class="tbtn">欄位</button>
+        <div class="sp"></div><span class="cnt">已選 1 筆</span>
+        <button class="tbtn">匯入</button><button class="tbtn">匯出</button>
+      </div>
+      <div class="grid"><table>
+        <thead><tr>
+          <th><div class="th"><input type="checkbox"></div></th>
+          <th><div class="th"><span class="ty">#</span>單號</div></th>
+          <th><div class="th"><span class="ty rel">↗</span>供應商</div></th>
+          <th><div class="th">品項</div></th>
+          <th><div class="th r"><span class="ty money">$</span>數量</div></th>
+          <th><div class="th r"><span class="ty money">$</span>單價</div></th>
+          <th><div class="th r"><span class="ty fx">fx</span>金額</div></th>
+          <th><div class="th">批號</div></th><th><div class="th">交期</div></th>
+          <th><div class="th">簽核</div></th><th><div class="th">狀態</div></th>
+        </tr></thead>
+        <tbody>
+          <tr class="sel"><td class="chk"><input type="checkbox" checked></td><td class="code">PO-0716-001</td><td class="rel"><a>鑫豐農產品</a></td><td>凍覆盆子 500g</td><td class="num">320</td><td class="num">401.25</td><td class="fx">128,400</td><td class="code">BN-0716-A</td><td class="mono">07/22</td><td><span class="appr"><b class="done">陳</b><b class="now">林</b><b class="wait">王</b></span></td><td><span class="pill wn"><i></i>待審核</span></td></tr>
+          <tr><td class="chk"><input type="checkbox"></td><td class="code">PO-0715-047</td><td class="rel"><a>統鮮實業</a></td><td>凍藍莓 500g</td><td class="num">200</td><td class="num">421.00</td><td class="fx">84,200</td><td class="code">BN-0715-C</td><td class="mono">07/20</td><td><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></td><td><span class="pill ok"><i></i>已核准</span></td></tr>
+          <tr><td class="chk"><input type="checkbox"></td><td class="code">PO-0715-046</td><td class="rel"><a>正大食材</a></td><td>綜合莓果 1kg</td><td class="num">150</td><td class="num">2,080.00</td><td class="fx">312,000</td><td class="code">BN-0715-B</td><td class="mono">07/19</td><td><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></td><td><span class="pill nt"><i></i>已收貨</span></td></tr>
+          <tr><td class="chk"><input type="checkbox"></td><td class="code">PO-0715-045</td><td class="rel"><a>永豐冷鏈</a></td><td>凍草莓 500g</td><td class="num">140</td><td class="num">405.71</td><td class="fx">56,800</td><td class="code">BN-0715-K</td><td class="mono">07/18</td><td><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></td><td><span class="pill ok"><i></i>已核准</span></td></tr>
+          <tr><td class="chk"><input type="checkbox"></td><td class="code">PO-0715-044</td><td class="rel"><a>鑫豐農產品</a></td><td>冷凍芒果丁 1kg</td><td class="num">90</td><td class="num">1,120.00</td><td class="fx">100,800</td><td class="code">BN-0715-A</td><td class="mono">07/18</td><td><span class="appr"><b class="done">陳</b><b class="wait">林</b><b class="wait">王</b></span></td><td><span class="pill er"><i></i>退回</span></td></tr>
+          <tr><td class="chk"><input type="checkbox"></td><td class="code">PO-0714-039</td><td class="rel"><a>統鮮實業</a></td><td>凍鳳梨塊 500g</td><td class="num">260</td><td class="num">288.46</td><td class="fx">75,000</td><td class="code">BN-0714-D</td><td class="mono">07/17</td><td><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></td><td><span class="pill nt"><i></i>已收貨</span></td></tr>
+          <tr><td class="chk"><input type="checkbox"></td><td class="code">PO-0714-038</td><td class="rel"><a>正大食材</a></td><td>冷凍蔬菜包 2kg</td><td class="num">75</td><td class="num">640.00</td><td class="fx">48,000</td><td class="code">BN-0714-B</td><td class="mono">07/16</td><td><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></td><td><span class="pill ok"><i></i>已核准</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="detail">
+      <div class="dt-head"><span class="c">PO-0716-001</span><span class="pill wn"><i></i>待審核</span><span class="x">✕</span></div>
+      <div class="dt-body">
+        <div class="fgrid">
+          <div class="k">供應商</div><div class="v" style="color:var(--rel)">鑫豐農產品 ↗</div>
+          <div class="k">聯絡人</div><div class="v">陳美玲 · 0912-345-678</div>
+          <div class="k">交期</div><div class="v mono">2026-07-22</div>
+          <div class="k">倉別</div><div class="v">冷凍倉 A</div>
+          <div class="k">當班批號</div><div class="v mono">BN-0716-A</div>
+        </div>
+        <div class="sub-h">採購明細 <span class="rel-tag">子表 · Link&amp;Load</span></div>
+        <div class="subtable">
+          <div class="sr h"><span>品項</span><span class="q">數量</span><span class="amt">小計</span></div>
+          <div class="sr"><span>凍覆盆子 500g</span><span class="q">200</span><span class="amt">80,250</span></div>
+          <div class="sr"><span>凍覆盆子 1kg</span><span class="q">80</span><span class="amt">32,100</span></div>
+          <div class="sr"><span>覆盆子果醬底料</span><span class="q">40</span><span class="amt">16,050</span></div>
+          <div class="tot"><span>總計 <span style="font-weight:400;opacity:.7">fx = Σ 小計</span></span><span class="amt">128,400</span></div>
+        </div>
+        <div class="sub-h" style="margin-top:16px">過帳(織入的「算」)</div>
+        <div class="fgrid" style="margin-bottom:0">
+          <div class="k">借:存貨</div><div class="v mono">128,400</div>
+          <div class="k">貸:應付</div><div class="v mono">128,400</div>
+          <div class="k">狀態</div><div class="v" style="color:var(--wn)">待審核後過帳</div>
+        </div>
+      </div>
+      <div class="dt-foot"><button class="btn pri">核准並過帳</button><button class="btn sec">編輯</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="diffbox">
   <h3>四項差異,逐項的既有依據</h3>
   <table>
-    <tr><th style="width:130px">項目</th><th style="width:150px">A(ragic 稿)</th><th style="width:150px">B(tokens v4)</th><th>既有依據 / 要寫的替代 rationale</th></tr>
-    <tr><td>圓角</td><td>控件 5px · 卡片 10px</td><td>3 / 4 / 6px</td><td><code>docs/14</code> line 96 逐字「圓角 md = 8px → <b>維持 6px 上限</b>;8px 屬較柔的 SaaS 語彙」。要採 A 需推翻這條</td></tr>
-    <tr><td>狀態章</td><td>pill(9999px)+ 圓點</td><td>方形 3px + 框 + 純文字</td><td><code>docs/14</code> line 160 逐字「仍是<b>帶框方形章</b>(radius-xs 3px)、字/框/底三值、文字恆在。<b>禁 pill</b>、禁只靠顏色傳意」</td></tr>
-    <tr><td>陰影</td><td>卡片 resting 陰影,整個 app 浮起</td><td>無 resting;僅 overlay 有</td><td><code>tokens.css</code> 只定義 <code>--shadow-overlay</code>;<code>docs/14</code> line 20 一票否決含「軟陰影、飄浮卡片」</td></tr>
-    <tr><td>公式欄</td><td>整格淡綠底</td><td>不上底,靠 <code>--color-fx</code> 字色 + mono</td><td>「禁只靠顏色傳意」的另一面;但整格上色<b>確實</b>讓「哪些數字是算出來的」一眼可見 —— 這一條 A 有實際論據</td></tr>
+    <tr><th style="width:110px">項目</th><th style="width:130px">A(ragic 稿)</th><th style="width:130px">B(tokens v4)</th><th style="width:130px">C(B+層級)</th><th>依據</th></tr>
+    <tr><td>圓角</td><td>控件 5px · 卡片 10px</td><td>3 / 4 / 6px</td><td>同 B</td><td><code>docs/14</code> line 96 逐字「圓角 md = 8px → <b>維持 6px 上限</b>;8px 屬較柔的 SaaS 語彙」。要採 A 需推翻這條</td></tr>
+    <tr><td>狀態章</td><td>pill(9999px)+ 圓點</td><td>方形 3px + 框 + 純文字</td><td>同 B</td><td><code>docs/14</code> line 160 逐字「仍是<b>帶框方形章</b>(radius-xs 3px)、字/框/底三值、文字恆在。<b>禁 pill</b>、禁只靠顏色傳意」</td></tr>
+    <tr><td>陰影</td><td>卡片 resting 陰影,整個 app 浮起</td><td>無 resting;僅 overlay 有</td><td>同 B</td><td><code>tokens.css</code> 只定義 <code>--shadow-overlay</code>;<code>docs/14</code> line 20 一票否決含「軟陰影、飄浮卡片」</td></tr>
+    <tr><td>公式欄</td><td>整格淡綠底</td><td>不上底</td><td><b>取回 A 的底色</b></td><td>「禁只靠顏色傳意」的另一面;但整格上色<b>確實</b>讓「哪些數字是算出來的」一眼可見 —— 這一條 A 有實際論據</td></tr>
+    <tr><td><b>字階</b></td><td colspan="2">標題 17px / wght 650 · 內文 12.5px —— 三階擠在 6px 內</td><td><b>標題 24px / wght 500 · 內文 13.5px</b></td><td><code>docs/37 §1</code> 實測結論①逐字「重量感來自<b>尺寸</b>,無人用 900」;現況是「小而重」正好相反。⚠️ 該表量的是<b>公開行銷頁</b>,64px 不可當 app 內目標;可比的是它的「UI 主字級 13–15px」,而 12.5px 在下緣外</td></tr>
+    <tr><td><b>間距</b></td><td colspan="2">6/7/8/9/11/12/13/14 混用</td><td><b>刻度 4/8/12/16/24</b>;殼放鬆(topbar 56 / 內距 24)、資料收緊(列高 34)</td><td>沒有刻度就沒有節奏。<b>密度差本身就是層級</b> —— 是 tokens.css v4「殼靠面、單據靠框」的延伸:兩套語言不只顏色不同,節奏也該不同</td></tr>
+    <tr><td><b>側欄選取</b></td><td>1.098:1</td><td>1.021:1(幾乎看不見)</td><td><b>1.156:1 + 左側 2px 主色條</b></td><td>B 那個數字是<b>缺陷不是風格</b>。加位置訊號(左條)不吃對比預算</td></tr>
   </table>
   <p style="margin-top:10px">
     ⚠️ <b>要注意的歷史</b>|<code>tokens.css</code> v4 檔頭逐字寫著「起因:<b>review 三次指出畫面『像公司內部後台、沒有品牌感』</b>」。
