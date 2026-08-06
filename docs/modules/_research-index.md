@@ -76,6 +76,7 @@
 | giants-shoulders-audit-B.md —— 已具 §0 研究節之 18 份模組文件稽核 | — | ⭐⭐ 深且推翻過 | 20 | `6` `27` | [_audit/giants-shoulders-audit-B.md](_audit/giants-shoulders-audit-B.md) |
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐⭐ 深且推翻過 | 13 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
+| [R1·AI-1] AI 設定(BYO key)+ 遷移建表助手 | — | ⭐⭐ 深且推翻過 | 18 | `82` `151` `176` `177` | [R1/ai-assist.md](R1/ai-assist.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | · 零星引用 | 5 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
@@ -140,6 +141,7 @@
 | `doc/72` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | `doc/78` | [R1/notifications.md](R1/notifications.md) |
 | `doc/81` | [R1/import-to-existing-form.md](R1/import-to-existing-form.md) · [R1/record-revisions.md](R1/record-revisions.md) |
+| `doc/82` | [R1/ai-assist.md](R1/ai-assist.md) |
 | `doc/84` | [R1/i18n.md](R1/i18n.md) |
 | `doc/86` | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) |
 | `doc/90` | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) · [R1/workspace-ia.md](R1/workspace-ia.md) |
@@ -166,12 +168,14 @@
 | `doc/145` | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | `doc/148` | [foundation/image-processing.md](foundation/image-processing.md) |
 | `doc/149` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [R1/print-merge.md](R1/print-merge.md) |
+| `doc/151` | [R1/ai-assist.md](R1/ai-assist.md) |
 | `doc/153` | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | `doc/155` | [R1/rule-editor.md](R1/rule-editor.md) |
 | `doc/163` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/167` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | `doc/173` | [R1/event-triggers.md](R1/event-triggers.md) |
-| `doc/176` | [R1/form-templates.md](R1/form-templates.md) |
+| `doc/176` | [R1/ai-assist.md](R1/ai-assist.md) · [R1/form-templates.md](R1/form-templates.md) |
+| `doc/177` | [R1/ai-assist.md](R1/ai-assist.md) |
 | `doc/183` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/185` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/193` | [R1/rule-editor.md](R1/rule-editor.md) |
