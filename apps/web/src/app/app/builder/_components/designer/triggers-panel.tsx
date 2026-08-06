@@ -15,6 +15,7 @@ import {
   useCreateTrigger,
   useDeleteTrigger,
   useForms,
+  usePublishTrigger,
   useTriggerDryRun,
   useTriggerRuns,
   useTriggers,
@@ -57,6 +58,7 @@ export function TriggersPanel({
   const create = useCreateTrigger(formId)
   const update = useUpdateTrigger(formId)
   const remove = useDeleteTrigger(formId)
+  const publish = usePublishTrigger(formId)
   const dryRun = useTriggerDryRun(formId)
 
   const [name, setName] = useState("")
@@ -149,6 +151,29 @@ export function TriggersPanel({
                   {t.watchFields.length > 0 ? `(${t.watchFields.join("、")}變更)` : ""}
                   {t.conditions.length > 0 ? ` · ${String(t.conditions.length)} 個條件` : ""}
                 </div>
+                {/* 🔴 講清楚「畫面上這一版」與「正在跑的那一版」不是同一份。
+                    不講的話設計者改完就走,以為已經生效了。 */}
+                {t.hasUnpublishedChanges ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-wa">有未發布的變更 —— 目前跑的是上一版</span>
+                    <button
+                      type="button"
+                      disabled={publish.isPending}
+                      onClick={() => publish.mutate({ triggerId: t.id })}
+                      className="border border-primary px-1.5 text-primary hover:bg-primary hover:text-white disabled:opacity-50"
+                    >
+                      發布
+                    </button>
+                    <button
+                      type="button"
+                      disabled={publish.isPending}
+                      onClick={() => publish.mutate({ triggerId: t.id, discard: true })}
+                      className="text-ink-3 hover:text-ink"
+                    >
+                      丟棄
+                    </button>
+                  </div>
+                ) : null}
               </div>
               <label className="flex shrink-0 items-center gap-1 text-ink-3">
                 <input

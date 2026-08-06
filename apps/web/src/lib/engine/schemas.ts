@@ -450,6 +450,17 @@ export const triggerDtoSchema = z.object({
   config: triggerConfigSchema,
   position: z.number().int(),
   enabled: z.boolean(),
+  /* 編輯中的版本。上面的 config / conditions 是**正在跑的**那一版。 */
+  draft: z.object({
+    onCreate: z.boolean(),
+    onUpdate: z.boolean(),
+    watchFields: z.array(z.string()),
+    conditions: z.array(z.object({ field: z.string(), op: z.string(), value: z.unknown() })),
+    actionType: z.enum(["updateSelf", "pushTo"]),
+    config: triggerConfigSchema,
+  }),
+  isPublished: z.boolean(),
+  hasUnpublishedChanges: z.boolean(),
 })
 export type TriggerDto = z.infer<typeof triggerDtoSchema>
 

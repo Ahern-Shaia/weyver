@@ -636,6 +636,19 @@ export function useDeleteTrigger(formId: number) {
   })
 }
 
+export function usePublishTrigger(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { triggerId: number; discard?: boolean }) =>
+      engineFetch(
+        `/forms/${formId}/triggers/${input.triggerId}/${input.discard === true ? "discard" : "publish"}`,
+        triggerDtoSchema,
+        { method: "POST", body: {} },
+      ),
+    onSuccess: () => invalidate([actionKeys.triggers(formId)]),
+  })
+}
+
 export function useTriggerDryRun(formId: number) {
   return useMutation({
     mutationFn: (values: Record<string, unknown>) =>

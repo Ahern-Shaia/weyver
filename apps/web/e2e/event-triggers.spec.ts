@@ -67,3 +67,57 @@ test("🔴 事件觸發器:設計器設得起來,而且存檔時真的跑", asyn
   const after = await request.get(`/api/engine/forms/${String(formId)}/records`, { headers: DEV })
   expect(((await after.json()) as { records: unknown[] }).records).toHaveLength(count)
 })
+
+/* 🔴 R1·C-4 v1.1|草稿 / 已發布。
+
+   引擎面由 api 整合測固化(3 條)。這一條釘的是**畫面有沒有講清楚** ——
+   後端擋住了但畫面不說,設計者改完就走,以為已經生效了,那和沒擋一樣糟。 */
+test("🔴 草稿 / 發布:改了沒發布時,畫面要講「跑的是上一版」", async ({ page, request }) => {
+  const DEV = { "x-dev-tenant": "1", "content-type": "application/json" }
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E發布_${String(Date.now()).slice(-6)}`,
+      fields: [{ name: "狀態", type: "text" }],
+    },
+  })
+  const formId = ((await res.json()) as { id: number }).id
+  const made = await request.post(`/api/engine/forms/${String(formId)}/triggers`, {
+    headers: DEV,
+    data: {
+      name: "版本測試",
+      onCreate: true,
+      config: { actionType: "updateSelf", setFields: { 狀態: { from: "literal", value: "一" } } },
+    },
+  })
+  const triggerId = ((await made.json()) as { id: number }).id
+
+  // 改草稿,不發布
+  await request.patch(`/api/engine/forms/${String(formId)}/triggers/${String(triggerId)}`, {
+    headers: DEV,
+    data: {
+      config: { actionType: "updateSelf", setFields: { 狀態: { from: "literal", value: "二" } } },
+    },
+  })
+
+  await page.goto(`/app/builder?form=${String(formId)}`)
+  await page.getByRole("button", { name: "動作/簽核" }).click()
+  await page.getByRole("button", { name: "自動觸發" }).click()
+  await expect(page.getByText("有未發布的變更")).toBeVisible({ timeout: 30_000 })
+
+  /* 🔴 存一筆:跑的必須還是舊版 */
+  const before = await request.post(`/api/engine/forms/${String(formId)}/records`, {
+    headers: DEV,
+    data: { values: {} },
+  })
+  expect(((await before.json()) as { values: { 狀態: string } }).values.狀態).toBe("一")
+
+  await page.getByRole("button", { name: "發布", exact: true }).click()
+  await expect(page.getByText("有未發布的變更")).toBeHidden({ timeout: 15_000 })
+
+  const after = await request.post(`/api/engine/forms/${String(formId)}/records`, {
+    headers: DEV,
+    data: { values: {} },
+  })
+  expect(((await after.json()) as { values: { 狀態: string } }).values.狀態).toBe("二")
+})
