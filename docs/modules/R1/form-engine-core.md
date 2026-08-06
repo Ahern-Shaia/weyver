@@ -76,9 +76,9 @@
 >
 > | 列 | 來源性質 | 出處狀態 |
 > |---|---|---|
-> | Salesforce flex-column / `MT_Data` | 公開白皮書與開發者文件之**二手綜述** | ⚠️ **無 URL,未查證** —— 屬「業界常識級」描述,但本專案規則是**常識也要有出處**,故不得作為承重依據。要承重須補 Salesforce multitenant architecture 官方白皮書逐字 |
-> | Microsoft Dataverse「混合」 | 同上,且措辭更概括(「部分虛擬化」未指明何種) | ⚠️ **未查證** |
-> | PG table-count 天花板 ~1,000–2,000 | 二手引用 PlanetScale / Citus | ⚠️ **無 URL**,但**本專案已自行實測**(M1 spike:10,000 張表 catalog 近線性 ×1.22)—— **實測是比引用更強的依據**,故此列的結論改以自家實測承重,外部數字降為旁證 |
+> | Salesforce flex-column / `MT_Data` | ~~二手綜述~~ → ✅ **2026-08-06 已補一手** | 見下方〈Salesforce 官方逐字〉。本專案直接 fetch [Platform Multitenant Architecture](https://architect.salesforce.com/fundamentals/platform-multitenant-architecture) 覆核,`MT_Objects` / `MT_Fields` / `MT_Data` / flex columns **四者全部逐字命中** |
+> | Microsoft Dataverse「混合」 | 同上,措辭概括(「部分虛擬化」未指明何種) | ⚠️ **2026-08-06 查過仍未證實。** 官方[欄位定義頁](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/entity-attribute-metadata)**不描述實體儲存架構**;唯一相關的一句是「**Logical columns** contain values which are **stored in different database tables** than other columns in the table. In most cases **this internal implementation is not relevant**」—— 那佐證「確有跨表儲存」,但**不足以支撐「自訂欄部分虛擬化」**。微軟官方立場明說內部實作與使用者無關,故可能不存在可引用的公開描述。**維持未查證,不得承重。** |
+> | PG table-count 天花板 ~1,000–2,000 | 二手引用 PlanetScale / Citus | ⚠️ **無 URL**,但**本專案已自行實測** —— 程式在 [`spikes/p01-dynamic-schema/src/s1-catalog-stress.ts`](../../../spikes/p01-dynamic-schema/src/s1-catalog-stress.ts),結果見本檔 §S1(10,000 張表 catalog 近線性 ×1.22)。**實測是比引用更強的依據**,故此列以自家實測承重,外部數字降為旁證。⚠️ 2026-08-06 補:原本連「實測在哪個檔案」都沒寫 —— 沒有路徑的實測,別人一樣回查不到 |
 >
 > **不影響既有裁定**:選「每表單真實表」的理由是**計算層需要真型別 / 索引 / 約束**(自家論據),
 > 不是靠上表任何一列成立。上表的作用是說明「另一條路長什麼樣」,而那一層用途容得下未查證。
@@ -87,14 +87,16 @@
 
 | 系統 | 動態 schema 手法 | 對 Weyver 的意義 |
 |---|---|---|
-| **Salesforce Force.com**(企業 metadata 平台典範)| **flex-column / EAV**:`MT_Objects` / `MT_Fields` metadata 表 + **單一共享 `MT_Data` 寬表**,自訂欄位映射到預留的泛型 flex 欄(非真實欄 / 真實表);型別、picklist、formula、master-detail 全存 metadata | **Weyver 選了相反路**:每表單一張**真實 PG 表**(Teable/Baserow pattern)。取捨↓ |
+| **Salesforce Force.com**(企業 metadata 平台典範)| **flex-column / EAV** —— [官方逐字](https://architect.salesforce.com/fundamentals/platform-multitenant-architecture):「**A single shared multitenant database with a single schema** that stores tenant-specific metadata and data.」·「**`Value0 ... ValueN` flex columns**, also known as **slots**, store application data that maps to the tables and fields declared in `MT_Objects` and `MT_Fields`」·「**All flex columns use a variable-length string data type**」·「The **`MT_Data`** system table stores the application-accessible data that maps to all org-specific tables and their fields」 | **Weyver 選了相反路**:每表單一張**真實 PG 表**(Teable/Baserow pattern)。取捨↓ |
 | **Microsoft Dataverse**（低碼資料平台）| 混合:標準實體真實表 + 自訂欄部分虛擬化 | 佐證「真實表可行」但大規模自訂走抽象層 |
 | **PostgreSQL 多租戶文獻**(PlanetScale / Citus)| schema-per-tenant / table-per-tenant **過 ~1,000–2,000 個** → `pg_class` catalog bloat、planner 變慢、migration 拖慢;shared-schema + RLS 才可到十萬租戶 | **Weyver 的 table-count 天花板來源**;已在 M1 spike 實測 |
 
 **核心架構決策(明文化)**|Weyver Tier-2 = **每表單一張真實表(共享 schema + `tenant_id` + RLS)**,而非 Salesforce 式 flex-column。
 
 - **為何選真實表(勝 flex-column)**|真 SQL 型別 / 真索引 / 真約束 / 每表查詢效能佳;**「算」計算層(docs/18)需要真實欄位**才能過帳 / 估值;且 Weyver 租戶規模是**數百**(食品 / 團膳 SMB),非 Salesforce 的數百萬 → 不需 flex-column 的極端抽象。
-- **代價(Salesforce 用 flex-column 正是為了避開它)**|**`pg_class` table-count 天花板**——表數 = 全租戶 × 各自表單數。**M1 spike 實測:10,000 張表 catalog 近線性 ×1.22**(可接受);pilot 17 家 × ~50 表 < 1,000 張,無虞。
+- **代價(Salesforce 用 flex-column 正是為了避開它)**|**`pg_class` table-count 天花板**——表數 = 全租戶 × 各自表單數。**M1 spike 實測:10,000 張表 catalog 近線性 ×1.22**(程式:[`spikes/p01-dynamic-schema/src/s1-catalog-stress.ts`](../../../spikes/p01-dynamic-schema/src/s1-catalog-stress.ts);結果見 §S1);pilot 17 家 × ~50 表 < 1,000 張,無虞。
+
+  🔴 **而官方逐字正好說明了他們為什麼要避開**:flex columns「**use a variable-length string data type** so that they can store any structured type of application data」—— 即**所有值都以變長字串存**。那正是 Weyver 不能走這條路的理由:**計算層需要真型別、真索引、真約束**(金額 `numeric`、日期比較、外鍵),而全字串的 slot 給不了。這一句把原本「我方選了相反路」的敘述,從偏好升級為**有依據的取捨**。
 - **⚠️ 明確 revisit trigger**|當**全域真實表數逼近 ~10–20K**(大量租戶 × 大量表單)時,需啟動緩解:低用量表走**共享寬表 + flex-column overflow**(退化為 Salesforce 式)、表合併 / 分區,或 **Citus 分片**。**pilot / early 階段不需**,但列為已知 scaling 路線,不是「撞到才想」。
 
 ---

@@ -73,7 +73,7 @@
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐⭐ 深且推翻過 | 13 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐⭐ 深且推翻過 | 27 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
-| [P0-1] 表單引擎動態 schema 核心 | ✅ | — | 0 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
+| [P0-1] 表單引擎動態 schema 核心 | ✅ | · 零星引用 | 5 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | 0 | — | [R1/full-text-search.md](R1/full-text-search.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
