@@ -294,6 +294,8 @@ a:hover{text-decoration:underline;}
   min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
 
 .mainrow{flex:1;display:flex;min-height:0;}
+/* W20 —— 換檢視只換這一層,外殼(頂欄 / 工作列 / 情境側欄)一格都不動 */
+.mid{flex:1;display:flex;min-width:0;}
 
 /* ── 情境側欄 ── [M] 「把 Ragic 的 4 層導覽壓成 1 層」;只列當前分類,不是 144 張的樹 ── */
 .ctx{width:196px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
@@ -450,8 +452,137 @@ tr:hover td.chk .cbx,tr.sel td.chk .cbx{display:inline-flex;}
 .rec .ft{flex-shrink:0;border-top:1px solid var(--line);padding:11px 15px;display:flex;gap:8px;}
 .rec .ft .btn.pri{flex:1;}
 
+/* ══════════════════════════════════════════════════════════════════
+   畫面三|表格引擎(可編輯網格)
+
+   🔴 這個畫面**不是憑想像畫的** —— 自家 repo 兩份已 SHIPPED 的 M0 裁定死了行為:
+     · docs/modules/R1/grid-and-excel-import.md  SHIPPED v1.0(Glide canvas 網格主檢視)
+     · docs/modules/R1/grid-paste.md             SHIPPED v1.0(OQ-GP-1..10 全數裁定)
+   畫面上每個狀態都對得到一條裁定,對不到的不畫。
+
+   ⭐ 共識 R2 的另一半在這裡兌現|
+      瀏覽用清單只畫水平線(畫面二),**可編輯的網格畫完整格線 + 列號欄**(本畫面)。
+      六家都是同產品內兩種待遇 —— 格線是「這一格可以點進去改」的訊號,不是後台的證據。
+   ══════════════════════════════════════════════════════════════════ */
+.gwrap{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper);min-height:0;}
+
+/* 網格工具列 —— 網格模式獨有的東西:列高 / 凍結 / 復原。與畫面二共用同一列高度 */
+.gtool{height:36px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:0 12px;
+  border-bottom:1px solid var(--line);background:var(--paper-2);}
+.gtool .sp{flex:1;}
+.gtool .st{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-3);}
+.gtool .st svg{width:12px;height:12px;}
+.gtool .st.dirty{color:var(--wn);font-weight:600;}
+.gtool .div{width:1px;height:16px;background:var(--line);margin:0 3px;}
+
+.gscroll{flex:1;overflow:auto;min-height:0;background:var(--paper-2);}
+/* 🔴 完整格線,而且格線比外框淺([M] NocoDB,整份研究 CP 值最高的一條),
+   但要看得見 —— W3:不學 NocoDB 的 7/255,它自己被批評「密集數字欄近乎無分隔」 */
+.g{border-collapse:separate;border-spacing:0;font-size:12.4px;}
+.g th,.g td{border-right:1px solid var(--line-3);border-bottom:1px solid var(--line-3);
+  height:31px;padding:0 8px;white-space:nowrap;background:var(--paper);}
+.g thead th{position:sticky;top:0;z-index:3;background:var(--paper-2);
+  border-bottom:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--ink-3);text-align:left;}
+.g thead .hh{display:flex;align-items:center;gap:5px;}
+.g thead .hh .gr{margin-left:auto;color:var(--ink-4);display:flex;}
+.g thead .hh .gr svg{width:11px;height:11px;}
+.g th.r .hh,.g td.r{text-align:right;justify-content:flex-end;}
+.g td.r{text-align:right;}
+
+/* 列號欄 —— [M]「列號欄是狀態機:靜止顯示序號 → hover 換核取方塊」 */
+.g .gut{position:sticky;left:0;z-index:2;width:34px;min-width:34px;text-align:center;
+  background:var(--paper-2);color:var(--ink-4);font-size:11px;padding:0;}
+.g thead .gut{z-index:4;}
+.g tbody tr:hover .gut .ord{display:none;}
+.g tbody tr:hover .gut .cbx{display:inline-flex;}
+.g .gut .cbx{display:none;}
+/* 凍結欄:單號留在左邊。右緣用較深的線標出「這裡是凍結邊界」 */
+.g .frz{position:sticky;left:34px;z-index:2;background:var(--paper);
+  border-right:1px solid var(--line);}
+.g thead .frz{z-index:4;background:var(--paper-2);}
+
+.g tbody tr:hover td{background:var(--paper-2);}
+.g tbody tr:hover .frz,.g tbody tr:hover .gut{background:var(--paper-3);}
+
+/* 共識 R6 —— 計算欄 = 唯讀 = 更深一階灰填色。
+   這裡它同時承擔第二個作用:OQ-GP-4「貼到計算欄要跳過並說明」——
+   使用者在**貼上之前**就看得出來這兩欄寫不進去。 */
+.g td.ro{background:var(--readonly);color:var(--fx);font-weight:600;}
+.g tbody tr:hover td.ro{background:#e2e7ec;}
+
+/* 選取的儲存格 / 貼上落點的範圍框 */
+.g td.rg{background:var(--brand-t);}
+.g td.rg.ro{background:#dde5ee;}
+.g td.e-t{box-shadow:inset 0 2px 0 var(--brand);}
+.g td.e-b{box-shadow:inset 0 -2px 0 var(--brand);}
+.g td.e-l{box-shadow:inset 2px 0 0 var(--brand);}
+.g td.e-r{box-shadow:inset -2px 0 0 var(--brand);}
+.g td.e-tl{box-shadow:inset 0 2px 0 var(--brand),inset 2px 0 0 var(--brand);}
+.g td.e-tr{box-shadow:inset 0 2px 0 var(--brand),inset -2px 0 0 var(--brand);}
+.g td.e-bl{box-shadow:inset 0 -2px 0 var(--brand),inset 2px 0 0 var(--brand);}
+.g td.e-br{box-shadow:inset 0 -2px 0 var(--brand),inset -2px 0 0 var(--brand);}
+
+/* 編輯中的儲存格 —— 有框 = 可輸入([M] 的規則) */
+.g td.ed{padding:0;}
+.g td.ed .box{height:31px;display:flex;align-items:center;padding:0 7px;background:#fff;
+  outline:2px solid var(--brand);outline-offset:-2px;}
+.g td.ed .box .cur{width:1px;height:15px;background:var(--ink);margin-left:1px;
+  animation:bl 1.1s step-end infinite;}
+@keyframes bl{50%{opacity:0;}}
+
+/* 🔴 OQ-GP-5 —— 型別不符的格在**送出前**就標紅,整批不送。
+   M0 逐字:「『貼上前標紅問題格』查無任何一家(標未查證,非「沒有」)」——
+   競品的實際行為是靜默:Baserow 文字貼進數值欄「remain empty rather than showing
+   error messages」;Airtable 明文「unmatched values are dropped」。
+   ⚠️ 這是資料格上色的**唯一**例外,而且是語意色不是品牌色(共識 R5 管的是主色)。 */
+.g td.bad{background:var(--er-t);color:var(--er);font-weight:600;
+  box-shadow:inset 0 0 0 1px var(--er-l);}
+.g td.bad::after{content:'';position:absolute;}
+.g td.bad .mk{display:inline-flex;align-items:center;gap:4px;}
+.g td.bad .mk svg{width:11px;height:11px;}
+
+.g td .lk{color:var(--brand);}
+.g td .opt{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:1px solid var(--line);
+  background:var(--paper-2);border-radius:var(--r-chip);font-size:11px;color:var(--ink-2);}
+.g td .ck{width:14px;height:14px;border:1.5px solid #a8b6c6;border-radius:3px;display:inline-flex;
+  align-items:center;justify-content:center;}
+.g td .ck.on{background:var(--ok);border-color:var(--ok);}
+.g td .ck svg{width:9px;height:9px;color:#fff;stroke-width:3;display:none;}
+.g td .ck.on svg{display:block;}
+.g td.mut{color:var(--ink-4);}
+
+/* 新增列 / 新增欄 —— 都是安靜的入口,不是按鈕([M]「新增一列是安靜的文字連結」) */
+.g tr.addrow td{background:var(--paper);color:var(--brand);font-size:11.5px;cursor:pointer;}
+.g tr.addrow:hover td{background:var(--brand-t);}
+.g th.addcol{width:38px;text-align:center;color:var(--ink-4);}
+.g th.addcol:hover{background:var(--paper-3);color:var(--brand);cursor:pointer;}
+
+/* 彙總列 —— 釘在網格底部,隨欄捲動。試算表引擎的標配 */
+.g tfoot td{position:sticky;bottom:0;z-index:2;background:var(--paper-2);
+  border-top:1px solid var(--line);font-weight:600;color:var(--ink-2);font-size:11.5px;}
+.g tfoot .gut,.g tfoot .frz{z-index:3;background:var(--paper-3);}
+.g tfoot .agg{font-size:10px;font-weight:500;color:var(--ink-4);display:block;line-height:1;margin-bottom:1px;}
+
+/* 🔴 貼上結果 banner —— OQ-GP-4 + OQ-GP-5 的可見形態。
+   M0 §3 的反面教材是「四家四種靜默降級形態」:AG Grid 超出的列「will not be pasted」
+   但文件未提任何提示 · Airtable「dropped」· Baserow 變空格 · Ragic 的檢查在匯入端不在貼上端。
+   → 我方把「講出來」做成恆真的不變量,所以它是常駐 banner 不是 toast。 */
+.pbar{flex-shrink:0;display:flex;align-items:center;gap:11px;padding:9px 14px;
+  background:var(--er-t);border-top:1px solid var(--er-l);border-bottom:1px solid var(--er-l);}
+.pbar .ic{width:19px;height:19px;border-radius:50%;background:var(--er);color:#fff;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pbar .ic svg{width:12px;height:12px;stroke-width:2.6;}
+.pbar .tx{font-size:12.3px;color:#7d1c16;line-height:1.5;}
+.pbar .tx b{color:var(--er);font-weight:700;}
+.pbar .tx em{font-style:normal;color:#96473f;}
+.pbar .ac{margin-left:auto;display:flex;gap:7px;}
+.pbar .btn.sec{background:var(--paper);border-color:var(--er-l);color:#7d1c16;}
+.pbar .btn.sec:hover{background:#fff;border-color:var(--er);}
+.pbar .btn.dk{background:var(--er);color:#fff;}
+.pbar .btn.dk:hover{background:#8c1e18;}
+
 /* ══ mockup 外框(不是產品的一部分) ══ */
-.switch{position:fixed;left:14px;bottom:14px;z-index:99;display:flex;gap:1px;padding:3px;
+.switch{position:fixed;left:14px;bottom:44px;z-index:99;display:flex;gap:1px;padding:3px;
   background:var(--shell);border-radius:var(--r-box);box-shadow:0 4px 14px rgba(19,26,36,.28);}
 .switch button{height:28px;padding:0 13px;border-radius:var(--r-ctl);font-size:12px;font-weight:500;
   color:var(--shell-ink-2);}
@@ -598,7 +729,8 @@ tr:hover td.chk .cbx,tr.sel td.chk .cbx{display:inline-flex;}
     <span class="cap"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>已接過帳 · 存貨 / 應付</span>
     <span class="sp"></span>
     <div class="views">
-      <button class="on"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg>列表</button>
+      <button class="on" id="v-list"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg>列表</button>
+      <button id="v-grid"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>網格</button>
       <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg>看板</button>
       <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>日曆</button>
       <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>樞紐</button>
@@ -635,6 +767,7 @@ tr:hover td.chk .cbx,tr.sel td.chk .cbx{display:inline-flex;}
       <div class="foot">陳品妤 · 採購主管<br>Weyver 1.0.0 · 自架</div>
     </div>
 
+    <div class="mid" id="mid-list">
     <div class="tbl">
       <div class="tblscroll">
         <table>
@@ -834,19 +967,240 @@ tr:hover td.chk .cbx,tr.sel td.chk .cbx{display:inline-flex;}
         <button class="btn gho">列印</button>
       </div>
     </div>
+    </div>
+    <div class="mid" id="mid-grid" hidden>
+      <div class="gwrap">
+
+        <div class="gtool">
+          <button class="tool"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>列高</button>
+          <button class="tool"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>凍結至「單號」</button>
+          <span class="div"></span>
+          <!-- OQ-GP-6:一次貼上 = 一步 undo。⚠️ M0 明列「切換檢視 / 改篩選後 undo 的行為要定義,不要留給使用者猜」 -->
+          <button class="tool"><svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>復原貼上</button>
+          <button class="tool"><svg viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></svg>重做</button>
+          <span class="sp"></span>
+          <!-- OQ-GP-10:貼上走與表單儲存同一條計算路徑。對照組是 Ragic 官方自白
+               「從列表頁編輯可能造成公式沒有重算」,而它的解法是建議把列表頁編輯關掉。 -->
+          <span class="st"><svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg>公式即時重算</span>
+          <span class="div"></span>
+          <span class="st dirty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>5 格待送出</span>
+        </div>
+
+        <!-- 🔴 OQ-GP-4 + OQ-GP-5 的可見形態 —— 這是本畫面的向上點。
+             M0 逐字:「『貼上前標紅問題格』查無任何一家」。競品的實際行為是靜默降級:
+             Baserow 文字進數值欄「remain empty rather than showing error messages」·
+             Airtable「unmatched values are dropped」· AG Grid 超出的列「will not be pasted」但無提示。
+             裁定是**整批不送**,所以這裡不提供「只送好的那幾格」。 -->
+        <div class="pbar">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          <div class="tx">
+            貼上 3 欄 × 4 列 共 12 格,<b>整批未寫入</b>。
+            <em>3 格型別不符已標紅(數量 / 單價 需要數字)· 4 格屬計算欄「金額」不可寫入 —— 它由單價 × 數量算出。</em>
+          </div>
+          <div class="ac">
+            <button class="btn sec">取消貼上</button>
+            <button class="btn dk"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>跳到第一個問題格</button>
+          </div>
+        </div>
+        <div class="gscroll">
+          <table class="g">
+            <thead>
+            <tr>
+              <th class="gut"></th>
+              <th class="frz" style="min-width:112px"><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>單號<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:104px" class=""><div class="hh"><span class="ty rel"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>供應商<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:152px" class=""><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>品項<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:78px" class=""><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="m8 11 4 4 4-4"/></svg></span>儲位<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:74px" class="r"><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>數量<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:78px" class="r"><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>單價<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:84px" class="r"><div class="hh"><span class="ty fx"><svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></span>金額<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:62px" class="r"><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="m8 11 4 4 4-4"/></svg></span>稅率<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:92px" class="r"><div class="hh"><span class="ty fx"><svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></span>含稅金額<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:70px" class=""><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>交期<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:56px" class=""><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>驗收<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th style="min-width:160px" class=""><div class="hh"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>備註<span class="gr"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div></th>
+              <th class="addcol" title="新增欄位">＋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td class="gut"><span class="ord">1</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0847</a></td>
+              <td><a class="lk">裕豐農產行</a></td>
+              <td>去骨雞腿肉(冷藏)</td>
+              <td><span class="opt">冷藏 A</span></td>
+              <td class="r">340.5</td>
+              <td class="r">168.00</td>
+              <td class="r ro">57,204</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">60,064</td>
+              <td>08/06</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td>冷鏈全程 −18°C</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">2</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0846</a></td>
+              <td><a class="lk">絕鮮實業</a></td>
+              <td>特級釀造醬油</td>
+              <td><span class="opt">常溫 B</span></td>
+              <td class="r">236</td>
+              <td class="r">63.20</td>
+              <td class="r ro">14,915</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">15,661</td>
+              <td>08/05</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td><span class="mut">—</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">3</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0845</a></td>
+              <td><a class="lk">正大食材</a></td>
+              <td>真空包裝袋 25×35</td>
+              <td><span class="opt">耗材倉</span></td>
+              <td class="r rg e-tl">12,400</td>
+              <td class="r rg e-t">4.10</td>
+              <td class="r ro rg e-tr">50,840</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">53,382</td>
+              <td>08/04</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td>改用 PE 材質</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">4</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0844</a></td>
+              <td><a class="lk">永豐冷鏈</a></td>
+              <td>冷凍芒果丁 1kg</td>
+              <td><span class="opt">冷凍 B</span></td>
+              <td class="r bad"><span class="mk"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>待確認</span></td>
+              <td class="r rg ">1,120.00</td>
+              <td class="r ro rg e-r">100,800</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">105,840</td>
+              <td>08/02</td>
+              <td style="text-align:center"><span class="ck"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td><span class="mut">—</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">5</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0843</a></td>
+              <td><a class="lk">裕豐農產行</a></td>
+              <td>凍鳳梨塊 500g</td>
+              <td><span class="opt">冷凍 A</span></td>
+              <td class="r bad"><span class="mk"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>—</span></td>
+              <td class="r rg ">288.46</td>
+              <td class="r ro rg e-r">75,000</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">78,750</td>
+              <td>08/02</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td><span class="mut">—</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">6</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0842</a></td>
+              <td><a class="lk">永豐冷鏈</a></td>
+              <td>冷凍毛豆 1kg</td>
+              <td><span class="opt">冷凍 A</span></td>
+              <td class="r rg e-bl">400</td>
+              <td class="r bad"><span class="mk"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>約 96</span></td>
+              <td class="r ro rg e-br">38,400</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">40,320</td>
+              <td>07/31</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td><span class="mut">—</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">7</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0841</a></td>
+              <td><a class="lk">正大食材</a></td>
+              <td>冷凍青花菜 1kg</td>
+              <td><span class="opt">冷凍 B</span></td>
+              <td class="r">180</td>
+              <td class="r">142.00</td>
+              <td class="r ro">25,560</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">26,838</td>
+              <td>07/29</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td>驗收單 QC-0729</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td class="gut"><span class="ord">8</span><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td class="frz"><a class="lk">PO-2026-0840</a></td>
+              <td><a class="lk">絕鮮實業</a></td>
+              <td>糙米 20kg</td>
+              <td><span class="opt">常溫 A</span></td>
+              <td class="r">64</td>
+              <td class="r">880.00</td>
+              <td class="r ro">56,320</td>
+              <td class="r"><span class="opt">5%</span></td>
+              <td class="r ro">59,136</td>
+              <td>07/28</td>
+              <td style="text-align:center"><span class="ck on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+              <td><span class="mut">—</span></td>
+              <td></td>
+            </tr>
+              <tr class="addrow">
+                <td class="gut">＋</td>
+                <td class="frz" colspan="13">新增一列</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="gut"></td>
+                <td class="frz"><span class="agg">共</span>8 筆</td>
+                <td></td><td></td><td></td>
+                <td class="r"><span class="agg">合計</span>13,970.5</td>
+                <td class="r"><span class="agg">平均</span>345.22</td>
+                <td class="r"><span class="agg">合計</span>419,039</td>
+                <td></td>
+                <td class="r"><span class="agg">合計</span>439,991</td>
+                <td></td>
+                <td style="text-align:center"><span class="agg">已驗</span>7/8</td>
+                <td></td><td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="switch">
   <button id="b1" class="on">登入</button>
-  <button id="b2">主工作面</button>
+  <button id="b2">主工作面</button><button id="b3">表格引擎</button>
 </div>
 
 <script>
 const L=document.getElementById('s-login'),A=document.getElementById('s-app'),
       b1=document.getElementById('b1'),b2=document.getElementById('b2');
-function go(app){L.hidden=app;A.hidden=!app;b1.classList.toggle('on',!app);b2.classList.toggle('on',app);}
-b1.onclick=()=>go(false); b2.onclick=()=>go(true);
+const ML=document.getElementById('mid-list'),MG=document.getElementById('mid-grid'),
+      vL=document.getElementById('v-list'),vG=document.getElementById('v-grid'),
+      b3=document.getElementById('b3');
+// W20 —— 換檢視只換 .mid,外殼(頂欄 / 工作列 / 情境側欄)一格都不動
+function view(grid){ML.hidden=grid;MG.hidden=!grid;
+  vL.classList.toggle('on',!grid);vG.classList.toggle('on',grid);
+  b2.classList.toggle('on',!grid);b3.classList.toggle('on',grid);}
+function go(app,grid){L.hidden=app;A.hidden=!app;
+  b1.classList.toggle('on',!app);
+  b2.classList.toggle('on',app&&!grid);b3.classList.toggle('on',app&&!!grid);
+  if(app)view(!!grid);}
+b1.onclick=()=>go(false); b2.onclick=()=>go(true,false); b3.onclick=()=>go(true,true);
+vL.onclick=()=>view(false); vG.onclick=()=>view(true);
 // mega-menu 是點開的疊層,不是常駐 —— 常駐會和情境側欄列出同一批表單
 const mg=document.getElementById('mega'),cb=document.getElementById('catbtn');
 cb.onclick=()=>{mg.hidden=!mg.hidden;cb.classList.toggle('open',!mg.hidden);};
