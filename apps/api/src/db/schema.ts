@@ -674,30 +674,6 @@ export const triggerDefs = pgTable(
   ],
 )
 
-/* 🔴 R1·C-5|排程管理(Ragic `doc/96` parity)。
-
-   官方逐字:「設定一項功能的排程會**套用到資料庫所有該功能的執行時間**」——
-   故 key 是 (租戶, 功能),不是逐筆。刻意只開放「租戶看得到後果」的功能:
-   投遞延遲(fanout / webhook)與平台維運(scan / usage / audit 清理)不開。 */
-export const scheduleDefs = pgTable(
-  "schedule_def",
-  {
-    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
-    tenantId: bigint("tenant_id", { mode: "number" })
-      .notNull()
-      .references(() => tenants.id),
-    feature: text("feature").notNull(),
-    hour: integer("hour").notNull(),
-    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    uniqueIndex("schedule_def_tenant_feature_uq").on(t.tenantId, t.feature),
-    check("schedule_def_feature", sql`feature IN ('notification','trashPurge')`),
-    check("schedule_def_hour", sql`hour BETWEEN 0 AND 23`),
-  ],
-)
-
 /* 🔴 執行紀錄。**`denied` 與 `depth` 一定要留得下來** ——
    靜默停止的自動化比不會動的自動化更難查,使用者只會說「它沒反應」。
    DB 端不授 UPDATE / DELETE(見 0055 migration),與 `actionAudits` 同一條理由。 */
