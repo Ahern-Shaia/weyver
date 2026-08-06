@@ -647,6 +647,21 @@ export const triggerDefs = pgTable(
     /* 🔴 已發布的定義快照。**runtime 只讀這一欄**,上面那些是草稿。
        NULL = 從未發布 → 不會跑。`enabled` 刻意不在裡面(kill switch 要即時)。 */
     published: jsonb("published"),
+    /* 🔴 R1·C-5|第三種時機。`schedule_day`:weekly 為 0–6(對齊 PG `dow`),
+       monthly 為 1–28 **或 0 = 當月最後一天**。
+       上限 28 是刻意的 —— 2 月沒有 29–31,讓使用者選得到一個「有些月份不會發生」
+       的日期,等於賣一個會靜默漏跑的設定。月結選 0。 */
+    onSchedule: boolean("on_schedule").notNull().default(false),
+    scheduleFreq: text("schedule_freq"),
+    scheduleHour: integer("schedule_hour"),
+    scheduleDay: integer("schedule_day"),
+    /* 漏跑補一次的依據(OQ-SCH-5):比的是**換算成租戶時區後的日期**有沒有變,
+       不是「距上次幾小時」—— 後者停機三天會補跑 72 次。 */
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    /* 🔴 定時觸發以**建立者的身分**執行。C-4 拒絕系統身分,而排程沒有觸發者 ——
+       不記住是誰建的,定時觸發就只能永遠記 `denied`。
+       ⚠️ 建立者離職後那條會開始記 `denied`:**可見的失敗,不是靜默的**。 */
+    createdBy: bigint("created_by", { mode: "number" }).references((): AnyPgColumn => users.id),
     position: integer("position").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -655,7 +670,31 @@ export const triggerDefs = pgTable(
   (t) => [
     index("trigger_def_tenant_form_idx").on(t.tenantId, t.formId),
     check("trigger_def_action_type", sql`action_type IN ('updateSelf','pushTo')`),
-    check("trigger_def_has_timing", sql`on_create OR on_update`),
+    check("trigger_def_has_timing", sql`on_create OR on_update OR on_schedule`),
+  ],
+)
+
+/* 🔴 R1·C-5|排程管理(Ragic `doc/96` parity)。
+
+   官方逐字:「設定一項功能的排程會**套用到資料庫所有該功能的執行時間**」——
+   故 key 是 (租戶, 功能),不是逐筆。刻意只開放「租戶看得到後果」的功能:
+   投遞延遲(fanout / webhook)與平台維運(scan / usage / audit 清理)不開。 */
+export const scheduleDefs = pgTable(
+  "schedule_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    feature: text("feature").notNull(),
+    hour: integer("hour").notNull(),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("schedule_def_tenant_feature_uq").on(t.tenantId, t.feature),
+    check("schedule_def_feature", sql`feature IN ('notification','trashPurge')`),
+    check("schedule_def_hour", sql`hour BETWEEN 0 AND 23`),
   ],
 )
 

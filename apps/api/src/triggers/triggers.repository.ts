@@ -25,6 +25,9 @@ export interface TriggerRow {
   readonly watchFields: readonly string[]
   readonly conditions: readonly FormatCondition[]
   readonly config: TriggerConfig
+  readonly schedule: { freq: string; hour: number; day: number | null } | null
+  readonly lastRunAt: Date | null
+  readonly createdBy: number | null
   readonly position: number
   readonly enabled: boolean
   /* `null` = 從未發布 → 這條觸發器**不會跑**。 */
@@ -198,6 +201,9 @@ export class TriggersRepository {
     readonly conditions: readonly FormatCondition[]
     readonly config: TriggerConfig
     readonly enabled: boolean
+    readonly schedule?: { readonly freq: string; readonly hour: number; readonly day?: number | undefined } | undefined
+    /* 🔴 定時觸發以建立者的身分執行,故建立當下就要記住是誰。 */
+    readonly createdBy: number
   }): Promise<number> {
     return this.tdb.withTenant(input.tenantId, async (tx) => {
       const [row] = await tx
@@ -213,6 +219,11 @@ export class TriggersRepository {
           actionType: input.config.actionType,
           config: input.config,
           enabled: input.enabled,
+          createdBy: input.createdBy,
+          onSchedule: input.schedule !== undefined,
+          scheduleFreq: input.schedule?.freq ?? null,
+          scheduleHour: input.schedule?.hour ?? null,
+          scheduleDay: input.schedule?.day ?? null,
           position: sql`(SELECT COALESCE(MAX(position), -1) + 1 FROM trigger_def
                           WHERE tenant_id = ${input.tenantId} AND form_id = ${input.formId})`,
         })
@@ -336,6 +347,14 @@ function toRow(row: typeof triggerDefs.$inferSelect): TriggerRow {
     watchFields: published?.watchFields ?? draft.watchFields,
     conditions: published?.conditions ?? draft.conditions,
     config: published?.config ?? draft.config,
+    /* 排程**不進草稿** —— 與 `enabled` 同理由:它是「什麼時候跑」不是「跑什麼」,
+       改了時間還要按發布才生效是反直覺的。 */
+    schedule:
+      row.onSchedule && row.scheduleFreq !== null && row.scheduleHour !== null
+        ? { freq: row.scheduleFreq, hour: row.scheduleHour, day: row.scheduleDay }
+        : null,
+    lastRunAt: row.lastRunAt,
+    createdBy: row.createdBy,
     draft,
     position: row.position,
     enabled: row.enabled,

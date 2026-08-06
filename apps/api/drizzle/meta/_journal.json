@@ -414,6 +414,20 @@
       "when": 1785946409003,
       "tag": "0058_outbox_root",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1785946410003,
+      "tag": "0059_scheduled_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1785946411003,
+      "tag": "0060_trigger_created_by",
+      "breakpoints": true
     }
   ]
 }

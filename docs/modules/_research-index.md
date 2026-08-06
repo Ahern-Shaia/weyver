@@ -57,6 +57,7 @@
 | [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page) | ⭐ 有一手依據 | 33 | 9 | — | Airtable · NocoDB · Notion · SAP · Salesforce | [R1/record-workbench-ui.md](R1/record-workbench-ui.md) |
 | [H-2] 資源回收桶 + 保留期硬刪 | ⭐⭐ 深且推翻過 | 27 | 0 | `115` `124` | Airtable · Baserow · EDPB · GDPR · NocoDB · Notion · Salesforce · Teable | [R1/recycle-bin.md](R1/recycle-bin.md) |
 | [R1·C-6] 視覺化規則引擎(ZEN 決策表) | ⭐ 有一手依據 | 11 | 6 | `32` `155` `193` `215` `253` | — | [R1/rule-editor.md](R1/rule-editor.md) |
+| [R1·C-5] 排程管理 + 定時觸發 | ⭐⭐ 深且推翻過 | 13 | 4 | `29` `96` `125` `260` `281` | Airtable · NestJS · Teable | [R1/scheduling.md](R1/scheduling.md) |
 | [R1·後續-2b] 伺服器端 PDF 與列印範本 | ⭐ 有一手依據 | 19 | 4 | `42` `56` `138` `284` | ClamAV | [R1/server-pdf.md](R1/server-pdf.md) |
 | [R1·A-1] 設定中心(S22) | ⭐ 有一手依據 | 3 | 16 | `3` | ASVS · Airtable · Better Auth · CVE-2026-53514 · Fastify · NestJS · Notion · OWASP · Odoo · Salesforce | [R1/settings-center.md](R1/settings-center.md) |
 | [F-1] 分組 / 看板 / 行事曆檢視 | ⭐⭐ 深且推翻過 | 51 | 1 | `9` `92` | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/views-group-kanban-calendar.md](R1/views-group-kanban-calendar.md) |
@@ -77,7 +78,6 @@
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐⭐ 深且推翻過 | 27 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | · 零星引用 | 5 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
-| [R1·C-5] 排程管理 + 定時觸發 | — | ⭐⭐ 深且推翻過 | 11 | `29` `96` `125` `260` | [R1/scheduling.md](R1/scheduling.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
 | [R2 命門] 語意計算綁定層(自由表單 ↔ 算) | — | — | 0 | — | [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
 
@@ -184,7 +184,7 @@
 | `doc/253` | [R1/rule-editor.md](R1/rule-editor.md) |
 | `doc/260` | [R1/event-triggers.md](R1/event-triggers.md) · [R1/scheduling.md](R1/scheduling.md) |
 | `doc/268` | [R1/form-templates.md](R1/form-templates.md) |
-| `doc/281` | [R1/event-triggers.md](R1/event-triggers.md) |
+| `doc/281` | [R1/event-triggers.md](R1/event-triggers.md) · [R1/scheduling.md](R1/scheduling.md) |
 | `doc/284` | [R1/server-pdf.md](R1/server-pdf.md) |
 | `doc/286` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | `doc/295` | [R1/field-types-parity.md](R1/field-types-parity.md) |

@@ -36,8 +36,33 @@ export const triggerConditionSchema = z.object({
   value: z.unknown().optional(),
 })
 
-const timingRefine = <T extends { onCreate?: boolean; onUpdate?: boolean }>(v: T): boolean =>
-  v.onCreate === true || v.onUpdate === true
+/* 🔴 R1·C-5|定時觸發的形狀。DB 也有同樣的 CHECK —— 兩道都要:
+   zod 給得出人看得懂的訊息,CHECK 擋得住繞過 API 的寫入。 */
+export const scheduleSchema = z.object({
+  freq: z.enum(["daily", "weekly", "monthly"]),
+  /* 租戶時區的 0–23 時。最小粒度是小時,對齊 Ragic 的「每天 19:00」語意。 */
+  hour: z.number().int().min(0).max(23),
+  /* weekly:0–6(0 = 週日)· monthly:1–28,**或 0 = 當月最後一天**。
+     ⚠️ 上限 28 是刻意的 —— 2 月沒有 29–31 號,讓人選得到一個「有些月份不會發生」
+     的日期,等於賣一個會靜默漏跑的設定。月結選 0。 */
+  day: z.number().int().min(0).max(28).optional(),
+})
+export type TriggerSchedule = z.infer<typeof scheduleSchema>
+
+function scheduleShapeOk(s: TriggerSchedule | undefined): boolean {
+  if (s === undefined) return true
+  if (s.freq === "daily") return s.day === undefined
+  if (s.freq === "weekly") return s.day !== undefined && s.day <= 6
+  return s.day !== undefined
+}
+
+function timingRefine(v: {
+  readonly onCreate?: boolean
+  readonly onUpdate?: boolean
+  readonly schedule?: TriggerSchedule | undefined
+}): boolean {
+  return v.onCreate === true || v.onUpdate === true || v.schedule !== undefined
+}
 
 export const createTriggerBodySchema = z
   .object({
@@ -47,10 +72,23 @@ export const createTriggerBodySchema = z
     /* 空 = 任何更新。非空 = 只有這些欄位變了才算(OQ-ET-5) */
     watchFields: z.array(z.string().min(1).max(100)).max(50).default([]),
     conditions: z.array(triggerConditionSchema).max(20).default([]),
+    /* 給了就是定時觸發。不給 = 只吃 onCreate / onUpdate。 */
+    schedule: scheduleSchema.optional(),
     config: triggerConfigSchema,
     enabled: z.boolean().default(true),
   })
   .refine(timingRefine, { message: "至少要選一個觸發時機", path: ["onCreate"] })
+  .refine((v) => scheduleShapeOk(v.schedule), {
+    message: "每週要選星期幾、每月要選幾號(0 = 當月最後一天);每日不需要",
+    path: ["schedule", "day"],
+  })
+  /* 🔴 定時側只做 `updateSelf`。`pushTo` 掃一次全表可能建出上千筆記錄,
+     而它又跨到別張表 —— 量級問題與授權問題疊在一起,需要獨立裁定。
+     **在邊界就明確拒絕,不要讓人設了一個永遠不會跑的東西。** */
+  .refine((v) => v.schedule === undefined || v.config.actionType === "updateSelf", {
+    message: "定時觸發目前只支援「更新本筆欄位」",
+    path: ["config", "actionType"],
+  })
 export type CreateTriggerBody = z.infer<typeof createTriggerBodySchema>
 
 export const updateTriggerBodySchema = z
@@ -77,6 +115,9 @@ export interface TriggerDto {
   readonly conditions: readonly z.infer<typeof triggerConditionSchema>[]
   readonly actionType: TriggerConfig["actionType"]
   readonly config: TriggerConfig
+  /* null = 不是定時觸發 */
+  readonly schedule: TriggerSchedule | null
+  readonly lastRunAt: string | null
   readonly position: number
   readonly enabled: boolean
   /* 編輯中的版本。上面的 `config` / `conditions` 等是**正在跑的**那一版。 */

@@ -9,6 +9,7 @@ import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { TriggerAsyncService } from "../src/triggers/trigger-async.service.js"
+import { TriggerScheduleService } from "../src/triggers/trigger-schedule.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 R1·C-4|事件觸發器。
@@ -838,5 +839,199 @@ describe("事件觸發器 · 連鎖總量", () => {
        設計者不知道該減少觸發器數量(總量)還是縮短鏈(深度)。 */
     const detail = JSON.stringify([...(await runDetails(aId)), ...(await runDetails(bId))])
     expect(detail, detail.slice(0, 300)).toContain("cascade")
+  })
+})
+
+/* 🔴 R1·C-5|定時觸發。**補上 Ragic 要寫 JavaScript 的那個位置。**
+
+   Ragic 的通用排程是 Daily Workflow(JS 工作流程引擎的一種階段);
+   `doc-kb/260` 逐字「如果你希望每日自動針對特定表單的所有資料同步…
+   **可以考慮利用程式**」。這一批用 C-4 的封閉 allowlist 做到同一件事。
+
+   ## 為什麼直接呼叫 `run()` 而不是等 cron
+
+   排程的 cron 每小時整點跑。測試等不了,也不該等 —— 要測的是**到期判斷**
+   與**執行語意**,不是 `@Cron` 這個 decorator 會不會被 NestJS 呼叫
+   (那由 `schedule-registration` 那支守衛負責)。 */
+describe("事件觸發器 · 定時觸發", () => {
+  const runSchedule = async (): Promise<{ fired: number; affected: number }> =>
+    app.get(TriggerScheduleService).run()
+
+  /* 讓一條定時觸發「現在就該跑」:把它的時刻設成租戶當地的現在幾點。
+     🔴 由 **PG 算**當地時間 —— 測試自己用 JS 算時區的話,就是在用一套規則
+     驗另一套規則,兩邊同時錯還會綠。 */
+  const localHourNow = async (): Promise<number> => {
+    const { rows } = await pool.query<{ h: number }>(
+      "SELECT EXTRACT(hour FROM now() AT TIME ZONE t.timezone)::int AS h FROM tenants t WHERE t.id = $1",
+      [tenantA],
+    )
+    return Number(rows[0]?.h ?? 0)
+  }
+
+  it("🔴 每日定時:到點時對所有符合條件的記錄執行", async () => {
+    const formId = await makeForm("定時A")
+    await save(formId, { 金額: 5, 狀態: "未處理" })
+    await save(formId, { 金額: 50000, 狀態: "未處理" })
+    await save(formId, { 金額: 90000, 狀態: "未處理" })
+
+    await makeTrigger(formId, {
+      name: "每日標記大額",
+      schedule: { freq: "daily", hour: await localHourNow() },
+      conditions: [{ field: "金額", op: "gt", value: 10000 }],
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "已標記" } },
+      },
+    })
+
+    const r = await runSchedule()
+    expect(r.fired, "應該有一條到期").toBeGreaterThanOrEqual(1)
+
+    const states = (await listRecords(formId)).map((v) => v.狀態)
+    /* 🔴 掃全表、逐筆判條件 —— 不是「執行一次」。
+       這正是 Ragic 提醒的語意(`doc/96`:「檢查資料庫中所有的提醒功能」)。 */
+    expect(states.filter((s) => s === "已標記")).toHaveLength(2)
+    expect(states.filter((s) => s === "未處理")).toHaveLength(1)
+  })
+
+  it("🔴 同一天不會跑第二次(否則每小時就重跑一輪全表)", async () => {
+    const formId = await makeForm("定時B")
+    await save(formId, { 金額: 1, 狀態: "初始" })
+    await makeTrigger(formId, {
+      name: "每日蓋章",
+      schedule: { freq: "daily", hour: await localHourNow() },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "第一輪" } },
+      },
+    })
+
+    await runSchedule()
+    expect((await listRecords(formId))[0]?.狀態).toBe("第一輪")
+
+    /* 把值改回去 —— 若第二次真的跑了,它會再被蓋成「第一輪」 */
+    const id = (await listRecords(formId)).length
+    expect(id).toBe(1)
+    await patch(formId, 1, { 狀態: "人改的" })
+
+    await runSchedule()
+    expect((await listRecords(formId))[0]?.狀態, "同一天不該再跑").toBe("人改的")
+  })
+
+  it("時刻還沒到 → 不跑", async () => {
+    const formId = await makeForm("定時C")
+    await save(formId, { 金額: 1, 狀態: "初始" })
+    const h = await localHourNow()
+    /* 取「還沒到」的時刻。當地已是 23 點時取 23 會變成「已到」,故往前借一天用 0 點
+       —— 但 0 點又永遠 <= 現在。改用 h+1,並在 h=23 時直接跳過這條斷言的前提。 */
+    if (h >= 23) return
+    await makeTrigger(formId, {
+      name: "晚點才跑",
+      schedule: { freq: "daily", hour: h + 1 },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "跑過了" } },
+      },
+    })
+    await runSchedule()
+    expect((await listRecords(formId))[0]?.狀態).toBe("初始")
+  })
+
+  /* 🔴 漏跑補一次(OQ-SCH-5):process 在 08:00 掛掉、11:00 才回來,那一次要補。
+     實作方式是 `>= schedule_hour` 而不是 `= schedule_hour`。 */
+  it("🔴 錯過時刻後回來 → 當天仍補跑一次", async () => {
+    const h = await localHourNow()
+    if (h < 1) return // 當地 0 點時沒有「更早的時刻」可測
+    const formId = await makeForm("定時D")
+    await save(formId, { 金額: 1, 狀態: "初始" })
+    await makeTrigger(formId, {
+      name: "本來該更早跑",
+      schedule: { freq: "daily", hour: 0 },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "補跑了" } },
+      },
+    })
+    await runSchedule()
+    expect((await listRecords(formId))[0]?.狀態, "錯過的時刻要補跑").toBe("補跑了")
+  })
+
+  it("🔴 未發布的定時觸發不會跑(與 C-4 的草稿分離一致)", async () => {
+    const formId = await makeForm("定時E")
+    await save(formId, { 金額: 1, 狀態: "初始" })
+    const id = await makeTrigger(formId, {
+      name: "改了沒發布",
+      schedule: { freq: "daily", hour: await localHourNow() },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "舊版" } },
+      },
+    })
+    await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(formId)}/triggers/${String(id)}`,
+      headers: H(),
+      payload: {
+        config: {
+          actionType: "updateSelf",
+          setFields: { 狀態: { from: "literal", value: "新版" } },
+        },
+      },
+    })
+    await runSchedule()
+    /* 新建即發布,故跑的是「舊版」而不是未發布的「新版」 */
+    expect((await listRecords(formId))[0]?.狀態).toBe("舊版")
+  })
+
+  it("🔴 定時 + pushTo 在邊界就被擋(不讓人設一個永遠不會跑的東西)", async () => {
+    const src = await makeForm("定時F")
+    const dst = await makeForm("定時F目標")
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(src)}/triggers`,
+      headers: H(),
+      payload: {
+        name: "定時推別表",
+        schedule: { freq: "daily", hour: 3 },
+        config: { actionType: "pushTo", targetFormId: dst, fieldMap: {} },
+      },
+    })
+    expect(res.statusCode, res.body).toBe(400)
+    expect(res.body).toContain("只支援")
+  })
+
+  it("🔴 每月 29–31 號設不出來(那種日期有些月份不會發生)", async () => {
+    const formId = await makeForm("定時G")
+    for (const day of [29, 31]) {
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/forms/${String(formId)}/triggers`,
+        headers: H(),
+        payload: {
+          name: `每月 ${String(day)} 號`,
+          schedule: { freq: "monthly", hour: 3, day },
+          config: {
+            actionType: "updateSelf",
+            setFields: { 狀態: { from: "literal", value: "x" } },
+          },
+        },
+      })
+      expect(res.statusCode, `day=${String(day)} 應被擋`).toBe(400)
+    }
+    /* 月底走 day=0 —— 那是 ERP 月結的真實需求,而 2 月幾號結束不該讓使用者自己想 */
+    const ok = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(formId)}/triggers`,
+      headers: H(),
+      payload: {
+        name: "月底結轉",
+        schedule: { freq: "monthly", hour: 3, day: 0 },
+        config: {
+          actionType: "updateSelf",
+          setFields: { 狀態: { from: "literal", value: "x" } },
+        },
+      },
+    })
+    expect(ok.statusCode, ok.body).toBe(201)
   })
 })

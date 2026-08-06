@@ -4,6 +4,7 @@ import { AuthzModule } from "../authz/authz.module.js"
 import { DbModule } from "../db/db.module.js"
 import { FormEngineModule } from "../form-engine/form-engine.module.js"
 import { TriggerAsyncService } from "./trigger-async.service.js"
+import { TriggerScheduleService } from "./trigger-schedule.service.js"
 import { TriggersModule } from "./triggers.module.js"
 
 /* 🔴 非同步側**另立一個模組**,不併進 `TriggersModule`。
@@ -16,7 +17,7 @@ import { TriggersModule } from "./triggers.module.js"
    `TriggerAsyncModule` → `FormEngineModule` → `TriggersModule` → `DbModule`。 */
 @Module({
   imports: [DbModule, AuthzModule, FormEngineModule, TriggersModule],
-  providers: [TriggerAsyncService],
-  exports: [TriggerAsyncService],
+  providers: [TriggerAsyncService, TriggerScheduleService],
+  exports: [TriggerAsyncService, TriggerScheduleService],
 })
 export class TriggerAsyncModule {}

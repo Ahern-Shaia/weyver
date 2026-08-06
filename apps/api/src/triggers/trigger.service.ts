@@ -39,6 +39,8 @@ export class TriggerService {
       conditions: body.conditions as FormatCondition[],
       config: body.config,
       enabled: body.enabled,
+      ...(body.schedule === undefined ? {} : { schedule: body.schedule }),
+      createdBy: tenant.actorId,
     })
     /* 🔴 **新建直接發布,編輯才進草稿。**
 
@@ -167,6 +169,15 @@ function toDto(row: TriggerRow): TriggerDto {
     conditions: row.conditions,
     actionType: row.config.actionType,
     config: row.config,
+    schedule:
+      row.schedule === null
+        ? null
+        : {
+            freq: row.schedule.freq as "daily" | "weekly" | "monthly",
+            hour: row.schedule.hour,
+            ...(row.schedule.day === null ? {} : { day: row.schedule.day }),
+          },
+    lastRunAt: row.lastRunAt?.toISOString() ?? null,
     position: row.position,
     enabled: row.enabled,
     /* 設計器要編輯的是草稿,要顯示的是「跑的是哪一版」。兩者都給。 */

@@ -42,6 +42,8 @@ const EXPECTED_CRON_JOBS = [
   /* R1·C-4 M3 事件觸發器的非同步側(pushTo)。與 event.fanout 刻意分開:
      共用標記欄的話,觸發器重試會讓通知與 webhook 一起重送。 */
   "trigger.run",
+  /* R1·C-5 定時觸發。每小時整點,最小粒度對齊 Ragic 的「每天 19:00」語意。 */
+  "trigger.schedule",
 ] as const
 
 let container: StartedPostgreSqlContainer
