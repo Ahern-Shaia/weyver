@@ -231,6 +231,8 @@ a:hover{text-decoration:underline;}
 .cats button:hover{color:#fff;background:rgba(255,255,255,.06);}
 .cats button.on{color:#fff;font-weight:600;border-bottom-color:#fff;background:rgba(255,255,255,.09);}
 .cats button.on svg{width:11px;height:11px;margin-left:5px;transition:transform .14s;}
+.cats button.add{padding:0 11px;font-size:15px;color:var(--shell-ink-3);font-weight:400;}
+.cats button.add:hover{color:#fff;background:rgba(255,255,255,.08);}
 .cats button.on.open svg{transform:rotate(180deg);}
 
 .top .rt{margin-left:auto;display:flex;align-items:center;gap:9px;}
@@ -678,8 +680,14 @@ tr:hover td.chk .cbx,tr.sel td.chk .cbx{display:inline-flex;}
   <div class="top">
     <div class="mark"><div class="sq">W</div><div class="nm">Weyver</div></div>
     <div class="cats">
-      <button class="on" id="catbtn">採購<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button>銷售</button><button>生產</button>
-      <button>庫存</button><button>品保</button><button>財會</button>
+      <button class="on" id="catbtn">採購<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button>生產排程</button><button>HACCP 紀錄</button>
+      <button>供應商稽核</button><button>客訴處理</button><button>財會</button>
+      <!-- 🔴 `＋` 長在頁籤列裡 —— 逐字對照 ragic/ragic-03。
+           這是「分類是你自己開的」在介面上唯一的證據,v1 初稿把它拿掉了。
+           分類名也刻意混:Ragic 自家示範是 活動管理 / 人才招募 / 庫存 / 訂單管理 / 採購,
+           擺明不是 ERP 模組表。六個 ERP 模組名排一列 = 鼎新式固定模組列,
+           正好推翻「表單引擎是 substrate 不是模組之一」的定位。 -->
+      <button class="add" title="新增分類">＋</button>
     </div>
     <div class="rt">
       <button class="gsearch">
@@ -720,7 +728,7 @@ tr:hover td.chk .cbx,tr.sel td.chk .cbx{display:inline-flex;}
       <a><svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 14 4-4 4 4 5-5"/></svg>供應商績效</a>
       <a><svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 14 4-4 4 4 5-5"/></svg>價格趨勢</a>
     </div>
-    <div class="hint">採購分類 10 張表單 · 全工作區 144 張</div>
+    <div class="hint">「採購」10 張表單 · 全工作區 6 個分類 / 144 張 —— 分類與表單皆由貴司自建</div>
   </div>
 
   <div class="work">
