@@ -26,15 +26,16 @@
 
 ### 0.2 🔴 巨人二:四家競品 —— **範本的單位是「容器」,不是「表」**
 
-一手依據取自官方文件本地鏡像(`reference-materials/`),查證日 2026-08-03。
+一手依據取自官方文件本地鏡像(`reference-materials/`),查證日 2026-08-03;
+**Ragic 三條於 2026-08-06 由本專案重開鏡像原文逐字覆核並補上官方 URL**。
 Notion / NocoDB / Salesforce 不在本地庫,**未查證**。
 
 | | 逐字 |
 |---|---|
-| **Ragic** | 「從應用商店安裝我們設計好的模組…**大多模組包含多張表單,且彼此的連結關係已經建立好,有相對完整的架構**」(`doc/37`);「因為應用商店的一個範本經常由**一組表單組成**的(不只一張表單),我們也叫它『免費範本模組』」(`doc-kb/204`)|
-| **Teable** | `POST /base/create-from-template`,參數 `spaceId, templateId, withRecords, baseId?` → 範本單位是 **base(整個庫,含多表)** |
-| **Baserow** | 「A template consists of **one or more applications** that will be copied into the desired workspace」 |
-| **Airtable** | template = 一整個 base;managed app = 「reusable configurations of Airtable base structure and functionality(**data schema, automations, and interfaces**)」 |
+| **Ragic** | 「從應用商店安裝我們設計好的模組…**大多模組包含多張表單,且彼此的連結關係已經建立好,有相對完整的架構**」([`doc/37`](https://www.ragic.com/intl/zh-TW/doc/37));「因為應用商店的一個範本經常由**一組表單組成**的(不只一張表單),我們也叫它『免費範本模組』」([`doc-kb/204`](https://www.ragic.com/intl/zh-TW/doc-kb/204))|
+| **Teable** | [API](https://help.teable.ai/en/api-reference) `POST /base/create-from-template`,參數 `spaceId, templateId, withRecords, baseId?` → 範本單位是 **base(整個庫,含多表)** |
+| **Baserow** | [官方文件](https://baserow.io/docs)逐字:「A template consists of **one or more applications** that will be copied into the desired workspace」 |
+| **Airtable** | template = 一整個 base;[managed app](https://support.airtable.com/docs) = 「reusable configurations of Airtable base structure and functionality(**data schema, automations, and interfaces**)」 |
 
 **四家一致(強證據)。** 而這直接**推翻本模組原本的直覺設計**:
 不該做「單表範本 + 套用後重指」,而該做**範本包**(一組 form,包內以相對代號互指),
@@ -43,7 +44,7 @@ Notion / NocoDB / Salesforce 不在本地庫,**未查證**。
 
 ⚠️ **Ragic 走的是另一條路,值得知道但不建議照抄**:保留 ID 命名空間 ——
 「使用者自己建立的欄位編號會是 **1000 開頭**…從應用商店安裝的範本模組表單,
-欄位編號則會是 **2000 開頭(英文版模組)或 3000 開頭(中文版模組)**」(`doc-kb/176`)。
+欄位編號則會是 **2000 開頭(英文版模組)或 3000 開頭(中文版模組)**」([`doc-kb/176`](https://www.ragic.com/intl/zh-TW/doc-kb/176))。
 即範本自帶穩定 ID 而非套用時重編號。對多租戶動態表而言這是很強的主鍵約束,不採。
 
 ### 0.3 範例資料:Teable 的一個布林解掉整個問題
@@ -57,7 +58,7 @@ Notion / NocoDB / Salesforce 不在本地庫,**未查證**。
 
 ### 0.4 🔴 治理:Ragic 是四家中最完整的策展模型
 
-`doc-kb/268` 逐字流程:① 申請成為合作夥伴 → ② 申請開立**專屬「範本資料庫」帳號**
+[`doc-kb/268`](https://www.ragic.com/intl/zh-TW/doc-kb/268) 逐字流程:① 申請成為合作夥伴 → ② 申請開立**專屬「範本資料庫」帳號**
 (3 個月期限;**無法使用備份還原**)→ ③ 沙箱內設計 → ④ 提交名稱 / 簡介 / **表單截圖** / 說明文件 →
 ⑤「若**審核通過**,Ragic 將提供一個專屬的『**範本模組 ID**』」→ ⑥ 收費模組由平台**處理後續金流**。
 
@@ -99,7 +100,7 @@ Notion / NocoDB / Salesforce 不在本地庫,**未查證**。
   more customized app building experience.**」(Omni 能建 table / view / field / interface / automation,
   且「will **mirror the same permission settings of the user**」;邊界明確:
   「It **cannot create Gantt or blank page layouts**」「form editing is **not supported**」)
-- **Ragic 把 AI 定位為拋棄式雛形**(`doc-kb/111`):「Ragic AI 會根據你的需求描述快速產生資料庫雛形…
+- **Ragic 把 AI 定位為拋棄式雛形**([`doc-kb/111`](https://www.ragic.com/intl/zh-TW/doc-kb/111)):「Ragic AI 會根據你的需求描述快速產生資料庫雛形…
   完成後,仍可依需求手動新增表單、**重新整理表單之間的關聯**…或是優化流程後,
   **再請 Ragic AI 重新建立一次資料庫**」,並總結「目的在於**快速建立資料庫雛形並進行嘗試與調整**」。
 - Ragic 的建表入口共 **5 個**,且範本分兩層:空白 / **應用商店模組(多表 + 關聯)** /

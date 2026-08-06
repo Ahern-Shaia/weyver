@@ -10,14 +10,46 @@
 >
 > 作者:Claude Code(草擬)
 > 版本:v0.1(2026-07-25)
-> 證據:docs/27 §3(D2 裁定 + P0/P1/P2 分級)、**本地競品參照庫鏡像**(`reference-materials/`;Ragic `doc/19`·`doc/38`·`doc-user/4`·`15`·`16`、Airtable `views` / `filter` / `shared-view-url-filters`、Teable `view` / `authority-matrix`、Baserow `filter-group`)、現況盤點(records API filter/sort/cursor 白名單鏈、field-type-registry operator、maskRead 伺服器端強制、record-grid-panel Glide 可複用)
->
-> 🔴 **2026-08-03 稽核補:查證日期與措辭收窄。** 上列引用**查證日 2026-07-25**(撰寫時),
-> 稽核於 **2026-08-03 複核 Airtable 部分,逐字相符**;Ragic / Teable / Baserow 部分**本次未逐條複核**。
-> 措辭收窄:原文以並列方式列出四家,讀起來像「四家都查過同一件事」——
-> 實際上各家查的面向不同(Airtable=分享檢視的 URL 篩選;Teable=權限矩陣;Baserow=篩選群組;
-> Ragic=檢視與報表)。**本模組的核心裁定(D2「Ragic 語意、Airtable 骨架」)承重於前兩家**,
-> Teable / Baserow 為旁證。授權面見 `AGENTS.md` 鐵則 5-bis。
+
+---
+
+## 0. 證據
+
+> ⚠️ **本節是 2026-08-06 由檔頭引言區「提升」上來的,內容原本就有。**
+> 放在引言區的後果是**別人找不到** —— 研究索引也偵測不到它,
+> 於是這份 doc 一直被列在「引用零星,承重前請自行複核」那一欄。
+> **研究寫在哪裡會決定它日後有沒有人用得到。**
+
+### 0.1 一手依據與**各家實際查的面向**
+
+| 來源 | 查的是什麼 | 對本模組的角色 |
+|---|---|---|
+| **Ragic**([`doc/19`](https://www.ragic.com/intl/zh-TW/doc/19) · [`doc/38`](https://www.ragic.com/intl/zh-TW/doc/38) · [`doc-user/4`](https://www.ragic.com/intl/zh-TW/doc-user/4) · [`doc-user/15`](https://www.ragic.com/intl/zh-TW/doc-user/15) · [`doc-user/16`](https://www.ragic.com/intl/zh-TW/doc-user/16))| 檢視與報表 | 🔴 **核心裁定 D2「Ragic 語意」承重於此** |
+| **Airtable**(`views` / `filter` / [`shared-view-url-filters`](https://support.airtable.com/docs))| 分享檢視的 URL 篩選 | 🔴 **D2「Airtable 骨架」承重於此** |
+| **Teable**([`view`](https://help.teable.ai/en/api-reference) / `authority-matrix`)| 權限矩陣 | 旁證 |
+| **Baserow**([`filter-group`](https://baserow.io/docs))| 篩選群組 | 旁證 |
+
+本地鏡像 `reference-materials/`;授權面見 `AGENTS.md` 鐵則 5-bis。
+
+### 0.2 🔴 查證日期與措辭收窄(2026-08-03 稽核)
+
+上列引用**查證日 2026-07-25**(撰寫時)。稽核於 **2026-08-03 複核 Airtable 部分,逐字相符**;
+**Ragic / Teable / Baserow 部分本次未逐條複核**。
+
+原文以並列方式列出四家,讀起來像「四家都查過同一件事」—— 而實際上各家查的面向不同(見上表)。
+**承重的只有前兩家**,後兩家是旁證。⚠️ 這個區分很重要:
+把旁證當承重依據,就會出現「四家都這樣做」這種其實不成立的強斷言。
+
+### 0.3 自家 repo 現況盤點(站①)
+
+records API 的 filter / sort / cursor 白名單鏈 · `field-type-registry` 的 operator ·
+`maskRead` 伺服器端強制 · `record-grid-panel` 的 Glide 可複用。
+
+### 0.4 對上游的證據驅動修正(OQ-VL-2)
+
+`docs/27` §3 P0 把 `forcedFilter`(固定/強制篩選)列為 `view_def` 的屬性軸之一。
+競品研究顯示**那是 row-level security,不該做進一個使用者可移除的 view filter** ——
+故移出 view、歸 authz 軸。**這是研究推翻上游裁定的一例。**
 
 ---
 

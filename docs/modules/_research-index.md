@@ -39,6 +39,7 @@
 | [R1·UP-3] 2D 表單設計器（form-designer-ui uplift） | ⭐ 有一手依據 | 54 | 24 | `21` `35` `121` `306` | Airtable · Baserow · NocoDB · Teable | [R1/form-designer-2d.md](R1/form-designer-2d.md) |
 | [P0-1·UI] 表單設計器 + 填單 接引擎 API | ⭐⭐ 深且推翻過 | 23 | 0 | `21` `37` `72` `143` `167` `286` | Airtable · Baserow · Notion · Salesforce · W3C · Zoho | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | [R1·UP-3c] 設計檢視 = 表單本身（設計器心智模型補完） | ⭐⭐ 深且推翻過 | 17 | 12 | `21` `26` `34` `35` `37` `38` `53` `121` `306` | Airtable · Baserow · Teable | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
+| [R1·B-2] 表單範本庫 | ⭐⭐ 深且推翻過 | 13 | 5 | `37` `111` `176` `204` `268` | Airtable · Baserow · NocoDB · Notion · Salesforce · Teable | [R1/form-templates.md](R1/form-templates.md) |
 | [P0-3] 公式引擎 + 關聯 Link&Load | ⭐⭐ 深且推翻過 | 11 | 10 | — | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | [R1·UX-1] 前端重構(視覺 / 心智模型 / 操作體驗 / UI / UX) | ⭐⭐ 深且推翻過 | 32 | 15 | — | ARIA APG · Airtable · Baserow · Glide Data Grid · NocoDB · Notion · SAP · Salesforce · W3C | [R1/frontend-uplift.md](R1/frontend-uplift.md) |
 | [P0-2] 網格主檢視 + Excel 建表 onboarding | ⭐⭐ 深且推翻過 | 31 | 2 | `41` `54` `65` | Airtable · Glide Data Grid · Salesforce · Teable | [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
@@ -57,6 +58,7 @@
 | [R1·後續-2b] 伺服器端 PDF 與列印範本 | ⭐ 有一手依據 | 19 | 4 | `42` `56` `138` `284` | ClamAV | [R1/server-pdf.md](R1/server-pdf.md) |
 | [R1·A-1] 設定中心(S22) | ⭐ 有一手依據 | 3 | 16 | `3` | ASVS · Airtable · Better Auth · CVE-2026-53514 · Fastify · NestJS · Notion · OWASP · Odoo · Salesforce | [R1/settings-center.md](R1/settings-center.md) |
 | [F-1] 分組 / 看板 / 行事曆檢視 | ⭐⭐ 深且推翻過 | 51 | 1 | `9` `92` | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/views-group-kanban-calendar.md](R1/views-group-kanban-calendar.md) |
+| [R1·UP-2] 視圖系統 + 集合(browse)視圖 | ⭐⭐ 深且推翻過 | 16 | 1 | `4` `15` `16` `19` `38` `54` | Airtable · Baserow · Glide Data Grid · Teable | [R1/views-list.md](R1/views-list.md) |
 | [G-1] 事件匯流排 + 出站 Webhook + API 金鑰 | ⭐⭐ 深且推翻過 | 26 | 0 | — | Airtable · CVE-2025-6454 · CVE-2026-27826 · CVE-2026-54353 · Fastify · NestJS · Notion · OWASP · Shopify · Stripe | [R1/webhook-and-events.md](R1/webhook-and-events.md) |
 | [R1·UP-1] 工作區 IA(分類目錄首頁 + app-shell) | ⭐⭐ 深且推翻過 | 27 | 2 | `12` `17` `71` `90` `100` `119` | Airtable · NocoDB · Notion · SAP · Smartsheet | [R1/workspace-ia.md](R1/workspace-ia.md) |
 
@@ -72,10 +74,8 @@
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐⭐ 深且推翻過 | 27 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | — | 0 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
-| [R1·B-2] 表單範本庫 | ✅ | · 零星引用 | 5 | `37` `111` `176` `204` `268` | [R1/form-templates.md](R1/form-templates.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | 0 | — | [R1/full-text-search.md](R1/full-text-search.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
-| [R1·UP-2] 視圖系統 + 集合(browse)視圖 | ✅ | · 零星引用 | 7 | `4` `15` `19` `38` `54` | [R1/views-list.md](R1/views-list.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
 | [R2 命門] 語意計算綁定層(自由表單 ↔ 算) | — | — | 0 | — | [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
 
@@ -97,6 +97,7 @@
 | `doc/13` | [R1/actions-approval.md](R1/actions-approval.md) · [R1/approval-advanced.md](R1/approval-advanced.md) |
 | `doc/14` | [R1/field-types-parity.md](R1/field-types-parity.md) · [R1/link-picker-and-load.md](R1/link-picker-and-load.md) |
 | `doc/15` | [R1/actions-approval.md](R1/actions-approval.md) · [R1/approval-advanced.md](R1/approval-advanced.md) · [R1/image-signature-fields.md](R1/image-signature-fields.md) · [R1/views-list.md](R1/views-list.md) |
+| `doc/16` | [R1/views-list.md](R1/views-list.md) |
 | `doc/17` | [R1/workspace-ia.md](R1/workspace-ia.md) |
 | `doc/19` | [R1/views-list.md](R1/views-list.md) |
 | `doc/20` | [R1/field-types-parity.md](R1/field-types-parity.md) |
