@@ -201,7 +201,9 @@ export class TriggersRepository {
     readonly conditions: readonly FormatCondition[]
     readonly config: TriggerConfig
     readonly enabled: boolean
-    readonly schedule?: { readonly freq: string; readonly hour: number; readonly day?: number | undefined } | undefined
+    readonly schedule?:
+      | { readonly freq: string; readonly hour: number; readonly day?: number | undefined }
+      | undefined
     /* 🔴 定時觸發以建立者的身分執行,故建立當下就要記住是誰。 */
     readonly createdBy: number
   }): Promise<number> {

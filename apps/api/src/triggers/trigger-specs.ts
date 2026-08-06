@@ -134,7 +134,10 @@ export interface TriggerDto {
   readonly hasUnpublishedChanges: boolean
 }
 
-export const TRIGGER_OUTCOMES = ["ran", "skipped", "denied", "failed", "depth"] as const
+/* `missed`:排定的時刻過去了而它沒跑(FMEA S1)。**不是失敗,是沒發生** ——
+   分開一個 outcome 是因為那兩件事的處置完全不同:失敗要去看錯誤,
+   漏跑要去看**為什麼那段時間服務沒在跑**。 */
+export const TRIGGER_OUTCOMES = ["ran", "skipped", "denied", "failed", "depth", "missed"] as const
 export type TriggerOutcome = (typeof TRIGGER_OUTCOMES)[number]
 
 export interface TriggerRunDto {

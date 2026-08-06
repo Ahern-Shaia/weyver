@@ -1035,3 +1035,95 @@ describe("事件觸發器 · 定時觸發", () => {
     expect(ok.statusCode, ok.body).toBe(201)
   })
 })
+
+/* 🔴 FMEA S1|**漏跑要說得出來。**
+
+   定時觸發的補跑只在當天有效(到期條件含 `dow` / `dom` 比對)——
+   整個週一都停機的話,那一週的週報就跳過了。
+
+   **裁定是不補跑**(遲到的週報可能比沒有更糟:收件人會以為那是週二的數字),
+   **但跳過這件事必須看得見** —— 那正是本 repo 反覆在修的「靜默」問題。 */
+describe("事件觸發器 · 漏跑偵測", () => {
+  /* 讓一條觸發器看起來「很久沒跑了」。直接改 DB 而不是等時間過去 ——
+     測試不可能真的等一週。 */
+  const ageOut = async (triggerId: number, days: number): Promise<void> => {
+    await pool.query(
+      `UPDATE trigger_def SET last_run_at = now() - ($2 || ' days')::interval WHERE id = $1`,
+      [triggerId, String(days)],
+    )
+  }
+
+  const runsFor = async (formId: number, triggerId: number): Promise<string[]> => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/forms/${String(formId)}/triggers/runs`,
+      headers: H(),
+    })
+    return (res.json() as { triggerId: number; outcome: string }[])
+      .filter((r) => r.triggerId === triggerId)
+      .map((r) => r.outcome)
+  }
+
+  it("🔴 每週觸發超過一週沒跑 → 記一筆 missed(而不是什麼都不說)", async () => {
+    const formId = await makeForm("漏跑A")
+    /* 挑一個**不是今天**的星期,確保它不會剛好到期而被正常執行 */
+    const { rows } = await pool.query<{ dow: number }>(
+      "SELECT EXTRACT(dow FROM now() AT TIME ZONE t.timezone)::int AS dow FROM tenants t WHERE t.id = $1",
+      [tenantA],
+    )
+    const notToday = ((rows[0]?.dow ?? 0) + 3) % 7
+    const id = await makeTrigger(formId, {
+      name: "每週報表",
+      schedule: { freq: "weekly", hour: 3, day: notToday },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "x" } },
+      },
+    })
+
+    await ageOut(id, 10)
+    const r = await app.get(TriggerScheduleService).run()
+    expect(r.missed, "應偵測到漏跑").toBeGreaterThanOrEqual(1)
+    expect(await runsFor(formId, id)).toContain("missed")
+  })
+
+  it("🔴 記過一次就不再重複記(否則每小時一筆,執行紀錄變垃圾)", async () => {
+    const formId = await makeForm("漏跑B")
+    const { rows } = await pool.query<{ dow: number }>(
+      "SELECT EXTRACT(dow FROM now() AT TIME ZONE t.timezone)::int AS dow FROM tenants t WHERE t.id = $1",
+      [tenantA],
+    )
+    const id = await makeTrigger(formId, {
+      name: "每週報表B",
+      schedule: { freq: "weekly", hour: 3, day: ((rows[0]?.dow ?? 0) + 3) % 7 },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "x" } },
+      },
+    })
+    await ageOut(id, 10)
+
+    await app.get(TriggerScheduleService).run()
+    const first = (await runsFor(formId, id)).filter((o) => o === "missed").length
+    /* 第二次跑(模擬下一個小時的 ticker)—— 不該再記一筆 */
+    await app.get(TriggerScheduleService).run()
+    const second = (await runsFor(formId, id)).filter((o) => o === "missed").length
+    expect(second, "同一次漏跑只記一筆").toBe(first)
+  })
+
+  it("正常在跑的觸發器不會被誤判成漏跑(否則報告是恆紅的假警報)", async () => {
+    const formId = await makeForm("漏跑C")
+    const id = await makeTrigger(formId, {
+      name: "每天正常跑",
+      schedule: { freq: "daily", hour: 0 },
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "x" } },
+      },
+    })
+    /* 剛跑過 */
+    await pool.query("UPDATE trigger_def SET last_run_at = now() WHERE id = $1", [id])
+    await app.get(TriggerScheduleService).run()
+    expect(await runsFor(formId, id)).not.toContain("missed")
+  })
+})

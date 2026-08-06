@@ -72,7 +72,9 @@ export class TriggerScheduleService {
   async scheduled(): Promise<void> {
     try {
       const result = await this.run()
-      if (result.fired > 0) this.logger.log(`scheduled triggers: ${JSON.stringify(result)}`)
+      if (result.fired > 0 || result.missed > 0) {
+        this.logger.log(`scheduled triggers: ${JSON.stringify(result)}`)
+      }
     } catch (error) {
       this.logger.error(
         `scheduled triggers failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -80,17 +82,21 @@ export class TriggerScheduleService {
     }
   }
 
-  async run(): Promise<{ fired: number; affected: number; skipped: boolean }> {
+  async run(): Promise<{ fired: number; affected: number; missed: number; skipped: boolean }> {
     const gate = await this.knex.raw<{ rows: { locked: boolean }[] }>(
       "SELECT pg_try_advisory_lock(?) AS locked",
       [SCHEDULE_LOCK_KEY],
     )
-    if (gate.rows[0]?.locked !== true) return { fired: 0, affected: 0, skipped: true }
+    if (gate.rows[0]?.locked !== true) return { fired: 0, affected: 0, missed: 0, skipped: true }
     try {
       const due = await this.claimDue()
       let affected = 0
       for (const row of due) affected += await this.fire(row)
-      return { fired: due.length, affected, skipped: false }
+      /* 🔴 **在跑完之後才偵測漏跑。** 順序不能反 —— 這一輪到期的那些,
+         `fire()` 已經把 `last_run_at` 標成現在,故不會被誤判成漏跑。
+         先偵測的話,每一條當下該跑的都會先被記一筆 `missed`。 */
+      const missed = await this.recordMissed()
+      return { fired: due.length, affected, missed, skipped: false }
     } finally {
       await this.knex.raw("SELECT pg_advisory_unlock(?)", [SCHEDULE_LOCK_KEY])
     }
@@ -147,6 +153,56 @@ export class TriggerScheduleService {
       form_id: Number(r.form_id),
       created_by: r.created_by === null ? null : Number(r.created_by),
     }))
+  }
+
+  /* 🔴 FMEA S1|**漏跑要說得出來。**
+
+     補跑只在當天有效(到期條件含 `dow` / `dom` 比對)—— 整個週一都停機的話,
+     那一週的週報就跳過了。**裁定是不補跑**:「週一該寄的週報在週二寄出」
+     未必是使用者要的(遲到的報表可能比沒有更糟,收件人會以為那是週二的數字)。
+
+     **但跳過這件事必須看得見。** 這一支找出「排定的時刻過去了而它沒跑」的,
+     各記一筆 `missed`,然後**把 `last_run_at` 標成現在** ——
+     那既是「這次漏跑已經被記下來了」的標記(避免每小時重複記),
+     也讓下一次排定的時刻能正常觸發。
+
+     ## 判準:超過一個完整週期 + 一天寬限
+
+     多留一天是為了不在邊界誤判。⚠️ 代價誠實記:**停用一個月後重新啟用
+     也會記一筆 `missed`** —— 我方沒有記「什麼時候被停用的」。
+     那一筆不算錯(那段期間確實有排定的時刻過去了而沒跑),只是顯而易見。 */
+  private async recordMissed(): Promise<number> {
+    const { rows } = await this.knex.raw<{ rows: (DueRow & { freq: string })[] }>(
+      `SELECT td.id, td.tenant_id, td.form_id, td.created_by, td.conditions, td.published,
+              td.schedule_freq AS freq
+         FROM trigger_def td
+        WHERE td.on_schedule
+          AND td.deleted_at IS NULL
+          AND td.enabled
+          AND td.published IS NOT NULL
+          AND COALESCE(td.last_run_at, td.created_at) < now() - (
+                CASE td.schedule_freq
+                  WHEN 'daily'  THEN interval '2 days'
+                  WHEN 'weekly' THEN interval '8 days'
+                  ELSE               interval '32 days'
+                END)`,
+    )
+    for (const r of rows) {
+      await this.repo.recordRun({
+        tenantId: Number(r.tenant_id),
+        triggerId: Number(r.id),
+        formId: Number(r.form_id),
+        recordId: 0,
+        actorId: r.created_by === null ? null : Number(r.created_by),
+        outcome: "missed",
+        detail: {
+          freq: r.freq,
+          reason: "排定的時刻已經過去而這條沒有執行 —— 服務在那段時間可能沒有在跑",
+        },
+      })
+      await this.markRan(Number(r.id))
+    }
+    return rows.length
   }
 
   /* 標記跑過。**無論成敗都標** —— 失敗了還一直重試的話,

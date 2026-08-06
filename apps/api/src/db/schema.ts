@@ -720,7 +720,10 @@ export const triggerRuns = pgTable(
   },
   (t) => [
     index("trigger_run_lookup_idx").on(t.tenantId, t.triggerId, t.createdAt),
-    check("trigger_run_outcome", sql`outcome IN ('ran','skipped','denied','failed','depth')`),
+    check(
+      "trigger_run_outcome",
+      sql`outcome IN ('ran','skipped','denied','failed','depth','missed')`,
+    ),
   ],
 )
 
