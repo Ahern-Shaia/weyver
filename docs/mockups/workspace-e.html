@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver · 工作區 E(照六產品實測提取做)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   E —— 照 docs/38 §3 從**六個產品實際截圖**提取的六條做,不是照我的假設。
+
+   §3.1 表格垂直框線是分水嶺  → **只有水平線**(Qualio/Directus/Metabase 皆然;
+                                唯一畫垂直線的 Ragic 最像後台)
+   §3.2 兩個最像產品的用深殼淺紙 → **深藍全高側欄 + 白內容**
+   §3.3 主色不進資料區          → 儲存格**一律不上底色**(含 fx 欄,W3 暫依競品)
+   §3.4 密度靠多行儲存格        → 11 欄 → **7 欄**,相關的成對堆疊成兩行
+   §3.5 按鈕分主次              → 實心只給主要動作,次要用外框,其餘 ghost
+   §3.6 大標題本身不是問題      → 但**避開 C 的組合**:不做四層水平帶、列高不壓
+
+   保留 D 已解決的:真 Lucide 圖示 · 自繪 checkbox · 有 hover/focus 態的控件。
+
+   🔴 色彩存在感的來源改變了:**深色側欄本身就是一大塊品牌色**。
+   Qualio / Directus 就是這樣在「主色不進資料區」的前提下仍有色彩存在感。
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  /* 淺紙(內容區) */
+  --paper:#ffffff;--paper-2:#f7f9fb;--paper-3:#eef2f6;
+  --ink:#111823;--ink2:#3d4a5a;--ink3:#65748a;--ink4:#93a0b2;
+  --line:#e6ebf1;--line-2:#eef2f6;--line-strong:#cfd8e3;
+
+  /* 🔴 深殼 —— 由 --base-brand 推導,白牌照樣只需給一個色。
+     這裡直接寫出推導後的值供 mockup 使用。 */
+  --base-brand:#22568a;
+  --shell:#152238;          /* brand mix black 72% */
+  --shell-2:#1d2f4d;        /* 群組底 / hover */
+  --shell-3:#26405f;        /* 分隔線 */
+  --shell-ink:#e8eef6;
+  --shell-ink-2:#9db0c9;
+  --shell-ink-3:#6d81a0;
+  --brand:#2f6bb5;          /* 淺紙上的主色(對白底 4.6:1) */
+  --brand-d:#22568a;
+  --brand-t:#eaf0f9;
+
+  --fx:#0b6b5d;--rel:#5a3fa0;
+  --ok:#15703c;--ok-t:#e8f3ec;--ok-l:#bcdccb;
+  --wn:#8a5200;--wn-t:#f8f1e3;--wn-l:#e5d4b3;
+  --er:#a8201a;--er-t:#faeae8;--er-l:#e9c6c2;
+  --nt:#5c6876;--nt-t:#eef2f6;--nt-l:#d3dae3;
+
+  --r-xs:3px;--r-sm:5px;--r-md:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;
+  font-size:13px;color:var(--ink);background:#dfe4ea;-webkit-font-smoothing:antialiased;padding:22px 0 40px;}
+.mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+svg{display:block;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+.note{max-width:1320px;margin:0 auto 12px;padding:0 16px;font-size:12px;color:#4a5461;line-height:1.7;}
+.note b{color:#1d2530;}
+
+.app{max-width:1320px;margin:0 auto;height:760px;background:var(--paper);
+  border-radius:var(--r-md);overflow:hidden;display:flex;
+  box-shadow:0 1px 2px rgba(17,24,35,.05),0 10px 30px rgba(17,24,35,.09);}
+
+/* ══ 深殼側欄(§3.2)—— 全高,圖示 + 文字,可分組 ═══════════ */
+.side{width:218px;flex-shrink:0;background:var(--shell);display:flex;flex-direction:column;}
+.brandrow{height:52px;flex-shrink:0;display:flex;align-items:center;gap:9px;padding:0 14px;
+  border-bottom:1px solid var(--shell-3);}
+.brandrow .mk{width:24px;height:24px;border-radius:var(--r-sm);background:#fff;color:var(--shell);
+  font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.brandrow .bd{font-size:13.5px;font-weight:600;color:#fff;letter-spacing:-.2px;}
+.brandrow .bd small{font-weight:400;color:var(--shell-ink-2);margin-left:5px;font-size:11.5px;}
+
+.wsrow{padding:11px 14px;border-bottom:1px solid var(--shell-3);display:flex;align-items:center;gap:9px;cursor:pointer;}
+.wsrow:hover{background:var(--shell-2);}
+.wsrow .sq{width:24px;height:24px;border-radius:var(--r-xs);background:var(--shell-2);
+  color:var(--shell-ink);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--shell-3);}
+.wsrow .t{font-size:12.5px;font-weight:600;color:var(--shell-ink);line-height:1.3;}
+.wsrow .t em{display:block;font-style:normal;font-size:10.5px;font-weight:400;color:var(--shell-ink-3);}
+.wsrow svg{width:13px;height:13px;color:var(--shell-ink-3);margin-left:auto;}
+
+.sheets{flex:1;overflow-y:auto;padding:8px 8px 14px;}
+.gh{display:flex;align-items:center;gap:7px;padding:10px 8px 5px;font-size:10.5px;font-weight:600;
+  letter-spacing:.06em;color:var(--shell-ink-3);text-transform:uppercase;}
+.sheet{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:var(--r-sm);
+  font-size:12.5px;color:var(--shell-ink-2);cursor:pointer;transition:background .1s,color .1s;}
+.sheet:hover{background:var(--shell-2);color:var(--shell-ink);}
+.sheet svg{width:14px;height:14px;stroke-width:1.7;opacity:.85;}
+/* 選取 = 實心色塊(Qualio 的作法),不是淡底 */
+.sheet.on{background:var(--brand);color:#fff;font-weight:600;}
+.sheet.on svg{opacity:1;}
+.sheet .cap{margin-left:auto;font-family:'IBM Plex Mono';font-size:9px;font-weight:600;
+  padding:1px 4px;border-radius:var(--r-xs);background:rgba(255,255,255,.1);color:var(--shell-ink-2);
+  letter-spacing:.02em;}
+.sheet.on .cap{background:rgba(255,255,255,.22);color:#fff;}
+.side .foot{border-top:1px solid var(--shell-3);padding:8px;}
+.side .foot .add{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--shell-ink-2);
+  padding:7px 8px;border-radius:var(--r-sm);cursor:pointer;}
+.side .foot .add:hover{background:var(--shell-2);color:var(--shell-ink);}
+.side .foot .add svg{width:14px;height:14px;}
+
+/* ══ 淺紙內容區 ══════════════════════════════════════════ */
+.body{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper);}
+
+/* 頂欄:只在內容區之上(Qualio 的分工),不橫跨側欄 */
+.top{height:52px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 18px;
+  border-bottom:1px solid var(--line);}
+.gs{flex:1;max-width:400px;display:flex;align-items:center;gap:8px;height:31px;padding:0 11px;
+  border:1px solid var(--line-strong);border-radius:var(--r-sm);background:var(--paper);
+  color:var(--ink4);font-size:12.5px;transition:border-color .12s,box-shadow .12s;}
+.gs:hover{border-color:#b6c2d1;}
+.gs.focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-t);color:var(--ink3);}
+.gs svg{width:13.5px;height:13.5px;}
+.gs kbd{margin-left:auto;font-family:'IBM Plex Mono';font-size:10px;border:1px solid var(--line-strong);
+  border-bottom-width:2px;background:var(--paper-2);border-radius:3px;padding:1px 5px;color:var(--ink3);}
+.top .rt{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.iconbtn{width:30px;height:30px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;
+  color:var(--ink3);position:relative;}
+.iconbtn:hover{background:var(--paper-3);color:var(--ink2);}
+.iconbtn svg{width:15px;height:15px;}
+.iconbtn .dot{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;
+  background:var(--er);border:1.5px solid var(--paper);}
+.av{width:28px;height:28px;border-radius:var(--r-sm);background:var(--shell);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600;}
+
+/* §3.5 按鈕三級 */
+.btn{display:inline-flex;align-items:center;gap:6px;height:31px;padding:0 12px;border-radius:var(--r-sm);
+  font-size:12.5px;font-weight:500;transition:.12s;border:1px solid transparent;}
+.btn svg{width:13px;height:13px;}
+.btn.pri{background:var(--brand-d);color:#fff;box-shadow:inset 0 -1px 0 rgba(0,0,0,.16);}
+.btn.pri:hover{background:#1a4470;}
+.btn.sec{border-color:var(--line-strong);color:var(--ink2);background:var(--paper);}
+.btn.sec:hover{background:var(--paper-2);border-color:#b6c2d1;}
+.btn.gho{color:var(--ink3);}
+.btn.gho:hover{background:var(--paper-3);color:var(--ink2);}
+
+/* 標題列:§3.6 —— 標題可以有份量,但**不做「大標 + 留白」的四層帶**。
+   標題與主要動作同一列,下面直接接檢視/工具,兩層而不是四層。 */
+.head{flex-shrink:0;padding:14px 18px 0;}
+.headrow{display:flex;align-items:center;gap:11px;}
+.headrow h1{font-size:19px;font-weight:600;letter-spacing:-.3px;}
+.headrow .cnt{font-family:'IBM Plex Mono';font-size:12px;color:var(--ink4);
+  border-left:1px solid var(--line);padding-left:11px;}
+.headrow .gl{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  color:var(--fx);background:#e6f2ef;border:1px solid #c2ded6;padding:2px 8px;border-radius:var(--r-xs);}
+.headrow .gl svg{width:11px;height:11px;}
+.headrow .sp{flex:1;}
+.tabs{display:flex;align-items:center;gap:2px;margin-top:12px;}
+.tabs button{padding:7px 11px 9px;font-size:12.5px;color:var(--ink3);font-weight:500;
+  border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tabs button:hover{color:var(--ink2);}
+.tabs button.on{color:var(--brand-d);border-bottom-color:var(--brand-d);font-weight:600;}
+.tabs .sp{flex:1;}
+.tabs .tool{display:inline-flex;align-items:center;gap:5px;height:27px;padding:0 9px;border-radius:var(--r-sm);
+  font-size:12px;color:var(--ink3);border-bottom:none;margin-bottom:0;font-weight:500;}
+.tabs .tool:hover{background:var(--paper-3);color:var(--ink2);}
+.tabs .tool svg{width:12.5px;height:12.5px;stroke-width:1.8;}
+.headline{height:1px;background:var(--line);margin-top:0;}
+
+/* ══ 表格:§3.1 只有水平線 · §3.3 儲存格不上底色 · §3.4 兩行儲存格 ══ */
+.grid{flex:1;overflow:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{position:sticky;top:0;background:var(--paper-2);border-bottom:1px solid var(--line-strong);
+  padding:0;z-index:1;text-align:left;}
+.th{display:flex;align-items:center;gap:6px;padding:9px 14px;font-size:11.5px;font-weight:600;
+  color:var(--ink3);white-space:nowrap;}
+.th .ty{font-family:'IBM Plex Mono';font-size:9.5px;font-weight:700;height:15px;min-width:15px;padding:0 3px;
+  display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-xs);
+  background:var(--paper-3);color:var(--ink4);border:1px solid var(--line);}
+.th .ty.fx{background:#e6f2ef;color:var(--fx);border-color:#c2ded6;}
+.th .ty.rel{background:#efeaf8;color:var(--rel);border-color:#d8cdec;}
+.th.r{justify-content:flex-end;}
+/* 🔴 只有水平線。**沒有任何 border-left / border-right** */
+tbody td{border-bottom:1px solid var(--line-2);padding:9px 14px;vertical-align:middle;}
+tbody tr:hover td{background:var(--paper-2);}
+tbody tr.sel td{background:var(--brand-t);}
+/* 選取用左側粗條標示,而不是把整列塗成另一個顏色 */
+tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--brand-d);}
+/* §3.4 兩行儲存格 —— 主行 + 次行,把 11 欄壓成 7 欄 */
+.c1{font-size:13px;color:var(--ink);line-height:1.35;}
+.c2{font-size:11.5px;color:var(--ink4);line-height:1.35;margin-top:2px;}
+.c1.mono,.c2.mono{font-family:'IBM Plex Mono';font-feature-settings:"tnum" 1;}
+td.r .c1,td.r .c2{text-align:right;}
+td.r{text-align:right;}
+.link{color:var(--brand-d);font-weight:500;display:inline-flex;align-items:center;gap:3px;cursor:pointer;}
+.link:hover{text-decoration:underline;}
+.link svg{width:10px;height:10px;stroke-width:2.2;opacity:.6;}
+/* fx 值:靠**字色 + mono**,不靠底色(§3.3) */
+.fxv{color:var(--fx);font-weight:600;}
+
+.cbx{width:15px;height:15px;border:1.5px solid #adb9c8;border-radius:var(--r-xs);background:var(--paper);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.1s;}
+.cbx:hover{border-color:var(--brand);}
+.cbx.on{background:var(--brand-d);border-color:var(--brand-d);}
+.cbx svg{width:10px;height:10px;color:#fff;stroke-width:3;display:none;}
+.cbx.on svg{display:block;}
+td.chk,th.chk{width:42px;}
+
+.chip{display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--r-xs);
+  font-size:11px;font-weight:600;border:1px solid;white-space:nowrap;}
+.chip.ok{background:var(--ok-t);color:var(--ok);border-color:var(--ok-l);}
+.chip.wn{background:var(--wn-t);color:var(--wn);border-color:var(--wn-l);}
+.chip.er{background:var(--er-t);color:var(--er);border-color:var(--er-l);}
+.chip.nt{background:var(--nt-t);color:var(--nt);border-color:var(--nt-l);}
+.appr{display:inline-flex;align-items:center;gap:3px;}
+.appr b{width:19px;height:19px;border-radius:var(--r-xs);font-size:9.5px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;border:1px solid;}
+.appr .done{background:var(--ok-t);color:var(--ok);border-color:var(--ok-l);}
+.appr .now{background:var(--brand-t);color:var(--brand-d);border-color:#bdd0ea;}
+.appr .wait{background:var(--paper-3);color:var(--ink4);border-color:var(--line-strong);}
+
+/* 底部狀態列 —— 六產品共識:筆數 + 分頁 */
+.foot{flex-shrink:0;height:38px;display:flex;align-items:center;gap:12px;padding:0 18px;
+  border-top:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--ink3);}
+.foot .sp{flex:1;}
+.foot .pg{display:flex;align-items:center;gap:4px;}
+.foot .pg button{width:24px;height:24px;border-radius:var(--r-xs);display:flex;align-items:center;
+  justify-content:center;color:var(--ink3);}
+.foot .pg button:hover{background:var(--paper-3);}
+.foot .pg svg{width:13px;height:13px;}
+
+/* ══ 明細:退到次階(§3 的「網格是主角」) ═══════════════ */
+.detail{width:326px;flex-shrink:0;border-left:1px solid var(--line);background:var(--paper-2);
+  display:flex;flex-direction:column;}
+.dt-head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;}
+.dt-head .c{font-family:'IBM Plex Mono';font-size:12.5px;font-weight:600;}
+.dt-head .x{margin-left:auto;color:var(--ink4);width:24px;height:24px;display:flex;align-items:center;
+  justify-content:center;border-radius:var(--r-xs);cursor:pointer;}
+.dt-head .x:hover{background:var(--paper-3);color:var(--ink2);}
+.dt-head .x svg{width:13px;height:13px;}
+.dt-body{flex:1;overflow-y:auto;padding:14px 16px;}
+/* Directus 的作法:欄名在上、值在下,單欄不擠 */
+.fld{margin-bottom:13px;}
+.fld .k{font-size:11px;font-weight:600;color:var(--ink4);letter-spacing:.02em;margin-bottom:3px;}
+.fld .v{font-size:13px;color:var(--ink);font-weight:500;}
+.fld .v.mono{font-family:'IBM Plex Mono';}
+.sub-h{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--ink4);text-transform:uppercase;
+  margin:18px 0 8px;display:flex;align-items:center;gap:6px;}
+.sub-h .tag{font-family:'IBM Plex Mono';font-size:9px;color:var(--rel);background:#efeaf8;
+  border:1px solid #d8cdec;padding:1px 4px;border-radius:var(--r-xs);letter-spacing:0;text-transform:none;}
+/* 子表也只用水平線 */
+.subt{background:var(--paper);border-radius:var(--r-sm);border:1px solid var(--line);overflow:hidden;}
+.sr{display:grid;grid-template-columns:1fr 34px 62px;gap:8px;padding:8px 10px;font-size:11.5px;
+  border-bottom:1px solid var(--line-2);align-items:center;}
+.sr:last-child{border-bottom:none;}
+.sr.h{background:var(--paper-2);color:var(--ink4);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.sr .q,.sr .amt{font-family:'IBM Plex Mono';text-align:right;font-feature-settings:"tnum" 1;}
+.sr.tot{border-top:2px solid var(--ink);border-bottom:none;font-weight:700;grid-template-columns:1fr 62px;}
+.sr.tot .amt{font-family:'IBM Plex Mono';text-align:right;}
+.je{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 11px;}
+.je .row{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;}
+.je .row .k{color:var(--ink3);}
+.je .row .v{font-family:'IBM Plex Mono';font-weight:600;}
+.je .bal{margin-top:7px;padding-top:7px;border-top:1px solid var(--line-2);display:flex;align-items:center;
+  gap:5px;font-size:11px;color:var(--ok);font-weight:600;}
+.je .bal svg{width:12px;height:12px;}
+.dt-foot{border-top:1px solid var(--line);padding:11px 16px;display:flex;gap:8px;}
+.dt-foot .btn.pri{flex:1;justify-content:center;}
+</style>
+</head>
+<body>
+
+<div class="note">
+  <b>E</b>|照 <code>docs/38 §3</code> 從**六個產品實際截圖**提取的六條做,不是照我的假設:
+  <b>§3.1</b> 表格<b>只有水平線</b>(Qualio/Directus/Metabase 皆然;唯一畫垂直線的 Ragic 最像後台)·
+  <b>§3.2</b> <b>深殼淺紙</b>(深藍全高側欄 + 白內容)·
+  <b>§3.3</b> 儲存格<b>一律不上底色</b>,含 fx 欄(W3 暫依競品,fx 靠字色 + mono)·
+  <b>§3.4</b> 11 欄 → <b>7 欄</b>,相關的成對堆疊成兩行 ·
+  <b>§3.5</b> 按鈕三級(實心 / 外框 / ghost)·
+  <b>§3.6</b> 標題有份量但<b>避開 C 的四層水平帶</b>,列高不壓。<br>
+  🔴 <b>色彩存在感改由深色側欄承擔</b> —— 那正是 Qualio / Directus 在「主色不進資料區」前提下仍有品牌感的作法。
+  保留 D 的真 Lucide 圖示與自繪控件。
+</div>
+
+<div class="app" id="verE">
+  <!-- ══ 深殼 ══ -->
+  <div class="side">
+    <div class="brandrow">
+      <div class="mk">W</div><div class="bd">Weyver<small>織雲</small></div>
+    </div>
+    <div class="wsrow">
+      <div class="sq">鮮</div>
+      <div class="t">鮮勇食品<em>144 張表單</em></div>
+      <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="sheets">
+      <div class="gh">採購 · 進貨</div>
+      <div class="sheet on"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>採購單<span class="cap">GL</span></div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>供應商</div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>進貨檢驗</div>
+      <div class="gh">銷售 · 出貨</div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>銷貨單<span class="cap">GL</span></div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>客戶</div>
+      <div class="gh">生產 · 現場</div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>生產工單<span class="cap">EDGE</span></div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>BOM 用料<span class="cap">MRP</span></div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>領料記錄</div>
+      <div class="gh">品保 · ISO</div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>不合格品 / CAPA</div>
+      <div class="sheet"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M12 3v18"/></svg>受控文件<span class="cap">LOCK</span></div>
+    </div>
+    <div class="foot"><div class="add"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>新增表單 / 匯入 Excel</div></div>
+  </div>
+
+  <!-- ══ 淺紙 ══ -->
+  <div class="body">
+    <div class="top">
+      <div class="gs focus">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd>
+      </div>
+      <div class="rt">
+        <button class="iconbtn"><svg viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="dot"></span></button>
+        <div class="av">陳</div>
+      </div>
+    </div>
+
+    <div class="head">
+      <div class="headrow">
+        <h1>採購單</h1>
+        <span class="cnt">248 筆</span>
+        <span class="gl"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>已連 GL 過帳 · 應付</span>
+        <span class="sp"></span>
+        <button class="btn gho"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>匯出</button>
+        <button class="btn sec">設計表單</button>
+        <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>建立記錄</button>
+      </div>
+      <div class="tabs">
+        <button class="on">列表</button><button>看板</button><button>日曆</button><button>樞紐</button><button>單筆表單</button>
+        <span class="sp"></span>
+        <button class="tool"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>篩選</button>
+        <button class="tool"><svg viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>排序</button>
+        <button class="tool"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>欄位</button>
+      </div>
+    </div>
+    <div class="headline"></div>
+
+    <div class="grid">
+      <table>
+        <thead><tr>
+          <th class="chk"><div class="th"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></div></th>
+          <th><div class="th">單號 · 批號</div></th>
+          <th><div class="th"><span class="ty rel">↗</span>供應商 · 聯絡人</div></th>
+          <th><div class="th">品項</div></th>
+          <th><div class="th r">數量 · 單價</div></th>
+          <th><div class="th r"><span class="ty fx">fx</span>金額</div></th>
+          <th><div class="th">交期</div></th>
+          <th><div class="th">簽核 · 狀態</div></th>
+        </tr></thead>
+        <tbody>
+          <tr class="sel">
+            <td class="chk"><span class="cbx on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+            <td><div class="c1 mono">PO-0716-001</div><div class="c2 mono">BN-0716-A</div></td>
+            <td><div class="c1"><span class="link">鑫豐農產品<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div><div class="c2">陳美玲 · 0912-345-678</div></td>
+            <td><div class="c1">凍覆盆子 500g</div><div class="c2">冷凍倉 A</div></td>
+            <td class="r"><div class="c1 mono">320</div><div class="c2 mono">401.25</div></td>
+            <td class="r"><div class="c1 mono fxv">128,400</div><div class="c2 mono">含稅</div></td>
+            <td><div class="c1 mono">07/22</div><div class="c2">6 天後</div></td>
+            <td><div class="c1"><span class="appr"><b class="done">陳</b><b class="now">林</b><b class="wait">王</b></span></div><div class="c2" style="margin-top:4px"><span class="chip wn">待審核</span></div></td>
+          </tr>
+          <tr>
+            <td class="chk"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+            <td><div class="c1 mono">PO-0715-047</div><div class="c2 mono">BN-0715-C</div></td>
+            <td><div class="c1"><span class="link">統鮮實業<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div><div class="c2">林志偉 · 0922-118-204</div></td>
+            <td><div class="c1">凍藍莓 500g</div><div class="c2">冷凍倉 A</div></td>
+            <td class="r"><div class="c1 mono">200</div><div class="c2 mono">421.00</div></td>
+            <td class="r"><div class="c1 mono fxv">84,200</div><div class="c2 mono">含稅</div></td>
+            <td><div class="c1 mono">07/20</div><div class="c2">4 天後</div></td>
+            <td><div class="c1"><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></div><div class="c2" style="margin-top:4px"><span class="chip ok">已核准</span></div></td>
+          </tr>
+          <tr>
+            <td class="chk"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+            <td><div class="c1 mono">PO-0715-046</div><div class="c2 mono">BN-0715-B</div></td>
+            <td><div class="c1"><span class="link">正大食材<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div><div class="c2">黃淑芬 · 0933-556-071</div></td>
+            <td><div class="c1">綜合莓果 1kg</div><div class="c2">冷凍倉 B</div></td>
+            <td class="r"><div class="c1 mono">150</div><div class="c2 mono">2,080.00</div></td>
+            <td class="r"><div class="c1 mono fxv">312,000</div><div class="c2 mono">含稅</div></td>
+            <td><div class="c1 mono">07/19</div><div class="c2">3 天後</div></td>
+            <td><div class="c1"><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></div><div class="c2" style="margin-top:4px"><span class="chip nt">已收貨</span></div></td>
+          </tr>
+          <tr>
+            <td class="chk"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+            <td><div class="c1 mono">PO-0715-045</div><div class="c2 mono">BN-0715-K</div></td>
+            <td><div class="c1"><span class="link">永豐冷鏈<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div><div class="c2">吳建宏 · 0955-870-233</div></td>
+            <td><div class="c1">凍草莓 500g</div><div class="c2">冷凍倉 A</div></td>
+            <td class="r"><div class="c1 mono">140</div><div class="c2 mono">405.71</div></td>
+            <td class="r"><div class="c1 mono fxv">56,800</div><div class="c2 mono">含稅</div></td>
+            <td><div class="c1 mono">07/18</div><div class="c2">2 天後</div></td>
+            <td><div class="c1"><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></div><div class="c2" style="margin-top:4px"><span class="chip ok">已核准</span></div></td>
+          </tr>
+          <tr>
+            <td class="chk"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+            <td><div class="c1 mono">PO-0715-044</div><div class="c2 mono">BN-0715-A</div></td>
+            <td><div class="c1"><span class="link">鑫豐農產品<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div><div class="c2">陳美玲 · 0912-345-678</div></td>
+            <td><div class="c1">冷凍芒果丁 1kg</div><div class="c2">冷凍倉 B</div></td>
+            <td class="r"><div class="c1 mono">90</div><div class="c2 mono">1,120.00</div></td>
+            <td class="r"><div class="c1 mono fxv">100,800</div><div class="c2 mono">含稅</div></td>
+            <td><div class="c1 mono">07/18</div><div class="c2">2 天後</div></td>
+            <td><div class="c1"><span class="appr"><b class="done">陳</b><b class="wait">林</b><b class="wait">王</b></span></div><div class="c2" style="margin-top:4px"><span class="chip er">退回</span></div></td>
+          </tr>
+          <tr>
+            <td class="chk"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span></td>
+            <td><div class="c1 mono">PO-0714-039</div><div class="c2 mono">BN-0714-D</div></td>
+            <td><div class="c1"><span class="link">統鮮實業<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div><div class="c2">林志偉 · 0922-118-204</div></td>
+            <td><div class="c1">凍鳳梨塊 500g</div><div class="c2">冷凍倉 A</div></td>
+            <td class="r"><div class="c1 mono">260</div><div class="c2 mono">288.46</div></td>
+            <td class="r"><div class="c1 mono fxv">75,000</div><div class="c2 mono">含稅</div></td>
+            <td><div class="c1 mono">07/17</div><div class="c2">1 天後</div></td>
+            <td><div class="c1"><span class="appr"><b class="done">陳</b><b class="done">林</b><b class="done">王</b></span></div><div class="c2" style="margin-top:4px"><span class="chip nt">已收貨</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="foot">
+      <span>已選 <b>1</b> 筆</span>
+      <span class="sp"></span>
+      <span>1–6 / 248</span>
+      <span class="pg">
+        <button><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+      </span>
+    </div>
+  </div>
+
+  <!-- ══ 明細 ══ -->
+  <div class="detail">
+    <div class="dt-head">
+      <span class="c">PO-0716-001</span><span class="chip wn">待審核</span>
+      <span class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+    </div>
+    <div class="dt-body">
+      <div class="fld"><div class="k">供應商</div><div class="v"><span class="link">鑫豐農產品<svg viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></div></div>
+      <div class="fld"><div class="k">聯絡人</div><div class="v">陳美玲 · 0912-345-678</div></div>
+      <div class="fld"><div class="k">預定交期</div><div class="v mono">2026-07-22</div></div>
+      <div class="fld"><div class="k">交貨地點</div><div class="v">三峽一廠 · 冷藏碼頭 B</div></div>
+      <div class="fld" style="margin-bottom:0"><div class="k">當班批號</div><div class="v mono">BN-0716-A</div></div>
+
+      <div class="sub-h">採購明細 <span class="tag">子表 · Link&amp;Load</span></div>
+      <div class="subt">
+        <div class="sr h"><span>品項</span><span class="q">數量</span><span class="amt">小計</span></div>
+        <div class="sr"><span>凍覆盆子 500g</span><span class="q">200</span><span class="amt">80,250</span></div>
+        <div class="sr"><span>凍覆盆子 1kg</span><span class="q">80</span><span class="amt">32,100</span></div>
+        <div class="sr"><span>覆盆子果醬底料</span><span class="q">40</span><span class="amt">16,050</span></div>
+        <div class="sr tot"><span>總計 fx</span><span class="amt">128,400</span></div>
+      </div>
+
+      <div class="sub-h">過帳(織入的「算」)</div>
+      <div class="je">
+        <div class="row"><span class="k">借:存貨</span><span class="v">128,400</span></div>
+        <div class="row"><span class="k">貸:應付帳款</span><span class="v">128,400</span></div>
+        <div class="bal"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>借貸平衡 · 待審核後過帳</div>
+      </div>
+    </div>
+    <div class="dt-foot">
+      <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>核准並過帳</button>
+      <button class="btn sec">編輯</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

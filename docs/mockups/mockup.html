@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>設計系統 Mockup — 可自訂資料庫 + ERP/QMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        accent:'#2563EB', 'accent-tint':'#EFF4FF',
+        action:'#18181B', 'action-hover':'#2F2F35',
+        canvas:'#F7F7F8', surface:'#FFFFFF', sunken:'#F1F1F3',
+        line:'#E4E4E7', 'line-grid':'#F0F0F2', 'line-strong':'#D4D4D8',
+        ink:'#18181B', 'ink-2':'#52525B', 'ink-3':'#8E8E96', 'ink-4':'#B4B4BB',
+      },
+      fontFamily: {
+        sans:['Inter','Noto Sans TC','-apple-system','PingFang TC','Microsoft JhengHei','sans-serif'],
+        mono:['JetBrains Mono','ui-monospace','monospace'],
+      },
+      borderRadius:{ sm:'4px', DEFAULT:'6px', lg:'8px' },
+      boxShadow:{
+        pop:'0 4px 12px rgba(0,0,0,.08)',
+        panel:'-4px 0 16px rgba(0,0,0,.06)',
+        modal:'0 8px 32px rgba(0,0,0,.16)',
+      },
+    }
+  }
+}
+</script>
+<style>
+  :root{
+    --accent:#2563EB; --canvas:#F7F7F8; --sunken:#F1F1F3;
+    --line:#E4E4E7; --line-grid:#F0F0F2; --ink:#18181B; --ink-3:#8E8E96;
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  body{ font-family:Inter,'Noto Sans TC',-apple-system,'PingFang TC',sans-serif; }
+  /* 數字一律等寬對齊 — Ragic / Odoo / Qualio 全都漏掉這條 */
+  .num, td.num, .tnum{ font-variant-numeric:tabular-nums; }
+  table{ font-variant-numeric:tabular-nums; }
+
+  /* 狀態列 pipeline — Odoo 的 chevron 條，既是指示器也是控制項 */
+  .pipe{ display:flex; gap:2px; }
+  .pipe-step{
+    height:30px; display:flex; align-items:center; padding:0 18px 0 28px;
+    font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer;
+    clip-path:polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%);
+  }
+  .pipe-step:first-child{ padding-left:16px;
+    clip-path:polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%); }
+  .pipe-step:last-child{ padding-right:16px;
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 11px 50%); }
+
+  /* 語意徽章：底約 10% 飽和、文字約 55% — ERPNext 的比例 */
+  .chip{ display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px;
+         border-radius:6px; font-size:12px; font-weight:500; white-space:nowrap; }
+  .chip-success{ background:#E8F5EC; color:#2F6B45; }
+  .chip-info   { background:#EAF1FE; color:#2456B8; }
+  .chip-warning{ background:#FDF2E3; color:#8A5A15; }
+  .chip-danger { background:#FDECEC; color:#A32F2C; }
+  .chip-neutral{ background:#F1F1F3; color:#52525B; }
+  .chip-purple { background:#F2EEFD; color:#5B3EA8; }
+
+  /* 表格：表格線比外殼邊框淺 — NocoDB，整份研究 CP 值最高的一條 */
+  .grid-tbl{ border-collapse:separate; border-spacing:0; }
+  .grid-tbl th, .grid-tbl td{
+    border-right:1px solid var(--line-grid);
+    border-bottom:1px solid var(--line-grid);
+    padding:0 10px; height:36px; text-align:left; font-size:14px;
+  }
+  .grid-tbl th{ height:36px; background:var(--canvas); font-size:12px; font-weight:500;
+                color:#52525B; position:sticky; top:0; z-index:2; }
+  .grid-tbl tbody tr:hover td{ background:var(--canvas); }
+  .grid-tbl tbody tr.sel td{ background:#EFF4FF; }
+
+  /* 列號欄是狀態機：靜止顯示序號 → hover 換成核取方塊＋展開 */
+  .gutter .ord{ display:inline; } .gutter .act{ display:none; }
+  tr:hover .gutter .ord{ display:none; } tr:hover .gutter .act{ display:inline-flex; }
+
+  /* 欄位型別 icon — 一套詞彙，表頭／欄位管理／表單標籤／設計器共用 */
+  .ft{ width:14px; height:14px; flex:none; color:#8E8E96; }
+
+  .btn{ height:28px; padding:0 10px; border-radius:6px; font-size:13px; font-weight:500;
+        display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .btn-ghost{ color:#52525B; } .btn-ghost:hover{ background:var(--sunken); }
+  .btn-sec{ background:var(--sunken); color:#18181B; } .btn-sec:hover{ background:#E7E7EA; }
+  .btn-pri{ background:#18181B; color:#fff; } .btn-pri:hover{ background:#2F2F35; }
+
+  .inp{ height:32px; border:1px solid var(--line); border-radius:6px; padding:0 10px;
+        font-size:14px; background:#fff; width:100%; }
+  .inp:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px #EFF4FF; }
+  /* 可編輯 = 有框輸入框，計算值 = 純文字 — Odoo 的 MPS 矩陣，零成本的可編輯性提示 */
+  .computed{ background:transparent; border:none; color:#52525B; }
+
+  .scroll::-webkit-scrollbar{ width:10px; height:10px; }
+  .scroll::-webkit-scrollbar-thumb{ background:#D4D4D8; border-radius:6px; border:3px solid #fff; }
+  .scroll::-webkit-scrollbar-track{ background:transparent; }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body class="bg-surface text-ink text-[14px]">
+
+<!-- 欄位型別 icon sprite：一套 14px 字形，處處通用 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="i-text"><path d="M2 12L5.5 3h1L10 12M3.4 9h5.7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M11 12V7.5a1.8 1.8 0 013.5 0V12M14.5 9.6h-2a1.5 1.5 0 100 2.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>
+  <g id="i-num"><path d="M5.5 2.5L4 13.5M11 2.5L9.5 13.5M2.5 5.5h11M2 10.5h11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></g>
+  <g id="i-money"><path d="M8 1.5v13M11 4.2C10.3 3.2 9.2 2.8 8 2.8c-1.7 0-3 .9-3 2.3 0 3.2 6 1.6 6 5 0 1.5-1.4 2.5-3.2 2.5-1.4 0-2.6-.5-3.3-1.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>
+  <g id="i-date"><rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></g>
+  <g id="i-select"><rect x="2" y="3" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M5.5 7l2.5 2.5L10.5 7" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-multi"><path d="M5.5 3h6a2 2 0 012 2v6M2 6.5h7.5a1.5 1.5 0 011.5 1.5v4a1.5 1.5 0 01-1.5 1.5H3.5A1.5 1.5 0 012 12z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-check"><rect x="2" y="2" width="12" height="12" rx="3" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M4.8 8.2l2.2 2.2 4.2-4.6" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-user"><circle cx="8" cy="5.5" r="2.8" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M2.5 14c.6-2.8 2.8-4.2 5.5-4.2s4.9 1.4 5.5 4.2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>
+  <g id="i-file"><path d="M9 1.8H4.5A1.5 1.5 0 003 3.3v9.4a1.5 1.5 0 001.5 1.5h7a1.5 1.5 0 001.5-1.5V5.8z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/><path d="M9 1.8v4h4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></g>
+  <g id="i-image"><rect x="2" y="3" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><circle cx="6" cy="6.5" r="1.2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M2.6 11.5l3.2-3 3 2.6 2-1.8 2.6 2.3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <g id="i-link"><path d="M6.6 9.4a3 3 0 004.3 0l2-2a3 3 0 10-4.3-4.3l-1 1M9.4 6.6a3 3 0 00-4.3 0l-2 2a3 3 0 104.3 4.3l1-1" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>
+  <g id="i-formula"><path d="M3 13.5c1.6 0 2-1 2.2-2.4L6.8 3.4C7 2.2 7.6 1.6 8.8 1.6c.6 0 1 .1 1.3.3M4.6 6.6h4.2M10 7l3.5 5M13.5 7L10 12" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>
+  <g id="i-auto"><path d="M5.5 2.5L4 13.5M11 2.5L9.5 13.5M2.5 5.5h11M2 10.5h11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none" opacity=".55"/><circle cx="12" cy="12" r="3.2" fill="#fff" stroke="currentColor" stroke-width="1.2"/><path d="M12 10.4v3.2M10.4 12h3.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></g>
+  <g id="i-sign"><path d="M1.8 12.6c2.4 0 2.6-8 4.6-8 1.4 0 .6 6 2.2 6 1.2 0 1.4-3 2.6-3 1 0 1 2 3 2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></g>
+  <g id="i-grid"><rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M2 6.2h12M2 9.9h12M6.4 2.5v11" stroke="currentColor" stroke-width="1.2"/></g>
+  <g id="i-kanban"><rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M6.2 2.5v11M10.2 2.5v11" stroke="currentColor" stroke-width="1.2"/><path d="M3.1 5h2.1M7.1 5h2.1M11.1 5h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></g>
+  <g id="i-form"><rect x="2.5" y="1.8" width="11" height="12.4" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M5 5.4h6M5 8h6M5 10.6h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></g>
+  <g id="i-cal"><rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><rect x="4.5" y="8.5" width="2.2" height="2.2" rx=".6" fill="currentColor"/></g>
+</defs></svg>
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ══════════ 側欄 260px：單一寬度，把 Ragic 的 4 層導覽壓成 1 層 ══════════ -->
+  <aside class="w-[260px] flex-none bg-canvas border-r border-line flex flex-col">
+
+    <!-- 租戶切換器：多租戶從第一天就有 -->
+    <button class="h-12 px-3 flex items-center gap-2.5 hover:bg-sunken text-left flex-none">
+      <span class="w-6 h-6 rounded bg-action text-white text-[11px] font-semibold grid place-items-center flex-none">昱</span>
+      <span class="flex-1 min-w-0">
+        <span class="block text-[13px] font-semibold truncate leading-tight">昱豐精密</span>
+        <span class="block text-[11px] text-ink-3 truncate leading-tight">正式環境</span>
+      </span>
+      <svg class="w-3.5 h-3.5 text-ink-3 flex-none" viewBox="0 0 16 16" fill="none"><path d="M5 6.5L8 9.5l3-3M5 9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <!-- ⌘K 印成實體 keycap，不要藏起來 -->
+    <div class="px-2.5 pb-2 flex-none">
+      <button class="w-full h-8 px-2.5 rounded bg-surface border border-line flex items-center gap-2 text-[13px] text-ink-3 hover:border-line-strong">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none"><circle cx="7.2" cy="7.2" r="4.6" stroke="currentColor" stroke-width="1.3"/><path d="M10.8 10.8L14 14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="flex-1 text-left">搜尋</span>
+        <kbd class="font-mono text-[10px] px-1 py-0.5 rounded-sm bg-sunken text-ink-3 border border-line">⌘K</kbd>
+      </button>
+    </div>
+
+    <!-- 待辦佇列：計數釘在樹上方（isoTracker 最便宜也最好的想法） -->
+    <div class="px-2.5 pb-2 flex-none space-y-px">
+      <button data-screen="record" class="nav-q w-full h-7 px-2 rounded flex items-center gap-2 text-[13px] text-ink-2 hover:bg-sunken">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#2563EB] flex-none"></span>
+        <span class="flex-1 text-left">待我簽核</span>
+        <span class="num text-[11px] font-semibold text-ink">6</span>
+      </button>
+      <button class="w-full h-7 px-2 rounded flex items-center gap-2 text-[13px] text-ink-2 hover:bg-sunken">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#C2410C] flex-none"></span>
+        <span class="flex-1 text-left">已逾期</span>
+        <span class="num text-[11px] font-semibold text-[#A32F2C]">3</span>
+      </button>
+    </div>
+
+    <div class="h-px bg-line mx-2.5 flex-none"></div>
+
+    <!-- 分類 → 表單 → 檢視 三層樹，每層縮排 16px -->
+    <nav class="flex-1 overflow-y-auto scroll px-2.5 py-2 text-[13px]">
+
+      <div class="px-2 h-6 flex items-center justify-between text-[11px] font-medium text-ink-3">
+        <span>訂單管理</span><button class="hover:text-ink">＋</button>
+      </div>
+
+      <div class="mb-0.5">
+        <button class="w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken font-medium">
+          <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">銷售訂單</span>
+        </button>
+        <!-- 檢視是具名物件，型別 icon 帶顏色 -->
+        <div class="ml-4 pl-2 border-l border-line space-y-px">
+          <button data-screen="grid" class="nav-item w-full h-7 px-2 rounded flex items-center gap-2 bg-sunken font-semibold">
+            <svg class="ft" style="color:#2563EB"><use href="#i-grid"/></svg><span class="flex-1 text-left">全部訂單</span>
+          </button>
+          <button data-screen="grid" class="nav-item w-full h-7 px-2 rounded flex items-center gap-2 text-ink-2 hover:bg-sunken">
+            <svg class="ft" style="color:#B45309"><use href="#i-kanban"/></svg><span class="flex-1 text-left">依狀態看板</span>
+          </button>
+          <button data-screen="grid" class="nav-item w-full h-7 px-2 rounded flex items-center gap-2 text-ink-2 hover:bg-sunken">
+            <svg class="ft" style="color:#0F766E"><use href="#i-cal"/></svg><span class="flex-1 text-left">交期行事曆</span>
+          </button>
+          <button data-screen="designer" class="nav-item w-full h-7 px-2 rounded flex items-center gap-2 text-ink-2 hover:bg-sunken">
+            <svg class="ft" style="color:#15803D"><use href="#i-form"/></svg><span class="flex-1 text-left">表單設計</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken text-ink-2">
+        <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">報價單</span>
+      </button>
+      <button class="w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken text-ink-2">
+        <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">客戶主檔</span>
+      </button>
+
+      <div class="px-2 h-6 mt-3 flex items-center text-[11px] font-medium text-ink-3">品質管理</div>
+      <button data-screen="record" class="nav-item w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken text-ink-2">
+        <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">矯正預防措施</span>
+        <span class="num text-[11px] text-ink-3">12</span>
+      </button>
+      <button class="w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken text-ink-2">
+        <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">文件管制</span>
+      </button>
+      <button class="w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken text-ink-2">
+        <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">供應商稽核</span>
+      </button>
+
+      <div class="px-2 h-6 mt-3 flex items-center text-[11px] font-medium text-ink-3">分析</div>
+      <button data-screen="dashboard" class="nav-item w-full h-7 px-2 rounded flex items-center gap-2 hover:bg-sunken text-ink-2">
+        <svg class="ft"><use href="#i-grid"/></svg><span class="flex-1 text-left">營運儀表板</span>
+      </button>
+    </nav>
+
+    <!-- 底部釘住身分＋版本戳記（自架產品的信任訊號） -->
+    <div class="flex-none border-t border-line p-2.5">
+      <button class="w-full h-8 px-1.5 rounded flex items-center gap-2 hover:bg-sunken">
+        <span class="w-6 h-6 rounded-full bg-[#DDD6FE] text-[#5B3EA8] text-[10px] font-semibold grid place-items-center flex-none">陳</span>
+        <span class="flex-1 text-left text-[13px] truncate">陳品瑜</span>
+        <svg class="w-3.5 h-3.5 text-ink-3 flex-none" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.6" stroke="currentColor" stroke-width="1.3"/><path d="M8 5.2v.1M8 7.4v3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <div class="px-1.5 pt-1 text-[10px] text-ink-4 font-mono">v2.4.1 · 自架</div>
+    </div>
+  </aside>
+
+  <!-- ══════════ 主區 ══════════ -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- 頂列 48px：麵包屑（Ragic 最大的 IA 缺口）＋ 記錄分頁器 -->
+    <header class="h-12 flex-none border-b border-line flex items-center gap-3 px-4">
+      <nav id="crumbs" class="flex items-center gap-1.5 text-[13px] min-w-0"></nav>
+      <div class="flex-1"></div>
+      <!-- 記錄分頁器：走訪篩選結果集而不用回列表 -->
+      <div id="pager" hidden class="flex items-center gap-1 text-[12px] text-ink-3">
+        <span class="num">4 / 24</span>
+        <button class="w-6 h-6 rounded grid place-items-center hover:bg-sunken">‹</button>
+        <button class="w-6 h-6 rounded grid place-items-center hover:bg-sunken">›</button>
+      </div>
+      <button class="btn btn-ghost">分享</button>
+      <button class="w-7 h-7 rounded grid place-items-center hover:bg-sunken text-ink-2">⋯</button>
+    </header>
+
+    <!-- ─────────── 畫面 1：資料表格 + 記錄詳情 ─────────── -->
+    <section data-panel="grid" class="flex-1 flex min-h-0">
+      <div class="flex-1 flex flex-col min-w-0">
+
+        <!-- 工具列 40px：啟用態用數量 chip 而非高亮 -->
+        <div class="h-10 flex-none border-b border-line flex items-center gap-1 px-3">
+          <button class="btn btn-ghost"><svg class="ft"><use href="#i-grid"/></svg>欄位</button>
+          <button class="btn btn-ghost">篩選 <span class="num px-1 rounded-sm bg-accent-tint text-accent text-[11px] font-semibold">2</span></button>
+          <button class="btn btn-ghost">群組</button>
+          <button class="btn btn-ghost">排序 <span class="num px-1 rounded-sm bg-accent-tint text-accent text-[11px] font-semibold">1</span></button>
+          <button class="btn btn-ghost">列高</button>
+          <div class="flex-1"></div>
+          <button class="btn btn-ghost">
+            <svg class="ft"><use href="#i-file"/></svg>匯出
+          </button>
+          <button class="btn btn-pri">＋ 新增訂單</button>
+        </div>
+
+        <!-- 已套用的篩選以可移除 chip 呈現：套用狀態與控制項是同一個物件 -->
+        <div class="h-9 flex-none border-b border-line flex items-center gap-1.5 px-3 bg-canvas">
+          <span class="text-[11px] text-ink-3">已套用</span>
+          <button class="chip chip-neutral">開單日期 ≥ 2026-07-01 <span class="text-ink-3">×</span></button>
+          <button class="chip chip-neutral">訂單狀態 ≠ 作廢 <span class="text-ink-3">×</span></button>
+          <button class="text-[12px] text-accent px-1.5 hover:underline">儲存為檢視</button>
+        </div>
+
+        <div class="flex-1 overflow-auto scroll">
+          <table class="grid-tbl w-full min-w-[1100px]">
+            <thead>
+              <tr>
+                <th class="!w-14 !px-0 text-center !border-r-line"></th>
+                <th class="!w-[150px]"><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-auto"/></svg>訂單編號 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-[170px]"><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-link"/></svg>客戶 <span class="text-ink-4">▾</span></span></th>
+                <th><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-text"/></svg>專案名稱 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-[120px]"><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-date"/></svg>開單日期 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-[110px]"><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-user"/></svg>業務 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-[110px]"><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-select"/></svg>狀態 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-[90px] !text-right"><span class="flex items-center gap-1.5 justify-end">簽核 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-[130px] !text-right"><span class="flex items-center gap-1.5 justify-end"><svg class="ft"><use href="#i-money"/></svg>金額 <span class="text-ink-4">▾</span></span></th>
+                <th class="!w-10 !px-0 text-center text-ink-3">＋</th>
+              </tr>
+            </thead>
+            <tbody id="grid-body"></tbody>
+          </table>
+        </div>
+
+        <!-- 底部：分頁 + 計數 -->
+        <div class="h-11 flex-none border-t border-line flex items-center gap-3 px-3 text-[12px] text-ink-3">
+          <button class="btn btn-sec">＋ 新增記錄 <span class="text-ink-3">▾</span></button>
+          <div class="flex-1"></div>
+          <span class="num">1–10，共 <span class="text-ink font-medium">24</span> 筆</span>
+          <div class="flex items-center gap-0.5">
+            <button class="w-6 h-6 rounded grid place-items-center hover:bg-sunken">‹</button>
+            <span class="num px-1.5">1 / 3</span>
+            <button class="w-6 h-6 rounded grid place-items-center hover:bg-sunken">›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 記錄抽屜 560px：右側檢閱器優於模態，保留列表脈絡 -->
+      <aside id="drawer" class="w-[560px] flex-none border-l border-line flex flex-col shadow-panel bg-surface">
+        <div class="h-12 flex-none border-b border-line flex items-center gap-2 px-4">
+          <span class="chip chip-neutral font-mono">SO-2026-1042</span>
+          <div class="flex-1"></div>
+          <button class="btn btn-ghost">開啟完整記錄</button>
+          <button onclick="document.getElementById('drawer').hidden=true" class="w-7 h-7 rounded grid place-items-center hover:bg-sunken text-ink-2">×</button>
+        </div>
+        <div class="flex-1 overflow-y-auto scroll p-4">
+          <div class="text-[11px] text-ink-3 mb-1">銷售訂單</div>
+          <h2 class="text-[24px] font-semibold leading-tight mb-3">台積電 — 12吋晶圓載具</h2>
+
+          <div class="pipe mb-5">
+            <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">草稿</div>
+            <div class="pipe-step" style="background:#2563EB;color:#fff">審核中</div>
+            <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">已核准</div>
+            <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">已出貨</div>
+          </div>
+
+          <!-- 兩欄欄位區。空欄位仍渲染標籤，讓表單形狀恆定 -->
+          <div class="grid grid-cols-2 gap-x-6 gap-y-3.5 mb-5">
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">客戶</div><a class="text-accent hover:underline">台灣積體電路製造</a></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">客戶採購單號</div><span class="font-mono text-[13px]">PO-TSMC-88214</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">開單日期</div><span class="num">2026-07-28</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">要求交期</div><span class="num">2026-09-15</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">業務</div><span class="inline-flex items-center gap-1.5"><span class="w-5 h-5 rounded-full bg-[#DBEAFE] text-[#2456B8] text-[10px] font-semibold grid place-items-center">林</span>林文彬</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">付款條件</div><span class="text-ink-3">—</span></div>
+          </div>
+
+          <div class="text-[12px] font-medium text-ink-3 mb-2">明細（4 項）</div>
+          <div class="border border-line rounded-lg overflow-hidden mb-4">
+            <table class="w-full text-[13px]">
+              <thead><tr class="bg-canvas text-[11px] text-ink-2">
+                <th class="text-left font-medium px-2.5 h-8">品項</th>
+                <th class="text-right font-medium px-2.5 w-16">數量</th>
+                <th class="text-right font-medium px-2.5 w-24">小計</th>
+              </tr></thead>
+              <tbody>
+                <tr class="border-t border-line-grid"><td class="px-2.5 h-8">CV-1200 載具本體</td><td class="num text-right px-2.5">120</td><td class="num text-right px-2.5">720,000</td></tr>
+                <tr class="border-t border-line-grid"><td class="px-2.5 h-8">CV-1200 上蓋</td><td class="num text-right px-2.5">120</td><td class="num text-right px-2.5">288,000</td></tr>
+                <tr class="border-t border-line-grid"><td class="px-2.5 h-8">防靜電內襯</td><td class="num text-right px-2.5">240</td><td class="num text-right px-2.5">156,000</td></tr>
+                <tr class="border-t border-line-grid"><td class="px-2.5 h-8">出廠檢驗報告</td><td class="num text-right px-2.5">1</td><td class="num text-right px-2.5">0</td></tr>
+                <tr class="border-t border-line bg-canvas"><td class="px-2.5 h-9 font-medium">合計</td><td></td><td class="num text-right px-2.5 font-semibold">1,164,000</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="text-[12px] font-medium text-ink-3 mb-2">簽核鏈</div>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="inline-flex items-center gap-1.5 h-7 pl-1 pr-2.5 rounded-full bg-sunken text-[13px]">
+              <span class="w-5 h-5 rounded-full bg-[#E8F5EC] text-[#2F6B45] grid place-items-center text-[10px]">✓</span>林文彬</span>
+            <span class="inline-flex items-center gap-1.5 h-7 pl-1 pr-2.5 rounded-full bg-sunken text-[13px]">
+              <span class="w-5 h-5 rounded-full bg-[#EAF1FE] text-[#2456B8] grid place-items-center text-[10px]">◐</span>王啟明</span>
+            <span class="inline-flex items-center gap-1.5 h-7 pl-1 pr-2.5 rounded-full bg-sunken text-[13px] text-ink-3">
+              <span class="w-5 h-5 rounded-full bg-white border border-line grid place-items-center text-[10px]">○</span>財務主管</span>
+          </div>
+        </div>
+        <!-- 主要按鈕永遠是流程往前推的動作，絕不是「儲存」 -->
+        <div class="h-14 flex-none border-t border-line flex items-center gap-2 px-4">
+          <button class="btn btn-ghost">退回</button>
+          <div class="flex-1"></div>
+          <button class="btn btn-sec">加註</button>
+          <button class="btn btn-pri" style="height:32px">核准並簽章</button>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ─────────── 畫面 2：表單／欄位設計器 ─────────── -->
+    <section data-panel="designer" class="flex-1 flex min-h-0">
+
+      <!-- 欄位型別庫：型別 icon 與表格表頭是同一套詞彙 -->
+      <div class="w-[220px] flex-none border-r border-line bg-canvas flex flex-col">
+        <div class="h-10 flex-none border-b border-line flex items-center px-3 text-[12px] font-medium text-ink-2">欄位型別</div>
+        <div class="flex-1 overflow-y-auto scroll p-2 text-[13px]">
+          <div class="px-1 h-6 flex items-center text-[11px] text-ink-3">基本</div>
+          <div class="grid grid-cols-2 gap-1 mb-2">
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-text"/></svg>文字</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-num"/></svg>數值</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-money"/></svg>金額</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-date"/></svg>日期</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-select"/></svg>單選</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-multi"/></svg>多選</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-check"/></svg>核取</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-user"/></svg>使用者</button>
+          </div>
+          <div class="px-1 h-6 flex items-center text-[11px] text-ink-3">關聯與計算</div>
+          <div class="space-y-1 mb-2">
+            <button class="w-full h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft" style="color:#2563EB"><use href="#i-link"/></svg>連結其他表單</button>
+            <button class="w-full h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft" style="color:#5B3EA8"><use href="#i-formula"/></svg>公式</button>
+            <button class="w-full h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft" style="color:#5B3EA8"><use href="#i-formula"/></svg>彙總（子表加總）</button>
+            <button class="w-full h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-auto"/></svg>自動編號</button>
+          </div>
+          <div class="px-1 h-6 flex items-center text-[11px] text-ink-3">附件與簽名</div>
+          <div class="grid grid-cols-2 gap-1">
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-file"/></svg>附件</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong"><svg class="ft"><use href="#i-image"/></svg>圖片</button>
+            <button class="h-8 px-2 rounded bg-surface border border-line flex items-center gap-1.5 hover:border-line-strong col-span-2"><svg class="ft"><use href="#i-sign"/></svg>電子簽名</button>
+          </div>
+          <div class="mt-3 p-2.5 rounded bg-surface border border-line text-[12px] text-ink-2 leading-relaxed">
+            拖曳型別到畫布，或點選畫布上的空白儲存格直接輸入標籤。
+          </div>
+        </div>
+      </div>
+
+      <!-- 表單畫布 -->
+      <div class="flex-1 flex flex-col min-w-0">
+        <!-- 設計模式需要明確的 chrome 與分階段發佈 — Ragic 是即時套用，這是最大的結構性風險 -->
+        <div class="h-10 flex-none border-b border-line flex items-center gap-2 px-3" style="background:#F2EEFD">
+          <span class="chip chip-purple">設計模式</span>
+          <span class="text-[12px] text-ink-2">變更尚未套用到正式資料</span>
+          <div class="flex-1"></div>
+          <button class="btn btn-ghost">預覽</button>
+          <button class="btn btn-ghost">捨棄變更</button>
+          <button class="btn btn-pri">發佈 <span class="num px-1 rounded-sm bg-white/20 text-[11px]">3</span></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto scroll bg-canvas p-6">
+          <!-- 表單／記錄檢視上限 1120px（Ragic 完全不設上限，370px 表單漂在灰色裡） -->
+          <div class="max-w-[1120px] mx-auto">
+            <div class="bg-surface border border-line rounded-lg">
+
+              <div class="px-5 pt-5 pb-3 border-b border-line">
+                <div class="text-[11px] text-ink-3 mb-1">表單名稱</div>
+                <input class="text-[24px] font-semibold w-full outline-none" value="銷售訂單">
+              </div>
+
+              <!-- 區段 1 -->
+              <div class="px-5 py-4">
+                <div class="flex items-center gap-2 mb-3 group">
+                  <span class="text-ink-4 cursor-grab opacity-0 group-hover:opacity-100">⠿</span>
+                  <h3 class="text-[16px] font-semibold">基本資料</h3>
+                  <button class="text-[12px] text-ink-3 opacity-0 group-hover:opacity-100 hover:text-ink">重新命名</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <!-- 選取中的欄位 -->
+                  <div class="fld p-2 -m-2 rounded ring-2 ring-accent bg-accent-tint/40">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <span class="text-ink-4 cursor-grab">⠿</span>
+                      <svg class="ft" style="color:#2563EB"><use href="#i-link"/></svg>
+                      <span class="text-[12px] font-medium text-ink-2">客戶</span>
+                      <span class="text-[#A32F2C]">*</span>
+                    </div>
+                    <div class="inp flex items-center text-ink-3">從「客戶主檔」選擇…</div>
+                  </div>
+
+                  <div class="fld p-2 -m-2 rounded hover:bg-canvas group">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <span class="text-ink-4 cursor-grab opacity-0 group-hover:opacity-100">⠿</span>
+                      <svg class="ft"><use href="#i-text"/></svg>
+                      <span class="text-[12px] font-medium text-ink-2">客戶採購單號</span>
+                    </div>
+                    <div class="inp"></div>
+                  </div>
+
+                  <div class="fld p-2 -m-2 rounded hover:bg-canvas group">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <span class="text-ink-4 cursor-grab opacity-0 group-hover:opacity-100">⠿</span>
+                      <svg class="ft"><use href="#i-auto"/></svg>
+                      <span class="text-[12px] font-medium text-ink-2">訂單編號</span>
+                      <span class="chip chip-neutral !h-4 !text-[10px]">自動</span>
+                    </div>
+                    <!-- 計算值 = 純文字，不是有框輸入框 -->
+                    <div class="h-8 flex items-center font-mono text-[13px] text-ink-3">SO-2026-{000}</div>
+                  </div>
+
+                  <div class="fld p-2 -m-2 rounded hover:bg-canvas group">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <span class="text-ink-4 cursor-grab opacity-0 group-hover:opacity-100">⠿</span>
+                      <svg class="ft"><use href="#i-date"/></svg>
+                      <span class="text-[12px] font-medium text-ink-2">開單日期</span>
+                    </div>
+                    <div class="inp"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="h-px bg-line"></div>
+
+              <!-- 明細子表 -->
+              <div class="px-5 py-4">
+                <div class="flex items-center gap-2 mb-3 group">
+                  <span class="text-ink-4 cursor-grab opacity-0 group-hover:opacity-100">⠿</span>
+                  <h3 class="text-[16px] font-semibold">訂單明細</h3>
+                  <span class="chip chip-neutral">子表</span>
+                </div>
+                <div class="border border-line rounded-lg overflow-hidden">
+                  <table class="w-full text-[13px]">
+                    <thead><tr class="bg-canvas text-[11px] text-ink-2">
+                      <th class="w-8"></th>
+                      <th class="text-left font-medium px-2.5 h-8"><span class="flex items-center gap-1.5"><svg class="ft"><use href="#i-link"/></svg>品項</span></th>
+                      <th class="text-right font-medium px-2.5 w-20"><span class="flex items-center gap-1.5 justify-end"><svg class="ft"><use href="#i-num"/></svg>數量</span></th>
+                      <th class="text-right font-medium px-2.5 w-24"><span class="flex items-center gap-1.5 justify-end"><svg class="ft"><use href="#i-money"/></svg>單價</span></th>
+                      <th class="text-right font-medium px-2.5 w-28"><span class="flex items-center gap-1.5 justify-end"><svg class="ft" style="color:#5B3EA8"><use href="#i-formula"/></svg>小計</span></th>
+                      <th class="w-9 text-center text-ink-3">⚙</th>
+                    </tr></thead>
+                    <tbody class="text-ink-3">
+                      <tr class="border-t border-line-grid"><td class="text-center text-ink-4">⠿</td><td class="px-2.5 h-9">從「產品主檔」選擇</td><td class="text-right px-2.5">—</td><td class="text-right px-2.5">連結載入</td><td class="text-right px-2.5 font-mono text-[12px]">數量 × 單價</td><td class="text-center">🗑</td></tr>
+                    </tbody>
+                  </table>
+                  <!-- 「新增一列」是安靜的文字連結，不是按鈕 -->
+                  <div class="border-t border-line-grid px-2.5 h-9 flex items-center gap-4 text-[13px]">
+                    <button class="text-accent hover:underline">＋ 新增一列</button>
+                    <button class="text-accent hover:underline">新增小節</button>
+                    <button class="text-accent hover:underline">新增註記</button>
+                  </div>
+                </div>
+              </div>
+
+              <button class="w-full h-11 border-t border-dashed border-line text-[13px] text-ink-3 hover:bg-canvas hover:text-ink">＋ 新增區段</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 欄位設定抽屜：型別驅動漸進式設定，不是塞一張大表 -->
+      <aside class="w-[400px] flex-none border-l border-line flex flex-col">
+        <div class="h-12 flex-none border-b border-line flex items-center gap-2 px-4">
+          <svg class="ft" style="color:#2563EB"><use href="#i-link"/></svg>
+          <span class="font-medium text-[14px]">客戶</span>
+          <span class="font-mono text-[11px] text-ink-4">#1008692</span>
+          <div class="flex-1"></div>
+          <button class="w-7 h-7 rounded grid place-items-center hover:bg-sunken text-ink-2">×</button>
+        </div>
+
+        <div class="h-9 flex-none border-b border-line flex items-end px-4 gap-4 text-[13px]">
+          <button class="h-9 border-b-2 border-action font-medium">基本</button>
+          <button class="h-9 border-b-2 border-transparent text-ink-3 hover:text-ink">驗證</button>
+          <button class="h-9 border-b-2 border-transparent text-ink-3 hover:text-ink">連結載入</button>
+          <button class="h-9 border-b-2 border-transparent text-ink-3 hover:text-ink">權限</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto scroll p-4 space-y-4">
+          <div>
+            <label class="block text-[12px] font-medium text-ink-2 mb-1.5">欄位名稱</label>
+            <input class="inp" value="客戶">
+          </div>
+          <div>
+            <label class="block text-[12px] font-medium text-ink-2 mb-1.5">欄位型別</label>
+            <div class="inp flex items-center gap-2"><svg class="ft" style="color:#2563EB"><use href="#i-link"/></svg>連結其他表單<span class="flex-1"></span><span class="text-ink-3">▾</span></div>
+          </div>
+
+          <div class="h-px bg-line"></div>
+
+          <!-- 連結載入：Ragic 的關聯原語 -->
+          <div>
+            <label class="block text-[12px] font-medium text-ink-2 mb-1.5">來源表單</label>
+            <div class="inp flex items-center gap-2"><svg class="ft"><use href="#i-grid"/></svg>客戶主檔<span class="flex-1"></span><span class="text-ink-3">▾</span></div>
+          </div>
+          <div>
+            <label class="block text-[12px] font-medium text-ink-2 mb-1.5">比對欄位</label>
+            <div class="inp flex items-center gap-2 text-ink-2">客戶名稱<span class="flex-1"></span><span class="text-ink-3">▾</span></div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[12px] font-medium text-ink-2">一併載入的欄位</label>
+              <button class="text-[12px] text-accent hover:underline">＋ 加入</button>
+            </div>
+            <div class="border border-line rounded-lg divide-y divide-line-grid">
+              <div class="h-9 px-2.5 flex items-center gap-2 text-[13px]"><svg class="ft"><use href="#i-text"/></svg>統一編號<span class="flex-1"></span><span class="text-ink-3 hover:text-ink cursor-pointer">×</span></div>
+              <div class="h-9 px-2.5 flex items-center gap-2 text-[13px]"><svg class="ft"><use href="#i-text"/></svg>付款條件<span class="flex-1"></span><span class="text-ink-3 hover:text-ink cursor-pointer">×</span></div>
+              <div class="h-9 px-2.5 flex items-center gap-2 text-[13px]"><svg class="ft"><use href="#i-user"/></svg>負責業務<span class="flex-1"></span><span class="text-ink-3 hover:text-ink cursor-pointer">×</span></div>
+            </div>
+            <p class="mt-1.5 text-[12px] text-ink-3 leading-relaxed">載入的值會標示為衍生欄位，使用者無法直接編輯。</p>
+          </div>
+
+          <div>
+            <label class="block text-[12px] font-medium text-ink-2 mb-1.5">同步策略</label>
+            <label class="flex items-start gap-2 mb-1.5 text-[13px]"><input type="radio" name="sync" checked class="mt-1 accent-[#2563EB]"><span>快照 — 建立當下複製一次<br><span class="text-[12px] text-ink-3">來源日後變更不影響既有記錄</span></span></label>
+            <label class="flex items-start gap-2 text-[13px]"><input type="radio" name="sync" class="mt-1 accent-[#2563EB]"><span>連動 — 來源變更時同步更新</span></label>
+          </div>
+
+          <div class="h-px bg-line"></div>
+          <label class="flex items-center gap-2 text-[13px]"><input type="checkbox" checked class="accent-[#2563EB]">必填欄位</label>
+          <label class="flex items-center gap-2 text-[13px]"><input type="checkbox" checked class="accent-[#2563EB]">顯示於列表頁</label>
+        </div>
+
+        <div class="h-14 flex-none border-t border-line flex items-center gap-2 px-4">
+          <button class="btn btn-ghost text-[#A32F2C]">刪除欄位</button>
+          <div class="flex-1"></div>
+          <button class="btn btn-sec">取消</button>
+          <button class="btn btn-pri" style="height:32px">套用</button>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ─────────── 畫面 3：記錄詳情 + 簽核流程 ─────────── -->
+    <section data-panel="record" class="flex-1 flex min-h-0">
+      <div class="flex-1 overflow-y-auto scroll min-w-0">
+        <div class="max-w-[1120px] mx-auto px-6 py-5">
+
+          <!-- 動作列：只有一顆實心按鈕，且永遠是流程往前推的動作 -->
+          <div class="flex items-center gap-2 mb-4">
+            <div class="pipe">
+              <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">草稿</div>
+              <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">調查中</div>
+              <div class="pipe-step" style="background:#2563EB;color:#fff">簽核中</div>
+              <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">有效性驗證</div>
+              <div class="pipe-step" style="background:#F1F1F3;color:#8E8E96">結案</div>
+            </div>
+            <div class="flex-1"></div>
+            <button class="btn btn-ghost">列印</button>
+            <button class="btn btn-sec">建議修改</button>
+            <button class="btn btn-sec">退回調查</button>
+            <button class="w-7 h-7 rounded grid place-items-center hover:bg-sunken text-ink-2">⋯</button>
+            <button onclick="document.getElementById('esig').hidden=false" class="btn btn-pri" style="height:32px">核准並簽章</button>
+          </div>
+
+          <div class="text-[11px] text-ink-3 mb-1">矯正預防措施</div>
+          <div class="flex items-baseline gap-3 mb-1">
+            <h1 class="text-[24px] font-semibold">封裝製程異物污染</h1>
+            <span class="chip chip-neutral font-mono">CAPA-2026-0087</span>
+          </div>
+          <!-- 版號是頭等文字，不是徽章；比對是常駐 chrome 不是選單深處 -->
+          <div class="flex items-center gap-3 mb-5 text-[13px] text-ink-2">
+            <span>版本 <span class="font-mono font-medium">0.3</span></span>
+            <button class="text-accent hover:underline">版本紀錄 ▾</button>
+            <button class="text-accent hover:underline">比對版本 ▾</button>
+            <span class="text-ink-4">·</span>
+            <span class="text-ink-3">變更單 <a class="text-accent font-mono hover:underline">CC-1631</a></span>
+          </div>
+
+          <!-- 智慧按鈕：關聯記錄計數當大數字磚，取代整個「關聯」分頁 -->
+          <div class="flex gap-2 mb-6">
+            <button class="h-14 px-4 rounded-lg border border-line hover:border-line-strong text-left">
+              <div class="num text-[20px] font-semibold leading-tight">4</div>
+              <div class="text-[12px] text-ink-3">不合格品</div></button>
+            <button class="h-14 px-4 rounded-lg border border-line hover:border-line-strong text-left">
+              <div class="num text-[20px] font-semibold leading-tight">3</div>
+              <div class="text-[12px] text-ink-3">關聯任務</div></button>
+            <button class="h-14 px-4 rounded-lg border border-line hover:border-line-strong text-left">
+              <div class="num text-[20px] font-semibold leading-tight">2</div>
+              <div class="text-[12px] text-ink-3">受影響文件</div></button>
+            <button class="h-14 px-4 rounded-lg border border-line hover:border-line-strong text-left">
+              <div class="num text-[20px] font-semibold leading-tight text-[#A32F2C]">NT$ 218K</div>
+              <div class="text-[12px] text-ink-3">損失金額</div></button>
+          </div>
+
+          <!-- 兩欄欄位區，空欄位仍渲染標籤 -->
+          <div class="grid grid-cols-2 gap-x-8 gap-y-3.5 mb-6">
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">來源</div>客戶客訴 — 台灣積體電路製造</div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">開立日期</div><span class="num">2026-06-14</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">負責人</div><span class="inline-flex items-center gap-1.5"><span class="w-5 h-5 rounded-full bg-[#D1FAE5] text-[#2F6B45] text-[10px] font-semibold grid place-items-center">王</span>王啟明</span></div>
+            <!-- 逾期用純紅色相對時間，不加徽章，才不會和狀態徽章打架 -->
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">到期日</div><span class="num">2026-07-31</span> <span class="text-[#A32F2C] text-[13px]">逾期 7 天</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">風險等級</div><span class="chip chip-warning">中</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3 mb-1">法規參照</div><span class="text-ink-3">—</span></div>
+          </div>
+
+          <!-- 根本原因是 repeater：一個事件可掛多個原因，各有分析方法（isoTracker 的領域模型） -->
+          <div class="mb-6">
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="text-[16px] font-semibold">根本原因</h3>
+              <span class="chip chip-neutral">2 項</span>
+              <div class="flex-1"></div>
+              <button class="text-[13px] text-accent hover:underline">＋ 新增原因</button>
+            </div>
+
+            <div class="border border-line rounded-lg mb-2">
+              <div class="h-10 px-4 flex items-center gap-2 border-b border-line bg-canvas">
+                <span class="chip chip-neutral font-mono">RC-26-0011</span>
+                <span class="text-[13px] font-medium">5 Why</span>
+                <div class="flex-1"></div>
+                <span class="text-[12px] text-ink-3">王啟明 · <span class="num">2026-06-21</span></span>
+              </div>
+              <div class="p-4 space-y-2 text-[13px]">
+                <div class="flex gap-3"><span class="num w-12 flex-none text-ink-3">Why 1</span><span>成品表面檢出金屬微粒</span></div>
+                <div class="flex gap-3"><span class="num w-12 flex-none text-ink-3">Why 2</span><span>模具導柱磨耗產生碎屑</span></div>
+                <div class="flex gap-3"><span class="num w-12 flex-none text-ink-3">Why 3</span><span>導柱未在保養週期內更換</span></div>
+                <div class="flex gap-3"><span class="num w-12 flex-none text-ink-3">Why 4</span><span>保養排程以月曆天計算，未計入實際模次</span></div>
+                <div class="flex gap-3"><span class="num w-12 flex-none text-ink-3">Why 5</span><span>PM 系統無模次累計欄位</span></div>
+                <div class="mt-3 pt-3 border-t border-line-grid flex gap-3">
+                  <span class="w-12 flex-none text-[12px] font-medium text-ink-2">結論</span>
+                  <span class="font-medium">預防保養排程未以模次為觸發條件</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="w-full h-10 border border-line rounded-lg text-[13px] text-ink-2 hover:bg-canvas flex items-center gap-2 px-4">
+              <span class="chip chip-neutral font-mono">RC-26-0012</span>
+              <span class="font-medium">魚骨圖</span>
+              <span class="text-ink-3">— 人員訓練不足導致目視檢驗漏檢</span>
+              <span class="flex-1"></span><span class="text-ink-3">▾</span>
+            </button>
+          </div>
+
+          <!-- 矯正措施三欄：要求 / 已採取 / 有效性，各自獨立歸屬與時間戳 -->
+          <div class="mb-6">
+            <h3 class="text-[16px] font-semibold mb-2">矯正措施</h3>
+            <div class="border border-line rounded-lg overflow-hidden">
+              <table class="w-full text-[13px]">
+                <thead><tr class="bg-canvas text-[11px] text-ink-2">
+                  <th class="text-left font-medium px-3 h-9 w-8">#</th>
+                  <th class="text-left font-medium px-3">要求的措施</th>
+                  <th class="text-left font-medium px-3">已採取的措施</th>
+                  <th class="text-left font-medium px-3 w-40">有效性</th>
+                </tr></thead>
+                <tbody>
+                  <tr class="border-t border-line-grid align-top">
+                    <td class="px-3 py-2.5 num text-ink-3">1</td>
+                    <td class="px-3 py-2.5">PM 系統加入模次累計欄位並設定 50K 模次告警<div class="text-[12px] text-ink-3 mt-1">王啟明 · <span class="num">2026-06-22</span></div></td>
+                    <td class="px-3 py-2.5">已上線，涵蓋 38 套模具<div class="text-[12px] text-ink-3 mt-1">李奕勳 · <span class="num">2026-07-09</span></div></td>
+                    <td class="px-3 py-2.5"><span class="chip chip-success">已驗證</span><div class="text-[12px] text-ink-3 mt-1">連續 3 批零缺陷</div></td>
+                  </tr>
+                  <tr class="border-t border-line-grid align-top">
+                    <td class="px-3 py-2.5 num text-ink-3">2</td>
+                    <td class="px-3 py-2.5">修訂 SOP-QC-014 加入模具點檢項<div class="text-[12px] text-ink-3 mt-1">王啟明 · <span class="num">2026-06-22</span></div></td>
+                    <td class="px-3 py-2.5 text-ink-3">待文件管制核准</td>
+                    <td class="px-3 py-2.5"><span class="chip chip-neutral">待驗證</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 稽核軌跡是無聊的可匯出表格，不是時間軸 -->
+          <div class="mb-6">
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="text-[16px] font-semibold">稽核軌跡</h3>
+              <span class="chip chip-neutral num">28 筆</span>
+              <div class="flex-1"></div>
+              <button class="btn btn-sec">匯出</button>
+            </div>
+            <div class="border border-line rounded-lg overflow-hidden">
+              <table class="w-full text-[13px]">
+                <thead><tr class="bg-canvas text-[11px] text-ink-2">
+                  <th class="text-left font-medium px-3 h-9 w-44">使用者</th>
+                  <th class="text-left font-medium px-3 w-36">動作</th>
+                  <th class="text-left font-medium px-3">對象</th>
+                  <th class="text-left font-medium px-3 w-40">時間</th>
+                  <th class="text-left font-medium px-3 w-36">來源 IP</th>
+                </tr></thead>
+                <tbody>
+                  <tr class="border-t border-line-grid align-top">
+                    <td class="px-3 py-2"><div>王啟明</div><div class="text-[12px] text-ink-3 font-mono">wang@yufeng.com.tw</div></td>
+                    <td class="px-3 py-2">送出簽核</td>
+                    <td class="px-3 py-2"><a class="text-accent hover:underline font-mono">CAPA-2026-0087 v0.3</a></td>
+                    <td class="px-3 py-2 num text-ink-2">2026-08-05 14:22</td>
+                    <td class="px-3 py-2"><div class="font-mono">203.74.12.88</div><div class="text-[12px] text-ink-3">新竹市</div></td>
+                  </tr>
+                  <tr class="border-t border-line-grid align-top">
+                    <td class="px-3 py-2"><div>李奕勳</div><div class="text-[12px] text-ink-3 font-mono">lee@yufeng.com.tw</div></td>
+                    <td class="px-3 py-2">措施完成回報</td>
+                    <td class="px-3 py-2"><a class="text-accent hover:underline font-mono">CAPA-2026-0087 v0.2</a></td>
+                    <td class="px-3 py-2 num text-ink-2">2026-07-09 09:41</td>
+                    <td class="px-3 py-2"><div class="font-mono">203.74.12.91</div><div class="text-[12px] text-ink-3">新竹市</div></td>
+                  </tr>
+                  <!-- 「系統」是頭等 actor，自動轉換也有完整紀錄 -->
+                  <tr class="border-t border-line-grid align-top">
+                    <td class="px-3 py-2"><div class="text-ink-2">系統</div><div class="text-[12px] text-ink-3">自動排程</div></td>
+                    <td class="px-3 py-2">標記為逾期</td>
+                    <td class="px-3 py-2"><a class="text-accent hover:underline font-mono">CAPA-2026-0087 v0.2</a></td>
+                    <td class="px-3 py-2 num text-ink-2">2026-08-01 00:00</td>
+                    <td class="px-3 py-2 text-ink-3">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 常駐屬性 rail：合規 metadata 表 -->
+      <aside class="w-[280px] flex-none border-l border-line overflow-y-auto scroll">
+        <div class="p-4">
+          <h4 class="text-[12px] font-medium text-ink-2 mb-2.5">簽核鏈</h4>
+          <div class="space-y-1.5 mb-5">
+            <div class="flex items-center gap-2 text-[13px]"><span class="w-5 h-5 rounded-full bg-[#E8F5EC] text-[#2F6B45] grid place-items-center text-[10px] flex-none">✓</span><span class="flex-1">王啟明</span><span class="text-[11px] text-ink-3 num">08-05</span></div>
+            <div class="flex items-center gap-2 text-[13px]"><span class="w-5 h-5 rounded-full bg-[#EAF1FE] text-[#2456B8] grid place-items-center text-[10px] flex-none">◐</span><span class="flex-1">陳品瑜 <span class="text-[11px] text-ink-3">品保主管</span></span></div>
+            <div class="flex items-center gap-2 text-[13px] text-ink-3"><span class="w-5 h-5 rounded-full bg-white border border-line grid place-items-center text-[10px] flex-none">○</span><span class="flex-1">張總經理</span></div>
+          </div>
+
+          <h4 class="text-[12px] font-medium text-ink-2 mb-2.5">審核者</h4>
+          <div class="flex flex-wrap gap-1.5 mb-5">
+            <span class="inline-flex items-center gap-1.5 h-7 pl-1 pr-2.5 rounded-full bg-sunken text-[13px]"><span class="w-5 h-5 rounded-full bg-[#E8F5EC] text-[#2F6B45] grid place-items-center text-[10px]">✓</span>李奕勳</span>
+            <span class="inline-flex items-center gap-1.5 h-7 pl-1 pr-2.5 rounded-full bg-sunken text-[13px]"><span class="w-5 h-5 rounded-full bg-[#E8F5EC] text-[#2F6B45] grid place-items-center text-[10px]">✓</span>周淑芬</span>
+          </div>
+
+          <div class="h-px bg-line mb-4"></div>
+
+          <div class="space-y-3 text-[13px]">
+            <div><div class="text-[12px] font-medium text-ink-3">記錄狀態</div><span class="chip chip-info mt-1">開立</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3">內容狀態</div><span class="chip chip-neutral mt-1">草稿</span></div>
+            <div><div class="text-[12px] font-medium text-ink-3">分類</div><div>製程 / 污染</div></div>
+            <div><div class="text-[12px] font-medium text-ink-3">需要訓練</div><div>是 — 產線作業員</div></div>
+            <div><div class="text-[12px] font-medium text-ink-3">下次複查</div><div class="num">2026-11-30</div></div>
+            <div><div class="text-[12px] font-medium text-ink-3">步驟進度</div><div class="num">4 / 6</div></div>
+          </div>
+
+          <div class="h-px bg-line my-4"></div>
+
+          <!-- AI 產出寫進記錄成為可稽核欄位，不是聊天側欄；只在欄位層級標溯源 -->
+          <div class="rounded-lg border border-line p-3">
+            <div class="flex items-center gap-1.5 mb-1.5">
+              <span class="text-ink-3 text-[12px]">✦</span>
+              <span class="text-[12px] font-medium text-ink-2">相似案件</span>
+            </div>
+            <a class="block text-[13px] text-accent hover:underline mb-0.5 font-mono">CAPA-2024-0231</a>
+            <p class="text-[12px] text-ink-3 leading-relaxed">同一模具族群、相同失效模式，2024 年已發生一次。</p>
+            <div class="mt-2 text-[11px] text-ink-4">分析於 <span class="num">2026-08-05 14:25</span></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- ─────────── 畫面 4：儀表板 / 首頁 ─────────── -->
+    <section data-panel="dashboard" class="flex-1 overflow-y-auto scroll">
+      <div class="max-w-[1120px] mx-auto px-6 py-6">
+
+        <h1 class="text-[20px] font-semibold mb-1">營運儀表板</h1>
+        <p class="text-[13px] text-ink-3 mb-5">昱豐精密 · 資料更新於 <span class="num">2026-08-07 09:12</span></p>
+
+        <!-- 行內 KPI 條：56px，不是 D365 那種花 130px 顯示四個數字的實心磚。
+             數字用 Regular 字重，階層靠尺寸與顏色 -->
+        <div class="grid grid-cols-4 border border-line rounded-lg divide-x divide-line mb-6">
+          <div class="px-4 py-3">
+            <div class="text-[12px] text-ink-3 mb-0.5">本月接單</div>
+            <div class="num text-[24px] leading-tight">7,842,300</div>
+            <div class="text-[12px] text-[#2F6B45] mt-0.5">↑ 12.4% 較上月</div>
+          </div>
+          <div class="px-4 py-3">
+            <div class="text-[12px] text-ink-3 mb-0.5">待簽核</div>
+            <div class="num text-[24px] leading-tight">6</div>
+            <div class="text-[12px] text-ink-3 mt-0.5">平均等待 1.8 天</div>
+          </div>
+          <div class="px-4 py-3">
+            <div class="text-[12px] text-ink-3 mb-0.5">逾期 CAPA</div>
+            <div class="num text-[24px] leading-tight text-[#A32F2C]">3</div>
+            <div class="text-[12px] text-[#A32F2C] mt-0.5">最久逾期 7 天</div>
+          </div>
+          <div class="px-4 py-3">
+            <div class="text-[12px] text-ink-3 mb-0.5">首次通過率</div>
+            <div class="num text-[24px] leading-tight">98.2%</div>
+            <div class="text-[12px] text-ink-3 mt-0.5">目標 97.0%</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+
+          <!-- 待辦佇列：計數式收件匣 -->
+          <div class="border border-line rounded-lg">
+            <div class="h-10 px-4 flex items-center border-b border-line">
+              <h3 class="text-[14px] font-medium">我的待辦</h3>
+              <div class="flex-1"></div>
+              <span class="num chip chip-neutral">11</span>
+            </div>
+            <div class="divide-y divide-line-grid">
+              <button data-screen="record" class="w-full h-11 px-4 flex items-center gap-2.5 text-[13px] hover:bg-canvas text-left">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2563EB] flex-none"></span>
+                <span class="flex-1">待我簽核</span><span class="num font-medium">6</span></button>
+              <button class="w-full h-11 px-4 flex items-center gap-2.5 text-[13px] hover:bg-canvas text-left">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#C2410C] flex-none"></span>
+                <span class="flex-1">已逾期</span><span class="num font-medium text-[#A32F2C]">3</span></button>
+              <button class="w-full h-11 px-4 flex items-center gap-2.5 text-[13px] hover:bg-canvas text-left">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#8E8E96] flex-none"></span>
+                <span class="flex-1">待我複查文件</span><span class="num font-medium">2</span></button>
+              <button class="w-full h-11 px-4 flex items-center gap-2.5 text-[13px] hover:bg-canvas text-left text-ink-3">
+                <span class="w-1.5 h-1.5 rounded-full bg-line-strong flex-none"></span>
+                <span class="flex-1">草稿</span><span class="num font-medium text-ink">0</span></button>
+            </div>
+          </div>
+
+          <!-- 接單趨勢 -->
+          <div class="col-span-2 border border-line rounded-lg">
+            <div class="h-10 px-4 flex items-center gap-2 border-b border-line">
+              <h3 class="text-[14px] font-medium">接單金額趨勢</h3>
+              <div class="flex-1"></div>
+              <button class="btn btn-ghost text-[12px]">近 12 個月 ▾</button>
+            </div>
+            <div class="p-4">
+              <svg viewBox="0 0 620 150" class="w-full" style="height:150px">
+                <!-- 只留水平格線，無軸線、無方角柱 -->
+                <g stroke="#F0F0F2" stroke-width="1">
+                  <line x1="0" y1="10" x2="620" y2="10"/><line x1="0" y1="45" x2="620" y2="45"/>
+                  <line x1="0" y1="80" x2="620" y2="80"/><line x1="0" y1="115" x2="620" y2="115"/>
+                </g>
+                <path d="M10,105 L65,92 L120,98 L175,74 L230,80 L285,58 L340,64 L395,44 L450,52 L505,34 L560,40 L610,22"
+                      fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M10,105 L65,92 L120,98 L175,74 L230,80 L285,58 L340,64 L395,44 L450,52 L505,34 L560,40 L610,22 L610,140 L10,140 Z"
+                      fill="#2563EB" opacity=".07"/>
+                <circle cx="610" cy="22" r="3.5" fill="#2563EB"/>
+              </svg>
+              <div class="flex justify-between text-[11px] text-ink-3 num mt-1">
+                <span>2025-09</span><span>2025-12</span><span>2026-03</span><span>2026-06</span><span>2026-08</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <!-- 不合格類別分佈 -->
+          <div class="border border-line rounded-lg">
+            <div class="h-10 px-4 flex items-center border-b border-line">
+              <h3 class="text-[14px] font-medium">不合格類別（本季）</h3>
+            </div>
+            <div class="p-4 space-y-2.5">
+              <div><div class="flex items-baseline text-[13px] mb-1"><span class="flex-1">尺寸超差</span><span class="num text-ink-2">42</span><span class="num text-ink-3 w-12 text-right">38%</span></div><div class="h-1.5 rounded-full bg-sunken"><div class="h-1.5 rounded-full bg-[#2563EB]" style="width:38%"></div></div></div>
+              <div><div class="flex items-baseline text-[13px] mb-1"><span class="flex-1">表面污染</span><span class="num text-ink-2">31</span><span class="num text-ink-3 w-12 text-right">28%</span></div><div class="h-1.5 rounded-full bg-sunken"><div class="h-1.5 rounded-full bg-[#2563EB]" style="width:28%;opacity:.8"></div></div></div>
+              <div><div class="flex items-baseline text-[13px] mb-1"><span class="flex-1">包裝不良</span><span class="num text-ink-2">21</span><span class="num text-ink-3 w-12 text-right">19%</span></div><div class="h-1.5 rounded-full bg-sunken"><div class="h-1.5 rounded-full bg-[#2563EB]" style="width:19%;opacity:.6"></div></div></div>
+              <div><div class="flex items-baseline text-[13px] mb-1"><span class="flex-1">標示錯誤</span><span class="num text-ink-2">17</span><span class="num text-ink-3 w-12 text-right">15%</span></div><div class="h-1.5 rounded-full bg-sunken"><div class="h-1.5 rounded-full bg-[#2563EB]" style="width:15%;opacity:.4"></div></div></div>
+            </div>
+          </div>
+
+          <!-- 最近異動 -->
+          <div class="border border-line rounded-lg">
+            <div class="h-10 px-4 flex items-center border-b border-line">
+              <h3 class="text-[14px] font-medium">最近異動</h3>
+            </div>
+            <div class="divide-y divide-line-grid text-[13px]">
+              <div class="px-4 py-2.5 flex items-baseline gap-2"><a class="text-accent font-mono hover:underline">SO-2026-1042</a><span class="flex-1 text-ink-2 truncate">送出簽核</span><span class="num text-[12px] text-ink-3">14:22</span></div>
+              <div class="px-4 py-2.5 flex items-baseline gap-2"><a class="text-accent font-mono hover:underline">CAPA-2026-0087</a><span class="flex-1 text-ink-2 truncate">新增根本原因</span><span class="num text-[12px] text-ink-3">11:08</span></div>
+              <div class="px-4 py-2.5 flex items-baseline gap-2"><a class="text-accent font-mono hover:underline">SOP-QC-014</a><span class="flex-1 text-ink-2 truncate">版本 1.2 已生效</span><span class="num text-[12px] text-ink-3">09:35</span></div>
+              <div class="px-4 py-2.5 flex items-baseline gap-2"><a class="text-accent font-mono hover:underline">SO-2026-1038</a><span class="flex-1 text-ink-2 truncate">退回 — 價格未核</span><span class="num text-[12px] text-ink-3">昨日</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 表單目錄：Ragic 首頁是純文字目錄不是儀表板 —— 不時髦，但極快 -->
+        <div class="border border-line rounded-lg p-5">
+          <h3 class="text-[14px] font-medium mb-4">所有表單</h3>
+          <div class="grid grid-cols-4 gap-x-6 gap-y-5 text-[13px]">
+            <div>
+              <div class="text-[12px] font-medium text-ink-3 mb-2">訂單管理</div>
+              <div class="space-y-1.5">
+                <a data-screen="grid" class="block text-accent hover:underline cursor-pointer">銷售訂單</a>
+                <a class="block text-accent hover:underline cursor-pointer">報價單</a>
+                <a class="block text-accent hover:underline cursor-pointer">出貨單</a>
+                <a class="block text-accent hover:underline cursor-pointer">客戶主檔</a>
+              </div>
+            </div>
+            <div>
+              <div class="text-[12px] font-medium text-ink-3 mb-2">採購與庫存</div>
+              <div class="space-y-1.5">
+                <a class="block text-accent hover:underline cursor-pointer">請購單</a>
+                <a class="block text-accent hover:underline cursor-pointer">採購單</a>
+                <a class="block text-accent hover:underline cursor-pointer">進貨驗收</a>
+                <a class="block text-accent hover:underline cursor-pointer">庫存異動</a>
+                <a class="block text-accent hover:underline cursor-pointer">供應商主檔</a>
+              </div>
+            </div>
+            <div>
+              <div class="text-[12px] font-medium text-ink-3 mb-2">品質管理</div>
+              <div class="space-y-1.5">
+                <a data-screen="record" class="block text-accent hover:underline cursor-pointer">矯正預防措施</a>
+                <a class="block text-accent hover:underline cursor-pointer">不合格品處理</a>
+                <a class="block text-accent hover:underline cursor-pointer">文件管制</a>
+                <a class="block text-accent hover:underline cursor-pointer">供應商稽核</a>
+                <a class="block text-accent hover:underline cursor-pointer">校驗管理</a>
+              </div>
+            </div>
+            <div>
+              <div class="text-[12px] font-medium text-ink-3 mb-2">生產</div>
+              <div class="space-y-1.5">
+                <a class="block text-accent hover:underline cursor-pointer">工單</a>
+                <a class="block text-accent hover:underline cursor-pointer">製程途程</a>
+                <a class="block text-accent hover:underline cursor-pointer">模具保養</a>
+                <a class="block text-accent hover:underline cursor-pointer">產品主檔</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- 電子簽章：有法律效力的狀態轉換要重新驗證身分（21 CFR Part 11）。刻意不給 × -->
+<div id="esig" hidden class="fixed inset-0 z-50 grid place-items-center" style="background:rgba(0,0,0,.28)">
+  <div class="w-[560px] bg-surface rounded-lg shadow-modal p-8">
+    <h2 class="text-[20px] font-semibold mb-1.5">核准矯正預防措施</h2>
+    <p class="text-[14px] text-ink-2 mb-5">請輸入您的電子簽章以核准 <span class="font-mono">CAPA-2026-0087 v0.3</span>。此動作將被記錄於稽核軌跡且無法撤銷。</p>
+    <div class="space-y-3.5 mb-6">
+      <div><label class="block text-[12px] font-medium text-ink-2 mb-1.5">電子郵件</label><input class="inp" style="height:36px" value="chen@yufeng.com.tw"></div>
+      <div><label class="block text-[12px] font-medium text-ink-2 mb-1.5">密碼</label><input type="password" class="inp" style="height:36px" placeholder="••••••••"></div>
+      <div><label class="block text-[12px] font-medium text-ink-2 mb-1.5">簽核意見<span class="text-ink-3 font-normal">（選填）</span></label><textarea class="inp py-2" style="height:72px" placeholder="說明核准理由或附加條件"></textarea></div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="document.getElementById('esig').hidden=true" class="btn btn-sec" style="height:36px;padding:0 16px">取消</button>
+      <button onclick="document.getElementById('esig').hidden=true" class="btn btn-pri" style="height:36px;padding:0 16px">簽章並核准</button>
+    </div>
+  </div>
+</div>
+
+<!-- mockup 畫面切換器 -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-lg bg-action text-white shadow-modal text-[12px] z-50">
+  <span class="px-2 text-white/50">畫面</span>
+  <button data-screen="grid"      class="sw px-2.5 h-7 rounded">資料表格</button>
+  <button data-screen="designer"  class="sw px-2.5 h-7 rounded">表單設計器</button>
+  <button data-screen="record"    class="sw px-2.5 h-7 rounded">簽核記錄</button>
+  <button data-screen="dashboard" class="sw px-2.5 h-7 rounded">儀表板</button>
+</div>
+
+<script>
+// ── 資料表格內容 ──────────────────────────────────────────────
+const rows = [
+  ['SO-2026-1042','台灣積體電路製造','12吋晶圓載具','2026-07-28','林文彬','審核中','info','1/3','1,164,000',true],
+  ['SO-2026-1041','鴻海精密工業','伺服器機殼沖壓件','2026-07-27','張雅涵','已核准','success','3/3','842,500',false],
+  ['SO-2026-1040','日月光半導體','封裝治具組','2026-07-25','林文彬','已出貨','neutral','3/3','2,310,000',false],
+  ['SO-2026-1039','友達光電','面板搬運臂','2026-07-24','陳品瑜','審核中','info','2/3','568,200',false],
+  ['SO-2026-1038','台達電子','散熱模組外殼','2026-07-22','張雅涵','已退回','danger','0/3','193,400',false],
+  ['SO-2026-1037','和碩聯合科技','鋁擠型支架','2026-07-21','王啟明','已核准','success','3/3','76,800',false],
+  ['SO-2026-1036','群創光電','玻璃基板匣','2026-07-19','陳品瑜','草稿','neutral','0/3','0',false],
+  ['SO-2026-1035','中華精測','探針卡座','2026-07-18','林文彬','已出貨','neutral','3/3','1,470,000',false],
+  ['SO-2026-1034','華邦電子','晶圓盒','2026-07-15','張雅涵','已核准','success','3/3','325,600',false],
+  ['SO-2026-1033','矽品精密','導線架載盤','2026-07-14','王啟明','已出貨','neutral','3/3','918,700',false],
+];
+const avatarColor = { '林文彬':['#DBEAFE','#2456B8'], '張雅涵':['#FCE7F3','#9D2C6E'],
+  '陳品瑜':['#DDD6FE','#5B3EA8'], '王啟明':['#D1FAE5','#2F6B45'] };
+
+document.getElementById('grid-body').innerHTML = rows.map(([id,cust,proj,date,rep,st,stc,steps,amt,sel],i)=>{
+  const [bg,fg] = avatarColor[rep];
+  // 步驟進度用 n/m 分數：不用打開就能分流佇列
+  const done = steps.split('/')[0] === steps.split('/')[1];
+  return `<tr class="${sel?'sel':''}" onclick="openDrawer()">
+    <td class="gutter !px-0 text-center !border-r-line text-ink-4 text-[12px]">
+      <span class="ord num">${i+1}</span>
+      <span class="act items-center justify-center gap-1.5">
+        <input type="checkbox" class="w-3.5 h-3.5 accent-[#2563EB]" ${sel?'checked':''} onclick="event.stopPropagation()">
+        <span class="text-ink-3 hover:text-ink">⤢</span>
+      </span>
+    </td>
+    <td><a class="text-accent font-mono text-[13px] hover:underline">${id}</a></td>
+    <td><a class="text-accent hover:underline">${cust}</a></td>
+    <td class="font-medium">${proj}</td>
+    <td class="num text-ink-2">${date}</td>
+    <td><span class="inline-flex items-center gap-1.5"><span class="w-5 h-5 rounded-full text-[10px] font-semibold grid place-items-center" style="background:${bg};color:${fg}">${rep[0]}</span>${rep}</span></td>
+    <td><span class="chip chip-${stc}">${st}</span></td>
+    <td class="num text-right ${done?'text-ink-3':''}">${steps}</td>
+    <td class="num text-right font-medium">${amt}</td>
+    <td class="!px-0"></td>
+  </tr>`;
+}).join('');
+
+function openDrawer(){ document.getElementById('drawer').hidden = false; }
+
+// ── 畫面切換 ──────────────────────────────────────────────────
+const crumbs = {
+  grid:      ['訂單管理','銷售訂單','全部訂單'],
+  designer:  ['訂單管理','銷售訂單','表單設計'],
+  record:    ['品質管理','矯正預防措施','CAPA-2026-0087'],
+  dashboard: ['分析','營運儀表板',''],
+};
+function show(name){
+  document.querySelectorAll('[data-panel]').forEach(p => p.hidden = p.dataset.panel !== name);
+  document.querySelectorAll('.sw').forEach(b =>
+    b.classList.toggle('bg-white/15', b.dataset.screen === name));
+  document.getElementById('crumbs').innerHTML = crumbs[name].filter(Boolean)
+    .map((s,i,a) => i === a.length - 1
+      ? `<span class="font-medium truncate">${s}</span>`
+      : `<span class="text-ink-3">${s}</span><span class="text-ink-4">/</span>`).join('');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.remove('bg-sunken','font-semibold');
+    n.classList.add('text-ink-2');
+  });
+  const active = document.querySelector(`.nav-item[data-screen="${name}"]`);
+  if (active){ active.classList.add('bg-sunken','font-semibold'); active.classList.remove('text-ink-2'); }
+  document.getElementById('pager').hidden = (name !== 'record');
+}
+document.querySelectorAll('[data-screen]').forEach(b =>
+  b.addEventListener('click', () => { location.hash = b.dataset.screen; show(b.dataset.screen); }));
+show(crumbs[location.hash.slice(1)] ? location.hash.slice(1) : 'grid');
+</script>
+</body>
+</html>
