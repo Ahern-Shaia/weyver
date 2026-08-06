@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weyver · 單據工作面(只用參考圖重新設計)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   🔴 **丟掉現行所有設計規則**(tokens.css / docs/14 / 先前 A–E 的骨架),
+      只用 `docs/research/ui-screenshots/` 的參考圖重畫。
+
+   ── 為什麼要換骨架 ────────────────────────────────────────
+   先前 A/B/C/D/E 五版全部長一樣,原因是**它們共用同一份 DOM**
+   (左側欄 + 表格 + 右明細),只換 CSS 變數。那不是重新設計,是換色票。
+   而且漏掉了參考圖裡最重要的兩件事:
+
+   ① **Ragic 真正的導覽是「頂欄橫向分類 + 全螢幕 mega-menu」**(`ragic/ragic-03.png`),
+      不是側欄 —— 144 張表單它是這樣處理的。我畫了五次側欄。
+   ② **Ragic 的主畫面語言是「單據」不是「表格」**(`ragic-detail/formbuilder-08/11`):
+      實心分段色條 · **灰底右對齊標籤格 | 白底值格** · **2D 左右並排且寬度不等**。
+   ③ **isoTracker 的橫向階段卡**(`isotracker/capa-01.jpg`):流程狀態橫著走,
+      active 卡有橙色頂邊 + 淡橙底。對 ERP 單據極合理,而我一次都沒畫。
+
+   ── 直接取自參考圖的色彩(非我方 tokens) ──────────────────
+   · 主段條 深藍 / 副段條 亮藍 / 灰標籤格 / 白值格 / 紅必填星 / 紅主要按鈕  ← Ragic
+   · 橙色 active 階段 + 淡橙底                                        ← isoTracker
+   · 內容底近純白(十家零例外的共識)                                  ← 全庫統計
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{
+  --page:#eceef1;
+  --paper:#ffffff;
+  --sec-1:#0f3d7c;      /* Ragic 主分段條 */
+  --sec-2:#1b6fd4;      /* Ragic 副分段條 */
+  --label:#eff0f2;      /* Ragic 標籤格底 */
+  --label-2:#f7f8f9;
+  --line:#c9ced6;
+  --line-2:#e2e5ea;
+  --ink:#1a1d21;
+  --ink-2:#4a5058;
+  --ink-3:#767c85;
+  --link:#1b6fd4;
+  --req:#d0021b;
+  --act:#e01b3c;        /* Ragic 主要按鈕紅 */
+  --stage:#f5a623;      /* isoTracker active 階段橙 */
+  --stage-bg:#fdf4e4;
+  --done:#2e8b57;
+  --mono:'IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;
+  font-size:13px;color:var(--ink);background:var(--page);-webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+svg{display:block;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+a{color:var(--link);text-decoration:none;} a:hover{text-decoration:underline;}
+
+.note{padding:14px 24px 10px;font-size:12px;color:#4b535d;line-height:1.7;background:#fff;border-bottom:1px solid var(--line-2);}
+.note b{color:#181c21;}
+.note code{font-family:var(--mono);font-size:11px;background:#eef0f3;padding:1px 4px;border-radius:2px;}
+
+/* ══ ① 頂欄橫向分類(Ragic 的真實導覽,不是側欄) ══════════════ */
+.nav{background:var(--sec-1);height:44px;display:flex;align-items:center;padding:0 18px;gap:20px;}
+.nav .brand{display:flex;align-items:center;gap:8px;color:#fff;font-size:14px;font-weight:600;letter-spacing:-.2px;}
+.nav .brand .mk{width:22px;height:22px;background:#fff;color:var(--sec-1);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.nav .brand small{font-weight:400;opacity:.65;font-size:11.5px;margin-left:3px;}
+.tabs{display:flex;align-items:center;height:100%;margin-left:6px;}
+.tabs button{height:100%;padding:0 15px;font-size:13px;color:rgba(255,255,255,.72);font-weight:500;
+  border-bottom:3px solid transparent;}
+.tabs button:hover{color:#fff;background:rgba(255,255,255,.07);}
+.tabs button.on{color:#fff;font-weight:600;border-bottom-color:#fff;background:rgba(255,255,255,.1);}
+.tabs .plus{padding:0 11px;color:rgba(255,255,255,.55);}
+.nav .rt{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.nav .sr{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:3px;
+  background:rgba(255,255,255,.13);color:rgba(255,255,255,.72);font-size:12.5px;width:260px;}
+.nav .sr svg{width:13px;height:13px;}
+.nav .sr kbd{margin-left:auto;font-family:var(--mono);font-size:10px;background:rgba(255,255,255,.16);
+  padding:1px 5px;border-radius:2px;}
+.nav .who{color:#fff;font-size:12.5px;display:flex;align-items:center;gap:7px;}
+.nav .who .av{width:24px;height:24px;border-radius:3px;background:rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+
+/* mega-menu 的一角(Ragic 點分類後全螢幕列出所有表單) */
+.mega{background:#12294a;padding:14px 18px 16px;display:flex;gap:44px;border-bottom:3px solid var(--sec-2);}
+.mega .col h4{font-size:11px;font-weight:700;color:#7fa6da;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px;}
+.mega .col a{display:block;font-size:12.5px;color:#dce7f6;padding:3px 0;}
+.mega .col a:hover{color:#fff;text-decoration:underline;}
+.mega .col a.on{color:#fff;font-weight:600;}
+.mega .hint{margin-left:auto;align-self:flex-end;font-size:11px;color:#6d8ec0;}
+
+/* ══ 工具列 ═══════════════════════════════════════════════ */
+.bar{background:#f6f7f9;border-bottom:1px solid var(--line);padding:8px 18px;display:flex;align-items:center;gap:8px;}
+.btn{height:29px;padding:0 13px;border:1px solid var(--line);background:#fff;border-radius:3px;
+  font-size:12.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:#f0f1f4;}
+.btn svg{width:13px;height:13px;color:var(--ink-3);}
+.btn.act{background:var(--act);border-color:var(--act);color:#fff;font-weight:600;}
+.btn.act:hover{background:#c4152f;}
+.btn.act svg{color:#fff;}
+.bar .sp{flex:1;}
+.bar .nav-rec{display:flex;align-items:center;gap:2px;font-size:12px;color:var(--ink-3);}
+.bar .nav-rec button{width:26px;height:26px;border:1px solid var(--line);background:#fff;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;}
+.bar .nav-rec button:hover{background:#f0f1f4;}
+.bar .nav-rec svg{width:12px;height:12px;}
+
+/* ══ ② 單據為主體(不是表格) ═══════════════════════════════ */
+.sheet{padding:20px 24px 40px;background:var(--paper);min-height:100vh;}
+.doc-h{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px;}
+.doc-h h1{font-size:26px;font-weight:600;letter-spacing:-.4px;}
+.doc-h .star{color:#c9ced6;margin-top:6px;}
+.doc-h .star svg{width:17px;height:17px;}
+.doc-h .no{margin-left:auto;text-align:right;}
+.doc-h .no .n{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink-2);}
+.doc-h .no .m{font-size:11.5px;color:var(--ink-3);margin-top:2px;}
+.doc-sub{font-size:12.5px;color:var(--ink-3);margin-bottom:16px;}
+
+/* ③ isoTracker 的橫向階段卡 */
+.stages{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--line);border-radius:3px;overflow:hidden;}
+.stg{flex:1;padding:9px 14px;background:#fafbfc;border-right:1px solid var(--line);position:relative;}
+.stg:last-child{border-right:none;}
+.stg .t{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--ink-3);display:flex;align-items:center;gap:6px;}
+.stg .t svg{width:13px;height:13px;}
+.stg .m{font-size:11.5px;color:var(--ink-3);margin-top:3px;}
+.stg.done .t{color:var(--done);}
+.stg.done .m{color:var(--ink-2);}
+.stg.now{background:var(--stage-bg);box-shadow:inset 0 3px 0 var(--stage);}
+.stg.now .t{color:#a8690a;}
+.stg.now .m{color:#7a4d06;font-weight:500;}
+.stg.wait{background:#fafbfc;}
+.stg.wait .t,.stg.wait .m{color:#a8aeb7;}
+
+/* ② Ragic 的單據語言:實心分段條 + 灰標籤格 | 白值格 + 2D 並排 */
+.grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:0 22px;align-items:start;}
+.blk{margin-bottom:18px;}
+.sec{background:var(--sec-1);color:#fff;font-size:12.5px;font-weight:600;padding:6px 12px;
+  display:flex;align-items:center;gap:8px;}
+.sec.b2{background:var(--sec-2);}
+.sec .tag{margin-left:auto;font-family:var(--mono);font-size:9.5px;font-weight:600;
+  background:rgba(255,255,255,.2);padding:1px 6px;border-radius:2px;letter-spacing:.02em;}
+.rows{border:1px solid var(--line);border-top:none;}
+.row{display:grid;grid-template-columns:132px 1fr;border-bottom:1px solid var(--line-2);}
+.row:last-child{border-bottom:none;}
+/* 🔴 Ragic:標籤格是灰底、**右對齊** */
+.row .k{background:var(--label);padding:7px 10px;font-size:12px;color:var(--ink-2);
+  text-align:right;border-right:1px solid var(--line-2);display:flex;align-items:center;
+  justify-content:flex-end;gap:4px;line-height:1.35;}
+.row .k i{color:var(--req);font-style:normal;font-weight:700;}
+.row .k .q{color:var(--link);font-size:11px;cursor:help;font-weight:600;}
+.row .v{background:#fff;padding:7px 11px;font-size:13px;display:flex;align-items:center;gap:6px;min-height:32px;}
+.row .v.mono{font-family:var(--mono);}
+.row .v .chip{background:var(--label);border:1px solid var(--line-2);border-radius:2px;
+  padding:1px 7px;font-size:11.5px;color:var(--ink-2);}
+.row .v .pic{margin-left:auto;color:#aeb4bd;}
+.row .v .pic svg{width:14px;height:14px;}
+.row.tall .v{min-height:74px;align-items:flex-start;padding-top:9px;}
+
+/* 子表:Ragic 的子表格是真的表格,有格線 */
+.sub{border:1px solid var(--line);border-top:none;}
+.sub table{width:100%;border-collapse:collapse;}
+.sub th{background:var(--label);font-size:11.5px;font-weight:600;color:var(--ink-2);
+  padding:6px 10px;text-align:left;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line);}
+.sub th:last-child{border-right:none;}
+.sub th.r{text-align:right;}
+.sub td{padding:6px 10px;font-size:12.5px;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2);}
+.sub td:last-child{border-right:none;}
+.sub tr:last-child td{border-bottom:none;}
+.sub td.m{font-family:var(--mono);text-align:right;}
+.sub tr.add td{color:var(--link);font-size:12px;cursor:pointer;background:#fbfcfd;}
+.sub tfoot td{background:var(--label-2);font-weight:700;border-top:2px solid var(--ink);}
+
+/* 過帳(借貸) */
+.je{border:1px solid var(--line);border-top:none;}
+.je .r{display:grid;grid-template-columns:132px 1fr;border-bottom:1px solid var(--line-2);}
+.je .r:last-child{border-bottom:none;}
+.je .r .k{background:var(--label);padding:7px 10px;font-size:12px;color:var(--ink-2);text-align:right;
+  border-right:1px solid var(--line-2);}
+.je .r .v{padding:7px 11px;font-family:var(--mono);font-size:13px;font-weight:600;text-align:right;}
+.je .bal{background:#f2f8f4;border-top:1px solid var(--line-2);padding:7px 11px;font-size:11.5px;
+  color:var(--done);font-weight:600;display:flex;align-items:center;gap:6px;}
+.je .bal svg{width:13px;height:13px;}
+
+/* 稽核尾註(Ragic 的單據底部) */
+.colo{margin-top:14px;padding-top:11px;border-top:1px solid var(--line-2);font-size:11.5px;
+  color:var(--ink-3);display:flex;gap:20px;flex-wrap:wrap;}
+.colo b{color:var(--ink-2);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="note">
+  🔴 <b>丟掉現行所有設計規則</b>(<code>tokens.css</code> / <code>docs/14</code> / 先前 A–E 的骨架),只用參考圖重畫。
+  先前五版全部長一樣,是因為它們<b>共用同一份 DOM</b>(側欄+表格+右明細),只換 CSS 變數 —— 那是換色票不是重新設計。<br>
+  <b>這一版換掉的三件事,全部有參考圖出處</b>|
+  ① <b>頂欄橫向分類 + mega-menu</b>(<code>ragic/ragic-03.png</code>)—— Ragic 用這個處理 144 張表單,<b>不是側欄</b>;
+  ② <b>主體是「單據」不是「表格」</b>(<code>ragic-detail/formbuilder-08 · 11</code>)—— 實心分段色條 ·
+  <b>灰底右對齊標籤格 | 白底值格</b> · <b>2D 左右並排且寬度不等</b>;
+  ③ <b>橫向階段卡</b>(<code>isotracker/capa-01.jpg</code>)—— active 有橙頂邊 + 淡橙底。<br>
+  <b>色彩直接取自參考圖</b>|深藍主段條 / 亮藍副段條 / 灰標籤格 / 紅必填星 / 紅主要按鈕(Ragic)· 橙 active 階段(isoTracker)· 內容底近純白(全庫十家零例外)。
+</div>
+
+<!-- ① Ragic 的真實導覽 -->
+<div class="nav">
+  <div class="brand"><span class="mk">W</span>Weyver<small>織雲</small></div>
+  <div class="tabs">
+    <button class="on">採購</button><button>銷售</button><button>生產</button>
+    <button>庫存</button><button>品保</button><button>財會</button><button class="plus">＋</button>
+  </div>
+  <div class="rt">
+    <div class="sr"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></div>
+    <div class="who"><span class="av">陳</span>鮮勇食品</div>
+  </div>
+</div>
+<div class="mega">
+  <div class="col"><h4>採購作業</h4><a class="on">採購單</a><a>請購單</a><a>詢價單</a><a>採購退回</a></div>
+  <div class="col"><h4>供應商</h4><a>供應商主檔</a><a>供應商評鑑</a><a>合約與報價</a></div>
+  <div class="col"><h4>進貨</h4><a>進貨單</a><a>進貨檢驗</a><a>不合格處理</a></div>
+  <div class="col"><h4>報表</h4><a>採購統計</a><a>供應商績效</a><a>價格趨勢</a></div>
+  <div class="hint">共 63 張表單 · 點分類展開</div>
+</div>
+
+<!-- 工具列 -->
+<div class="bar">
+  <button class="btn act"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>新增</button>
+  <button class="btn">複製</button>
+  <button class="btn"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>列印</button>
+  <button class="btn">匯出</button>
+  <button class="btn">工具 ▾</button>
+  <div class="sp"></div>
+  <div class="nav-rec">
+    <button><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+    <span style="padding:0 8px">第 <b>12</b> / 248 筆</span>
+    <button><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+  </div>
+  <button class="btn">回列表</button>
+</div>
+
+<!-- ② 單據 -->
+<div class="sheet">
+  <div class="doc-h">
+    <h1>原物料採購單</h1>
+    <span class="star"><svg viewBox="0 0 24 24"><path d="M11.5 3.5l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z"/></svg></span>
+    <div class="no"><div class="n">PO-2026-0847</div><div class="m">版本 v3 · 稽核 14 筆</div></div>
+  </div>
+  <div class="doc-sub">向供應商下訂原物料。核准後自動過帳至存貨與應付帳款。</div>
+
+  <!-- ③ isoTracker 式階段卡 -->
+  <div class="stages">
+    <div class="stg done"><div class="t"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>建立</div><div class="m">陳品妤 · 08/01 09:42</div></div>
+    <div class="stg done"><div class="t"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>採購主管</div><div class="m">林建志 · 08/02 10:05</div></div>
+    <div class="stg now"><div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>財務覆核</div><div class="m">待 王雅雯 簽核 · 已 2 天</div></div>
+    <div class="stg wait"><div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>過帳</div><div class="m">尚未開始</div></div>
+    <div class="stg wait"><div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>結案</div><div class="m">尚未開始</div></div>
+  </div>
+
+  <!-- 2D 左右並排,寬度不等(Ragic) -->
+  <div class="grid2">
+    <div>
+      <div class="blk">
+        <div class="sec">基本資料</div>
+        <div class="rows">
+          <div class="row"><div class="k"><i>*</i>供應商<span class="q">?</span></div>
+            <div class="v"><a>裕豐農產行</a><span class="pic"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span></div></div>
+          <div class="row"><div class="k">聯絡人</div><div class="v">陳美玲 · 0912-345-678</div></div>
+          <div class="row"><div class="k"><i>*</i>交貨地點</div><div class="v">三峽一廠 · 冷藏碼頭 B</div></div>
+          <div class="row"><div class="k"><i>*</i>預定交期</div><div class="v mono">2026-08-06</div></div>
+          <div class="row"><div class="k">付款條件<span class="q">?</span></div><div class="v"><span class="chip">月結 30 天</span></div></div>
+          <div class="row tall"><div class="k">備註</div><div class="v">冷鏈全程 −18°C。到貨後 2 小時內完成驗收,逾時退回。</div></div>
+        </div>
+      </div>
+
+      <div class="blk">
+        <div class="sec b2">品項明細<span class="tag">子表 · LINK &amp; LOAD 商品主檔</span></div>
+        <div class="sub">
+          <table>
+            <thead><tr><th style="width:34px">#</th><th>品項</th><th style="width:78px">料號</th>
+              <th class="r" style="width:66px">數量</th><th class="r" style="width:74px">單價</th><th class="r" style="width:82px">金額</th></tr></thead>
+            <tbody>
+              <tr><td class="m">1</td><td>去骨雞腿肉(冷藏)</td><td class="m" style="text-align:left"><a>K-1042</a></td><td class="m">340.5</td><td class="m">168.00</td><td class="m">57,204</td></tr>
+              <tr><td class="m">2</td><td>特級釀造醬油</td><td class="m" style="text-align:left"><a>S-2081</a></td><td class="m">236</td><td class="m">63.20</td><td class="m">14,915</td></tr>
+              <tr><td class="m">3</td><td>真空包裝袋 25×35</td><td class="m" style="text-align:left"><a>P-5510</a></td><td class="m">12,400</td><td class="m">4.10</td><td class="m">50,840</td></tr>
+              <tr class="add"><td colspan="6">＋ 新增一列</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="5" style="text-align:right">小計 · 稅額 5% · <b>合計(含稅)</b></td><td class="m">122,959 · 6,148 · <b>129,107</b></td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="blk">
+        <div class="sec b2">單據狀態</div>
+        <div class="rows">
+          <div class="row"><div class="k">單號</div><div class="v mono">PO-2026-0847</div></div>
+          <div class="row"><div class="k">建立</div><div class="v">陳品妤 · 08/01 09:42</div></div>
+          <div class="row"><div class="k">最後修改</div><div class="v">林建志 · 08/02 10:05</div></div>
+          <div class="row"><div class="k">目前狀態</div><div class="v">財務覆核中</div></div>
+        </div>
+      </div>
+
+      <div class="blk">
+        <div class="sec b2">過帳<span class="tag">織入的「算」</span></div>
+        <div class="je">
+          <div class="r"><div class="k">借:存貨</div><div class="v">129,107</div></div>
+          <div class="r"><div class="k">貸:應付帳款</div><div class="v">129,107</div></div>
+          <div class="bal"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>借貸平衡 · 核准後自動過帳</div>
+        </div>
+      </div>
+
+      <div class="blk">
+        <div class="sec b2">關聯單據</div>
+        <div class="rows">
+          <div class="row"><div class="k">來源請購單</div><div class="v"><a>PR-2026-0311</a></div></div>
+          <div class="row"><div class="k">進貨單</div><div class="v" style="color:#9aa0a8">尚未產生</div></div>
+          <div class="row"><div class="k">進貨檢驗</div><div class="v" style="color:#9aa0a8">尚未產生</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="colo">
+    <span>建立 <b>陳品妤</b> 2026-08-01 09:42</span>
+    <span>修改 <b>林建志</b> 2026-08-02 10:05</span>
+    <span>版本 <b>v3</b></span>
+    <span>稽核紀錄 <b>14</b> 筆</span>
+    <span>傳票 <b>JV-202608-114</b> · 借貸平衡</span>
+  </div>
+</div>
+
+</body>
+</html>
