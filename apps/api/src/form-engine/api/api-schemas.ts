@@ -7,11 +7,15 @@ import { listQuerySchema } from "../records/record-specs.js"
 
 export const createRecordBodySchema = z.object({
   values: z.record(z.string(), z.unknown()),
+  acknowledgeWarnings: z.boolean().optional(),
 })
 
 export const updateRecordBodySchema = z.object({
   expectedVersion: z.number().int().min(1),
   values: z.record(z.string(), z.unknown()),
+  /* 🔴 C-6 A|使用者已看過並確認警告。**每次請求各自帶**,不是一勞永逸的設定 ——
+     重送時伺服器會重算警告,若規則在這中間被改過,擋的就是新的那一組。 */
+  acknowledgeWarnings: z.boolean().optional(),
 })
 
 export const alterFieldTypeBodySchema = z.object({

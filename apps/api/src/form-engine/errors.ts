@@ -103,6 +103,18 @@ export class MaskedValueWriteError extends DomainError {
   }
 }
 
+/* 🔴 R1·C-6 A|軟性驗證:條件成立 → **退回一次並附警告**,確認後再送才過。
+
+   ⚠️ 這**不是驗證失敗**,是「請先看一眼」。故:
+   - 錯誤要**帶得出警告內容**(不然前端只能顯示「儲存失敗」,使用者完全不知道要確認什麼)
+   - 狀態碼用 **409 Conflict** 而不是 422 —— 422 的語意是「你送的東西有問題」,
+     而這裡送的東西沒問題,只是**狀態需要人確認**。同 `VersionConflictError` 的用法。 */
+export class SaveNeedsConfirmationError extends DomainError {
+  constructor(readonly warnings: readonly string[]) {
+    super(warnings.join(" / "))
+  }
+}
+
 /* R1·H-4 v1.2|批次還原(`docs/modules/R1/record-revisions.md` §7) */
 export class BatchNotFoundError extends DomainError {
   constructor(batchId: number) {

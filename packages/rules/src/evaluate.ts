@@ -414,6 +414,36 @@ export function renderMessage(
 }
 
 /* 規則層效果 → 依規則順序回傳已插值的訊息。同一條規則可有多則。 */
+/* 🔴 R1·C-6 A|求出這次儲存該跳的**警告**(規則層,不落在欄位上)。
+
+   與 `evaluateMessages` 幾乎同形但**刻意分成兩支**:
+   `message` 是顯示,`warn` 會改變儲存流程(先退回、確認後才過)。
+   合成一支的話,呼叫端要靠 `kind` 再分一次,而**漏分的後果是把警告當成裝飾**。
+
+   ⚠️ 這一支**伺服器也要跑** —— 只在前端跳確認的警告,打 API 就繞過去了,
+   那就退化成 `message`。同 C-3 對條件式必填的裁定。 */
+export function evaluateWarnings(
+  rules: readonly FormatRule[],
+  values: RecordValues,
+  fieldNames: readonly string[],
+  ctx: EvalContext = {},
+): string[] {
+  const known = new Set(fieldNames)
+  const out: string[] = []
+  for (const rule of rules) {
+    if (rule.enabled === false) continue
+    const effects = Array.isArray(rule.effects) ? rule.effects : []
+    if (!effects.some((e) => e.kind === "warn")) continue
+    if (!ruleMatches(rule, values, known, ctx)) continue
+    for (const e of effects) {
+      if (e.kind !== "warn") continue
+      const text = renderMessage(e.text, values, known).trim()
+      if (text !== "") out.push(text)
+    }
+  }
+  return out
+}
+
 export function evaluateMessages(
   rules: readonly FormatRule[],
   values: RecordValues,

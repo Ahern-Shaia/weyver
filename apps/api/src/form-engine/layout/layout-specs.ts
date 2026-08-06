@@ -176,6 +176,17 @@ export const formatEffectSchema = z.discriminatedUnion("kind", [
   z
     .object({ kind: z.literal("required") })
     .strict(),
+  /* 🔴 C-6 A|軟性驗證「警告但仍可儲存」。**第二個伺服器強制的效果。**
+
+     Ragic `doc-kb/253` 的官方答案是貼 Global Workflow JS。我方只差這一格:
+     `required` 硬擋、`message` 純提示,**中間「擋一下但擋得過」原本是空的**。
+
+     流程:第一次儲存**退回並附警告** → 使用者確認 → 帶 `acknowledgeWarnings`
+     再送才過 → **寫 audit**。⚠️ 沒有那筆 audit,「他有沒有看到警告」答不出來,
+     而那正是這個效果唯一的控制力所在(它本來就不擋)。 */
+  z
+    .object({ kind: z.literal("warn"), text: z.string().min(1).max(500) })
+    .strict(),
 ])
 
 /* 🔴 OQ-CF-8 重裁 = 選項 C-1(2026-08-03):**規則的形狀現在定死,效果的覆蓋面分層補**。

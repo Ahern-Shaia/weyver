@@ -32,6 +32,7 @@ import {
   RecordApprovalLockedError,
   RecordNotFoundError,
   RequiredFieldError,
+  SaveNeedsConfirmationError,
   SearchTimeoutError,
   SystemManagedFieldError,
   UnknownFieldError,
@@ -71,6 +72,10 @@ export function mapDomainError(error: DomainError): { status: number; code: stri
   }
   if (error instanceof RecordApprovalLockedError) {
     return { status: HttpStatus.CONFLICT, code: "APPROVAL_LOCKED" }
+  }
+  /* 🔴 C-6 A|需要確認不是「你錯了」,是「狀態需要人看一眼」→ 409 而非 422 */
+  if (error instanceof SaveNeedsConfirmationError) {
+    return { status: HttpStatus.CONFLICT, code: "NEEDS_CONFIRMATION" }
   }
   if (error instanceof VersionConflictError) {
     return { status: HttpStatus.CONFLICT, code: "VERSION_CONFLICT" }

@@ -603,3 +603,79 @@ describe("條件式格式:虛擬欄位($now / $actor)", () => {
     expect((await create(A())).statusCode).toBeLessThan(300)
   })
 })
+
+/* 🔴 R1·C-6 A|軟性驗證:**警告但仍可儲存**。
+
+   Ragic `doc-kb/253`(「在建立重複資料時顯示提醒但仍允許儲存?」)的官方答案是
+   **貼一段 Global Workflow JavaScript**。我方的既有效果裡 `required` 是硬擋、
+   `message` 是純提示,**中間那一格是空的** —— 這一批補上。
+
+   釘三面。**三面缺一都會讓它退化**:
+   1. 伺服器**真的擋第一次** —— 只在前端跳確認的話,打 API 就繞過去了,那就是 `message`
+   2. 帶了確認**就過** —— 擋不過去的話那是 `required`,不是警告
+   3. 🔴 **確認留稽核** —— 它本來就不擋,控制力全在「事後答得出誰在看過警告後仍然存了」 */
+describe("C-6 A|軟性驗證(警告但仍可儲存)", () => {
+  const WARN = "已有同名客戶,請確認是否重複"
+
+  const setWarnRule = () =>
+    putLayout(A(), {
+      fields: {},
+      conditionalFormats: {
+        record: [
+          {
+            combinator: "and",
+            conditions: [{ field: "備註", op: "eq", value: "重複" }],
+            targets: [],
+            effects: [{ kind: "warn", text: WARN }],
+          },
+        ],
+        list: [],
+      },
+    })
+
+  const create = (values: Record<string, unknown>, ack?: boolean) =>
+    app.inject({
+      method: "POST",
+      url: `/api/forms/${formId}/records`,
+      headers: A(),
+      payload: ack === undefined ? { values } : { values, acknowledgeWarnings: ack },
+    })
+
+  it("🔴 條件成立而未確認 → 409 並回得出警告內容", async () => {
+    expect((await setWarnRule()).statusCode).toBe(200)
+    const res = await create({ 備註: "重複" })
+    expect(res.statusCode, res.body).toBe(409)
+    /* 只回「儲存失敗」的話,使用者根本不知道要確認什麼 */
+    expect(res.body).toContain("NEEDS_CONFIRMATION")
+    expect(res.body).toContain(WARN)
+  })
+
+  it("條件不成立 → 一如往常直接存得進去", async () => {
+    const res = await create({ 備註: "正常" })
+    expect(res.statusCode, res.body).toBe(201)
+  })
+
+  it("🔴 帶了確認 → 存得進去,而且留下稽核", async () => {
+    const res = await create({ 備註: "重複" }, true)
+    expect(res.statusCode, res.body).toBe(201)
+    const recordId = (res.json() as { id: number }).id
+
+    /* 🔴 稽核是這個效果唯一的控制力 —— 它本來就不擋。
+       沒有這一筆,「他到底有沒有看到警告」就永遠答不出來。 */
+    const { rows } = await pool.query<{ outcome: string; detail: unknown }>(
+      "SELECT outcome, detail FROM action_audit WHERE tenant_id = $1 AND record_id = $2 AND outcome = $3",
+      [tenantA, recordId, "warn_acknowledged"],
+    )
+    expect(rows, "確認過的儲存要留稽核").toHaveLength(1)
+    expect(JSON.stringify(rows[0]?.detail)).toContain(WARN)
+  })
+
+  it("🔴 沒有 warn 規則時完全不受影響(不得讓所有表單都多一道閘)", async () => {
+    expect(
+      (await putLayout(A(), { fields: {}, conditionalFormats: { record: [], list: [] } }))
+        .statusCode,
+    ).toBe(200)
+    const res = await create({ 備註: "重複" })
+    expect(res.statusCode, res.body).toBe(201)
+  })
+})

@@ -159,6 +159,7 @@ export class RecordsController {
       body.values,
       tenant.actorId,
       permissions,
+      { acknowledgeWarnings: body.acknowledgeWarnings === true },
     )
   }
 
@@ -297,6 +298,7 @@ export class RecordsController {
       body.values,
       tenant.actorId,
       permissions,
+      { acknowledgeWarnings: body.acknowledgeWarnings === true },
     )
   }
 

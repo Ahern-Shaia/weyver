@@ -80,6 +80,16 @@ export type FormatEffect =
   /* 🔴 C-3|**伺服器強制**的效果。前端照樣要標,但真正說了算的是伺服器 ——
      只在前端做的必填是裝飾,繞過即失效。 */
   | { readonly kind: "required" }
+  /* 🔴 R1·C-6 A|**軟性驗證:警告但仍可儲存。**
+
+     Ragic `doc-kb/253`(「在建立重複資料時顯示提醒但仍允許儲存?」)的官方答案是
+     **貼一段 Global Workflow JavaScript**。而它要的東西在我方只差一格 ——
+     既有效果裡 `required` 是硬擋、`message` 是純提示,**中間的「擋一下但擋得過」是空的**。
+
+     ⚠️ 它與 `message` 的差別**不是文案而是流程**:`message` 只是顯示,
+     `warn` 會讓第一次儲存**被退回並附上警告**,使用者確認後再送才會成功,
+     而且那次確認**留稽核**。沒有稽核的話「他到底有沒有看到」就答不出來。 */
+  | { readonly kind: "warn"; readonly text: string }
 
 export interface FormatRule {
   readonly combinator: "and" | "or"

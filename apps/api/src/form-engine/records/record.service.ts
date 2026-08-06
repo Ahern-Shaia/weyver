@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto"
+import { Logger } from "@nestjs/common"
 import { ForbiddenException, Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
 import {
   type TextMaskOptions,
   asSelectOptions,
+  evaluateWarnings,
   isChoiceAllowed,
   looksMasked,
   maskText,
@@ -41,6 +43,7 @@ import {
   RecordApprovalLockedError,
   RecordNotFoundError,
   RequiredFieldError,
+  SaveNeedsConfirmationError,
   SystemManagedFieldError,
   UnknownFieldError,
   VersionConflictError,
@@ -323,6 +326,8 @@ function escapeLike(value: string): string {
    identifier 一律出自 catalog(查無即拒),值一律參數綁定(鐵則 1);
    每個操作跑在 inTenantTx(set_config app.tenant_id, tx 範圍)→ RLS 執法 +
    app 層 WHERE tenant_id 雙防線(鐵則 3);soft delete 預設過濾(OQ-FEC-5)。 */
+const warnAckLogger = new Logger("RecordWarningAck")
+
 @Injectable()
 export class RecordService {
   constructor(
@@ -1079,6 +1084,9 @@ export class RecordService {
     values: RecordValues,
     actorId: number,
     policy?: FieldAccessPolicy,
+    /* 🔴 C-6 A|`acknowledgeWarnings` 為**選填尾綴** —— 既有呼叫端一行不動。
+       沒帶就是「還沒確認」,而沒有 warn 規則的表單根本不會走到那一段。 */
+    options: { readonly acknowledgeWarnings?: boolean } = {},
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
     const withDefaults = await this.applyDefaults(resolved, values, actorId)
@@ -1094,6 +1102,12 @@ export class RecordService {
     )
     const toWrite = trig?.values ?? withDefaults
     this.assertWritable(resolved, formId, toWrite, policy, trig?.bypassFields)
+    const acked = await this.assertWarningsAcknowledged(
+      resolved,
+      toWrite,
+      options.acknowledgeWarnings === true,
+      { actorId },
+    )
     const record = await this.inTenantTx(tenantId, async (trx) => {
       const created = await this.insertOne(trx, tenantId, resolved, toWrite, actorId, null, null)
       /* 🔴 事件與資料**同一 tx**(G-1 M1)。分開寫就會回到 `record.created`
@@ -1117,6 +1131,7 @@ export class RecordService {
     if (trig !== undefined && trig.skipped.length > 0) {
       await this.triggers?.recordSkips(tenantId, formId, record.id, actorId, trig)
     }
+    await this.writeWarningAck(tenantId, formId, record.id, actorId, acked)
     await this.bindFiles(tenantId, formId, resolved, record.id, toWrite)
     const [enriched] = await this.withComputed(
       tenantId,
@@ -1529,6 +1544,7 @@ export class RecordService {
     values: RecordValues,
     actorId: number,
     policy?: FieldAccessPolicy,
+    options: { readonly acknowledgeWarnings?: boolean } = {},
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
     /* 🔴 觸發器在 `assertWritable` **之前**:它改的是「即將寫入的值」,
@@ -1544,6 +1560,19 @@ export class RecordService {
     )
     const toWrite = trig?.values ?? values
     this.assertWritable(resolved, formId, toWrite, policy, trig?.bypassFields)
+    /* 部分更新時,警告要對**合併後**的值算 —— 只拿 patch 算的話,
+       「金額 > 上限」這種跨欄條件會憑空不成立(同 C-3 對條件式必填的處置)。
+
+       🔴 但前值**只在真的有 warn 規則時才讀**。第一版無條件多讀一次 `getRecord`,
+       等於**每一次更新都多付一趟查詢**,而絕大多數表單一條 warn 規則都沒有。
+       同 C-4 對 `applyUpdate` 的處置:成本壓在有設定的人身上,不要讓所有人一起付。 */
+    const ackedU = await this.assertWarningsAcknowledged(
+      resolved,
+      toWrite,
+      options.acknowledgeWarnings === true,
+      { actorId },
+      async () => (await this.getRecord(tenantId, formId, recordId, undefined, actorId)).values,
+    )
     await this.inTenantTx(
       tenantId,
       async (trx) => {
@@ -1569,6 +1598,7 @@ export class RecordService {
     if (trig !== undefined && trig.skipped.length > 0) {
       await this.triggers?.recordSkips(tenantId, formId, recordId, actorId, trig)
     }
+    await this.writeWarningAck(tenantId, formId, recordId, actorId, ackedU)
     await this.bindFiles(tenantId, formId, resolved, recordId, toWrite)
     return this.getRecord(tenantId, formId, recordId, policy, actorId)
   }
@@ -2283,6 +2313,78 @@ export class RecordService {
       out.set(field.row.name, { required: attrs.required, skipValidation: attrs.skipValidation })
     }
     return out
+  }
+
+  /* 🔴 C-6 A|把「他確認過警告了」寫進稽核。
+
+     **這是這個效果唯一的控制力。** 它本來就不擋(Ragic 的需求逐字是
+     「顯示提醒但**仍允許儲存**」),所以價值不在攔截,在事後答得出
+     「這筆重複的客戶資料是誰在看過警告之後仍然建立的」。
+
+     ⚠️ **在交易外、事後寫**:稽核不該倒過來擋住業務,寫失敗只記 log。
+     沿用 `pii_reveal` 的形狀(`action_audit` + 隨機 idempotency key)—— 那是
+     本 repo 既有的「記一次 actor 行為」慣例,不另開一張表。 */
+  private async writeWarningAck(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    actorId: number,
+    warnings: readonly string[],
+  ): Promise<void> {
+    if (warnings.length === 0) return
+    try {
+      await this.inTenantTx(tenantId, async (trx) => {
+        await trx("action_audit").insert({
+          tenant_id: tenantId,
+          button_id: null,
+          form_id: formId,
+          record_id: recordId,
+          actor_id: actorId,
+          idempotency_key: `warnack:${randomUUID()}`,
+          outcome: "warn_acknowledged",
+          detail: JSON.stringify({ warnings }),
+        })
+      })
+    } catch (error) {
+      warnAckLogger.error(
+        `warning ack audit failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  /* 🔴 R1·C-6 A|軟性驗證的閘。**伺服器跑,不是前端跳個視窗而已。**
+
+     只在前端確認的警告,打 API 就繞過去了 —— 那就退化成 `message`(純提示),
+     而 `message` 我們早就有了。這個效果存在的唯一理由就是「它會擋一次」。
+
+     ## 為什麼確認是「重送一次」而不是「前端記一個 flag」
+
+     使用者按確認之後,前端**帶著 `acknowledgeWarnings` 重送同一筆**。
+     伺服器再算一次警告 —— 若這次算出來的警告與上次不同(例如同時有人改了規則),
+     使用者確認的就不是眼前這一組,而**重算會讓它再擋一次**,這是對的。
+
+     ⚠️ **它擋不住決心繞過的人**(client 大可每次都帶 `acknowledgeWarnings`),
+     而那是**設計如此** —— Ragic 的原始需求逐字就是「顯示提醒但**仍允許儲存**」。
+     控制力不在擋,在**留痕**:確認過的儲存寫 audit,否則「他到底有沒有看到」答不出來。 */
+  private async assertWarningsAcknowledged(
+    resolved: ResolvedForm,
+    incoming: RecordValues,
+    acknowledged: boolean,
+    ctx: { actorId?: number | null; actorGroupIds?: readonly number[] },
+    /* 選填:更新路徑用來取前值。**只有真的要算警告時才會被呼叫。** */
+    loadPrevious?: () => Promise<RecordValues>,
+  ): Promise<readonly string[]> {
+    const rules = resolved.layout?.conditionalFormats?.record ?? []
+    /* 🔴 沒有任何 warn 規則 → 連前值都不讀。這個早退是效能的關鍵,
+       不是微優化:寫入是熱路徑,而多數表單不會用到這個效果。 */
+    if (!rules.some((r) => (r.effects ?? []).some((e) => e.kind === "warn"))) return []
+    const merged =
+      loadPrevious === undefined ? incoming : { ...(await loadPrevious()), ...incoming }
+    const names = resolved.fields.map((f) => f.row.name)
+    const warnings = evaluateWarnings(rules, merged, names, ctx)
+    if (warnings.length === 0) return []
+    if (!acknowledged) throw new SaveNeedsConfirmationError(warnings)
+    return warnings
   }
 
   /* 🔴 R1·H-4|讀取某一筆的修改紀錄。
