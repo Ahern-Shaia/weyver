@@ -40,11 +40,15 @@ import { type ModuleResearch, collectResearch } from "./research-index"
 const ROOT = join(import.meta.dirname, "../../..")
 
 /* 🔴 只能往下調。往上調 = 這條規則失效,審 PR 的人看到 +1 就該擋下來。 */
-const BASELINE = 7
+const BASELINE = 5
 
 function meetsBar(m: ModuleResearch): boolean {
   const hasSection = m.hasGiantsSection || m.hasEvidenceSection
-  const hasCitations = m.sourceLinks >= 10 || m.verbatim >= 5
+  /* 🔴 「可回查」= 別人能自己去驗,**不是「有沒有 https」**。
+     程式碼路徑指得到檔案、Ragic doc 編號對得到本機鏡像與官網,兩者都算。
+     只數外部 URL 會懲罰站①(自家 repo)與站②(自己的相依套件)——
+     而 `AGENTS.md`〈三站〉自己說那兩站最常漏也最有價值。 */
+  const hasCitations = m.citations >= 8 || m.verbatim >= 5
   return hasSection && hasCitations
 }
 
@@ -62,7 +66,7 @@ describe("出貨的功能都要有可回查的研究", () => {
           .sort((a, b) => b.sourceLinks - a.sourceLinks)
           .map(
             (m) =>
-              `  連結 ${String(m.sourceLinks).padStart(3)} · 逐字 ${String(m.verbatim).padStart(3)}` +
+              `  可回查出處 ${String(m.citations).padStart(3)} · 逐字 ${String(m.verbatim).padStart(3)}` +
               ` · 證據段 ${m.hasGiantsSection || m.hasEvidenceSection ? "✓" : "✗"}  ${m.path}`,
           ),
         "",

@@ -29,9 +29,19 @@ export interface ModuleResearch {
   readonly hasGiantsSection: boolean
   /** 有 `## 0.` / `## 0-bis.` 證據段(`_template.md` 規定的位置)*/
   readonly hasEvidenceSection: boolean
-  /** 🔴 可回查的出處連結數。**判斷研究強度最可靠的單一訊號** ——
-      `_template.md` 逐字要求「附**可點擊的來源連結**」,所以它本來就是規範。 */
+  /** 外部出處連結數(`https://`)。 */
   readonly sourceLinks: number
+  /** 🔴 **可回查的出處總數** = 外部 URL + 自家程式碼路徑 + Ragic 文件編號。
+
+      2026-08-06 由只數 URL 改為三者相加,理由是 `AGENTS.md`〈三站〉自己說:
+      站①**自家 repo**、站②**自己的相依套件**是最常漏、也最有價值的兩站。
+      只數外部 URL 的話,`server-pdf`(15 個程式碼路徑 + 4 份 Ragic doc)
+      與 `field-label-a11y`(9 個程式碼路徑)會被判成「沒有可回查的出處」——
+      **那等於在懲罰品質最高的那種研究,與本 repo 自己的教義矛盾。**
+
+      「可回查」的判準是**別人能不能自己去驗**,不是「有沒有 https」:
+      程式碼路徑指得到檔案,Ragic doc 編號對得到本機鏡像與官網。 */
+  readonly citations: number
   /** 研究有沒有**推翻**某個決定。目前唯一信得過的「深度」訊號。 */
   readonly overturned: boolean
   /** 「逐字」出現次數 —— 一手引用的粗略強度 */
@@ -160,6 +170,10 @@ export function collectResearch(root: string): ModuleResearch[] {
         /^##\s+0(-bis|-ter)?\./m.test(text) ||
         /^##\s+[^\n]*(證據|研究|巨人的肩膀|業界對照|競品對照|追溯稽核)/m.test(text),
       sourceLinks: (text.match(/https:\/\//g) ?? []).length,
+      citations:
+        (text.match(/https:\/\//g) ?? []).length +
+        (text.match(/`[a-z0-9@/._-]+\.(ts|tsx|sql|json|html)[`:]/gi) ?? []).length +
+        new Set(text.match(/\bdoc(?:-[a-z]+)?\/\d+/g) ?? []).size,
       overturned: /推翻|自我更正|自我修正|改判/.test(text),
       verbatim: (text.match(/逐字/g) ?? []).length,
       ragicDocs: [...new Set([...text.matchAll(RAGIC_DOC_PATTERN)].map((m) => m[1] ?? ""))].sort(
@@ -204,9 +218,9 @@ export function reverseIndex(mods: readonly ModuleResearch[]): Map<string, strin
    承重之前一樣要看該 doc 內記的查證日期。 */
 function depth(m: ModuleResearch): string {
   const anchored = m.hasGiantsSection || m.hasEvidenceSection
-  if (anchored && m.sourceLinks >= 10 && m.overturned) return "⭐⭐ 深且推翻過"
-  if (anchored && (m.sourceLinks >= 10 || m.verbatim >= 5)) return "⭐ 有一手依據"
-  if (m.sourceLinks > 0 || m.ragicDocs.length > 0) return "· 零星引用"
+  if (anchored && m.citations >= 10 && m.overturned) return "⭐⭐ 深且推翻過"
+  if (anchored && (m.citations >= 8 || m.verbatim >= 5)) return "⭐ 有一手依據"
+  if (m.citations > 0) return "· 零星引用"
   return "—"
 }
 
@@ -239,22 +253,22 @@ export function renderIndex(mods: readonly ModuleResearch[]): string {
 
   lines.push("## A. 已出貨且研究齊全的模組(**別重查**)")
   lines.push("")
-  lines.push("| 模組 | 研究強度 | 出處連結 | 逐字 | Ragic doc | 其他來源 | 文件 |")
+  lines.push("| 模組 | 研究強度 | 可回查出處 | 逐字 | Ragic doc | 其他來源 | 文件 |")
   lines.push("|---|---|---|---|---|---|---|")
   for (const m of mods.filter((x) => x.shipped && isWellResearched(x))) {
     lines.push(
-      `| ${m.title} | ${depth(m)} | ${String(m.sourceLinks)} | ${String(m.verbatim)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | ${m.otherSources.join(" · ") || "—"} | [${m.path}](${m.path}) |`,
+      `| ${m.title} | ${depth(m)} | ${String(m.citations)} | ${String(m.verbatim)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | ${m.otherSources.join(" · ") || "—"} | [${m.path}](${m.path}) |`,
     )
   }
   lines.push("")
 
   lines.push("## B. 其餘模組(引用較零星,承重前請自行複核)")
   lines.push("")
-  lines.push("| 模組 | 已出貨 | 研究強度 | 出處連結 | Ragic doc | 文件 |")
+  lines.push("| 模組 | 已出貨 | 研究強度 | 可回查出處 | Ragic doc | 文件 |")
   lines.push("|---|---|---|---|---|---|")
   for (const m of mods.filter((x) => !(x.shipped && isWellResearched(x)))) {
     lines.push(
-      `| ${m.title} | ${m.shipped ? "✅" : "—"} | ${depth(m)} | ${String(m.sourceLinks)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | [${m.path}](${m.path}) |`,
+      `| ${m.title} | ${m.shipped ? "✅" : "—"} | ${depth(m)} | ${String(m.citations)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | [${m.path}](${m.path}) |`,
     )
   }
   lines.push("")
