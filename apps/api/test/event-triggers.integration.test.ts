@@ -173,6 +173,15 @@ async function saveAs(formId: number, values: Record<string, unknown>): Promise<
   return (res.json() as { id: number }).id
 }
 
+async function runDetails(formId: number): Promise<unknown[]> {
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/forms/${String(formId)}/triggers/runs`,
+    headers: H(),
+  })
+  return (res.json() as { detail: unknown }[]).map((r) => r.detail)
+}
+
 async function runsOf(formId: number): Promise<string[]> {
   const res = await app.inject({
     method: "GET",
@@ -783,5 +792,51 @@ describe("事件觸發器 · 欄位不見了", () => {
       JSON.stringify(body),
     ).toContain("failed")
     expect(JSON.stringify(mine)).toContain("引用的欄位已不存在")
+  })
+})
+
+/* 🔴 FMEA T7|**扇出**(分支)的上限,與 T6 的深度上限是兩件事。
+
+   `depth` 限鏈長,不限分支,而兩者是**相乘**的:
+   一張表掛 T 條 pushTo,深度 5 的最壞情況是 T⁵。
+   所以這一條刻意做成**乘法**的形狀(每一代都分叉),而不是一條鏈 ——
+   只驗鏈的話,深度上限就會把它擋掉,測不出扇出有沒有被管。 */
+describe("事件觸發器 · 連鎖總量", () => {
+  it("🔴 每一代都分叉 → 總量收斂,而且停下來時說得出是「總量」不是「深度」", async () => {
+    const aId = await makeForm("扇出A")
+    const bId = await makeForm("扇出B")
+    await grantForms([aId, bId], `fanout_${String(aId)}`)
+
+    /* A 與 B 各掛 3 條互推 → 每一代 ×3。若只有深度上限,
+       5 代就是 3⁵ = 243 筆;總量上限 100 應該讓它明顯更早停。 */
+    for (let i = 0; i < 3; i += 1) {
+      await makeTrigger(aId, {
+        name: `A→B_${String(i)}`,
+        onCreate: true,
+        config: { actionType: "pushTo", targetFormId: bId, fieldMap: {} },
+      })
+      await makeTrigger(bId, {
+        name: `B→A_${String(i)}`,
+        onCreate: true,
+        config: { actionType: "pushTo", targetFormId: aId, fieldMap: {} },
+      })
+    }
+
+    await saveAs(aId, { 金額: 1, 狀態: "起點" })
+    for (let i = 0; i < 10; i += 1) await runAsync()
+
+    const total = (await listRecords(aId)).length + (await listRecords(bId)).length
+    /* 上限 100 是「事件數」不是「記錄數」,且每一批會把當代跑完 →
+       取寬鬆上界證明**有收斂**即可(無上限時 3⁵ 就已 243,10 輪會遠超)。 */
+    expect(total, `記錄數 ${String(total)} 應收斂`).toBeLessThan(200)
+
+    const outcomes = [...(await runsOf(aId)), ...(await runsOf(bId))]
+    expect(outcomes).toContain("ran")
+    expect(outcomes, "要有被擋下的紀錄").toContain("depth")
+
+    /* 🔴 停下來的**理由**要分得出來。只寫「停了」的話,
+       設計者不知道該減少觸發器數量(總量)還是縮短鏈(深度)。 */
+    const detail = JSON.stringify([...(await runDetails(aId)), ...(await runDetails(bId))])
+    expect(detail, detail.slice(0, 300)).toContain("cascade")
   })
 })

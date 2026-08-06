@@ -77,6 +77,24 @@ const TRIGGER_LOCK_KEY = 909_005
 const MAX_DEPTH = 5
 const MAX_ATTEMPTS = 3
 
+/* 🔴 FMEA T7|**一次使用者存檔最多可以連帶產生幾筆資料。**
+
+   `MAX_DEPTH` 限的是鏈長,不是分支 —— 兩者**相乘**:
+   一張表掛 T 條 pushTo,深度 5 的最壞情況是 T⁵(T=20 → 320 萬筆)。
+   只限深度完全擋不住。
+
+   刻意限「後代總數」而不是「每個事件最多跑幾條觸發器」:
+   一張表掛 10 條各做各的事的觸發器完全正常,限分支會誤傷合法設定。
+   真正該問的是「一次存檔最多連帶產生幾筆」—— 那是使用者理解得了、
+   資料庫也真的承受的那個量。
+
+   ⚠️ **100 無外部依據**(同 `MAX_ATTEMPTS`)。查過的兩家都幫不上:
+   Airtable 的煞車是**月配額**(Free 100 / Team 25,000 / Business 100,000 runs
+   per workspace per month),那是計費單位不是連鎖單位;Teable 沒有。
+   選 100 的理由是:`pushTo` 一條觸發器只建**一筆**(不隨資料量放大),
+   所以合法的連鎖本來就小;一次存檔連帶產生超過 100 筆,幾乎必然是設定錯誤。 */
+const MAX_CASCADE = 100
+
 interface OutboxRow {
   id: number
   tenant_id: number
@@ -86,6 +104,7 @@ interface OutboxRow {
   actor_id: number | null
   depth: number
   trigger_attempts: number
+  root_event_id: number | null
 }
 
 @Injectable()
@@ -129,7 +148,8 @@ export class TriggerAsyncService {
 
   private async claim(): Promise<OutboxRow[]> {
     const { rows } = await this.knex.raw<{ rows: OutboxRow[] }>(
-      `SELECT id, tenant_id, type, form_id, record_id, actor_id, depth, trigger_attempts
+      `SELECT id, tenant_id, type, form_id, record_id, actor_id, depth, trigger_attempts,
+              root_event_id
          FROM event_outbox
         WHERE trigger_run_at IS NULL AND form_id IS NOT NULL AND record_id IS NOT NULL
         ORDER BY occurred_at
@@ -155,6 +175,7 @@ export class TriggerAsyncService {
       actor_id: r.actor_id === null ? null : Number(r.actor_id),
       depth: Number(r.depth),
       trigger_attempts: Number(r.trigger_attempts),
+      root_event_id: r.root_event_id === null ? null : Number(r.root_event_id),
     }))
   }
 
@@ -183,9 +204,12 @@ export class TriggerAsyncService {
       return 0
     }
 
-    /* 🔴 深度檢查在**跑之前**,而且對每一條都寫紀錄。
+    /* 🔴 連鎖的兩道閘,**兩道都要**:深度限鏈長、總量限分支,單獨任一道都擋不住乘法。
+
+       檢查在**跑之前**,而且對每一條觸發器都寫紀錄 ——
        只記一次的話,設計者看到「有一條停了」卻不知道另外兩條也停了。 */
-    if (event.depth >= MAX_DEPTH) {
+    const stop = await this.cascadeStop(event)
+    if (stop !== null) {
       for (const t of triggers) {
         await this.repo.recordRun({
           tenantId: event.tenant_id,
@@ -194,7 +218,7 @@ export class TriggerAsyncService {
           recordId,
           actorId: event.actor_id,
           outcome: "depth",
-          detail: { depth: event.depth, max: MAX_DEPTH },
+          detail: stop,
         })
       }
       await this.done(event.id)
@@ -232,6 +256,22 @@ export class TriggerAsyncService {
 
     await this.done(event.id)
     return executed
+  }
+
+  /* 回 null = 可以跑;非 null = 該停,內容就是寫進執行紀錄的理由。 */
+  private async cascadeStop(event: OutboxRow): Promise<Record<string, unknown> | null> {
+    if (event.depth >= MAX_DEPTH) {
+      return { reason: "depth", depth: event.depth, max: MAX_DEPTH }
+    }
+    /* 源頭事件(使用者直接造成的)不必數 —— 它的後代還沒產生。 */
+    const root = event.root_event_id
+    if (root === null) return null
+    const { rows } = await this.knex.raw<{ rows: { n: string }[] }>(
+      "SELECT count(*) AS n FROM event_outbox WHERE root_event_id = ?",
+      [root],
+    )
+    const n = Number(rows[0]?.n ?? 0)
+    return n >= MAX_CASCADE ? { reason: "cascade", produced: n, max: MAX_CASCADE } : null
   }
 
   private async runTriggers(
@@ -338,6 +378,11 @@ export class TriggerAsyncService {
         record_id: targetRecordId,
       })
       .whereNull("trigger_run_at")
-      .update({ depth: event.depth + 1 })
+      .update({
+        depth: event.depth + 1,
+        /* 🔴 源頭往下傳。`root_event_id` 為 null 代表**這個事件自己就是源頭**
+           (使用者直接造成),所以子代掛在它的 id 上。 */
+        root_event_id: event.root_event_id ?? event.id,
+      })
   }
 }

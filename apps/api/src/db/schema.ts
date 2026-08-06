@@ -1269,10 +1269,15 @@ export const eventOutbox = pgTable(
     /* 連鎖深度。由觸發器建出來的記錄,其事件由 worker 補上父深度 + 1。 */
     depth: integer("depth").notNull().default(0),
     triggerAttempts: integer("trigger_attempts").notNull().default(0),
+    /* 🔴 FMEA T7|這一串連鎖是哪一次**使用者動作**引起的。
+       NULL = 我自己就是源頭。用來限「一次存檔最多連帶產生幾筆」——
+       `depth` 限鏈長擋不住分支,兩者相乘會爆。 */
+    rootEventId: bigint("root_event_id", { mode: "number" }),
   },
   (t) => [
     index("event_outbox_pending_idx").on(t.occurredAt).where(sql`fanned_out_at IS NULL`),
     index("event_outbox_trigger_pending_idx").on(t.occurredAt).where(sql`trigger_run_at IS NULL`),
+    index("event_outbox_root_idx").on(t.rootEventId).where(sql`root_event_id IS NOT NULL`),
     index("event_outbox_tenant_idx").on(t.tenantId, t.occurredAt),
   ],
 )
