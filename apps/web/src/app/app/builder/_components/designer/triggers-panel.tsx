@@ -14,6 +14,7 @@ import { describeEngineError } from "@/lib/engine/client"
 import {
   useCreateTrigger,
   useDeleteTrigger,
+  useForms,
   useTriggerDryRun,
   useTriggerRuns,
   useTriggers,
@@ -63,8 +64,13 @@ export function TriggersPanel({
   const [onUpdate, setOnUpdate] = useState(false)
   const [watchField, setWatchField] = useState("")
   const [conditions, setConditions] = useState<ConditionRow[]>([])
+  const [actionType, setActionType] = useState<"updateSelf" | "pushTo">("updateSelf")
   const [targetField, setTargetField] = useState("")
   const [literal, setLiteral] = useState("")
+  const [targetFormId, setTargetFormId] = useState("")
+  const [sourceField, setSourceField] = useState("")
+  const [mapTo, setMapTo] = useState("")
+  const { data: forms } = useForms()
   const [msg, setMsg] = useState<string | null>(null)
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
 
@@ -77,8 +83,16 @@ export function TriggersPanel({
 
   const submit = (): void => {
     setMsg(null)
-    if (name.trim() === "" || targetField === "") {
-      setMsg("要填名稱,並選一個要設定的欄位")
+    if (name.trim() === "") {
+      setMsg("要填名稱")
+      return
+    }
+    if (actionType === "updateSelf" && targetField === "") {
+      setMsg("要選一個要設定的欄位")
+      return
+    }
+    if (actionType === "pushTo" && targetFormId === "") {
+      setMsg("要選一張目標表單")
       return
     }
     create.mutate(
@@ -88,10 +102,20 @@ export function TriggersPanel({
         onUpdate,
         watchFields: watchField === "" ? [] : [watchField],
         conditions: conditions.map((c) => ({ field: c.field, op: c.op, value: c.value })),
-        config: {
-          actionType: "updateSelf",
-          setFields: { [targetField]: { from: "literal", value: literal } },
-        },
+        config:
+          actionType === "updateSelf"
+            ? {
+                actionType: "updateSelf",
+                setFields: { [targetField]: { from: "literal", value: literal } },
+              }
+            : {
+                actionType: "pushTo",
+                targetFormId: Number(targetFormId),
+                fieldMap:
+                  mapTo === "" || sourceField === ""
+                    ? {}
+                    : { [mapTo]: { from: "field", field: sourceField } },
+              },
       },
       {
         onSuccess: () => {
@@ -212,32 +236,92 @@ export function TriggersPanel({
         />
 
         <div className="text-ink-3">要做什麼</div>
-        <div className="flex items-center gap-1.5">
-          <Select
-            className="h-7 flex-1"
-            value={targetField}
-            onChange={(e) => setTargetField(e.target.value)}
-            aria-label="要設定的欄位"
-          >
-            <option value="">選欄位</option>
-            {writable.map((f) => (
-              <option key={f.id} value={f.name}>
-                {f.name}
-              </option>
-            ))}
-          </Select>
-          <span className="text-ink-3">設為</span>
-          <Input
-            className="h-7 flex-1"
-            value={literal}
-            onChange={(e) => setLiteral(e.target.value)}
-            placeholder="值"
-            aria-label="設定值"
-          />
-        </div>
+        <Select
+          className="h-7"
+          value={actionType}
+          onChange={(e) => setActionType(e.target.value as "updateSelf" | "pushTo")}
+          aria-label="動作型別"
+        >
+          <option value="updateSelf">更新本筆欄位</option>
+          <option value="pushTo">在其他表單建一筆資料</option>
+        </Select>
 
-        {/* 🔴 講清楚後果。設計者多半不知道自己剛剛繞過了欄位權限。 */}
-        <p className="text-ink-3">
+        {actionType === "updateSelf" ? (
+          <div className="flex items-center gap-1.5">
+            <Select
+              className="h-7 flex-1"
+              value={targetField}
+              onChange={(e) => setTargetField(e.target.value)}
+              aria-label="要設定的欄位"
+            >
+              <option value="">選欄位</option>
+              {writable.map((f) => (
+                <option key={f.id} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </Select>
+            <span className="text-ink-3">設為</span>
+            <Input
+              className="h-7 flex-1"
+              value={literal}
+              onChange={(e) => setLiteral(e.target.value)}
+              placeholder="值"
+              aria-label="設定值"
+            />
+          </div>
+        ) : (
+          <>
+            <Select
+              className="h-7"
+              value={targetFormId}
+              onChange={(e) => setTargetFormId(e.target.value)}
+              aria-label="目標表單"
+            >
+              <option value="">選表單</option>
+              {(forms ?? [])
+                .filter((f) => f.id !== formId)
+                .map((f) => (
+                  <option key={f.id} value={String(f.id)}>
+                    {f.name}
+                  </option>
+                ))}
+            </Select>
+            <div className="flex items-center gap-1.5">
+              <Select
+                className="h-7 flex-1"
+                value={sourceField}
+                onChange={(e) => setSourceField(e.target.value)}
+                aria-label="來源欄位"
+              >
+                <option value="">本表欄位</option>
+                {fieldNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+              <span className="text-ink-3">帶到</span>
+              <Input
+                className="h-7 flex-1"
+                value={mapTo}
+                onChange={(e) => setMapTo(e.target.value)}
+                placeholder="目標欄位名"
+                aria-label="目標欄位"
+              />
+            </div>
+            {/* 🔴 兩件跟 `updateSelf` 完全不同、而設計者不會自己猜到的事。 */}
+            <p className="text-ink-3">
+              這個動作是<span className="font-semibold text-ink-2">存檔後才跑</span>(最多約一分鐘),
+              而且是<span className="font-semibold text-ink-2">以觸發的人的權限</span>執行 ——
+              他沒有目標表單的新增權時不會建,並會記在下方的執行紀錄裡。
+            </p>
+          </>
+        )}
+
+        {/* 🔴 講清楚後果。設計者多半不知道自己剛剛繞過了欄位權限。
+            ⚠️ 只有 `updateSelf` 繞得過 —— `pushTo` 跨到別張表,仍以觸發者身分執行。 */}
+        <p className={actionType === "updateSelf" ? "text-ink-3" : "hidden"}>
           觸發器設定的欄位會<span className="font-semibold text-ink-2">略過欄位權限</span> ——
           使用者不能改的欄位,它改得動。
         </p>
