@@ -64,6 +64,7 @@ import type { CalendarQuery, GroupAggregateFn, PivotQuery } from "./record-specs
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
 import { TRASH_RETENTION_DAYS } from "../trash/trash.service.js"
 import { EVENT_TYPES, EventService } from "../../integrations/event.service.js"
+import { TriggerSyncService } from "../../triggers/trigger-sync.service.js"
 import { SearchIndexService } from "../../search/search-index.service.js"
 
 interface ResolvedField {
@@ -338,6 +339,11 @@ export class RecordService {
     /* 🔴 H-3 M2 搜尋索引;與資料**同一 tx** —— Baserow 用非同步的結果是 out of sync。
        optional 使既有單元測 new RecordService(knex, metadata) 不受影響 */
     @Optional() @Inject(SearchIndexService) private readonly searchIndex?: SearchIndexService,
+    /* 🔴 R1·C-4 同步觸發器。**掛在這一層而不是 controller** ——
+       橫切關注點掛在單筆呼叫端上,繞過那一層的路徑(子表 saveWithLines / 匯入 /
+       貼上)就會靜靜地沒有觸發器,而本 repo 已為同一形狀踩過索引與事件兩次。
+       optional 使既有單元測 new RecordService(knex, metadata) 不受影響 */
+    @Optional() @Inject(TriggerSyncService) private readonly triggers?: TriggerSyncService,
   ) {}
 
   /* 讀時公式注入:formula 欄之值不儲存,讀取時以其他欄計算後併入(docs OQ-FML-8 之讀時算模式)。
@@ -1076,17 +1082,13 @@ export class RecordService {
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
     const withDefaults = await this.applyDefaults(resolved, values, actorId)
-    this.assertWritable(resolved, formId, withDefaults, policy)
+    /* 🔴 觸發器在 `assertWritable` **之前**:它改的是「即將寫入的值」,
+       所以它的產出也要過同一道驗證 —— 觸發器不是繞過驗證的後門。 */
+    const trig = await this.triggers?.apply(tenantId, formId, withDefaults, null, actorId)
+    const toWrite = trig?.values ?? withDefaults
+    this.assertWritable(resolved, formId, toWrite, policy, trig?.bypassFields)
     const record = await this.inTenantTx(tenantId, async (trx) => {
-      const created = await this.insertOne(
-        trx,
-        tenantId,
-        resolved,
-        withDefaults,
-        actorId,
-        null,
-        null,
-      )
+      const created = await this.insertOne(trx, tenantId, resolved, toWrite, actorId, null, null)
       /* 🔴 事件與資料**同一 tx**(G-1 M1)。分開寫就會回到 `record.created`
          宣告了卻從沒發射過的老問題 —— 只是這次是「有時候發射」,更難查。 */
       await this.events?.emitInTx(trx, {
@@ -1101,11 +1103,11 @@ export class RecordService {
         formId,
         recordId: created.id,
         fields: toIndexable(resolved.fields),
-        values: withDefaults,
+        values: toWrite,
       })
       return created
     })
-    await this.bindFiles(tenantId, formId, resolved, record.id, withDefaults)
+    await this.bindFiles(tenantId, formId, resolved, record.id, toWrite)
     const [enriched] = await this.withComputed(
       tenantId,
       formId,
@@ -1519,11 +1521,22 @@ export class RecordService {
     policy?: FieldAccessPolicy,
   ): Promise<RecordRow> {
     const resolved = await this.resolveForm(tenantId, formId)
-    this.assertWritable(resolved, formId, values, policy)
+    /* 🔴 觸發器在 `assertWritable` **之前**:它改的是「即將寫入的值」,
+       所以它的產出也要過同一道驗證 —— 觸發器不是繞過驗證的後門。
+       前值以 thunk 傳入:沒有觸發器的表單**不會**多付那一趟查詢。 */
+    const trig = await this.triggers?.applyUpdate(
+      tenantId,
+      formId,
+      values,
+      async () => (await this.getRecord(tenantId, formId, recordId, undefined, actorId)).values,
+      actorId,
+    )
+    const toWrite = trig?.values ?? values
+    this.assertWritable(resolved, formId, toWrite, policy, trig?.bypassFields)
     await this.inTenantTx(
       tenantId,
       async (trx) => {
-        await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, values, actorId)
+        await this.updateOne(trx, tenantId, resolved, recordId, expectedVersion, toWrite, actorId)
         await this.events?.emitInTx(trx, {
           tenantId,
           type: EVENT_TYPES.recordUpdated,
@@ -1536,13 +1549,13 @@ export class RecordService {
           formId,
           recordId,
           fields: toIndexable(resolved.fields),
-          values,
+          values: toWrite,
         })
       },
       /* 範圍受限時只能改自己的:RESTRICTIVE policy 的 USING 同樣管 UPDATE 的選列 */
       { actorId, own: policy?.isScopedToOwn?.(formId, "edit") === true },
     )
-    await this.bindFiles(tenantId, formId, resolved, recordId, values)
+    await this.bindFiles(tenantId, formId, resolved, recordId, toWrite)
     return this.getRecord(tenantId, formId, recordId, policy, actorId)
   }
 
@@ -3043,6 +3056,17 @@ export class RecordService {
     formId: number,
     values: RecordValues,
     policy?: FieldAccessPolicy,
+    /* 🔴 R1·C-4|由**同步觸發器**設定的欄位,豁免欄位級寫入權限。
+
+       理由是**跨不跨邊界**:觸發器是這張表的設計者設的,動的也是這張表這一筆 ——
+       最常見的用途正是「使用者不能改『狀態』,但存檔時系統把它設成待審」,
+       照使用者的欄位權限擋的話這個功能等於不存在。
+
+       ⚠️ 豁免的**只有權限這一道**。遮罩值檢查在 policy 短路之前,不受本參數影響 ——
+       觸發器一樣不准把 `••••1234` 寫回去。
+       ⚠️ 代價誠實記:誰能建觸發器 = 誰能繞過這張表的欄位級寫入權限,
+       故建立觸發器的權限與**改表單設計**同級。 */
+    bypassFields?: ReadonlySet<string>,
   ): void {
     /* 🔴 R1·FTP v1.7|**遮罩值不得被寫回去**。**這一段在 policy 短路之前。**
 
@@ -3062,6 +3086,7 @@ export class RecordService {
 
     if (policy === undefined) return
     for (const name of Object.keys(values)) {
+      if (bypassFields?.has(name) === true) continue
       const field = resolved.byName.get(name)
       if (field === undefined) continue
       if (policy.fieldVisibility(field.row.id, formId) !== "write") {

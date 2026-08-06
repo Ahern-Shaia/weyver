@@ -63,7 +63,7 @@
 | [F-10] 分頁級租戶上下文(修跨分頁污染) | ✅ | — | — | [foundation/tenant-context.md](foundation/tenant-context.md) |
 | [R1·後續-1] 自訂按鈕 + 簽核流程(workflow UX 面) | ✅ | · 零星引用 | `13` `15` `68` | [R1/actions-approval.md](R1/actions-approval.md) |
 | [P0-4a] 三層權限(授權層) | ✅ | · 零星引用 | `32` `64` | [R1/authz.md](R1/authz.md) |
-| [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐ 有一手依據 | — | [R1/event-triggers.md](R1/event-triggers.md) |
+| [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐⭐ 三站齊全 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [P0-1·UI] 表單設計器 + 填單 接引擎 API | ✅ | · 零星引用 | `21` `37` `72` `143` `167` `286` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | — | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | — | [R1/full-text-search.md](R1/full-text-search.md) |
@@ -104,8 +104,9 @@
 | `doc/22` | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) |
 | `doc/23` | [R1/public-form.md](R1/public-form.md) |
 | `doc/25` | [R1/field-types-parity.md](R1/field-types-parity.md) |
-| `doc/26` | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
+| `doc/26` | [R1/event-triggers.md](R1/event-triggers.md) · [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
 | `doc/27` | [_audit/giants-shoulders-audit-B.md](_audit/giants-shoulders-audit-B.md) · [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) · [R1/field-types-parity.md](R1/field-types-parity.md) · [R1/image-signature-fields.md](R1/image-signature-fields.md) · [R1/option-colors.md](R1/option-colors.md) · [R1/pivot-and-charts.md](R1/pivot-and-charts.md) · [R1/print-merge.md](R1/print-merge.md) |
+| `doc/29` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/31` | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | `doc/32` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) · [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) · [R1/authz.md](R1/authz.md) · [R1/dynamic-permissions.md](R1/dynamic-permissions.md) · [R1/pivot-and-charts.md](R1/pivot-and-charts.md) · [R1/public-form.md](R1/public-form.md) |
 | `doc/34` | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
@@ -134,6 +135,7 @@
 | `doc/92` | [R1/views-group-kanban-calendar.md](R1/views-group-kanban-calendar.md) |
 | `doc/94` | [R1/notifications.md](R1/notifications.md) |
 | `doc/96` | [R1/notifications.md](R1/notifications.md) |
+| `doc/98` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/99` | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) |
 | `doc/100` | [R1/workspace-ia.md](R1/workspace-ia.md) |
 | `doc/107` | [R1/grid-paste.md](R1/grid-paste.md) |
@@ -144,6 +146,7 @@
 | `doc/121` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [R1/form-designer-2d.md](R1/form-designer-2d.md) · [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
 | `doc/122` | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) |
 | `doc/124` | [R1/recycle-bin.md](R1/recycle-bin.md) |
+| `doc/125` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/137` | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) |
 | `doc/138` | [R1/print-merge.md](R1/print-merge.md) · [R1/server-pdf.md](R1/server-pdf.md) |
 | `doc/139` | [R1/grid-paste.md](R1/grid-paste.md) |
@@ -151,13 +154,20 @@
 | `doc/145` | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | `doc/149` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [R1/print-merge.md](R1/print-merge.md) |
 | `doc/153` | [R1/field-types-parity.md](R1/field-types-parity.md) |
+| `doc/163` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/167` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
+| `doc/173` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/176` | [R1/form-templates.md](R1/form-templates.md) |
+| `doc/183` | [R1/event-triggers.md](R1/event-triggers.md) |
+| `doc/185` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/195` | [R1/public-form.md](R1/public-form.md) |
 | `doc/204` | [R1/form-templates.md](R1/form-templates.md) |
 | `doc/210` | [R1/grid-paste.md](R1/grid-paste.md) |
+| `doc/214` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/232` | [R1/import-to-existing-form.md](R1/import-to-existing-form.md) |
+| `doc/260` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/268` | [R1/form-templates.md](R1/form-templates.md) |
+| `doc/281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/284` | [R1/server-pdf.md](R1/server-pdf.md) |
 | `doc/286` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | `doc/295` | [R1/field-types-parity.md](R1/field-types-parity.md) |

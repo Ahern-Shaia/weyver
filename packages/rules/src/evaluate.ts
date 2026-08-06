@@ -145,19 +145,36 @@ function conditionValue(c: FormatCondition, values: RecordValues, ctx: EvalConte
   return values[c.field]
 }
 
+/* 🔴 條件列表求值。**匯出**是因為事件觸發器(R1·C-4)也要用同一份判斷 ——
+   它的條件與條件式格式是同一個形狀,但沒有 `effects` 也沒有 `targets`,
+   所以它要的是這一層而不是整條 `FormatRule`。
+
+   ⚠️ 這裡刻意是「把既有邏輯抽出來」而不是「給觸發器寫一份」:
+   「引用不存在欄位 → 整條略過」這種**沉默但關鍵**的語意若有兩份實作,
+   漂移的形態是「同一個條件在格式上不成立、在觸發器上成立」,沒有人查得出來。 */
+export function conditionsMatch(
+  conditions: readonly FormatCondition[],
+  combinator: "and" | "or",
+  values: RecordValues,
+  known: ReadonlySet<string>,
+  ctx: EvalContext = {},
+): boolean {
+  /* 引用不存在欄位之條件 → 整條規則略過(不靜默誤判為 true)。
+     虛擬欄位不在 `known` 裡,但它們永遠「存在」。 */
+  if (conditions.some((c) => !isPseudoField(c.field) && !known.has(c.field))) return false
+  const results = conditions.map((c) =>
+    matchesCondition(conditionValue(c, values, ctx), c.op, c.value),
+  )
+  return combinator === "or" ? results.some(Boolean) : results.every(Boolean)
+}
+
 function ruleMatches(
   rule: FormatRule,
   values: RecordValues,
   known: ReadonlySet<string>,
   ctx: EvalContext,
 ): boolean {
-  /* 引用不存在欄位之條件 → 整條規則略過(不靜默誤判為 true)。
-     虛擬欄位不在 `known` 裡,但它們永遠「存在」。 */
-  if (rule.conditions.some((c) => !isPseudoField(c.field) && !known.has(c.field))) return false
-  const results = rule.conditions.map((c) =>
-    matchesCondition(conditionValue(c, values, ctx), c.op, c.value),
-  )
-  return rule.combinator === "or" ? results.some(Boolean) : results.every(Boolean)
+  return conditionsMatch(rule.conditions, rule.combinator, values, known, ctx)
 }
 
 /* 🔴 OQ-CF-8 = C-2:求值器回傳**欄位效果狀態**,不再只回顏色。

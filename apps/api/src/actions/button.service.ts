@@ -1,12 +1,5 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common"
+import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
-import type { RecordRow, RecordValues } from "../form-engine/records/record-specs.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import type {
@@ -14,9 +7,9 @@ import type {
   ButtonDto,
   CreateButtonBody,
   UpdateButtonBody,
-  ValueSource,
 } from "./action-specs.js"
 import { ActionsRepository, type ButtonRow } from "./actions.repository.js"
+import { compileValues } from "./compile-values.js"
 
 /* R1·後續-1 M1 按鈕動作執行器。docs/22 載重不變量:
  **封閉 allowlist 動作 → config 確定性編譯(非 eval)→ 權限 gate → 冪等 key → audit**。 */
@@ -143,7 +136,7 @@ export class ButtonService {
     )
 
     if (config.actionType === "updateSelf") {
-      const values = compileValues(config.setFields, source, tenant.actorId)
+      const values = compileValues(config.setFields, source.values, tenant.actorId)
       await this.records.updateRecord(
         tenant.tenantId,
         formId,
@@ -157,7 +150,7 @@ export class ButtonService {
     }
 
     // pushTo:依 fieldMap 於 target 表建記錄(權限由 RecordService assertWritable 兜底)
-    const values = compileValues(config.fieldMap, source, tenant.actorId)
+    const values = compileValues(config.fieldMap, source.values, tenant.actorId)
     if (permissions !== undefined && !permissions.hasAction(config.targetFormId, "create")) {
       throw new ForbiddenException({
         code: "FORBIDDEN",
@@ -185,37 +178,6 @@ export class ButtonService {
     }
     return button
   }
-}
-
-/* 確定性編譯:值來源封閉列舉(literal/field/variable),絕不 eval;未知欄 → 400 */
-function compileValues(
-  map: Record<string, ValueSource>,
-  source: RecordRow,
-  actorId: number,
-): RecordValues {
-  const now = new Date()
-  const out: RecordValues = {}
-  for (const [target, src] of Object.entries(map)) {
-    if (src.from === "literal") {
-      out[target] = src.value
-    } else if (src.from === "field") {
-      if (!(src.field in source.values)) {
-        throw new BadRequestException({
-          code: "INVALID_ACTION_CONFIG",
-          message: `來源欄不存在:${src.field}`,
-        })
-      }
-      out[target] = source.values[src.field] ?? null
-    } else {
-      out[target] =
-        src.variable === "$USERID"
-          ? actorId
-          : src.variable === "$TODAY"
-            ? now.toISOString().slice(0, 10)
-            : now.toISOString()
-    }
-  }
-  return out
 }
 
 function toDto(row: ButtonRow): ButtonDto {

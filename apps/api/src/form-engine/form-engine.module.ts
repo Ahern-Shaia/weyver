@@ -2,16 +2,17 @@ import { Module } from "@nestjs/common"
 import { AuthzModule } from "../authz/authz.module.js"
 import { FilesModule } from "../files/files.module.js"
 import { ReliabilityModule } from "../reliability/reliability.module.js"
+import { TriggersModule } from "../triggers/triggers.module.js"
+import { AccessPreviewService } from "./access/access-preview.service.js"
 import { FormsController } from "./api/forms.controller.js"
 import { RecordsController } from "./api/records.controller.js"
 import { TrashController } from "./api/trash.controller.js"
 import { DdlService } from "./ddl/ddl.service.js"
+import { OptionService } from "./field-types/option.service.js"
 import { FormulaService } from "./formula/formula.service.js"
+import { ImportService } from "./import/import.service.js"
 import { LayoutService } from "./layout/layout.service.js"
 import { MetadataService } from "./metadata/metadata.service.js"
-import { AccessPreviewService } from "./access/access-preview.service.js"
-import { OptionService } from "./field-types/option.service.js"
-import { ImportService } from "./import/import.service.js"
 import { RecordService } from "./records/record.service.js"
 import { LinkOptionsService } from "./relations/link-options.service.js"
 import { RelationService } from "./relations/relation.service.js"
@@ -23,7 +24,7 @@ import { TrashService } from "./trash/trash.service.js"
 
 @Module({
   // FilesModule 單向被 import(其自身不 import 本模組)→ RecordService 可注入 FilesService 綁定附件
-  imports: [AuthzModule, FilesModule, ReliabilityModule],
+  imports: [AuthzModule, FilesModule, ReliabilityModule, TriggersModule],
   controllers: [FormsController, RecordsController, TrashController],
   providers: [
     MetadataService,

@@ -622,6 +622,66 @@ export const buttonDefs = pgTable(
   ],
 )
 
+/* 🔴 R1·C-4 事件觸發器(`docs/modules/R1/event-triggers.md`)。
+
+   與 `buttonDefs` 幾乎同形但**刻意分表**:條件式格式是「顯示時、每次算、無副作用」,
+   觸發器是「存檔時、算一次、有副作用」;而按鈕是「有人按才跑」。
+   三者的執行時機不同,合表的話「什麼時候會發生」就沒有地方寫。 */
+export const triggerDefs = pgTable(
+  "trigger_def",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    formId: bigint("form_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => formDefs.id),
+    name: text("name").notNull(),
+    onCreate: boolean("on_create").notNull().default(false),
+    onUpdate: boolean("on_update").notNull().default(false),
+    watchFields: jsonb("watch_fields").notNull().default([]),
+    conditions: jsonb("conditions").notNull().default([]),
+    actionType: text("action_type").notNull(),
+    config: jsonb("config").notNull(),
+    position: integer("position").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("trigger_def_tenant_form_idx").on(t.tenantId, t.formId),
+    check("trigger_def_action_type", sql`action_type IN ('updateSelf','pushTo')`),
+    check("trigger_def_has_timing", sql`on_create OR on_update`),
+  ],
+)
+
+/* 🔴 執行紀錄。**`denied` 與 `depth` 一定要留得下來** ——
+   靜默停止的自動化比不會動的自動化更難查,使用者只會說「它沒反應」。
+   DB 端不授 UPDATE / DELETE(見 0055 migration),與 `actionAudits` 同一條理由。 */
+export const triggerRuns = pgTable(
+  "trigger_run",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    triggerId: bigint("trigger_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => triggerDefs.id),
+    formId: bigint("form_id", { mode: "number" }).notNull(),
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    actorId: bigint("actor_id", { mode: "number" }),
+    outcome: text("outcome").notNull(),
+    detail: jsonb("detail"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("trigger_run_lookup_idx").on(t.tenantId, t.triggerId, t.createdAt),
+    check("trigger_run_outcome", sql`outcome IN ('ran','skipped','denied','failed','depth')`),
+  ],
+)
+
 /* 動作執行稽核(記錄類;冪等 key 唯一 → 重試不重複執行,OQ-AA-2 / FMEA A2)。 */
 export const actionAudits = pgTable(
   "action_audit",

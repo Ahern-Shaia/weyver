@@ -59,7 +59,7 @@ This file provides guidance to AI coding assistants when working with Weyver cod
 
 **踩過的坑(2026-08-02)**|`docs/17` 逐字寫「**Ragic / 鼎新 / 正航 / 傳統 ERP = 0 AI**」,
 整條 AI-native「類別差異」論述建立其上。查證後 Ragic 有 AI 建庫 / NL 查詢 / 公式助手 /
-單據抽取 / **AI Agent(6 觸發 × 11 動作,含 `CREATE_RECORD`/`MODIFY_RECORD`)** / MCP /
+單據抽取 / **AI Agent(6 觸發 × **10** 動作〔2026-08-06 開檔覆查更正:原記 11,把 HTML 表頭列算進去了〕,含 `CREATE_RECORD`/`MODIFY_RECORD`)** / MCP /
 本地模型 + BYO key —— **我們列為「槓桿最高」的四項它全部已有**。
 違反的是條件 ①:承重斷言沒回一手查證。
 
