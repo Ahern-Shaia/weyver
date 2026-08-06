@@ -24,6 +24,13 @@ export interface ModuleResearch {
   readonly shipped: boolean
   /** 有明確的〈站在巨人的肩膀〉章節 */
   readonly hasGiantsSection: boolean
+  /** 有 `## 0.` / `## 0-bis.` 證據段(`_template.md` 規定的位置)*/
+  readonly hasEvidenceSection: boolean
+  /** 🔴 可回查的出處連結數。**判斷研究強度最可靠的單一訊號** ——
+      `_template.md` 逐字要求「附**可點擊的來源連結**」,所以它本來就是規範。 */
+  readonly sourceLinks: number
+  /** 研究有沒有**推翻**某個決定。目前唯一信得過的「深度」訊號。 */
+  readonly overturned: boolean
   /** 「逐字」出現次數 —— 一手引用的粗略強度 */
   readonly verbatim: number
   /** 引用到的 Ragic 官方文件編號 */
@@ -40,9 +47,60 @@ export interface ModuleResearch {
    **指向錯地方的索引比沒有索引更糟。**(第一版就是這樣,產生後看內容才發現) */
 const RAGIC_DOC_PATTERN = /\bdoc(?:-[a-z]+)?\/(\d+)/g
 
-const OTHER_SOURCE_PATTERN =
-  /\b(Airtable|Baserow|Teable|NocoDB|Metabase|Salesforce|Notion|Odoo|Smartsheet|Zoho|Glide Data Grid|ERPNext|iDempiere|qcadoo|OWASP|ASVS|W3C|ARIA APG|EDPB|GDPR|CVE-\d{4}-\d+)\b/g
+/* ⚠️ **這是「順帶列出來給人看」的,不是判斷研究強度的依據。**
 
+   2026-08-06 的教訓:白名單對**基礎設施模組是瞎的**。
+   `foundation/auth` 對照了 OWASP 三份 cheat sheet + GitHub Advisory DB,
+   還讀了 better-auth 的 dist 原始碼,查出並修掉三個 P0 資安漏洞 ——
+   而它在索引裡顯示「研究強度 —」,因為它引的東西不在清單裡、
+   標題也不叫〈站在巨人的肩膀〉。`malware-scanning`(ClamAV 生態,19 個連結)與
+   `framework-upgrade`(22 個連結)同樣被誤判。
+
+   **強度改由不依賴白名單的訊號決定**(見 `depth()`)。 */
+/* 正規拼法清單。regex 由它產生,顯示也用它正規化 ——
+   否則 `gi` 會讓同一個來源以 `OWASP` / `owasp` 兩種形式並列。 */
+const SOURCE_NAMES = [
+  "Airtable",
+  "Baserow",
+  "Teable",
+  "NocoDB",
+  "Metabase",
+  "Salesforce",
+  "Notion",
+  "Odoo",
+  "Smartsheet",
+  "Zoho",
+  "Glide Data Grid",
+  "ERPNext",
+  "iDempiere",
+  "qcadoo",
+  "ClamAV",
+  "Better Auth",
+  "Fastify",
+  "NestJS",
+  "Stripe",
+  "Shopify",
+  "ServiceNow",
+  "SAP",
+  "Kissflow",
+  "OWASP",
+  "ASVS",
+  "W3C",
+  "ARIA APG",
+  "EDPB",
+  "GDPR",
+] as const
+
+const CANONICAL = new Map<string, string>(SOURCE_NAMES.map((n) => [n.toLowerCase(), n]))
+
+const OTHER_SOURCE_PATTERN = new RegExp(`\\b(${SOURCE_NAMES.join("|")}|CVE-\\d{4}-\\d+)\\b`, "gi")
+
+/* 大小寫不同的同一個來源收斂成一個;CVE 一律大寫。 */
+function canonicalSources(raw: readonly string[]): string[] {
+  const out = new Set<string>()
+  for (const r of raw) out.add(CANONICAL.get(r.toLowerCase()) ?? r.toUpperCase())
+  return [...out].sort()
+}
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir)) {
@@ -81,11 +139,14 @@ export function collectResearch(root: string): ModuleResearch[] {
       title: titleOf(text, rel),
       shipped: shippedNames.has(rel),
       hasGiantsSection: /站在巨人的肩膀/.test(text),
+      hasEvidenceSection: /^##\s+0(-bis|-ter)?\./m.test(text),
+      sourceLinks: (text.match(/https:\/\//g) ?? []).length,
+      overturned: /推翻|自我更正|自我修正|改判/.test(text),
       verbatim: (text.match(/逐字/g) ?? []).length,
       ragicDocs: [...new Set([...text.matchAll(RAGIC_DOC_PATTERN)].map((m) => m[1] ?? ""))].sort(
         (a, b) => Number(a) - Number(b),
       ),
-      otherSources: [...new Set(text.match(OTHER_SOURCE_PATTERN) ?? [])].sort(),
+      otherSources: canonicalSources(text.match(OTHER_SOURCE_PATTERN) ?? []),
     })
   }
   return out.sort((a, b) => a.path.localeCompare(b.path))
@@ -105,13 +166,34 @@ export function reverseIndex(mods: readonly ModuleResearch[]): Map<string, strin
   return new Map([...out].sort((a, b) => Number(a[0]) - Number(b[0])))
 }
 
-/* 研究強度。**刻意粗** —— 這是導航用的訊號不是評分:
-   有〈站在巨人的肩膀〉章節且有一手逐字 = 可直接信;只有零星引用 = 要自己複核。 */
+/* 🔴 研究強度。**2026-08-06 重寫** —— 舊版只認一種格式而誤判了三份 doc。
+
+   舊版靠〈站在巨人的肩膀〉標題 + 「逐字」字數,於是:
+   `foundation/auth` 的研究記在 `0-bis 追溯稽核` 底下(OWASP 三份 cheat sheet +
+   GitHub Advisory DB + 讀 better-auth dist 原始碼,**查出並修掉三個 P0 資安漏洞**)
+   → 顯示「—」,看起來像完全沒做研究。`malware-scanning` / `framework-upgrade` 同理。
+
+   新版改用**不依賴標題格式、也不依賴白名單**的訊號:
+
+   1. **出處連結數** —— `_template.md` 逐字要求「附可點擊的來源連結」,
+      它本來就是規範,而且是「研究有沒有留下可回查的東西」的直接量測
+   2. **有沒有證據段**(`## 0.` / `## 0-bis.` / `## 0-ter.`,或〈站在巨人的肩膀〉)
+   3. 🔴 **有沒有推翻過什麼** —— 目前唯一信得過的「深度」訊號。
+      深度研究會改變結論;`event-triggers` 出貨當下什麼都沒推翻,那正是它露餡的地方
+
+   ⚠️ 仍然是**導航訊號不是評分**。⭐⭐ 只代表「留下的東西夠多、可以先信」,
+   承重之前一樣要看該 doc 內記的查證日期。 */
 function depth(m: ModuleResearch): string {
-  if (m.hasGiantsSection && m.verbatim >= 5) return "⭐⭐ 三站齊全"
-  if (m.hasGiantsSection || m.verbatim >= 5) return "⭐ 有一手依據"
-  if (m.ragicDocs.length > 0) return "· 零星引用"
+  const anchored = m.hasGiantsSection || m.hasEvidenceSection
+  if (anchored && m.sourceLinks >= 10 && m.overturned) return "⭐⭐ 深且推翻過"
+  if (anchored && (m.sourceLinks >= 10 || m.verbatim >= 5)) return "⭐ 有一手依據"
+  if (m.sourceLinks > 0 || m.ragicDocs.length > 0) return "· 零星引用"
   return "—"
+}
+
+/* A / B 分段的判準。與 `depth()` 同源,避免兩份標準漂移。 */
+function isWellResearched(m: ModuleResearch): boolean {
+  return depth(m).startsWith("⭐")
 }
 
 export function renderIndex(mods: readonly ModuleResearch[]): string {
@@ -138,22 +220,22 @@ export function renderIndex(mods: readonly ModuleResearch[]): string {
 
   lines.push("## A. 已出貨且研究齊全的模組(**別重查**)")
   lines.push("")
-  lines.push("| 模組 | 研究強度 | 逐字 | Ragic doc | 其他來源 | 文件 |")
-  lines.push("|---|---|---|---|---|---|")
-  for (const m of mods.filter((x) => x.shipped && (x.hasGiantsSection || x.verbatim >= 5))) {
+  lines.push("| 模組 | 研究強度 | 出處連結 | 逐字 | Ragic doc | 其他來源 | 文件 |")
+  lines.push("|---|---|---|---|---|---|---|")
+  for (const m of mods.filter((x) => x.shipped && isWellResearched(x))) {
     lines.push(
-      `| ${m.title} | ${depth(m)} | ${String(m.verbatim)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | ${m.otherSources.join(" · ") || "—"} | [${m.path}](${m.path}) |`,
+      `| ${m.title} | ${depth(m)} | ${String(m.sourceLinks)} | ${String(m.verbatim)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | ${m.otherSources.join(" · ") || "—"} | [${m.path}](${m.path}) |`,
     )
   }
   lines.push("")
 
   lines.push("## B. 其餘模組(引用較零星,承重前請自行複核)")
   lines.push("")
-  lines.push("| 模組 | 已出貨 | 研究強度 | Ragic doc | 文件 |")
-  lines.push("|---|---|---|---|---|")
-  for (const m of mods.filter((x) => !(x.shipped && (x.hasGiantsSection || x.verbatim >= 5)))) {
+  lines.push("| 模組 | 已出貨 | 研究強度 | 出處連結 | Ragic doc | 文件 |")
+  lines.push("|---|---|---|---|---|---|")
+  for (const m of mods.filter((x) => !(x.shipped && isWellResearched(x)))) {
     lines.push(
-      `| ${m.title} | ${m.shipped ? "✅" : "—"} | ${depth(m)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | [${m.path}](${m.path}) |`,
+      `| ${m.title} | ${m.shipped ? "✅" : "—"} | ${depth(m)} | ${String(m.sourceLinks)} | ${m.ragicDocs.map((d) => `\`${d}\``).join(" ") || "—"} | [${m.path}](${m.path}) |`,
     )
   }
   lines.push("")
