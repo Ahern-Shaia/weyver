@@ -480,7 +480,7 @@ export const triggerRunDtoSchema = z.object({
   triggerId: z.number().int(),
   triggerName: z.string(),
   recordId: z.number().int(),
-  outcome: z.enum(["ran", "skipped", "denied", "failed", "depth"]),
+  outcome: z.enum(["ran", "skipped", "denied", "failed", "depth", "missed"]),
   detail: z.record(z.string(), z.unknown()).nullable(),
   createdAt: z.string(),
 })

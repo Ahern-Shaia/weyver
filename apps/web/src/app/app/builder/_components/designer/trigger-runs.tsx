@@ -19,6 +19,9 @@ const OUTCOME_LABEL: Record<string, string> = {
   denied: "權限不足",
   failed: "執行失敗",
   depth: "連鎖過深已停",
+  /* 🔴 FMEA S1|排定的時刻過去了而它沒跑。**不是失敗,是沒發生** ——
+     文案要講出「該跑而沒跑」,不能只寫「未執行」(那讀起來像條件不符)。 */
+  missed: "漏跑(服務當時沒在執行)",
 }
 
 export function TriggerRuns({ runs }: { readonly runs: readonly TriggerRunDto[] }): ReactNode {
