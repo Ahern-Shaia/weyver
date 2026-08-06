@@ -31,6 +31,7 @@
 | [R1·UP-3b] 條件式格式(form-designer-2d P1 解鎖) | ⭐ 有一手依據 | 5 | 28 | `6` | Airtable · Baserow · NocoDB · Teable | [R1/conditional-format.md](R1/conditional-format.md) |
 | R1·I-1|資料匯出(帶得走的完整副本) | ⭐ 有一手依據 | 0 | 10 | — | ASVS · Better Auth · GDPR · NestJS · OWASP · Salesforce | [R1/data-export.md](R1/data-export.md) |
 | [R1·FMT] 日期輸入與顯示格式 | ⭐ 有一手依據 | 0 | 15 | `51` | ARIA APG · Airtable · W3C | [R1/date-and-display-format.md](R1/date-and-display-format.md) |
+| [E-1] 動態權限(記錄範圍 + 指派) | ⭐⭐ 深且推翻過 | 14 | 6 | `32` `54` | Airtable · Baserow · NocoDB · Notion · Odoo · Salesforce · Teable | [R1/dynamic-permissions.md](R1/dynamic-permissions.md) |
 | [R1·UP-4] 欄位型別 parity（form-engine-core 增量） | ⭐⭐ 深且推翻過 | 63 | 16 | `14` `20` `25` `27` `31` `145` `153` `295` `344` `357` | Airtable · Baserow · NocoDB · Notion · Odoo · SAP · Salesforce · Teable | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | [R1·UP-3] 2D 表單設計器（form-designer-ui uplift） | ⭐ 有一手依據 | 0 | 24 | `21` `35` `121` `306` | Airtable · Baserow · NocoDB · Teable | [R1/form-designer-2d.md](R1/form-designer-2d.md) |
 | [P0-1·UI] 表單設計器 + 填單 接引擎 API | ⭐⭐ 深且推翻過 | 12 | 0 | `21` `37` `72` `143` `167` `286` | Airtable · Baserow · Notion · Salesforce · W3C · Zoho | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
@@ -66,7 +67,6 @@
 | [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job) | ✅ | · 零星引用 | 8 | — | [foundation/reliability.md](foundation/reliability.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [P0-4a·uplift] 資源軸繼承(分類授權 + owner + 敏感旗標) | ✅ | · 零星引用 | 0 | `0` `11` `32` | [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) |
-| [E-1] 動態權限(記錄範圍 + 指派) | ✅ | · 零星引用 | 0 | `32` `54` | [R1/dynamic-permissions.md](R1/dynamic-permissions.md) |
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐ 有一手依據 | 1 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [R1·A11Y] 欄位輸入的無障礙名稱 | ✅ | — | 0 | — | [R1/field-label-a11y.md](R1/field-label-a11y.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | — | 0 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |

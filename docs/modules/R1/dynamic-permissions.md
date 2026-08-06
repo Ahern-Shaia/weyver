@@ -37,11 +37,35 @@ docs/04 E 段把它記為「動態權限(**依欄位值判斷**)」,聽起來像
 
 | 系統 | 模型 | 關鍵限制(官方) |
 |---|---|---|
-| **Salesforce** | **Criteria-Based Sharing Rules**(依欄位值)+ Owner-Based + Role Hierarchy 自動繼承 | 每物件 300 條規則,**criteria-based 上限 50 條**;**不支援 lookup / 公式 / 加密 / 任何衍生欄位**當條件;**預先計算存進 `__Share` 表**,重算**非同步**,>200 萬列需開 Defer Sharing Calculations;資料傾斜 1:10,000 起退化 |
-| **Odoo** | `ir.rule` domain,**查詢時注入 WHERE** | **global rules 交集(AND)、group rules 聯集(OR)**,兩者再交集 → **加第一條 group rule 反而收緊**;無適用 rule 即**放行**;官方警告多條 global rule 易造出「不重疊 ruleset → 完全無存取」 |
-| **Airtable** | **沒有**依欄位值的記錄級權限 | Interface 的 current-user 過濾只是**視覺呈現**,base 層仍全可見 → **不是安全邊界** |
-| **Notion** | 有 page-level 規則,但**只能綁 Person 型屬性**(Assignee / Owner / Created by),不支援一般欄位條件 | 限 Business/Enterprise |
-| **Monday** | column-level + board-level,**無**原生依欄位值的列限制 | |
+| **Salesforce** | **Criteria-Based Sharing Rules**(依欄位值)+ Owner-Based + Role Hierarchy 自動繼承 | 見下方〈Salesforce 逐條出處〉|
+| **Odoo** | `ir.rule` domain,**查詢時注入 WHERE** | 見下方〈Odoo 逐條出處〉—— 四條全數逐字命中 |
+| **Airtable** | **沒有**依欄位值的記錄級權限 | [權限層級總覽](https://support.airtable.com/docs/airtable-permissions-overview)列的是 workspace / base / interface / form / enterprise —— **沒有 record 層**;[interface 分享](https://support.airtable.com/docs/managing-and-sharing-interfaces)逐字「Ultimately, **only base collaborators can view the underlying base**」,而 record filter 只「determines which records appear to users」。⚠️ **2026-08-06 更正**:原文寫「→ 不是安全邊界」像是官方說法,但**查無任何 Airtable 官方句子這樣寫**(那句出自第三方部落格)。結論不變,依據改為上述兩條官方原文 |
+| **Notion** | 有 page-level 規則,但**只能綁 Person 型屬性** | [自訂資料庫權限](https://www.notion.com/help/guides/assign-custom-database-permissions)逐字:「Set page-level rules based on **`Person` properties** (like "`Assignee`" or "`Owner`") or "`Created by`"」;[分享與權限](https://www.notion.com/help/sharing-and-permissions):「This feature is **only available on the Business and Enterprise Plans**.」兩頁皆未提及可用 select / status / number 等一般欄位 |
+| **Monday** | column-level + board-level,推測**無**原生依欄位值的列限制 | ⚠️ **未查證**:`support.monday.com` 對自動抓取一律回 403,只取得搜尋摘要而非頁面本文。依〈向上設計三條〉條件①,**摘要不得當承重依據** → 本列標未查證,不得用來論證差異化 |
+
+**Salesforce 逐條出處**(2026-08-06 補;⚠️ 四條裡有三條原文寫得不夠準,一併更正)
+
+| # | 內容 | 出處 |
+|---|---|---|
+| 1 | 「You can define up to **300 total sharing rules** for each object, including up to **50 criteria-based or guest user** sharing rules, if available for the object.」<br>🔴 **更正**:原文寫「criteria-based 上限 50」——**那 50 條是與 guest user sharing rules 共用的**,寫成專屬會高估可用額度 | [About Sharing Rules](https://help.salesforce.com/s/articleView?id=platform.security_about_sharing_rules.htm&language=en_US&type=5)(本專案直接 fetch 覆核)|
+| 2 | 「In criteria-based sharing rules, you **can't use lookup fields, encrypted fields, formula fields**, or fields whose values are derived from other fields on the record.」 | [Sharing Rule Considerations](https://help.salesforce.com/s/articleView?id=platform.security_sharing_rule_considerations.htm&language=en_US&type=5)|
+| 3 | 「**Object Sharing tables** simply store each access grant in separate rows called **sharing rows**」;變更時「your request is **queued** to process these changes efficiently, you receive an **email notification** when the process has been completed」<br>🔴 **更正**:原文寫「存進 `__Share` 表」「重算**非同步**」——**兩份官方文件全文搜尋 `__Share` 與 "asynchronous" 皆零命中**。官方一律稱 Object Sharing table 與 queued。實質沒錯,但**不要用官方沒說的詞** | [Record Access Under the Hood](https://resources.docs.salesforce.com/latest/latest/en-us/sfdc/pdf/salesforce_record_access_under_the_hood.pdf)(Spring '26)|
+| 4 | ~~>200 萬列需開 Defer Sharing Calculations~~ 🔴 **刪除:查無官方依據** | 三份官方來源([Defer Sharing tipsheet](https://resources.docs.salesforce.com/latest/latest/en-us/sfdc/pdf/salesforce_defer_sharing_tipsheet.pdf) · [DRAES 工具頁](https://developer.salesforce.com/docs/atlas.en-us.draes.meta/draes/draes_tools_deferred_sharing_maintenance.htm) · [LDV 最佳實務](https://resources.docs.salesforce.com/latest/latest/en-us/sfdc/pdf/salesforce_large_data_volumes_bp.pdf))**皆無任何記錄數門檻**。官方只說「before you make major updates that trigger large-scale group membership or sharing rule calculations」。**疑似與 LDV 文件中「查詢選擇性」脈絡的 2 million 混淆** —— 那句與 sharing 無關 |
+| 5 | 「**Ownership data skew** is when a single user owns **more than 10,000 records** of an object.」;另有 parent-child「a large number of child records (**10,000 or more**) with a single parent account」<br>🔴 **更正**:原文寫「lookup skew」——**DRAES 全文查無此詞**,10,000 這個門檻官方掛在 **ownership skew** 與 **account data skew(parent-child)** | [DRAES](https://resources.docs.salesforce.com/latest/latest/en-us/sfdc/pdf/draes.pdf)|
+
+**Odoo 逐條出處**|全部出自同一頁
+[Security in Odoo 18 § Global rules versus group rules](https://www.odoo.com/documentation/18.0/developer/reference/backend/security.html),四條逐字命中:
+
+> Global rules **intersect** … this means **adding global rules always restricts access further**. Group rules **unify** …
+> The global and group rulesets intersect, which means **the first group rule being added to a given global ruleset will restrict access**.
+> Record rules are **default-allow**: if access rights grant access and no rule applies … the access is granted.
+> **Danger** — Creating multiple global rules is risky as it's possible to create **non-overlapping rulesets, which will remove all access**.
+
+⚠️ 最後一條在官方是 **Danger** 等級的告誡框,不是一般 warning。
+
+**Ragic 逐條出處**|[`doc/32` 存取權限層級](https://www.ragic.com/intl/zh-TW/doc/32) ·
+[`doc/54` 指派](https://www.ragic.com/intl/zh-TW/doc/54)(本專案 2026-08-06 開本機鏡像原文覆核,
+含「使用者在表單的存取權限為**無權限或僅閱覽**……所以**無法有閱覽或編輯的權限**」逐字)。
 
 > **兩個重要判讀**:
 > 1. **「任意欄位值 → 決定記錄可見性」實質上只有企業級 CRM/ERP 才有。** 這是 Weyver 對 Airtable 類產品的真差異化,但也代表**沒有現成的「非工程師友善 UI」可抄**。

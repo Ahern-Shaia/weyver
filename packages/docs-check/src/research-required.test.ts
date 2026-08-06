@@ -40,7 +40,7 @@ import { type ModuleResearch, collectResearch } from "./research-index"
 const ROOT = join(import.meta.dirname, "../../..")
 
 /* 🔴 只能往下調。往上調 = 這條規則失效,審 PR 的人看到 +1 就該擋下來。 */
-const BASELINE = 11
+const BASELINE = 10
 
 function meetsBar(m: ModuleResearch): boolean {
   const hasSection = m.hasGiantsSection || m.hasEvidenceSection
