@@ -12,7 +12,6 @@ import { UsageModule } from "./billing/usage.module.js"
 import { validateEnv } from "./config/env.js"
 import { DbModule } from "./db/db.module.js"
 import { ExportModule } from "./export/export.module.js"
-import { PdfModule } from "./pdf/pdf.module.js"
 import { FilesModule } from "./files/files.module.js"
 import { FormEngineModule } from "./form-engine/form-engine.module.js"
 import { WidgetsModule } from "./form-engine/widgets/widgets.module.js"
@@ -23,6 +22,7 @@ import { LabelsModule } from "./labels/labels.module.js"
 import { MembersModule } from "./members/members.module.js"
 import { ChannelsModule } from "./notifications/channels.module.js"
 import { NotificationsModule } from "./notifications/notifications.module.js"
+import { PdfModule } from "./pdf/pdf.module.js"
 import { PublicFormModule } from "./public-form/public-form.module.js"
 import { ReliabilityModule } from "./reliability/reliability.module.js"
 import { SearchModule } from "./search/search.module.js"
@@ -30,10 +30,12 @@ import { SecurityModule } from "./security/security.module.js"
 import { SettingsModule } from "./settings/settings.module.js"
 import { StorageModule } from "./storage/storage.module.js"
 import { TemplatesModule } from "./templates/templates.module.js"
+import { TriggerAsyncModule } from "./triggers/trigger-async.module.js"
 import { ViewsModule } from "./views/views.module.js"
 
 @Module({
   imports: [
+    TriggerAsyncModule,
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // 全域速率限制(AGENTS 🔒:APP_GUARD)—— Nest 路由防護;/api/auth/* 另由 Better Auth rateLimit 覆蓋
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),

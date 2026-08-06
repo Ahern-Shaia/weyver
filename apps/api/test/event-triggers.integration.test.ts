@@ -8,6 +8,7 @@ import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
+import { TriggerAsyncService } from "../src/triggers/trigger-async.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 R1·C-4|事件觸發器。
@@ -34,6 +35,7 @@ let pool: pg.Pool
 let app: NestFastifyApplication
 let tenantA = 0
 let limitedActor = 0
+let opActor = 0
 
 const H = (): Record<string, string> => ({ "x-dev-tenant": String(tenantA) })
 
@@ -64,6 +66,11 @@ beforeAll(async () => {
     .values({ authUserId: "trig-limited", email: "trig-limited@t.test", name: "受限員工" })
     .returning({ id: users.id })
   limitedActor = u?.id ?? 0
+  const [op] = await db
+    .insert(users)
+    .values({ authUserId: "trig-op", email: "trig-op@t.test", name: "作業員" })
+    .returning({ id: users.id })
+  opActor = op?.id ?? 0
 }, 180_000)
 
 afterAll(async () => {
@@ -135,6 +142,60 @@ function revisionsOf(body: unknown): unknown[] {
   if (Array.isArray(body)) return body
   const r = (body as { revisions?: unknown }).revisions
   return Array.isArray(r) ? r : []
+}
+
+/* 🔴 非同步 worker 解析的是**真實權限**,而 `x-dev-tenant` 那條車道是超級權限、
+   背後的 actor 一個角色都沒有 —— 於是所有 pushTo 都會記 `denied`。
+
+   這不是缺陷,是那條車道的性質(`pdf.service.ts` 已為同一件事留過同樣的註記)。
+   非同步側的測試因此**必須用真身分**:建一個角色、授予兩張表的權、指派給 actor。 */
+async function grantForms(formIds: readonly number[], key: string): Promise<void> {
+  const authz = app.get(AuthzRepository)
+  const role = await authz.createRole({ tenantId: tenantA, key, name: key, parentId: null })
+  for (const id of formIds) await authz.setFormActions(role.id, id, ["view", "create", "edit"])
+  await authz.assignMember(tenantA, role.id, opActor)
+}
+
+const OP = (): Record<string, string> => ({
+  "x-dev-tenant": String(tenantA),
+  "x-dev-actor": String(opActor),
+  "x-dev-real-authz": "1",
+})
+
+async function saveAs(formId: number, values: Record<string, unknown>): Promise<number> {
+  const res = await app.inject({
+    method: "POST",
+    url: `/api/forms/${String(formId)}/records`,
+    headers: OP(),
+    payload: { values },
+  })
+  expect(res.statusCode, res.body).toBe(201)
+  return (res.json() as { id: number }).id
+}
+
+async function runsOf(formId: number): Promise<string[]> {
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/forms/${String(formId)}/triggers/runs`,
+    headers: H(),
+  })
+  return (res.json() as { outcome: string }[]).map((r) => r.outcome)
+}
+
+/* 非同步 worker 平常由 cron 每分鐘跑。測試裡直接叫它,不等時鐘。 */
+async function runAsync(): Promise<void> {
+  await app.get(TriggerAsyncService).run()
+}
+
+async function listRecords(formId: number): Promise<Record<string, unknown>[]> {
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/forms/${String(formId)}/records`,
+    headers: H(),
+  })
+  return (res.json() as { records: { values: Record<string, unknown> }[] }).records.map(
+    (r) => r.values,
+  )
 }
 
 async function read(formId: number, recordId: number): Promise<Record<string, unknown>> {
@@ -406,5 +467,148 @@ describe("事件觸發器", () => {
       },
     })
     expect(res.statusCode).toBe(400)
+  })
+})
+
+/* 🔴 M3 非同步側:`pushTo`(往別張表建記錄)。
+
+   這一側與同步側的風險完全不同。同步側改的是待寫入值,不發新事件;
+   這一側**會建出新記錄 → 新事件 → 可能再觸發**,所以連鎖是真的可能無限。
+
+   逐條釘:
+   1. pushTo 真的建出了目標記錄,而且欄位對映有生效
+   2. 🔴 **連鎖會停** —— 兩張表互相 pushTo,跑很多輪之後記錄數要收斂,不是爆炸
+   3. 🔴 **權限不足記 denied,不升權** —— 「我看不到那張表但我可以設觸發器往裡面寫」不成立
+   4. 條件不符時不建 */
+describe("事件觸發器 · 非同步 pushTo", () => {
+  it("pushTo 建出目標記錄,欄位對映有生效", async () => {
+    const srcId = await makeForm("來源A")
+    const dstId = await makeForm("目標A")
+    await makeTrigger(srcId, {
+      name: "不合格開矯正單",
+      onCreate: true,
+      conditions: [{ field: "狀態", op: "eq", value: "不合格" }],
+      config: {
+        actionType: "pushTo",
+        targetFormId: dstId,
+        fieldMap: {
+          備註: { from: "field", field: "狀態" },
+          金額: { from: "literal", value: 42 },
+        },
+      },
+    })
+
+    await grantForms([srcId, dstId], `push_a_${String(srcId)}`)
+    await saveAs(srcId, { 金額: 1, 狀態: "不合格" })
+    await runAsync()
+
+    const rows = await listRecords(dstId)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.備註).toBe("不合格")
+    expect(Number(rows[0]?.金額)).toBe(42)
+  })
+
+  it("條件不符時不建", async () => {
+    const srcId = await makeForm("來源B")
+    const dstId = await makeForm("目標B")
+    await makeTrigger(srcId, {
+      name: "只有不合格才開",
+      onCreate: true,
+      conditions: [{ field: "狀態", op: "eq", value: "不合格" }],
+      config: { actionType: "pushTo", targetFormId: dstId, fieldMap: {} },
+    })
+
+    await grantForms([srcId, dstId], `push_b_${String(srcId)}`)
+    await saveAs(srcId, { 金額: 1, 狀態: "合格" })
+    await runAsync()
+
+    expect(await listRecords(dstId)).toHaveLength(0)
+  })
+
+  /* 🔴 本段最重要的一條。
+
+     兩張表互相 pushTo = 無限迴圈的教科書形態。沒有深度上限的話,
+     這個測試會一直建記錄直到把測試容器撐爆 —— 而在 prod 是撐爆客戶的資料庫。
+
+     驗的是**收斂**:跑很多輪之後總數穩定下來,而且有 `depth` 執行紀錄
+     說明它是「被擋下來」不是「碰巧沒跑」。 */
+  it("🔴 兩表互推:連鎖會停,而且停的時候留得下紀錄", async () => {
+    const aId = await makeForm("互推A")
+    const bId = await makeForm("互推B")
+    await makeTrigger(aId, {
+      name: "A→B",
+      onCreate: true,
+      config: { actionType: "pushTo", targetFormId: bId, fieldMap: {} },
+    })
+    await makeTrigger(bId, {
+      name: "B→A",
+      onCreate: true,
+      config: { actionType: "pushTo", targetFormId: aId, fieldMap: {} },
+    })
+
+    await grantForms([aId, bId], `push_loop_${String(aId)}`)
+    await saveAs(aId, { 金額: 1, 狀態: "起點" })
+    /* 跑得比深度上限多很多輪:若沒有上限,每一輪都會再生一筆 */
+    for (let i = 0; i < 12; i += 1) await runAsync()
+
+    const total = (await listRecords(aId)).length + (await listRecords(bId)).length
+    /* 深度上限 5 → 起點 1 筆 + 至多 5 代,取寬鬆上界即可證明「有停」 */
+    expect(total, `記錄數 ${String(total)} 應收斂`).toBeLessThanOrEqual(8)
+
+    /* ⚠️ 執行紀錄按**事件所在的表**分,而鏈條在哪一邊到頂事先不知道 ——
+       所以兩張表都要看。第一版只查 A,而 `depth` 剛好記在 B,紅得莫名其妙。 */
+    const outcomes = [...(await runsOf(aId)), ...(await runsOf(bId))]
+    /* 🔴 停下來的時候要說得出「為什麼」。沒有這一條的話,
+       「連鎖停了」與「觸發器根本沒接上」在數字上看起來一模一樣。 */
+    expect(outcomes, JSON.stringify(outcomes)).toContain("depth")
+    /* 而且它得先真的跑過幾輪,否則「一次都沒跑」也會讓上面的收斂斷言過 */
+    expect(outcomes).toContain("ran")
+  })
+
+  /* 🔴 這一條是 OQ-ET-3 的執法。 */
+  it("🔴 觸發者無權寫目標表 → 記 denied,不升權建記錄", async () => {
+    const srcId = await makeForm("來源C")
+    const dstId = await makeForm("目標C")
+    await makeTrigger(srcId, {
+      name: "推到沒權限的表",
+      onCreate: true,
+      config: { actionType: "pushTo", targetFormId: dstId, fieldMap: {} },
+    })
+
+    const authz = app.get(AuthzRepository)
+    const role = await authz.createRole({
+      tenantId: tenantA,
+      key: `src_only_${String(srcId)}`,
+      name: "只能用來源表",
+      parentId: null,
+    })
+    await authz.setFormActions(role.id, srcId, ["view", "create", "edit"])
+    /* 🔴 **用非 owner 的 actor**。`limitedActor` 的 id 剛好等於 dev 車道的 actor,
+       而這些表都是用 dev 車道建的 → `createdBy` 就是它 → **owner 短路**直接給全套資料動作,
+       於是「無權」測不出來(第一版就是這樣紅在「不該有記錄卻有」)。
+       權限測試最容易空過的地方之一:**測試用的身分剛好擁有那張表**。 */
+    await authz.assignMember(tenantA, role.id, opActor)
+    /* 🔴 目標表標為**敏感**才是真的無權。
+
+       第一版只是「不授予目標表」,而那樣**測不出東西** ——
+       未分類的非敏感表會落到租戶預設 profile(層 4),於是照樣有 create,
+       觸發器照跑,測試紅在「不該有記錄卻有」。
+       deny-by-default 在這個模型裡的正確表達是敏感旗標,不是「沒給」。 */
+    await authz.setFormSensitive(tenantA, dstId, true)
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(srcId)}/records`,
+      headers: OP(),
+      payload: { values: { 金額: 1, 狀態: "x" } },
+    })
+    expect(res.statusCode, res.body).toBe(201)
+
+    await runAsync()
+
+    /* 🔴 目標表**沒有**多出記錄 —— 若走系統身分,這裡會是 1 而沒有人發現 */
+    expect(await listRecords(dstId)).toHaveLength(0)
+
+    expect(await runsOf(srcId), "應記下 denied").toContain("denied")
   })
 })

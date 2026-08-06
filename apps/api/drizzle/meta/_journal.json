@@ -393,6 +393,13 @@
       "when": 1785946406003,
       "tag": "0055_trigger_def",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1785946407003,
+      "tag": "0056_trigger_async",
+      "breakpoints": true
     }
   ]
 }

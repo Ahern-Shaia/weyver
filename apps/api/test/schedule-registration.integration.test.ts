@@ -39,6 +39,9 @@ const EXPECTED_CRON_JOBS = [
      (刪 storage 物件、列留著標 expired)—— 加這一支時本測試立刻轉紅,
      這正是它存在的用途。 */
   "pdf.expire",
+  /* R1·C-4 M3 事件觸發器的非同步側(pushTo)。與 event.fanout 刻意分開:
+     共用標記欄的話,觸發器重試會讓通知與 webhook 一起重送。 */
+  "trigger.run",
 ] as const
 
 let container: StartedPostgreSqlContainer

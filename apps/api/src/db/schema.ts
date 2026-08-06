@@ -1257,9 +1257,16 @@ export const eventOutbox = pgTable(
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     // 扇出完成即標記;未完成者由 cron 重掃(可重入)
     fannedOutAt: timestamp("fanned_out_at", { withTimezone: true }),
+    /* 🔴 R1·C-4 M3|觸發器消費者的**獨立**標記。與 `fannedOutAt` 分開,
+       否則觸發器失敗重試會讓通知與 webhook 一起重送(它們是 at-least-once 的)。 */
+    triggerRunAt: timestamp("trigger_run_at", { withTimezone: true }),
+    /* 連鎖深度。由觸發器建出來的記錄,其事件由 worker 補上父深度 + 1。 */
+    depth: integer("depth").notNull().default(0),
+    triggerAttempts: integer("trigger_attempts").notNull().default(0),
   },
   (t) => [
     index("event_outbox_pending_idx").on(t.occurredAt).where(sql`fanned_out_at IS NULL`),
+    index("event_outbox_trigger_pending_idx").on(t.occurredAt).where(sql`trigger_run_at IS NULL`),
     index("event_outbox_tenant_idx").on(t.tenantId, t.occurredAt),
   ],
 )
