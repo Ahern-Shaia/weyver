@@ -16,7 +16,19 @@ import { type TriggerRow, TriggersRepository } from "./triggers.repository.js"
    4. **半套** —— 主檔存了、觸發器那次失敗了,資料停在不一致的狀態
 
    本支的做法是在寫入**之前**把值算好,一次寫進去。上面四個問題**在構造上不存在**,
-   不是「有處理」。這也是 Salesforce before-save flow 與 after-save flow 分開的理由。
+   不是「有處理」。
+
+   ⚠️ **這段第一版寫著「這也是 Salesforce before-save 與 after-save 分開的理由」——
+   而那句話當時沒有任何查證,是憑印象寫的。** 2026-08-06 補查後改成這樣:
+
+   Salesforce 官方〈Triggers and Order of Execution〉第 3 步逐字
+   「Executes record-triggered flows that are configured to **run before the record is saved**」
+   —— **時機**這件事查證屬實。
+   <https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_triggers_order_of_execution.htm>
+
+   但**「因為省掉第二次 DML 所以比較快」這個理由,本專案沒查到一手出處**
+   (Architect 決策指南的 URL 404,只有搜尋摘要,不算數)。
+   故此處只引用時機,不引用理由 —— 上面四點本來就自己站得住,不必借別人的權威。
 
    ## 為什麼只有 `updateSelf` 走同步
 

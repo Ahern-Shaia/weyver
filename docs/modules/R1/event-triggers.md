@@ -102,6 +102,85 @@ Ragic 的**無程式**自動觸發是 LLM 的(逐次消耗 AI 額度、模型可
 
 ---
 
+## §0-ter 站三補查(2026-08-06)—— **原版只查了 Ragic 一家,不合格**
+
+> ⚠️ **這一節是稽核的結果,不是當初就有的。**
+>
+> 出貨當下的站三只問了「Ragic 怎麼做」四道題,**一家、900 字上限、四分鐘**。
+> 對照 `docs/34`(六軸平行、逐一複驗 LICENSE 本文)與 `approval-advanced`
+> (一手查證五題、六家競品),那不叫深度研究,叫**一次定向查詢**。
+>
+> 🔴 **根因不是忘了查,是查的方向錯了。** 進場時站一已經給出答案(接既有 outbox
+> + 既有執行器),於是站三退化成「找一句話來**背書**已經決定的設計」,
+> 而不是「用查證去**決定**設計」。證據:四道題全在問 Ragic,
+> 沒有一道在問「還有誰做過、他們的取捨是什麼」。
+>
+> **判準**:深度研究會推翻東西。原版沒推翻任何東西(只把措辭從
+> 「Ragic 沒有事件觸發」改成「縫在確定性」),這一版推翻了兩個設計決定。
+
+### 🔴 補查推翻的兩件事
+
+#### ① 我沒有「草稿 / 生效」分離,而 Teable 有
+
+Teable 官方逐字(`teable-docs/.../basic/automation.md`):
+
+> Changes are saved as a draft. **The live workflow keeps running on the previous version
+> until you click Apply Update.**
+
+我方是**改了立刻生效**:設計者改到一半的觸發器,當下就在對真實資料動作。
+這一面原本完全沒想到。**列為殘留**(見 §4)。
+
+#### ② 「不重試」我下得太早
+
+M3 裁定「個別觸發器失敗不重試,因為 `pushTo` 不冪等」—— 理由沒錯,結論太早。
+Teable 的答案是**給選擇並明講風險**,而不是替使用者決定:
+
+> **Full rerun** runs every step again and **may create duplicate records, emails, or notifications**.
+> **Resume from failed step** is available when Teable can safely continue from the failed step.
+
+它還做到「不能接續時說明為什麼」。Airtable 同樣是手動 Rerun(`managing-airtable-automations`):
+
+> You can click **Rerun** on any past failed run in the run history. If the original automation
+> configuration has since changed, **the rerun will still attempt to execute using the configuration
+> at the time of the original run**, not the current configuration.
+
+我方的執行紀錄只有一列 outcome,**連重跑都沒有**。列為殘留。
+
+### 🔴 補查**確認**的一件事:遞迴防護我方在它們之上
+
+| | 遞迴 / 自我觸發防護 | 逐字 |
+|---|---|---|
+| **Airtable** | ❌ 無,燒完配額為止 | 「this automation will **loop endlessly until you've exhausted your workspace plan limits**」(`troubleshooting-airtable-automations`)|
+| **Teable** | ❌ 無,推給使用者 | 「be careful to avoid infinite loops. **Use a filter to exclude records that were created by automation** (for example, by checking a flag field)」(`automation/trigger/records/record-created`)|
+| **Salesforce** | ✅ 有,且有數字 | 「Total stack depth for any Apex invocation that recursively fires triggers due to insert, update, or delete statements: **16**」([Apex Governor Limits](https://developer.salesforce.com/docs/atlas.en-us.salesforce_app_limits_cheatsheet.meta/salesforce_app_limits_cheatsheet/salesforce_app_limits_platform_apexgov.htm))|
+| **Weyver** | ✅ 系統層 `depth` 上限 5 | 見 `trigger-async.service.ts` |
+
+⚠️ 三條 Airtable 引用與一條 Teable 引用**皆由本專案開檔覆查**,非採信轉述。
+Salesforce 那條由本專案直接 fetch 官方頁取得。
+
+### Airtable Automations 其餘要點(本地鏡像 168 篇)
+
+| 面向 | Airtable | 我方 |
+|---|---|---|
+| **同步路徑** | **完全沒有**。逐字「an automation run will occur **instantaneously after** the conditions... are met」·「Airtable **reads the record the moment the trigger fires**, and computed fields can take a moment longer」→ 讀到還沒算完的值是**已知失敗模式** | 有(存檔前改待寫入值),**本地庫查無對應物** |
+| 觸發時機 | 進入視圖 / 建立 / 更新(**可選欄位白名單**)/ 符合條件 / 表單送出 / 排程 / webhook / 按鈕 | 建立 / 更新(可選監看欄)|
+| 「舊值 vs 新值」 | **本地庫查無**任何 previous-value token | 有(`watchFields` 逐欄比對前值)|
+| 條件 | and / or,**明文「Can I nest conditions? No」**;且視圖的進階篩選「**is not available in the Airtable Automations feature**」 | 目前只有 and |
+| 執行順序 | **官方自相矛盾**:一處「**No.** ...no guarantee they occur in the order they were triggered... **leading to race conditions**」,另一處「Airtable runs automation operations **one at a time, in order**」 | 單一 worker + advisory lock,序列 |
+| 動作 | 建立 / 更新(**一次一筆**)/ 寄信 / 找記錄 / **Run a script** / 各家整合 | 更新本筆 / 建別表記錄 |
+| 執行紀錄保留 | 3 年 / 1 年 / 6 個月 / 2 週(依方案)| 無保留期政策 —— **殘留** |
+| 官方明說做不到 | 「**Can I use this automation to create records in other bases? In general, no.**」·「**They do not evaluate spreadsheet-style math**」(要算就得先建 formula 欄或寫 script)| 我方 `pushTo` 跨表是原生能力 |
+
+⚠️ **不得宣稱「Airtable 沒有自動化」** —— 它的觸發時機比我方多,動作也多。
+真正的差別在**同步路徑**(它沒有)與**遞迴防護**(它沒有)。
+
+### 這一輪同樣查了、但沒東西的
+
+- **Baserow**:本地鏡像只有 65 份**開發者**文件,`automation` 命中全是 k8s / formula / locks 之類的巧合。**本地庫無 automation 功能文件。**
+- **Odoo**:本輪未查(automated action 與本模組可比,**列為未查證**,不得當成「沒有」)。
+
+---
+
 ## §1 要解的問題
 
 Ragic 範式的使用者會問的是這種問題:
@@ -235,6 +314,16 @@ M0 原寫「以觸發者身分執行,權限不足記 `denied`」。**實作時�
 | M3 | 非同步側:outbox 消費者 + `pushTo` + 深度上限 + 死信 | ✅ 2026-08-06 |
 | M4 | 設計器 UI(觸發時機 / 條件 / 動作 / 試跑 / 執行紀錄)| ✅ 2026-08-06 |
 | M5 | e2e 固化 + FMEA | 🟡 e2e ✅;FMEA 待補 |
+
+### 🔴 站三補查後新增的殘留(2026-08-06)
+
+| 殘留 | 依據 |
+|---|---|
+| **改了立刻生效,沒有草稿 / Apply Update** | Teable 逐字「live workflow keeps running on the previous version until you click Apply Update」。目前設計者改到一半就在對真實資料動作 |
+| **執行紀錄不能重跑** | Teable 給 full rerun + resume-from-failed 並明講重複風險;Airtable 給 Rerun 且**用當時的設定重跑**。我方連重跑都沒有 |
+| **執行紀錄無保留期** | Airtable 依方案 2 週 – 3 年。我方無政策,`trigger_run` 會無限長 |
+| **條件只有 and** | Airtable 有 and / or(但明文不支援巢狀)|
+| **Odoo automated action 未查** | 本輪沒查,不得當成「沒有」|
 
 ### M1–M2 實作紀錄
 

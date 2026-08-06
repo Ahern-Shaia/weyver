@@ -40,6 +40,38 @@ import { type TriggerRow, TriggersRepository } from "./triggers.repository.js"
    一旦給了系統身分,「我看不到那張表,但我可以設一條觸發器往裡面寫」就成立。
    權限不足 → 寫 `denied`,不升權。 */
 
+/* 🔴 這四個數字的出處(2026-08-06 補查;第一版全是憑感覺訂的)。
+
+   ## `MAX_DEPTH = 5` —— 有外部錨,但刻意訂得更嚴
+
+   **Salesforce Apex Governor Limits 逐字**:「Total stack depth for any Apex invocation
+   that **recursively fires triggers** due to insert, update, or delete statements: **16**」
+   <https://developer.salesforce.com/docs/atlas.en-us.salesforce_app_limits_cheatsheet.meta/salesforce_app_limits_cheatsheet/salesforce_app_limits_platform_apexgov.htm>
+
+   我方取 5 而非 16:Salesforce 的 16 涵蓋的是**同交易內的 Apex 呼叫堆疊**,
+   而我方這一側是**跨分鐘的非同步鏈**,每一層都是一筆真實記錄。
+   五代之後還在連鎖,幾乎必然是設定錯誤而不是業務需求。
+   **這是我方的裁定,不是照抄** —— 16 只用來確認「業界確實會設上限」。
+
+   ## 對照組:兩家競品**都沒有**系統層的遞迴防護(逐字)
+
+   - **Airtable**:「this automation will **loop endlessly until you've exhausted
+     your workspace plan limits**」(`troubleshooting-airtable-automations`)
+     —— 唯一的煞車是燒完月配額。
+   - **Teable**:「be careful to avoid infinite loops. **Use a filter to exclude records
+     that were created by automation** (for example, by checking a flag field)」
+     (`automation/trigger/records/record-created`)—— 責任推給使用者自己加旗標欄。
+
+   兩條都是本專案開檔覆查過的逐字原文。
+
+   ## 🔴 `MAX_ATTEMPTS = 3` 與 `BATCH_LIMIT = 100` —— **無外部依據,誠實記**
+
+   查過的兩家都幫不上:Airtable **不自動重試**(只給手動 Rerun,並要使用者
+   「build redundancy... using retry logic or delay steps」);Teable 給的是
+   full rerun / resume-from-failed 兩個**手動**選項。批次大小同樣無對應數字。
+
+   所以這兩個值是**我方憑工程判斷訂的**,沒有出處。留在這裡是為了讓下一個人知道
+   「動它不需要先推翻誰」——(`docs/22`:數值無出處就不寫成規範)。 */
 const BATCH_LIMIT = 100
 const TRIGGER_LOCK_KEY = 909_005
 const MAX_DEPTH = 5
