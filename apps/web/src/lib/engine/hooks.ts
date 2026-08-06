@@ -21,6 +21,7 @@ import {
   type Layout,
   type ListResponse,
   type RecordRow,
+  type TriggerConfig,
   type ViewConfig,
   type ViewDto,
   type ViewFilterCondition,
@@ -43,6 +44,9 @@ import {
   restoreBlockerSchema,
   reverseRelationGroupSchema,
   trashItemSchema,
+  triggerDryRunSchema,
+  triggerDtoSchema,
+  triggerRunDtoSchema,
   userNameSchema,
   viewDtoSchema,
   viewFilterConditionSchema,
@@ -531,6 +535,8 @@ export const actionKeys = {
   recordApproval: (formId: number, recordId: number) =>
     ["forms", formId, "approval", recordId] as const,
   myPending: ["approvals", "pending"] as const,
+  triggers: (formId: number) => ["forms", formId, "triggers"] as const,
+  triggerRuns: (formId: number) => ["forms", formId, "triggerRuns"] as const,
 }
 
 export function useButtons(formId: number | null) {
@@ -570,6 +576,73 @@ export function useRunButton(formId: number) {
         { method: "POST", body: {} },
       ),
     onSuccess: () => invalidate([formKeys.records(formId)]),
+  })
+}
+
+/* R1·C-4 事件觸發器。 */
+export function useTriggers(formId: number | null) {
+  return useQuery({
+    queryKey: actionKeys.triggers(formId ?? -1),
+    queryFn: () => engineFetch(`/forms/${formId}/triggers`, z.array(triggerDtoSchema)),
+    enabled: formId !== null,
+    staleTime: 30_000,
+  })
+}
+
+export function useTriggerRuns(formId: number | null) {
+  return useQuery({
+    queryKey: actionKeys.triggerRuns(formId ?? -1),
+    queryFn: () => engineFetch(`/forms/${formId}/triggers/runs`, z.array(triggerRunDtoSchema)),
+    enabled: formId !== null,
+    /* 執行紀錄會一直長,別讓它停在快取上 —— 設計者剛存完一筆就會來看 */
+    staleTime: 0,
+  })
+}
+
+export function useCreateTrigger(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: {
+      name: string
+      onCreate: boolean
+      onUpdate: boolean
+      watchFields: string[]
+      conditions: { field: string; op: string; value?: unknown }[]
+      config: TriggerConfig
+    }) =>
+      engineFetch(`/forms/${formId}/triggers`, triggerDtoSchema, { method: "POST", body: input }),
+    onSuccess: () => invalidate([actionKeys.triggers(formId)]),
+  })
+}
+
+export function useUpdateTrigger(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { triggerId: number; enabled?: boolean }) =>
+      engineFetch(`/forms/${formId}/triggers/${input.triggerId}`, triggerDtoSchema, {
+        method: "PATCH",
+        body: { enabled: input.enabled },
+      }),
+    onSuccess: () => invalidate([actionKeys.triggers(formId)]),
+  })
+}
+
+export function useDeleteTrigger(formId: number) {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (triggerId: number) =>
+      engineFetch(`/forms/${formId}/triggers/${triggerId}`, voidSchema, { method: "DELETE" }),
+    onSuccess: () => invalidate([actionKeys.triggers(formId)]),
+  })
+}
+
+export function useTriggerDryRun(formId: number) {
+  return useMutation({
+    mutationFn: (values: Record<string, unknown>) =>
+      engineFetch(`/forms/${formId}/triggers/dry-run`, triggerDryRunSchema, {
+        method: "POST",
+        body: { values },
+      }),
   })
 }
 
@@ -1202,7 +1275,7 @@ export function useLinkLabels(
   })
 
   const key = wanted.map((w) => `${String(w.fieldId)}:${w.ids.join("|")}`).join(";")
-  const payload = results.map((r) => r.data?.options ?? []).flat().length
+  const payload = results.flatMap((r) => r.data?.options ?? []).length
   const groupKey = `${groupFields.map((f) => f.id).join(",")}|${(groups ?? []).length}`
   // biome-ignore lint/correctness/useExhaustiveDependencies: results 每次 render 皆為新陣列,以內容摘要為依賴
   return useMemo(() => {

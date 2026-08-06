@@ -8,6 +8,7 @@ import {
   ChevronDownSquare,
   CircleUser,
   DollarSign,
+  EyeOff,
   Hash,
   Image,
   Link2,
@@ -24,7 +25,6 @@ import {
   Type,
   Link as UrlIcon,
   Users,
-  EyeOff,
 } from "lucide-react"
 import type { CellValueType } from "./schemas"
 

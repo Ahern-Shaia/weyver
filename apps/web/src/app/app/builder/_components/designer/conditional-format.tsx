@@ -1,29 +1,21 @@
 "use client"
 
+import { ConditionRows } from "@/app/app/builder/_components/designer/condition-rows"
 import {
   RuleEffects,
   TONE_LABEL,
   toneOf,
 } from "@/app/app/builder/_components/designer/conditional-format-effects"
 import { evaluateFormats } from "@/lib/engine/conditional-format"
+import { FORMAT_OPERATOR_LABEL, PSEUDO_FIELD_LABEL } from "@/lib/engine/field-filters"
 import { useButtons } from "@/lib/engine/hooks"
-import type { FormatOperator } from "@/lib/engine/schemas"
-import {
-  FORMAT_OPERATOR_LABEL,
-  PSEUDO_FIELD_LABEL,
-  formatOperatorsFor,
-  operatorNeedsRange,
-} from "@/lib/engine/field-filters"
 import type {
   ConditionalFormats,
   FieldDto,
-  FilterOperator,
   FormatRule,
   RecordRow,
   Section,
 } from "@/lib/engine/schemas"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
 import { type ChipTone, StatusChip } from "@weyver/ui/status-chip"
 import { Copy, Plus, X } from "lucide-react"
 import { type ReactNode, useState } from "react"
@@ -221,116 +213,12 @@ export function ConditionalFormatPanel({
               </button>
             </div>
 
-            {rule.conditions.map((cond, ci) => {
-              const field = fields.find((f) => f.name === cond.field)
-              const ops = formatOperatorsFor(cond.field, field?.type)
-              const needsValue = cond.op !== "isEmpty" && cond.op !== "isNotEmpty"
-              const needsRange = operatorNeedsRange(cond.op)
-              /* 區間值以 `[from, to]` 存;非區間存單一值。UI 兩格,模型一個鍵。 */
-              const range = Array.isArray(cond.value) ? cond.value.map(String) : ["", ""]
-              const setRange = (i: 0 | 1, v: string): void => {
-                const next = [range[0] ?? "", range[1] ?? ""]
-                next[i] = v
-                setCondValue(next)
-              }
-              const setCond = (next: Partial<typeof cond>): void =>
-                patch(selected, {
-                  conditions: rule.conditions.map((c, i) => (i === ci ? { ...c, ...next } : c)),
-                })
-              const setCondValue = (v: unknown): void => setCond({ value: v })
-              return (
-                <div key={`cond-${ci}`} className="mb-2 flex flex-col gap-1">
-                  <Select
-                    className="h-7 w-full"
-                    value={cond.field}
-                    onChange={(e) => setCond({ field: e.target.value })}
-                    aria-label={`條件 ${ci + 1} 欄位`}
-                  >
-                    {fieldNames.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                    {/* 🔴 虛擬欄位(Ragic `doc/6`「指定當前時間」/「指定使用者或群組」)。
-                        放在同一個下拉裡而不是另開一種條件型別 —— 條件的形狀不變。 */}
-                    {Object.entries(PSEUDO_FIELD_LABEL).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </Select>
-                  <div className="flex items-center gap-1.5">
-                    <Select
-                      className="h-7 flex-1"
-                      value={cond.op}
-                      onChange={(e) => setCond({ op: e.target.value as FormatOperator })}
-                      aria-label={`條件 ${ci + 1} 運算子`}
-                    >
-                      {ops.map((op) => (
-                        <option key={op} value={op}>
-                          {FORMAT_OPERATOR_LABEL[op] ?? op}
-                        </option>
-                      ))}
-                    </Select>
-                    {needsRange ? (
-                      <>
-                        <Input
-                          className="h-7 flex-1"
-                          value={range[0] ?? ""}
-                          onChange={(e) => setRange(0, e.target.value)}
-                          aria-label={`條件 ${ci + 1} 起`}
-                          placeholder={cond.op === "dailyBetween" ? "09:00" : "2026-03-01"}
-                        />
-                        <Input
-                          className="h-7 flex-1"
-                          value={range[1] ?? ""}
-                          onChange={(e) => setRange(1, e.target.value)}
-                          aria-label={`條件 ${ci + 1} 迄`}
-                          placeholder={cond.op === "dailyBetween" ? "18:00" : "2026-03-05"}
-                        />
-                      </>
-                    ) : needsValue ? (
-                      <Input
-                        className="h-7 flex-1"
-                        value={typeof cond.value === "string" ? cond.value : ""}
-                        onChange={(e) => setCond({ value: e.target.value })}
-                        aria-label={`條件 ${ci + 1} 值`}
-                      />
-                    ) : (
-                      <span className="flex-1" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        patch(selected, {
-                          conditions: rule.conditions.filter((_, i) => i !== ci),
-                        })
-                      }
-                      disabled={rule.conditions.length <= 1}
-                      aria-label={`移除條件 ${ci + 1}`}
-                      className="text-ink-disabled hover:text-er disabled:opacity-30"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-            <button
-              type="button"
-              onClick={() =>
-                patch(selected, {
-                  conditions: [
-                    ...rule.conditions,
-                    { field: fieldNames[0] ?? "", op: "isNotEmpty" as FilterOperator },
-                  ],
-                })
-              }
-              disabled={rule.conditions.length >= 20}
-              className="text-[12px] text-primary hover:underline disabled:opacity-40"
-            >
-              ＋ 加條件
-            </button>
+            <ConditionRows
+              conditions={rule.conditions}
+              fieldNames={fieldNames}
+              fieldTypeOf={(n) => fields.find((f) => f.name === n)?.type}
+              onChange={(next) => patch(selected, { conditions: next as FormatRule["conditions"] })}
+            />
 
             <RuleEffects
               rule={rule}

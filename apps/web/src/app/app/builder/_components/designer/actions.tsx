@@ -1,13 +1,14 @@
 "use client"
 
-import { Plus, Trash2, X } from "lucide-react"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
-import { type ReactNode, useState } from "react"
+import { TriggersPanel } from "@/app/app/builder/_components/designer/triggers-panel"
+import { LabelsPanel } from "@/app/app/builder/_components/output/labels"
 import { describeEngineError } from "@/lib/engine/client"
 import { useButtons, useCreateButton, useDeleteButton, useForms } from "@/lib/engine/hooks"
 import type { ButtonConfig, FormDto } from "@/lib/engine/schemas"
-import { LabelsPanel } from "@/app/app/builder/_components/output/labels"
+import { Input } from "@weyver/ui/input"
+import { Select } from "@weyver/ui/select"
+import { Plus, Trash2, X } from "lucide-react"
+import { type ReactNode, useState } from "react"
 import { ApprovalPanel } from "./approval-def-editor"
 
 /* R1·後續-1 M4 設計器:表單掛自訂按鈕(動作型別 + 映射)+ 簽核定義(步驟 + 簽核角色 + 金額條件)。
@@ -21,7 +22,7 @@ export function ActionsDesigner({
   readonly form: FormDto
   readonly onClose: () => void
 }): ReactNode {
-  const [tab, setTab] = useState<"buttons" | "approval" | "labels">("buttons")
+  const [tab, setTab] = useState<"buttons" | "triggers" | "approval" | "labels">("buttons")
   return (
     <div className="flex w-80 shrink-0 flex-col border-l border-line bg-card">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -35,6 +36,17 @@ export function ActionsDesigner({
           }
         >
           自訂按鈕
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("triggers")}
+          className={
+            tab === "triggers"
+              ? "text-[12px] font-semibold text-primary"
+              : "text-[12px] text-ink-3 hover:text-ink"
+          }
+        >
+          自動觸發
         </button>
         <button
           type="button"
@@ -65,6 +77,8 @@ export function ActionsDesigner({
       <div className="flex-1 overflow-y-auto p-3">
         {tab === "buttons" ? (
           <ButtonsPanel formId={formId} form={form} />
+        ) : tab === "triggers" ? (
+          <TriggersPanel formId={formId} form={form} />
         ) : tab === "approval" ? (
           <ApprovalPanel formId={formId} form={form} />
         ) : (

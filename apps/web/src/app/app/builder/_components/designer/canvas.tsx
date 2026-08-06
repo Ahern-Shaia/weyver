@@ -8,6 +8,14 @@ import {
 } from "@/app/app/builder/_components/designer/field-settings"
 import { PrintSettingsPanel } from "@/app/app/builder/_components/output/print-settings"
 import { describeEngineError } from "@/lib/engine/client"
+import { fieldTypeIcon } from "@/lib/engine/field-icons"
+import {
+  FORM_COL_W,
+  FORM_DEFAULT_SPAN,
+  FORM_ROW_H,
+  cellPosition,
+  effectiveLayout,
+} from "@/lib/engine/form-geometry"
 import {
   formKeys,
   useDropField,
@@ -16,14 +24,6 @@ import {
   usePutLayout,
   useRecords,
 } from "@/lib/engine/hooks"
-import { fieldTypeIcon } from "@/lib/engine/field-icons"
-import {
-  cellPosition,
-  effectiveLayout,
-  FORM_COL_W,
-  FORM_DEFAULT_SPAN,
-  FORM_ROW_H,
-} from "@/lib/engine/form-geometry"
 import { sampleIsMono, sampleValue } from "@/lib/engine/sample-value"
 import type {
   FieldDto,

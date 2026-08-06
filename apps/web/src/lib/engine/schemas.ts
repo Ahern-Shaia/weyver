@@ -424,6 +424,51 @@ export const buttonDtoSchema = z.object({
 })
 export type ButtonDto = z.infer<typeof buttonDtoSchema>
 
+/* R1·C-4 事件觸發器。動作是按鈕的**子集** —— `openUrl` 不在,沒有人在場。 */
+export const triggerConfigSchema = z.discriminatedUnion("actionType", [
+  z.object({
+    actionType: z.literal("updateSelf"),
+    setFields: z.record(z.string(), valueSourceSchema),
+  }),
+  z.object({
+    actionType: z.literal("pushTo"),
+    targetFormId: z.number().int(),
+    fieldMap: z.record(z.string(), valueSourceSchema),
+  }),
+])
+export type TriggerConfig = z.infer<typeof triggerConfigSchema>
+
+export const triggerDtoSchema = z.object({
+  id: z.number().int(),
+  formId: z.number().int(),
+  name: z.string(),
+  onCreate: z.boolean(),
+  onUpdate: z.boolean(),
+  watchFields: z.array(z.string()),
+  conditions: z.array(z.object({ field: z.string(), op: z.string(), value: z.unknown() })),
+  actionType: z.enum(["updateSelf", "pushTo"]),
+  config: triggerConfigSchema,
+  position: z.number().int(),
+  enabled: z.boolean(),
+})
+export type TriggerDto = z.infer<typeof triggerDtoSchema>
+
+export const triggerRunDtoSchema = z.object({
+  id: z.number().int(),
+  triggerId: z.number().int(),
+  triggerName: z.string(),
+  recordId: z.number().int(),
+  outcome: z.enum(["ran", "skipped", "denied", "failed", "depth"]),
+  detail: z.record(z.string(), z.unknown()).nullable(),
+  createdAt: z.string(),
+})
+export type TriggerRunDto = z.infer<typeof triggerRunDtoSchema>
+
+export const triggerDryRunSchema = z.object({
+  values: z.record(z.string(), z.unknown()),
+  ran: z.array(z.object({ triggerId: z.number().int() })),
+})
+
 export const actionResultSchema = z.object({
   outcome: z.enum(["updated", "created", "openUrl", "duplicate"]),
   targetRecordId: z.number().int().optional(),

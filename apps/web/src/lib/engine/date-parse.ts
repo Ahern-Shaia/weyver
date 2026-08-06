@@ -1,4 +1,4 @@
-import { type DateFormatKey, DATE_FORMATS } from "./display-value"
+import { DATE_FORMATS, type DateFormatKey } from "./display-value"
 
 /* 🔴 R1·FMT M3|日期的**寬鬆解析**與月曆格運算。純函式,無 React,可單元測。
 
