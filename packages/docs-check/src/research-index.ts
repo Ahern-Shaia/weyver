@@ -50,6 +50,17 @@ export interface ModuleResearch {
   readonly ragicDocs: readonly string[]
   /** 提到的其他來源(競品 / 套件 / 規範) */
   readonly otherSources: readonly string[]
+  /* 🔴 明示豁免的理由。`null` = 沒有豁免。
+
+     **不是所有模組都需要外部研究。** `subscription-billing` 的核心論據是
+     「用量歷史晚做就永久失去,是唯一不可回溯的」—— 那是第一原理,
+     不是 Airtable 有沒有這樣做的問題。硬要它湊十個連結就是**引用表演**,
+     而表演會讓整個指標失去意義。
+
+     🔴 **但豁免必須是明示的、有理由的、而且列得出來的**:
+     格式為一行 `> **研究豁免**|理由…`,理由太短(< 20 字)不算,
+     且所有豁免會列進索引 §D 供稽核。**靜默的例外才是漏洞,寫出來的不是。** */
+  readonly exemptReason: string | null
 }
 
 /* 🔴 只認 Ragic 的引用形式:`doc/81` / `doc-kb/284` / `doc-user/22`。
@@ -124,6 +135,15 @@ function walk(dir: string): string[] {
   return out
 }
 
+/* 一行 `> **研究豁免**|<理由>`。理由太短視為沒寫 —— 「不需要」三個字不算理由。 */
+const EXEMPT_MIN_REASON = 20
+
+export function parseExemption(text: string): string | null {
+  const m = /^>?\s*\*\*研究豁免\*\*[|｜]\s*(.+)$/m.exec(text)
+  const reason = m?.[1]?.trim() ?? ""
+  return reason.length >= EXEMPT_MIN_REASON ? reason : null
+}
+
 function titleOf(text: string, fallback: string): string {
   const m = /^#\s+(.+)$/m.exec(text)
   if (m?.[1] === undefined) return fallback
@@ -180,6 +200,7 @@ export function collectResearch(root: string): ModuleResearch[] {
         (a, b) => Number(a) - Number(b),
       ),
       otherSources: canonicalSources(text.match(OTHER_SOURCE_PATTERN) ?? []),
+      exemptReason: parseExemption(text),
     })
   }
   return out.sort((a, b) => a.path.localeCompare(b.path))
@@ -272,6 +293,23 @@ export function renderIndex(mods: readonly ModuleResearch[]): string {
     )
   }
   lines.push("")
+
+  const exempt = mods.filter((m) => m.exemptReason !== null)
+  if (exempt.length > 0) {
+    lines.push("## D. 明示豁免外部研究的模組(**逐條列出供稽核**)")
+    lines.push("")
+    lines.push(
+      "🔴 **不是所有模組都需要外部研究。** 但豁免必須是**明示的、有理由的、列得出來的** ——",
+      "靜默的例外才是漏洞,寫出來的不是。要質疑某一條豁免,直接看它的理由。",
+      "",
+      "| 模組 | 豁免理由 | 文件 |",
+      "|---|---|---|",
+    )
+    for (const m of exempt) {
+      lines.push(`| ${m.title} | ${m.exemptReason ?? ""} | [${m.path}](${m.path}) |`)
+    }
+    lines.push("")
+  }
 
   lines.push("## C. 反向索引|哪一份 Ragic 官方文件已經被讀過")
   lines.push("")

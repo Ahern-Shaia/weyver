@@ -40,7 +40,7 @@ import { type ModuleResearch, collectResearch } from "./research-index"
 const ROOT = join(import.meta.dirname, "../../..")
 
 /* 🔴 只能往下調。往上調 = 這條規則失效,審 PR 的人看到 +1 就該擋下來。 */
-const BASELINE = 2
+const BASELINE = 1
 
 function meetsBar(m: ModuleResearch): boolean {
   const hasSection = m.hasGiantsSection || m.hasEvidenceSection
@@ -54,7 +54,9 @@ function meetsBar(m: ModuleResearch): boolean {
 
 describe("出貨的功能都要有可回查的研究", () => {
   const shipped = collectResearch(ROOT).filter((m) => m.shipped)
-  const weak = shipped.filter((m) => !meetsBar(m))
+  /* 明示豁免者不計入不合格,但**另外設上限** —— 見下一條測試。 */
+  const exempt = shipped.filter((m) => m.exemptReason !== null)
+  const weak = shipped.filter((m) => m.exemptReason === null && !meetsBar(m))
 
   it(`🔴 不合格的已出貨模組不得超過 ${String(BASELINE)} 份(只能往下)`, () => {
     expect(
@@ -78,6 +80,23 @@ describe("出貨的功能都要有可回查的研究", () => {
         "   已知有幾份的研究寫在非標準章節(如 §10-bis)且沒放 URL。",
       ].join("\n"),
     ).toBeLessThanOrEqual(BASELINE)
+  })
+
+  /* 🔴 **豁免的上限。** 沒有這一條的話,棘輪可以靠「把每份都標豁免」歸零 ——
+     那正是把檢查變成表演。上限刻意訂得很低:需要豁免是例外,不是常態。
+
+     ⚠️ 理由太短(< 20 字)的豁免**不算數**(`parseExemption`),
+     所以「不需要」三個字過不了關。 */
+  it("🔴 明示豁免的模組不得超過 2 份(豁免是例外,不是逃生口)", () => {
+    expect(
+      exempt.length,
+      [
+        `目前豁免 ${String(exempt.length)} 份:`,
+        ...exempt.map((m) => `  ${m.path} —— ${m.exemptReason ?? ""}`),
+        "",
+        "🔴 豁免變多 = 這條規則正在被繞過。要加第三份,先問「它真的不需要外部研究嗎」。",
+      ].join("\n"),
+    ).toBeLessThanOrEqual(2)
   })
 
   /* 守衛的守衛:`collectResearch` 回空陣列時 `weak.length` 是 0,
