@@ -1,8 +1,8 @@
 import "reflect-metadata"
 import { NestFactory } from "@nestjs/core"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
-import { AppModule } from "./app.module.js"
 import { configureApp } from "./app-setup.js"
+import { AppModule } from "./app.module.js"
 import { envSchema } from "./config/env.js"
 import { RedactingLogger } from "./http/log-redact.js"
 

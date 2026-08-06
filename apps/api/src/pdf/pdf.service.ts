@@ -3,13 +3,13 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nest
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { PermissionService } from "../authz/permission.service.js"
 import { AccessPreviewService } from "../form-engine/access/access-preview.service.js"
-import { SettingsService } from "../settings/settings.service.js"
+import { toFieldDto } from "../form-engine/api/api-schemas.js"
 import { LayoutService } from "../form-engine/layout/layout.service.js"
 import { MetadataService } from "../form-engine/metadata/metadata.service.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import { LinkOptionsService } from "../form-engine/relations/link-options.service.js"
-import { toFieldDto } from "../form-engine/api/api-schemas.js"
-import { PdfRepository, type PdfJobRow } from "./pdf.repository.js"
+import { SettingsService } from "../settings/settings.service.js"
+import { type PdfJobRow, PdfRepository } from "./pdf.repository.js"
 
 /* 票的有效期。渲染器就在同一台機器上,60 秒綽綽有餘 ——
    長效票只是把外洩窗口拉大,換不到任何東西。 */

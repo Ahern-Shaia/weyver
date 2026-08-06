@@ -7,7 +7,7 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import { SearchService, type SearchResult } from "./search.service.js"
+import { type SearchResult, SearchService } from "./search.service.js"
 
 /* R1·H-3 M3|跨表全文搜尋。
 

@@ -18,10 +18,10 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
+import { ChannelConfigService, type ChannelStatus } from "./channel-config.service.js"
 import { CHANNEL_IDS, type ChannelId, isChannelId } from "./channel-registry.js"
-import { NOTIFICATION_EVENTS } from "./notification-specs.js"
-import { type ChannelStatus, ChannelConfigService } from "./channel-config.service.js"
 import { ChannelSenderService, type SendResult } from "./channel-sender.service.js"
+import { NOTIFICATION_EVENTS } from "./notification-specs.js"
 
 /* 🔴 R1·A-1 M4|通知通道連接 API。
 

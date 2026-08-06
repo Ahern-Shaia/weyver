@@ -1,4 +1,4 @@
-import { createParamDecorator, type ExecutionContext } from "@nestjs/common"
+import { type ExecutionContext, createParamDecorator } from "@nestjs/common"
 import type { RequestWithTenant, TenantContext } from "./tenant-context.js"
 
 export const Tenant = createParamDecorator(

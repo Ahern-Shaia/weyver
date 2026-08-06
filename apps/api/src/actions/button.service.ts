@@ -2,12 +2,7 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nest
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { TenantContext } from "../http/tenant-context.js"
-import type {
-  ButtonConfig,
-  ButtonDto,
-  CreateButtonBody,
-  UpdateButtonBody,
-} from "./action-specs.js"
+import type { ButtonConfig, ButtonDto, CreateButtonBody, UpdateButtonBody } from "./action-specs.js"
 import { ActionsRepository, type ButtonRow } from "./actions.repository.js"
 import { compileValues } from "./compile-values.js"
 

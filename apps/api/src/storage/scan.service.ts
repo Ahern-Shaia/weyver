@@ -4,8 +4,8 @@ import { ConfigService } from "@nestjs/config"
 import { Cron, CronExpression } from "@nestjs/schedule"
 import type { Knex } from "knex"
 import { DDL_KNEX } from "../db/db.module.js"
-import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
 import { type ClamOptions, type ClamVerdict, ping, scanBuffer } from "./clamav-client.js"
+import { STORAGE_DRIVER, type StorageDriver } from "./storage-driver.js"
 
 /* 🔴 F-11 M4|補掃。
 

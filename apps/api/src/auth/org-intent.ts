@@ -1,5 +1,5 @@
-import { ConflictException } from "@nestjs/common"
 import type { IncomingHttpHeaders } from "node:http"
+import { ConflictException } from "@nestjs/common"
 
 /* 🔴 F-10|分頁級租戶上下文。
 

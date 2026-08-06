@@ -721,3 +721,67 @@ describe("事件觸發器 · 草稿與發布", () => {
     expect((await read(formId, after)).狀態).toBe("沒被動")
   })
 })
+
+/* 🔴 FMEA T2|**引用的欄位被下架 → 不得讓整張表寫不了。**
+
+   實測過的原始行為:掛一條寫「狀態」的觸發器,把「狀態」欄下架
+   (設計器那顆按鈕逐字「即時,不可復原」)之後,該表**所有新增回 422
+   `unknown field: 狀態`**,而訊息完全不提觸發器 —— 一鍵把表寫死。
+
+   ⚠️ 這一條原本被我寫成「改欄位名」的 P0,而**系統根本沒有改名端點**。
+   去實證才發現。FMEA 每一條都要問「這個操作真的存在嗎」。 */
+describe("事件觸發器 · 欄位不見了", () => {
+  it("🔴 觸發器引用的欄位被下架 → 跳過該條,表單照樣存得進去", async () => {
+    const formId = await makeForm("欄位消失A")
+    const id = await makeTrigger(formId, {
+      name: "寫狀態",
+      onCreate: true,
+      config: {
+        actionType: "updateSelf",
+        setFields: { 狀態: { from: "literal", value: "待審" } },
+      },
+    })
+    expect((await read(formId, await save(formId, { 金額: 1 }))).狀態).toBe("待審")
+
+    const detail = await app.inject({
+      method: "GET",
+      url: `/api/forms/${String(formId)}`,
+      headers: H(),
+    })
+    const 狀態Id = (detail.json() as { fields: { id: number; name: string }[] }).fields.find(
+      (f) => f.name === "狀態",
+    )?.id
+    expect(狀態Id, "測試前提:要找得到那個欄位").toBeGreaterThan(0)
+
+    const del = await app.inject({
+      method: "DELETE",
+      url: `/api/forms/${String(formId)}/fields/${String(狀態Id)}`,
+      headers: H(),
+    })
+    expect(del.statusCode, del.body).toBe(204)
+
+    /* 🔴 本條存在的理由:下架之後還存得進去 */
+    const after = await app.inject({
+      method: "POST",
+      url: `/api/forms/${String(formId)}/records`,
+      headers: H(),
+      payload: { values: { 金額: 2 } },
+    })
+    expect(after.statusCode, after.body).toBe(201)
+
+    /* 🔴 而且**跳過要留得下紀錄** —— 靜默跳過等於「不動而沒人知道為什麼」,
+       那和擋住一樣糟。 */
+    const runs = await app.inject({
+      method: "GET",
+      url: `/api/forms/${String(formId)}/triggers/runs`,
+      headers: H(),
+    })
+    const body = runs.json() as { triggerId: number; outcome: string; detail: unknown }[]
+    const mine = body.filter((r) => r.triggerId === id)
+    expect(
+      mine.map((r) => r.outcome),
+      JSON.stringify(body),
+    ).toContain("failed")
+    expect(JSON.stringify(mine)).toContain("引用的欄位已不存在")
+  })
+})

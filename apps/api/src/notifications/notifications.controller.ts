@@ -4,7 +4,7 @@ import { TenantGuard } from "../auth/tenant.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import { LEVEL_VALUES, type NotificationLevel, NOTIFICATION_EVENTS } from "./notification-specs.js"
+import { LEVEL_VALUES, NOTIFICATION_EVENTS, type NotificationLevel } from "./notification-specs.js"
 import { NotificationRepository } from "./notification.repository.js"
 import { NotificationService } from "./notification.service.js"
 

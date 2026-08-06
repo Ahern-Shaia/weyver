@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common"
+import { Inject, Injectable, Logger } from "@nestjs/common"
 
 import { type RecordValues, conditionsMatch } from "@weyver/rules"
 import { compileValues } from "../actions/compile-values.js"
@@ -52,6 +52,13 @@ import { type TriggerRow, TriggersRepository } from "./triggers.repository.js"
 
 const EMPTY: ReadonlySet<string> = new Set()
 
+const noop = (values: RecordValues): SyncTriggerResult => ({
+  values,
+  ran: [],
+  bypassFields: EMPTY,
+  skipped: [],
+})
+
 export interface SyncTriggerResult {
   readonly values: RecordValues
   /* 跑過的觸發器,供呼叫端寫執行紀錄 —— 本支不自己寫,因為它拿不到交易 */
@@ -60,11 +67,47 @@ export interface SyncTriggerResult {
      只列觸發器真的動過的欄位 —— 回傳整份 values 的話,豁免範圍會擴大到
      使用者自己送上來的欄位,那就是真的權限漏洞。 */
   readonly bypassFields: ReadonlySet<string>
+  /* 🔴 因為引用的欄位已不存在而被跳過的觸發器(FMEA T2)。
+     呼叫端**必須**據此寫執行紀錄 —— 靜默跳過等於「不動而沒人知道為什麼」。 */
+  readonly skipped: readonly { readonly triggerId: number; readonly missingFields: string[] }[]
 }
 
 @Injectable()
 export class TriggerSyncService {
+  private readonly logger = new Logger(TriggerSyncService.name)
+
   constructor(@Inject(TriggersRepository) private readonly repo: TriggersRepository) {}
+
+  /* 🔴 把「因為欄位不見了而跳過」寫成執行紀錄。
+
+     **在交易外、事後寫**:它不能拖垮存檔,也不該因為存檔 rollback 就消失
+     (那反而是最需要留痕的時候 —— 使用者正在納悶為什麼沒反應)。
+     寫失敗只記 log:稽核不該反過來擋住業務。 */
+  async recordSkips(
+    tenantId: number,
+    formId: number,
+    recordId: number,
+    actorId: number,
+    result: SyncTriggerResult,
+  ): Promise<void> {
+    for (const sk of result.skipped) {
+      try {
+        await this.repo.recordRun({
+          tenantId,
+          triggerId: sk.triggerId,
+          formId,
+          recordId,
+          actorId,
+          outcome: "failed",
+          detail: { reason: "引用的欄位已不存在", missingFields: sk.missingFields },
+        })
+      } catch (error) {
+        this.logger.error(
+          `trigger skip audit failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    }
+  }
 
   /* `previous` 為 null 代表建立。回傳的 values 是**要寫進去的完整值**。 */
   async apply(
@@ -73,10 +116,13 @@ export class TriggerSyncService {
     incoming: RecordValues,
     previous: RecordValues | null,
     actorId: number,
+    /* 🔴 表單**目前實際有的**欄位名。不能用 `Object.keys(values)` 代替 ——
+       部分更新的 payload 不含所有欄位,那樣會把還在的欄位誤判為「不見了」。 */
+    fieldNames: readonly string[] = [],
   ): Promise<SyncTriggerResult> {
     const triggers = await this.repo.listActiveSync(tenantId, formId, previous === null)
-    if (triggers.length === 0) return { values: incoming, ran: [], bypassFields: EMPTY }
-    return this.run(triggers, incoming, previous, actorId)
+    if (triggers.length === 0) return noop(incoming)
+    return this.run(triggers, incoming, previous, actorId, fieldNames)
   }
 
   /* 更新路徑專用:**前值只在真的有觸發器時才去讀**。
@@ -89,10 +135,11 @@ export class TriggerSyncService {
     incoming: RecordValues,
     loadPrevious: () => Promise<RecordValues>,
     actorId: number,
+    fieldNames: readonly string[] = [],
   ): Promise<SyncTriggerResult> {
     const triggers = await this.repo.listActiveSync(tenantId, formId, false)
-    if (triggers.length === 0) return { values: incoming, ran: [], bypassFields: EMPTY }
-    return this.run(triggers, incoming, await loadPrevious(), actorId)
+    if (triggers.length === 0) return noop(incoming)
+    return this.run(triggers, incoming, await loadPrevious(), actorId, fieldNames)
   }
 
   private run(
@@ -100,7 +147,10 @@ export class TriggerSyncService {
     incoming: RecordValues,
     previous: RecordValues | null,
     actorId: number,
+    fieldNames: readonly string[],
   ): SyncTriggerResult {
+    const knownFields = new Set(fieldNames)
+    const skipped: { triggerId: number; missingFields: string[] }[] = []
     const known = new Set(Object.keys({ ...previous, ...incoming }))
     let values: RecordValues = { ...previous, ...incoming }
     const ran: { triggerId: number; fields: string[] }[] = []
@@ -112,6 +162,25 @@ export class TriggerSyncService {
          設計者按順序讀下來看到什麼,執行時就是什麼。 */
       if (t.conditions.length > 0 && !conditionsMatch(t.conditions, "and", values, known)) continue
       if (t.config.actionType !== "updateSelf") continue
+
+      /* 🔴 FMEA T2|**引用的欄位不見了 → 跳過這一條,不要擋住存檔。**
+
+         實測過的後果:掛了一條寫「狀態」的觸發器,之後把「狀態」欄下架
+         (設計器那顆按鈕逐字「即時,不可復原」),該表**所有新增回 422
+         `unknown field: 狀態`** —— 而訊息完全不提觸發器。一鍵把表寫死。
+
+         這裡是**降級**那一層:一條壞掉的觸發器不該讓整張表存不了。
+         另一層是在下架欄位時擋下並指名(好的體驗),但那只掛在刪除端點上,
+         而繞過那一層的路徑會靜靜地沒有 —— 本 repo 已為同一形狀踩過索引與事件兩次。
+         **保證要放在這裡。**
+
+         ⚠️ 代價誠實記:跳過是**靜默**的。呼叫端拿到 `missingFields` 後寫執行紀錄,
+         否則就變成「觸發器不動而沒有人知道為什麼」,那和擋住一樣糟。 */
+      const missing = Object.keys(t.config.setFields).filter((f) => !knownFields.has(f))
+      if (missing.length > 0) {
+        skipped.push({ triggerId: t.id, missingFields: missing })
+        continue
+      }
 
       const patch = compileValues(t.config.setFields, values, actorId)
       values = { ...values, ...patch }
@@ -127,7 +196,7 @@ export class TriggerSyncService {
         out[f] = values[f]
         bypassFields.add(f)
       }
-    return { values: out, ran, bypassFields }
+    return { values: out, ran, bypassFields, skipped }
   }
 
   /* 「更新時」限定欄位(OQ-ET-5)。空 = 任何更新。

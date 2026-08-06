@@ -1,17 +1,17 @@
+import { Inject, Injectable } from "@nestjs/common"
 import {
-  collectAstReferences,
-  detectCycle,
-  evaluateFormula,
-  evaluationOrder,
   type FormulaAst,
   type FormulaNode,
   FormulaSyntaxError,
   type FormulaType,
   type FormulaValue,
+  collectAstReferences,
+  detectCycle,
+  evaluateFormula,
+  evaluationOrder,
   inferAstType,
   parseFormula,
 } from "@weyver/formula"
-import { Inject, Injectable } from "@nestjs/common"
 import { and, eq, sql } from "drizzle-orm"
 import { TenantDb } from "../../db/db.module.js"
 import { formulaDefs } from "../../db/schema.js"

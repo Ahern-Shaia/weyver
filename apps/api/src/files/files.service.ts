@@ -20,10 +20,10 @@ import { APP_KNEX, TenantDb } from "../db/db.module.js"
 import { fieldDefs } from "../db/schema.js"
 import { DATA_SCHEMA, physicalTableName } from "../form-engine/identifiers.js"
 import type { TenantContext } from "../http/tenant-context.js"
-import { detectType, hasSpreadsheetFormula, sanitizeFilename } from "../storage/file-type.js"
 import { inspectContent } from "../storage/content-inspect.js"
-import { ScanService } from "../storage/scan.service.js"
+import { detectType, hasSpreadsheetFormula, sanitizeFilename } from "../storage/file-type.js"
 import { ImageProcessor } from "../storage/image-processor.js"
+import { ScanService } from "../storage/scan.service.js"
 import {
   STORAGE_DRIVER,
   type StorageDriver,

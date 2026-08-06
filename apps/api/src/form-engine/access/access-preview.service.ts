@@ -1,10 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
-import { APP_KNEX } from "../../db/db.module.js"
-import { DATA_SCHEMA, physicalTableName } from "../identifiers.js"
+import type { FormAction } from "../../authz/authz-model.js"
 import { AuthzRepository } from "../../authz/authz.repository.js"
 import { PermissionService } from "../../authz/permission.service.js"
-import type { FormAction } from "../../authz/authz-model.js"
+import { APP_KNEX } from "../../db/db.module.js"
+import { DATA_SCHEMA, physicalTableName } from "../identifiers.js"
 
 /* 🔴 E-1 預覽模擬器(#96,OQ-DP-8=A / OQ-DP-10=A)。
 

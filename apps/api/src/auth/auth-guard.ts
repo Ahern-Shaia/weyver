@@ -1,15 +1,15 @@
 import {
+  type CanActivate,
+  type ExecutionContext,
   ForbiddenException,
   Inject,
   Injectable,
   UnauthorizedException,
-  type CanActivate,
-  type ExecutionContext,
 } from "@nestjs/common"
 import { fromNodeHeaders } from "better-auth/node"
 import type { RequestWithTenant } from "../http/tenant-context.js"
-import { AUTH } from "./auth.tokens.js"
 import type { Auth } from "./auth.js"
+import { AUTH } from "./auth.tokens.js"
 import { IdentityService } from "./identity.service.js"
 import { TenantContextMismatchError, isMutation, readOrgIntent } from "./org-intent.js"
 

@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto"
 import { ForbiddenException, Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
 import {
+  type TextMaskOptions,
   asSelectOptions,
   isChoiceAllowed,
   looksMasked,
   maskText,
-  type TextMaskOptions,
 } from "@weyver/rules"
 import {
   type ActionGateState,
@@ -16,25 +16,28 @@ import {
   resolveFieldAttrs,
   sectionMembers,
 } from "@weyver/rules"
-import type { FormAction } from "../../authz/authz-model.js"
 import type { Knex } from "knex"
 import { z } from "zod"
 import type { FieldAccessPolicy } from "../../authz/authz-effective.js"
+import type { FormAction } from "../../authz/authz-model.js"
 import { APP_KNEX } from "../../db/db.module.js"
 import { FilesService } from "../../files/files.service.js"
+import { EVENT_TYPES, EventService } from "../../integrations/event.service.js"
 import { QuotaService } from "../../reliability/quota.service.js"
+import { SearchIndexService } from "../../search/search-index.service.js"
+import { TriggerSyncService } from "../../triggers/trigger-sync.service.js"
 import {
-  BulkRowError,
   BatchNotFoundError,
   BatchNotUndoableError,
+  BulkRowError,
   BulkTooLargeError,
-  MaskedValueWriteError,
   BulkValidationError,
   DomainError,
   FieldForbiddenError,
   FieldValueError,
   FormNotReadyError,
   InvalidFilterError,
+  MaskedValueWriteError,
   RecordApprovalLockedError,
   RecordNotFoundError,
   RequiredFieldError,
@@ -58,14 +61,11 @@ import {
   MetadataService,
 } from "../metadata/metadata.service.js"
 import { type AggregateFn, aggregate, toFormulaValue } from "../relations/rollup-agg.js"
-import { applyKeyset, decodeCursor, encodeCursor, type SortKey } from "./keyset.js"
+import { TRASH_RETENTION_DAYS } from "../trash/trash.service.js"
+import { type SortKey, applyKeyset, decodeCursor, encodeCursor } from "./keyset.js"
 import { GROUP_DATE_UNITS } from "./record-specs.js"
 import type { CalendarQuery, GroupAggregateFn, PivotQuery } from "./record-specs.js"
 import type { GroupBy, LineInput, ListQuery, RecordRow, RecordValues } from "./record-specs.js"
-import { TRASH_RETENTION_DAYS } from "../trash/trash.service.js"
-import { EVENT_TYPES, EventService } from "../../integrations/event.service.js"
-import { TriggerSyncService } from "../../triggers/trigger-sync.service.js"
-import { SearchIndexService } from "../../search/search-index.service.js"
 
 interface ResolvedField {
   readonly row: FieldDefRow
@@ -1084,7 +1084,14 @@ export class RecordService {
     const withDefaults = await this.applyDefaults(resolved, values, actorId)
     /* 🔴 觸發器在 `assertWritable` **之前**:它改的是「即將寫入的值」,
        所以它的產出也要過同一道驗證 —— 觸發器不是繞過驗證的後門。 */
-    const trig = await this.triggers?.apply(tenantId, formId, withDefaults, null, actorId)
+    const trig = await this.triggers?.apply(
+      tenantId,
+      formId,
+      withDefaults,
+      null,
+      actorId,
+      resolved.fields.map((f) => f.row.name),
+    )
     const toWrite = trig?.values ?? withDefaults
     this.assertWritable(resolved, formId, toWrite, policy, trig?.bypassFields)
     const record = await this.inTenantTx(tenantId, async (trx) => {
@@ -1107,6 +1114,9 @@ export class RecordService {
       })
       return created
     })
+    if (trig !== undefined && trig.skipped.length > 0) {
+      await this.triggers?.recordSkips(tenantId, formId, record.id, actorId, trig)
+    }
     await this.bindFiles(tenantId, formId, resolved, record.id, toWrite)
     const [enriched] = await this.withComputed(
       tenantId,
@@ -1530,6 +1540,7 @@ export class RecordService {
       values,
       async () => (await this.getRecord(tenantId, formId, recordId, undefined, actorId)).values,
       actorId,
+      resolved.fields.map((f) => f.row.name),
     )
     const toWrite = trig?.values ?? values
     this.assertWritable(resolved, formId, toWrite, policy, trig?.bypassFields)
@@ -1555,6 +1566,9 @@ export class RecordService {
       /* 範圍受限時只能改自己的:RESTRICTIVE policy 的 USING 同樣管 UPDATE 的選列 */
       { actorId, own: policy?.isScopedToOwn?.(formId, "edit") === true },
     )
+    if (trig !== undefined && trig.skipped.length > 0) {
+      await this.triggers?.recordSkips(tenantId, formId, recordId, actorId, trig)
+    }
     await this.bindFiles(tenantId, formId, resolved, recordId, toWrite)
     return this.getRecord(tenantId, formId, recordId, policy, actorId)
   }

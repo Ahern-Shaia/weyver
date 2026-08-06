@@ -18,8 +18,8 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
+import { type ViewDto, createViewBodySchema, updateViewBodySchema } from "./view-specs.js"
 import { ViewService } from "./view.service.js"
-import { createViewBodySchema, updateViewBodySchema, type ViewDto } from "./view-specs.js"
 
 /* R1·UP-2 視圖 CRUD(薄 controller)。@RequiresFormAction("view"):只需表單 view 權即可管理其視圖;
    共通 / 預設 / 鎖定之 admin gating 在 ViewService。跨租戶由 TenantGuard + view.repository tenant scope。 */

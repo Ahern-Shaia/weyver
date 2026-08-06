@@ -3,10 +3,10 @@ import { Inject, Injectable } from "@nestjs/common"
 import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { TenantDb } from "../db/db.module.js"
 import { webhookDeliveries, webhookEndpoints } from "../db/schema.js"
-import { resolveSafeTarget } from "../http/ssrf-guard.js"
-import { generateSecret } from "./webhook-signature.js"
-import { newMessageId } from "./webhook-delivery.service.js"
 import { DeliveryContentPrunedError, DeliveryNotFoundError } from "../form-engine/errors.js"
+import { resolveSafeTarget } from "../http/ssrf-guard.js"
+import { newMessageId } from "./webhook-delivery.service.js"
+import { generateSecret } from "./webhook-signature.js"
 
 /* G-1 M3|Webhook 端點管理。全程走 **app 車道**(RLS)—— 端點與投遞紀錄都是租戶資料。 */
 

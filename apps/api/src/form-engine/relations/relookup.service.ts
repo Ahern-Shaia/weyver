@@ -1,10 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
 import { APP_KNEX } from "../../db/db.module.js"
-import { DATA_SCHEMA, physicalColumnName, physicalTableName } from "../identifiers.js"
-import { isSnapshotLookup } from "../field-types/field-type-registry.js"
-import { MetadataService } from "../metadata/metadata.service.js"
 import { FieldNotFoundError, UnknownFieldError } from "../errors.js"
+import { isSnapshotLookup } from "../field-types/field-type-registry.js"
+import { DATA_SCHEMA, physicalColumnName, physicalTableName } from "../identifiers.js"
+import { MetadataService } from "../metadata/metadata.service.js"
 
 /* 🔴 #113 快照帶入的「重整」。
    Ragic 的對應功能是設計模式齒輪「執行一次」—— **無差別覆蓋、無 diff、無逐筆記錄**,

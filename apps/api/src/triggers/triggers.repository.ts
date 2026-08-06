@@ -3,7 +3,7 @@ import { and, asc, desc, eq, isNull, sql } from "drizzle-orm"
 
 import type { FormatCondition } from "@weyver/rules"
 import { TenantDb } from "../db/db.module.js"
-import { triggerDefs, triggerRuns } from "../db/schema.js"
+import { fieldDefs, triggerDefs, triggerRuns } from "../db/schema.js"
 import type { TriggerConfig, TriggerOutcome } from "./trigger-specs.js"
 
 /* 已發布的定義快照。**runtime 只吃這個形狀。** */
@@ -147,6 +147,27 @@ export class TriggersRepository {
             sql`${triggerDefs.published} IS NOT NULL`,
           ),
         )
+    })
+  }
+
+  /* 🔴 表單目前**實際有的**欄位名(FMEA T2 用)。
+
+     刻意在這裡查而不是注入 `MetadataService` —— 後者住在 `FormEngineModule`,
+     而那個模組注入 `TriggerSyncService`,反過來相依就是模組級迴圈。
+     這裡只要欄名一個清單,走同一條 app 車道即可。 */
+  async listFieldNames(tenantId: number, formId: number): Promise<string[]> {
+    return this.tdb.withTenant(tenantId, async (tx) => {
+      const rows = await tx
+        .select({ name: fieldDefs.name })
+        .from(fieldDefs)
+        .where(
+          and(
+            eq(fieldDefs.tenantId, tenantId),
+            eq(fieldDefs.formId, formId),
+            isNull(fieldDefs.deletedAt),
+          ),
+        )
+      return rows.map((r) => r.name)
     })
   }
 

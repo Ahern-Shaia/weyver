@@ -18,8 +18,8 @@ import { PermissionGuard } from "../authz/permission.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
-import { LabelsService } from "./labels.service.js"
 import { type LabelDto, createLabelBodySchema, updateLabelBodySchema } from "./label-specs.js"
+import { LabelsService } from "./labels.service.js"
 
 /* R1·後續-2 標籤定義 CRUD(薄 controller)。定義 = design 權;列出/列印預覽 = view 權。 */
 @Controller("api/forms/:formId/labels")

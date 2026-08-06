@@ -4,7 +4,7 @@ import { DRIZZLE, type DrizzleDb, TenantDb } from "../../db/db.module.js"
 import { fieldDefs, formDefs, users } from "../../db/schema.js"
 import { FieldNotFoundError, FormNotFoundError, LayoutVersionConflictError } from "../errors.js"
 import { FIELD_TYPE_REGISTRY } from "../field-types/field-type-registry.js"
-import { normalizedOptions, type AddFieldSpec, type CreateFormSpec } from "../specs/form-specs.js"
+import { type AddFieldSpec, type CreateFormSpec, normalizedOptions } from "../specs/form-specs.js"
 
 export type FormDefRow = typeof formDefs.$inferSelect
 export type FieldDefRow = typeof fieldDefs.$inferSelect

@@ -1,4 +1,4 @@
-import { callFunction, Decimal, type FormulaValue, tryDecimal } from "@weyver/formula"
+import { Decimal, type FormulaValue, callFunction, tryDecimal } from "@weyver/formula"
 
 /* R1·UP-4 rollup 聚合純函式(RollupService 與 RecordService 讀時注入共用,避免服務循環依賴)。 */
 

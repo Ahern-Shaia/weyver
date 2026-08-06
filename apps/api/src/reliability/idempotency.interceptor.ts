@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
 import {
+  BadRequestException,
   type CallHandler,
   ConflictException,
-  BadRequestException,
   type ExecutionContext,
   HttpException,
   Inject,
@@ -12,11 +12,11 @@ import {
 } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import type { FastifyReply } from "fastify"
-import { DomainError } from "../form-engine/errors.js"
-import { mapDomainError } from "../http/domain-exception.filter.js"
 import type { Knex } from "knex"
 import { type Observable, catchError, concatMap, from, of, switchMap, throwError } from "rxjs"
 import { APP_KNEX } from "../db/db.module.js"
+import { DomainError } from "../form-engine/errors.js"
+import { mapDomainError } from "../http/domain-exception.filter.js"
 import type { RequestWithTenant } from "../http/tenant-context.js"
 
 /* F-6 M1|冪等性(AGENTS ⚙️ [P0]:mutation 重試不重複建單)。

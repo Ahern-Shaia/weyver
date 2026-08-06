@@ -2,9 +2,9 @@ import knex from "knex"
 import { describe, expect, it } from "vitest"
 import {
   CELL_VALUE_TYPES,
+  type CellValueType,
   FIELD_TYPE_REGISTRY,
   fieldType,
-  type CellValueType,
 } from "./field-type-registry.js"
 
 const k = knex({ client: "pg" })

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -15,7 +16,6 @@ import {
   timestamp,
   unique,
   uniqueIndex,
-  type AnyPgColumn,
 } from "drizzle-orm/pg-core"
 
 /* metadata catalog(固定 schema,Drizzle 車道;Tier-2 動態表走 Knex 車道,永不進此檔) */
@@ -867,7 +867,10 @@ export const approvalStepLogs = pgTable(
   },
   (t) => [
     index("approval_step_log_instance_idx").on(t.instanceId),
-    check("approval_step_log_decision", sql`decision IN ('approve','reject','submit','withdraw','addApprover','return','unlock')`),
+    check(
+      "approval_step_log_decision",
+      sql`decision IN ('approve','reject','submit','withdraw','addApprover','return','unlock')`,
+    ),
   ],
 )
 

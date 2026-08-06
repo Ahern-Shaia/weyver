@@ -1,9 +1,9 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { and, eq } from "drizzle-orm"
+import { openSecret, sealSecret } from "../crypto/secret-box.js"
 import { TenantDb } from "../db/db.module.js"
 import { notificationChannels } from "../db/schema.js"
-import { openSecret, sealSecret } from "../crypto/secret-box.js"
 import { CHANNELS, CHANNEL_IDS, type ChannelId, isAllowedUrl } from "./channel-registry.js"
 
 /* 🔴 R1·A-1 M4|通知通道連接設定(OQ-SC-6=A 加密 / 7=A 不回顯 / 8=A allow-list)。

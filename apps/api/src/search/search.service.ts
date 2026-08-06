@@ -1,9 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
-import { APP_KNEX } from "../db/db.module.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
-import { MetadataService } from "../form-engine/metadata/metadata.service.js"
+import { APP_KNEX } from "../db/db.module.js"
 import { SearchTimeoutError } from "../form-engine/errors.js"
+import { MetadataService } from "../form-engine/metadata/metadata.service.js"
 
 /* 🔴 R1·H-3 M3|跨表搜尋查詢。
 

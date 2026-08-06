@@ -127,7 +127,17 @@ export class TriggerService {
     values: Record<string, unknown>,
     previous: Record<string, unknown> | null,
   ): Promise<{ values: Record<string, unknown>; ran: readonly { triggerId: number }[] }> {
-    const result = await this.sync.apply(tenant.tenantId, formId, values, previous, tenant.actorId)
+    const result = await this.sync.apply(
+      tenant.tenantId,
+      formId,
+      values,
+      previous,
+      tenant.actorId,
+      /* 🔴 一定要傳真實欄位清單。不傳的話 FMEA T2 的「欄位不見了就跳過」
+         會把**每一條**觸發器都判成跳過 —— 試跑於是永遠顯示什麼都沒做,
+         而使用者會以為自己設錯了。整合測抓到的。 */
+      await this.repo.listFieldNames(tenant.tenantId, formId),
+    )
     return { values: result.values, ran: result.ran.map((r) => ({ triggerId: r.triggerId })) }
   }
 

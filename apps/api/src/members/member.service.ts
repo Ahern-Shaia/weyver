@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common"
 import { and, eq, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb, TenantDb } from "../db/db.module.js"
-import { memberStates, initialCredentials, users } from "../db/schema.js"
+import { initialCredentials, memberStates, users } from "../db/schema.js"
 import { generateInitialPassword, initialPasswordExpiry } from "./initial-password.js"
 
 /* 🔴 R1·A-1 M2|使用者管理(OQ-SC-13=A 管理員建帳號 + 系統產生一次性初始密碼)。

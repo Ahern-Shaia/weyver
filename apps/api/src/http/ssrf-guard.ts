@@ -1,6 +1,6 @@
 import dns from "node:dns/promises"
-import net from "node:net"
 import https from "node:https"
+import net from "node:net"
 import { DomainError } from "../form-engine/errors.js"
 
 /* 🔴 G-1 M2|SSRF 防護。**使用者填的 URL** 是 docs/22 威脅前三之一。

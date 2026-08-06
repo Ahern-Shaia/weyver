@@ -3,7 +3,6 @@ import { and, desc, eq } from "drizzle-orm"
 import type { Knex } from "knex"
 import { DDL_KNEX, DRIZZLE, type DrizzleDb } from "../../db/db.module.js"
 import { ddlAudits } from "../../db/schema.js"
-import { FormulaService } from "../formula/formula.service.js"
 import { QuotaService } from "../../reliability/quota.service.js"
 import {
   FieldBudgetExhaustedError,
@@ -12,24 +11,25 @@ import {
   FormNotReadyError,
   InvalidTypeConversionError,
 } from "../errors.js"
-import { fieldType, type CellValueType } from "../field-types/field-type-registry.js"
 import {
-  castExpression,
   type CastOptions,
+  castExpression,
   needsTryCast,
   quoteColumn,
   tryCastFunctionSql,
 } from "../field-types/cast-sql.js"
+import { type CellValueType, fieldType } from "../field-types/field-type-registry.js"
 import {
-  classifyConversion,
   type ConversionKind,
+  classifyConversion,
   isSafeConversion,
 } from "../field-types/type-conversions.js"
+import { FormulaService } from "../formula/formula.service.js"
 import { DATA_SCHEMA, physicalColumnName, physicalTableName, sequenceName } from "../identifiers.js"
 import {
-  MetadataService,
   type FieldDefRow,
   type FormWithFields,
+  MetadataService,
 } from "../metadata/metadata.service.js"
 import type { AddFieldSpec, CreateFormSpec } from "../specs/form-specs.js"
 import { TrashService } from "../trash/trash.service.js"

@@ -1,12 +1,12 @@
 import {
+  type CanActivate,
+  type ExecutionContext,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
-  type CanActivate,
-  type ExecutionContext,
 } from "@nestjs/common"
-import { ConfigService } from "@nestjs/config"
 import { Inject } from "@nestjs/common"
+import { ConfigService } from "@nestjs/config"
 import type { RequestWithTenant } from "./tenant-context.js"
 
 /* 🔴 F-10 說明|**dev 車道對跨分頁租戶污染結構上免疫**,因此本檔不需改。

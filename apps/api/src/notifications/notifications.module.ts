@@ -3,9 +3,9 @@ import { ChannelConfigService } from "./channel-config.service.js"
 import { ChannelSenderService } from "./channel-sender.service.js"
 import { EmailChannel } from "./email.channel.js"
 import { NotificationDispatcher } from "./notification-dispatcher.service.js"
-import { NotificationsController } from "./notifications.controller.js"
 import { NotificationRepository } from "./notification.repository.js"
 import { NotificationService } from "./notification.service.js"
+import { NotificationsController } from "./notifications.controller.js"
 
 /* H-1 通知系統。`@Global()` 的理由與 F-8 BillingModule 同:
    `NotificationService` 需被多個業務模組(actions / form-engine)注入為**旁路**呼叫,

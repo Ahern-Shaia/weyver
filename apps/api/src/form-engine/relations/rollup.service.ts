@@ -1,7 +1,7 @@
-import type { FormulaValue } from "@weyver/formula"
 import { Inject, Injectable } from "@nestjs/common"
-import { RecordService } from "../records/record.service.js"
+import type { FormulaValue } from "@weyver/formula"
 import type { RecordRow } from "../records/record-specs.js"
+import { RecordService } from "../records/record.service.js"
 import { type AggregateFn, aggregate, toFormulaValue } from "./rollup-agg.js"
 
 /* Rollup 聚合(子表 / 一對多)。N+1 防護:一次 listByParents 撈全部子列 → app 層分組聚合(非逐父查)。

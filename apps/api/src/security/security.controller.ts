@@ -1,7 +1,7 @@
 import { Controller, Get, Inject, Post, UseGuards } from "@nestjs/common"
+import { Req } from "@nestjs/common"
 import { fromNodeHeaders } from "better-auth/node"
 import type { FastifyRequest } from "fastify"
-import { Req } from "@nestjs/common"
 import type { createAuth } from "../auth/auth.js"
 import { AUTH } from "../auth/auth.tokens.js"
 import { IdentityService } from "../auth/identity.service.js"

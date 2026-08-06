@@ -1,8 +1,8 @@
 import { z } from "zod"
 import {
   CELL_VALUE_TYPES,
-  FIELD_TYPE_REGISTRY,
   type CellValueType,
+  FIELD_TYPE_REGISTRY,
 } from "../field-types/field-type-registry.js"
 
 /* AI-native 不變量(docs/17 / docs/22):結構化 spec 是建表唯一入口 —

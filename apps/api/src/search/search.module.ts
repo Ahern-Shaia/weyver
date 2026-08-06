@@ -1,8 +1,8 @@
 import { Global, Module } from "@nestjs/common"
 import { AuthzModule } from "../authz/authz.module.js"
 import { FormEngineModule } from "../form-engine/form-engine.module.js"
-import { SearchController } from "./search.controller.js"
 import { SearchIndexService } from "./search-index.service.js"
+import { SearchController } from "./search.controller.js"
 import { SearchService } from "./search.service.js"
 
 /* R1·H-3|跨表全文搜尋。

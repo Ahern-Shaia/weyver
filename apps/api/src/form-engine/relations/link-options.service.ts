@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable } from "@nestjs/common"
 import type { Knex } from "knex"
-import { APP_KNEX } from "../../db/db.module.js"
 import type { EffectivePermissions } from "../../authz/authz-effective.js"
+import { APP_KNEX } from "../../db/db.module.js"
 import { NotALinkFieldError, UnknownFieldError } from "../errors.js"
 import { DATA_SCHEMA, physicalTableName } from "../identifiers.js"
 import { MetadataService } from "../metadata/metadata.service.js"

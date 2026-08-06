@@ -5,8 +5,8 @@ import { relationDefs } from "../../db/schema.js"
 import { NotALinkFieldError, UnknownFieldError } from "../errors.js"
 import type { FieldDefRow } from "../metadata/metadata.service.js"
 import { MetadataService } from "../metadata/metadata.service.js"
-import { RecordService } from "../records/record.service.js"
 import type { RecordValues } from "../records/record-specs.js"
+import { RecordService } from "../records/record.service.js"
 
 function linkTargetFormId(field: FieldDefRow): number | null {
   const options = field.options
