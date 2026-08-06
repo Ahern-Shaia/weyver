@@ -5,6 +5,7 @@ import { ScheduleModule } from "@nestjs/schedule"
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler"
 import { ActionsModule } from "./actions/actions.module.js"
 import { ApprovalLockInterceptor } from "./actions/approval-lock.interceptor.js"
+import { AiModule } from "./ai/ai.module.js"
 import { AuthModule } from "./auth/auth.module.js"
 import { AuthzModule } from "./authz/authz.module.js"
 import { BillingModule } from "./billing/billing.module.js"
@@ -59,6 +60,7 @@ import { ViewsModule } from "./views/views.module.js"
     MembersModule,
     SecurityModule,
     SettingsModule,
+    AiModule,
     PublicFormModule,
     UsageModule,
     StorageModule,

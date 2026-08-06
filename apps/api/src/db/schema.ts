@@ -1614,3 +1614,38 @@ export const exportJobs = pgTable(
   },
   (t) => [index("export_job_tenant_idx").on(t.tenantId, t.createdAt)],
 )
+
+/* R1·AI-1 M1|AI 設定(BYO key)。一租戶一列 → tenant_id 直接當 PK。
+   🔴 `apiKeySealed` **永不出 service** —— 對外只給 `apiKeyHint`(末四碼)。 */
+export const tenantAiConfig = pgTable("tenant_ai_config", {
+  tenantId: bigint("tenant_id", { mode: "number" }).primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  provider: text("provider"),
+  model: text("model"),
+  apiKeySealed: text("api_key_sealed"),
+  apiKeyHint: text("api_key_hint"),
+  /* 資料外送同意(OQ-AI-8=C)。記誰、何時,且可撤回(設 NULL)。 */
+  consentAt: timestamp("consent_at", { withTimezone: true }),
+  consentByActorId: bigint("consent_by_actor_id", { mode: "number" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
+
+/* 每次呼叫一列,**成功與失敗都記** —— 失敗一樣花錢(provider 多半照收 input token)。
+   這張表是稽核紀錄,migration 只授 SELECT/INSERT,沒有 UPDATE。 */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" }).notNull(),
+    /* 系統觸發(背景工作)為 NULL */
+    actorId: bigint("actor_id", { mode: "number" }),
+    feature: text("feature").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    ok: boolean("ok").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_usage_tenant_idx").on(t.tenantId, t.createdAt)],
+)
