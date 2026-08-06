@@ -1,0 +1,36 @@
+# gitleaks 設定。`useDefault` 保留全部內建規則,只加一條窄的例外。
+#
+# ## 為什麼需要例外
+#
+# 初次掃描(625 commits)命中 3 筆,**全部是測試檔裡的假憑證**:
+#   apps/api/src/http/log-redact.test.ts     accessToken: "..."
+#   apps/api/test/initial-credential.…       newPassword: "..."
+#   apps/api/test/mfa.integration.test.ts    password: "..."
+#
+# 那些正是那幾支測試要測的東西(遮蔽是否生效、改密碼流程、MFA)——
+# 測試檔本來就會有假憑證,而且會一直有。
+#
+# ## 🔴 例外刻意開得很窄
+#
+# **只對 `generic-api-key` 放行,而且只在測試檔。**
+# 那是內建規則裡信度最低的一條(規則本身就是「看起來像 key 的字串」)。
+#
+# 高信度規則(AWS 金鑰 / 私鑰 / GitHub token / Slack token …)**在測試檔裡照樣會炸** ——
+# 真的把一把 AWS key 貼進測試檔,這份設定擋不住它,那是刻意的。
+#
+# ⚠️ 全面放行測試檔會製造一個永久盲點:「反正是測試」是祕密最常見的藏身處。
+
+title = "Weyver"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+[rules.allowlist]
+paths = [
+  '''.*\.test\.ts$''',
+  '''.*\.test\.tsx$''',
+  '''apps/api/test/.*''',
+  '''apps/web/e2e/.*''',
+]

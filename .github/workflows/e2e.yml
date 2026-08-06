@@ -1,0 +1,63 @@
+name: E2E
+
+# 🔴 **e2e 刻意不擋 merge。** 這是取捨,不是偷懶,理由記在這裡:
+#
+# 1. **已知不穩(task #43)**|整套時間在 4.5 → 12.6 → 6.4 分鐘之間跳,
+#    三輪各有 2 條不同的紅,而每一條**單獨跑都會過** —— 順序相依,還沒查清楚。
+# 2. **限流是逐 IP 的滑動視窗**|`e2e/global-setup.ts` 逐字警告:
+#    「同一分鐘內連跑兩輪整套 e2e 會出現假紅,而且每輪紅的 spec 都不同」。
+#    CI 上同時開兩個 PR 就會踩到,而那與程式碼無關。
+#
+# **紅了沒人修的 CI 等於沒有 CI。** 把已知會假紅的東西設成必過,
+# 只會訓練所有人忽略紅燈 —— 連帶忽略真的紅燈。
+#
+# 所以:每日跑一次 + 可手動觸發,結果看得到但不擋門。
+# **#43 查清楚、假紅消失之後,再把它併進 `ci.yml` 當必過項。**
+
+on:
+  schedule:
+    # 每日 UTC 18:00(台北 02:00)—— 沒人在推的時段,避開限流互相干擾
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  # 🔴 **絕不並行**。限流桶是逐 IP 的,兩輪疊在一起必假紅。
+  group: e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: Playwright(不擋 merge)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # 與 api 整合測試同一個自訂映像(pg_bigm)
+      - name: 起 PostgreSQL
+        run: |
+          docker compose build postgres
+          docker compose up -d postgres
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U weyver && break
+            sleep 2
+          done
+
+      - name: 安裝瀏覽器
+        run: pnpm --filter @weyver/web exec playwright install --with-deps chromium
+
+      # playwright.config 的 webServer 會自己起 api(:3001)與 web
+      - run: pnpm --filter @weyver/web test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

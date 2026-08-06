@@ -1,0 +1,152 @@
+name: CI
+
+# 🔴 這個 repo 在 2026-08-06 之前**完全沒有 CI**,而 `AGENTS.md` 有多條鐵則
+# 逐字寫著「fail CI」「全過才 merge」。所有檢查都只在有人記得跑的時候有效。
+#
+# 已經付過的代價:`marked` 進了 `package.json` 而 lockfile 沒跟著 commit,
+# `pnpm install --frozen-lockfile` 對當時的 HEAD 會直接失敗 ——
+# 全新 checkout 裝不起來,而沒有任何東西會告訴你。
+#
+# ## 分成三個 job 的理由
+#
+# `verify` 不需要 Docker,兩三分鐘內回報 —— 大多數錯誤在這裡就會被抓到。
+# `api-tests` 要跑 Testcontainers(真 PostgreSQL),慢但是租戶隔離與 RLS
+# 的執法證明全在那裡,不能省。`security` 獨立跑,因為它的失敗性質不同
+# (不是「你寫錯了」而是「有東西不該進來」)。
+#
+# ⚠️ **e2e 刻意不在這裡**,理由見 `e2e.yml`。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # turbo 的遠端快取沒接,關掉遙測避免每個 job 多一次外連
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  verify:
+    name: 型別 · lint · 單元 · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # 版本由 package.json 的 `packageManager` 決定,不在這裡寫死第二份
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # 🔴 `--frozen-lockfile`:lockfile 與 package.json 不一致就直接失敗。
+      # 這一行就是 2026-08-06 那次漏掉 lockfile 的守門員。
+      # 🔴 `--ignore-scripts`:AGENTS §7 供應鏈鐵則。本 repo 無任何 postinstall /
+      # prepare(已查證),所以關掉安全。
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # 🔴 **`biome ci .` 與 `biome format --check .` 都刻意沒有放進來。**
+      #
+      # 兩者在目前的 HEAD 上都是紅的:`biome ci .` 有 **95 個既有問題**
+      # (範圍比 `pnpm lint` 大得多,含 drizzle snapshot 等產生檔),
+      # 格式檢查也紅 —— 這個 repo 從未全域格式化過
+      # (`pnpm format` 是全 repo 格式化,一跑就 churn 140+ 檔)。
+      #
+      # 把它們設成必過 = **CI 第一天就是紅的**,而紅了沒人修的 CI 等於沒有 CI,
+      # 連帶訓練所有人忽略真的紅燈。
+      #
+      # 先擋現在確實綠的東西。要補這一塊的順序是:
+      # 一次獨立的全 repo 格式化 commit(不夾帶任何行為變更)→ 再把檢查加進來。
+      - run: pnpm lint
+      - run: pnpm type-check
+
+      # 🔴 模組邊界:AGENTS〈模組架構〉逐字「CI 用 dependency-cruiser/madge 擋
+      # 跨模組 import + 循環依賴(不靠自律)」。
+      # ⚠️ 排除 `vendor/`:`packages/formula/src/vendor/teable` 是 fork 進來的
+      # ANTLR 產生碼,parser 與 visitor 天生互相 import。那不是我方寫的,
+      # 也不該為了讓檢查過而去動 vendored 檔案。
+      - name: 循環依賴
+        run: pnpm exec madge --circular --extensions ts,tsx --exclude '(^|/)vendor/' apps/api/src apps/web/src packages
+
+      # 不需要 Docker 的那些 —— 失敗得快
+      - name: 文件一致性(docs/25 記帳 · 研究索引 · 清單保鮮期)
+        run: pnpm --filter @weyver/docs-check test
+      - run: pnpm --filter @weyver/rules test
+      - run: pnpm --filter @weyver/formula test
+      - run: pnpm --filter @weyver/web test
+
+      - run: pnpm build
+
+  api-tests:
+    name: api 整合測試(真 PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # 🔴 **必須先建自訂映像。** Testcontainers 用的是 `weyver-postgres:16-bigm`
+      # 而不是公開的 `postgres:16` —— 繁中全文搜尋需要 `pg_bigm`,
+      # migration 0037 會 `CREATE EXTENSION`。
+      # `pg-image.ts` 逐字說明它**刻意 fail-closed**:映像不在就直接報錯,
+      # 而不是靜默跳過擴充讓測試在與 prod 不同的環境下通過。
+      - name: 建 PostgreSQL 測試映像(含 pg_bigm)
+        run: docker compose build postgres
+
+      # 這裡跑的是租戶隔離、RLS 執法、動態建表 —— AGENTS §9 的 CI gate 本體
+      - run: pnpm --filter @weyver/api test
+
+  security:
+    name: 祕密 · 相依套件漏洞
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks 要看得到歷史才驗得出「祕密曾經進過 repo」
+          fetch-depth: 0
+
+      # 設定見 `.gitleaks.toml`。初次掃描 625 commits 命中 3 筆,
+      # **全部是測試檔裡的假憑證**(遮蔽測試 / 改密碼測試 / MFA 測試)。
+      # 例外只對信度最低的 `generic-api-key` 且只在測試檔 ——
+      # AWS 金鑰 / 私鑰之類的高信度規則在測試檔裡照樣會炸。
+      - name: gitleaks(祕密掃描)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # 🔴 **擋 critical,報告 high。** 這是量測後的取捨,不是隨手訂的門檻:
+      # 目前 critical **0 個**、high **17 個**(全部落在 `apps/web` 與 `apps/api`
+      # 的 dev 相依鏈,如 `eslint > minimatch > brace-expansion`)。
+      #
+      # 擋 high = CI 第一天就紅,而那 17 個沒有一個是我方程式碼的問題。
+      # 與 lint / 格式同一個判斷:**紅了沒人修的 CI 等於沒有 CI。**
+      #
+      # 要把門檻收到 high,前置是把那 17 個清掉(多半靠升 devDependency)。
+      - name: 相依套件漏洞(critical 必擋)
+        run: pnpm audit --audit-level critical
+
+      - name: 相依套件漏洞(high 僅報告)
+        continue-on-error: true
+        run: pnpm audit --audit-level high
