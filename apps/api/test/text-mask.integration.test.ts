@@ -141,17 +141,48 @@ describe("文字遮罩", () => {
     expect(res.body).not.toContain("A123456789")
   })
 
+  /* 🔴 **列舉出口**,不是補個案。新增一條會吐出欄位值的路徑時,這一條要跟著加,
+     而漏加的後果是靜默洩漏 —— 所以清單寫在這裡而不是散在各個 it 裡。
+
+     ⚠️ 已知**還沒進這張清單**的出口(#51):PDF 渲染的 payload。
+     它走 `RecordService.getRecord` 故理論上已遮,但**理論不算驗過**;
+     它需要 worker 與渲染器替身,故釘在 `pdf.integration.test.ts` 較自然。 */
   it("🔴 逐一走過每個會吐出欄位值的出口", async () => {
     const outlets = [
       `/api/forms/${String(formId)}/records/${String(recordId)}`,
       `/api/forms/${String(formId)}/records`,
       `/api/forms/${String(formId)}/records/${String(recordId)}/revisions`,
+      /* 全庫修改紀錄:只回「動了哪些欄」不回值,但它讀的是同一張表 —— 一起釘 */
+      "/api/forms/revisions/recent",
     ]
     for (const url of outlets) {
       const res = await app.inject({ method: "GET", url, headers: ADMIN() })
       expect(res.statusCode, url).toBe(200)
       expect(res.body, `${url} 洩漏了完整值`).not.toContain("A123456789")
     }
+  })
+
+  /* 🔴 **第六個出口,而且最不明顯**。
+
+     `SEARCHABLE` 由 registry 推導(text 欄且非 virtual),而遮罩欄兩個條件都符合
+     —— 於是真值曾經被寫進全文索引。索引下去的後果不是「畫面看得到」,
+     是**把身分證打進快速搜尋就能確認它存在**(value oracle),遮罩等於白做。
+
+     ⚠️ 這一條是 #51 裡「未查證」的那一項,查了之後**確實是漏的**。 */
+  it("🔴 遮罩欄不進全文索引(否則搜尋變成 value oracle)", async () => {
+    const idx = await pool.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM search_doc WHERE tenant_id = $1 AND value_text ILIKE $2",
+      [tenantA, "%A123456789%"],
+    )
+    expect(idx.rows[0]?.n).toBe(0)
+
+    /* 對照組:同一筆記錄的**非敏感**欄確實有進索引 —— 否則「找不到」
+       可能只是因為索引整個沒寫,那樣這條測試什麼都沒驗到。 */
+    const control = await pool.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM search_doc WHERE tenant_id = $1 AND value_text ILIKE $2",
+      [tenantA, "%王小明%"],
+    )
+    expect(control.rows[0]?.n).toBeGreaterThan(0)
   })
 
   it("admin 按眼睛看得到完整值,而且留下稽核", async () => {

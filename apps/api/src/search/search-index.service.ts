@@ -35,7 +35,13 @@ const SEARCHABLE: ReadonlySet<string> = new Set(
   Object.entries(FIELD_TYPE_REGISTRY)
     .filter(
       ([, def]) =>
-        (def.dbFieldType === "text" || def.dbFieldType === "text_array") && def.virtual !== true,
+        (def.dbFieldType === "text" || def.dbFieldType === "text_array") &&
+        def.virtual !== true &&
+        /* 🔴 敏感型別(文字遮罩)不進索引 —— 索引下去的話,把真值打進快速搜尋
+           就能確認它存在(value oracle),而遮罩的全部意義就是不讓人看到真值。
+           判斷來自**型別定義**而不是在這裡寫一份排除清單:
+           日後任何新的敏感型別自動繼承,不必記得改第二個地方。 */
+        def.sensitive !== true,
     )
     .map(([type]) => type),
 )

@@ -100,6 +100,15 @@ export interface FieldTypeDefinition {
   /** 記錄值(寫入邊界)的基礎驗證;requiredness 於 DML 層疊加 */
   readonly valueSchema: (options: Record<string, unknown>) => z.ZodType
   readonly filterOperators: readonly FilterOperator[]
+  /** 🔴 敏感型別:值本身就是要被遮住的東西。
+
+      目前的效果是**不進全文索引** —— 索引下去的話,把真值打進快速搜尋
+      就能確認它存在(value oracle),遮罩等於白做。
+
+      放在型別定義上而不是在搜尋那邊寫一份排除清單:
+      **屬性跟著型別走**,日後任何新的敏感型別自動繼承,不必記得去改第二個地方。 */
+  readonly sensitive?: boolean
+
   /** 系統維護欄(autoNumber / formula):拒絕使用者寫入 */
   readonly systemManaged: boolean
   /** R1·UP-4 虛擬欄:無物理欄(buildColumn no-op),值於讀取時注入(系統欄/lookup/rollup)。
@@ -339,6 +348,10 @@ export const FIELD_TYPE_REGISTRY: Readonly<Record<CellValueType, FieldTypeDefini
        這與「隱藏欄不得出現在 WHERE / ORDER BY」是同一條理由
        (`assertReadable` 的檔頭逐字寫過:查完再遮擋不住用查詢反推值)。 */
     filterOperators: [],
+    /* 🔴 不進全文索引。**這是第六個出口**,而且是最不明顯的一個:
+       `SEARCHABLE` 由 registry 推導(text 欄且非 virtual),遮罩欄兩個條件都符合,
+       於是真值會被索引 —— 把身分證打進快速搜尋就能確認它存在。 */
+    sensitive: true,
     systemManaged: false,
   }),
   email: def({

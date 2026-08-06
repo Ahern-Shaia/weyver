@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto"
 import { ForbiddenException, Inject, Injectable, Optional } from "@nestjs/common"
 import { Decimal } from "@weyver/formula"
-import { asSelectOptions, isChoiceAllowed, looksMasked, maskText } from "@weyver/rules"
+import {
+  asSelectOptions,
+  isChoiceAllowed,
+  looksMasked,
+  maskText,
+  type TextMaskOptions,
+} from "@weyver/rules"
 import {
   type ActionGateState,
   evaluateApprovalGate,
@@ -2980,7 +2986,10 @@ export class RecordService {
         if (revealed?.has(name) === true) continue
         const v = values[name]
         if (typeof v === "string" && v !== "") {
-          values[name] = maskText(v, f.row.options as { mode?: "last" | "first" | "cjkName" })
+          /* ⚠️ 型別用 `TextMaskOptions` 而非就地寫一個窄物件 —— 原本的窄型別漏了 `keep`。
+             執行期沒事(整個 options 物件照傳),但那是**巧合不是保證**:
+             哪天有人照著型別 destructure,位數就會靜默回到預設值 4。 */
+          values[name] = maskText(v, f.row.options as TextMaskOptions)
         }
       }
       return { ...record, values }

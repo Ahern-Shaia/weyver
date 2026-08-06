@@ -62,9 +62,22 @@ export const updateDisplayBodySchema = z
     showAsQr: z.boolean().optional(),
     /* 🔴 audit-D §2.4|格式遮罩(`###-##-####`)。空字串 = 取消遮罩。 */
     displayMask: z.string().max(60).optional(),
+    /* 🔴 R1·FTP v1.7|文字遮罩的三個設定。**在此之前只能打 API 設** ——
+       而第一約束逐字說那不算解決,`showAsQr` 上面那段註解記的是同一件事。
+       尤其 `revealRoleIds` 不設的話預設只有 admin 能揭露,
+       等於這個欄位對一般使用者永遠是遮的,而管理員無從調整。 */
+    maskMode: z.enum(["last", "first", "cjkName"]).optional(),
+    maskKeep: z.number().int().min(0).max(8).optional(),
+    revealRoleIds: z.array(z.number().int().positive()).max(20).optional(),
   })
   .refine(
-    (b) => b.dateFormat !== undefined || b.showAsQr !== undefined || b.displayMask !== undefined,
+    (b) =>
+      b.dateFormat !== undefined ||
+      b.showAsQr !== undefined ||
+      b.displayMask !== undefined ||
+      b.maskMode !== undefined ||
+      b.maskKeep !== undefined ||
+      b.revealRoleIds !== undefined,
     {
       message: "至少要指定一個顯示設定",
     },

@@ -554,10 +554,24 @@ export class FormsController {
         message: `「${field.name}」不是單行文字欄,沒有條碼與遮罩可設`,
       })
     }
+    /* 🔴 型別閘,同上一段的理由:畫面上的閘不是閘。
+       遮罩設定寫到別的型別上,`optionsSchema` 是 `.strict()` 會直接爆,
+       但更糟的是**寫得進去卻沒有任何效果**的那種型別組合。 */
+    const isMask =
+      body.maskMode !== undefined || body.maskKeep !== undefined || body.revealRoleIds !== undefined
+    if (isMask && field.cellValueType !== "textMask") {
+      throw new BadRequestException({
+        code: "DISPLAY_FORMAT_NOT_APPLICABLE",
+        message: `「${field.name}」不是文字遮罩欄`,
+      })
+    }
     await this.metadata.updateFieldOptions(tenant.tenantId, fieldId, {
       ...(field.options as Record<string, unknown>),
       ...(body.dateFormat === undefined ? {} : { dateFormat: body.dateFormat }),
       ...(body.showAsQr === undefined ? {} : { showAsQr: body.showAsQr }),
+      ...(body.maskMode === undefined ? {} : { mode: body.maskMode }),
+      ...(body.maskKeep === undefined ? {} : { keep: body.maskKeep }),
+      ...(body.revealRoleIds === undefined ? {} : { revealRoleIds: body.revealRoleIds }),
       /* 空字串 = 取消遮罩 → 直接移除該鍵,不留一個空值在 options 裡 */
       ...(body.displayMask === undefined
         ? {}
