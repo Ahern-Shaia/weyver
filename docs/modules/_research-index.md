@@ -34,6 +34,7 @@
 | R1·I-1|資料匯出(帶得走的完整副本) | ⭐ 有一手依據 | 6 | 10 | — | ASVS · Better Auth · GDPR · NestJS · OWASP · Salesforce | [R1/data-export.md](R1/data-export.md) |
 | [R1·FMT] 日期輸入與顯示格式 | ⭐⭐ 深且推翻過 | 21 | 15 | `51` | ARIA APG · Airtable · W3C | [R1/date-and-display-format.md](R1/date-and-display-format.md) |
 | [E-1] 動態權限(記錄範圍 + 指派) | ⭐⭐ 深且推翻過 | 19 | 6 | `32` `54` | Airtable · Baserow · NocoDB · Notion · Odoo · Salesforce · Teable | [R1/dynamic-permissions.md](R1/dynamic-permissions.md) |
+| [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | ⭐⭐ 深且推翻過 | 27 | 13 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | Airtable · Baserow · NestJS · Odoo · Salesforce · Teable | [R1/event-triggers.md](R1/event-triggers.md) |
 | [R1·A11Y] 欄位輸入的無障礙名稱 | ⭐ 有一手依據 | 9 | 2 | — | ARIA APG · Airtable · W3C | [R1/field-label-a11y.md](R1/field-label-a11y.md) |
 | [R1·UP-4] 欄位型別 parity（form-engine-core 增量） | ⭐⭐ 深且推翻過 | 83 | 16 | `14` `20` `25` `27` `31` `145` `153` `295` `344` `357` | Airtable · Baserow · NocoDB · Notion · Odoo · SAP · Salesforce · Teable | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | [R1·UP-3] 2D 表單設計器（form-designer-ui uplift） | ⭐ 有一手依據 | 54 | 24 | `21` `35` `121` `306` | Airtable · Baserow · NocoDB · Teable | [R1/form-designer-2d.md](R1/form-designer-2d.md) |
@@ -58,7 +59,7 @@
 | [H-2] 資源回收桶 + 保留期硬刪 | ⭐⭐ 深且推翻過 | 27 | 0 | `115` `124` | Airtable · Baserow · EDPB · GDPR · NocoDB · Notion · Salesforce · Teable | [R1/recycle-bin.md](R1/recycle-bin.md) |
 | [R1·C-6] 視覺化規則引擎(ZEN 決策表) | ⭐ 有一手依據 | 11 | 6 | `32` `155` `193` `215` `253` | — | [R1/rule-editor.md](R1/rule-editor.md) |
 | [R1·C-5] 排程管理 + 定時觸發 | ⭐⭐ 深且推翻過 | 14 | 4 | `29` `96` `125` `260` `281` | Airtable · NestJS · Teable | [R1/scheduling.md](R1/scheduling.md) |
-| [R1·後續-2b] 伺服器端 PDF 與列印範本 | ⭐⭐ 深且推翻過 | 33 | 5 | `42` `56` `138` `284` | ClamAV | [R1/server-pdf.md](R1/server-pdf.md) |
+| [R1·後續-2b] 伺服器端 PDF 與列印範本 | ⭐⭐ 深且推翻過 | 34 | 5 | `42` `56` `138` `284` | ClamAV | [R1/server-pdf.md](R1/server-pdf.md) |
 | [R1·A-1] 設定中心(S22) | ⭐ 有一手依據 | 3 | 16 | `3` | ASVS · Airtable · Better Auth · CVE-2026-53514 · Fastify · NestJS · Notion · OWASP · Odoo · Salesforce | [R1/settings-center.md](R1/settings-center.md) |
 | [F-1] 分組 / 看板 / 行事曆檢視 | ⭐⭐ 深且推翻過 | 51 | 1 | `9` `92` | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/views-group-kanban-calendar.md](R1/views-group-kanban-calendar.md) |
 | [R1·UP-2] 視圖系統 + 集合(browse)視圖 | ⭐⭐ 深且推翻過 | 16 | 1 | `4` `15` `16` `19` `38` `54` | Airtable · Baserow · Glide Data Grid · Teable | [R1/views-list.md](R1/views-list.md) |
@@ -75,7 +76,6 @@
 | giants-shoulders-audit-B.md —— 已具 §0 研究節之 18 份模組文件稽核 | — | ⭐⭐ 深且推翻過 | 20 | `6` `27` | [_audit/giants-shoulders-audit-B.md](_audit/giants-shoulders-audit-B.md) |
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐⭐ 深且推翻過 | 13 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
-| [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐⭐ 深且推翻過 | 27 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | · 零星引用 | 5 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |

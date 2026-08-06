@@ -1,6 +1,8 @@
 # event-triggers.md — [R1·C-4] 事件觸發器(建立 / 更新時自動執行)設計文件
 
-> 狀態|**M0 草擬(2026-08-06)**
+> 狀態|**✅ SHIPPED v1.1(2026-08-06)** —— M1–M5 全數完成(見 §4),FMEA P0 全緩解。
+> ⚠️ 本行 2026-08-06 修正:§4 里程碑表已標 M1–M5 ✅ 而檔頭仍寫「M0 草擬」,
+> **同一份 doc 自相矛盾**(`pitfall-stale-design-doc-claims`)。定時觸發(第三種時機)見 `scheduling.md`。
 > 上游|`docs/32` C 段「觸發器與 Action:自訂按鈕已交付,**事件觸發器〔建立 / 更新時自動執行〕未起**」
 > 相關|[actions-approval.md](actions-approval.md)(動作執行器)· [conditional-format](conditional-format.md)(條件求值)· `docs/31`(向上設計 backlog)
 
