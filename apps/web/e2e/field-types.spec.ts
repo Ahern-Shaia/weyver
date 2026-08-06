@@ -105,3 +105,55 @@ test("🔴 連動選項:設計器可設、填單依父欄收窄、伺服器擋�
   })
   expect(ok.status()).toBe(201)
 })
+
+/* 🔴 R1·FTP v1.7|**文字遮罩的設計器入口**。
+
+   `textMask` 先出貨了引擎與顯示,但 `mode` / `keep` / `revealRoleIds`
+   一度**只能打 API 設** —— 而第一約束逐字說「有 API 可以做」不算解決。
+
+   釘三面,與連動選項同型:設計器設得起來 / 值出去時是遮的 /
+   繞過畫面直接寫遮罩值會被擋。中間那條最關鍵 ——
+   設定存進去了但讀出來沒遮,是**看起來完全正常**的洩漏。 */
+test("🔴 文字遮罩:設計器可設遮罩方式與位數,讀出來就是遮的", async ({ page, request }) => {
+  const DEV = { "x-dev-tenant": "1", "content-type": "application/json" }
+  const res = await request.post("/api/engine/forms", {
+    headers: DEV,
+    data: {
+      name: `E2E遮罩_${String(Date.now()).slice(-6)}`,
+      fields: [{ name: "身分證", type: "textMask" }],
+    },
+  })
+  const formId = ((await res.json()) as { id: number }).id
+  await request.post(`/api/engine/forms/${String(formId)}/records`, {
+    headers: DEV,
+    data: { values: { 身分證: "A123456789" } },
+  })
+
+  // 1) 設計器:改成「顯示前幾碼」
+  await page.goto(`/app/builder?form=${String(formId)}`)
+  await page
+    .getByRole("button", { name: /^身分證 / })
+    .first()
+    .click()
+  const modePicker = page.getByLabel("遮罩方式")
+  await expect(modePicker).toBeVisible({ timeout: 30_000 })
+  await modePicker.selectOption("first")
+
+  /* 所見即後果:面板當場給的範例,與伺服器用的是**同一支** `maskText` */
+  await expect(page.getByText("範例:A123••••")).toBeVisible()
+
+  // 2) 🔴 讀回來就是遮的,而且遮法跟面板上看到的一致
+  await expect(async () => {
+    const got = await request.get(`/api/engine/forms/${String(formId)}/records`, { headers: DEV })
+    const rows = (await got.json()) as { records: { values: Record<string, string> }[] }
+    expect(rows.records[0]?.values.身分證).toBe("A123••••")
+  }).toPass({ timeout: 15_000 })
+
+  /* 3) 🔴 遮罩值不得寫回去。使用者按了編輯又直接存檔的話,
+     一次無心的儲存就會永久蓋掉一個真的身分證字號。 */
+  const bad = await request.post(`/api/engine/forms/${String(formId)}/records`, {
+    headers: DEV,
+    data: { values: { 身分證: "A123••••" } },
+  })
+  expect(bad.status()).toBe(422)
+})

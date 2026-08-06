@@ -2,6 +2,7 @@
 
 import { ConvertTypePanel } from "@/app/app/builder/_components/designer/convert-type"
 import { OptionsEditorPanel } from "@/app/app/builder/_components/designer/options-editor"
+import { TextMaskPanel } from "@/app/app/builder/_components/designer/text-mask-panel"
 import { RelookupPanel } from "@/app/app/builder/_components/designer/relookup"
 import { describeEngineError, engineFetch } from "@/lib/engine/client"
 import { DATE_FORMAT_LABEL, DATE_FORMATS } from "@/lib/engine/display-value"
@@ -263,6 +264,10 @@ export function FieldSettingsPanel({
 
       {field.type === "text" ? (
         <BarcodePanel formId={formId} field={field} onSaved={onOptionsSaved} />
+      ) : null}
+
+      {field.type === "textMask" ? (
+        <TextMaskPanel formId={formId} field={field} onSaved={onOptionsSaved} />
       ) : null}
 
       {choices !== undefined ? (
