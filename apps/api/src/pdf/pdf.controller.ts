@@ -19,6 +19,7 @@ import { TenantGuard } from "../auth/tenant.guard.js"
 import type { EffectivePermissions } from "../authz/authz-effective.js"
 import { Permissions } from "../authz/authz-http.js"
 import { PermissionGuard } from "../authz/permission.guard.js"
+import type { PdfMergeSkip } from "../db/schema.js"
 import type { TenantContext } from "../http/tenant-context.js"
 import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
@@ -28,6 +29,9 @@ import { PdfService } from "./pdf.service.js"
 const createSchema = z.object({
   formId: z.number().int().positive(),
   recordIds: z.array(z.number().int().positive()).min(1).max(200),
+  /* M2 A3|把記錄的附件 PDF 併進單據。**預設關** —— 「印一張採購單」與
+     「把這張單所有附件一起交出去」是兩個不同的意圖。 */
+  mergeAttachments: z.boolean().default(false),
 })
 
 interface JobDto {
@@ -38,6 +42,9 @@ interface JobDto {
   error: string | null
   createdAt: string
   readyAt: string | null
+  /* null = 這次沒要求合併;`[]` = 有合併且全部成功。兩者不可混為一談,
+     否則沒有附件的單據會被顯示成「附件全部略過」。 */
+  mergeReport: readonly PdfMergeSkip[] | null
 }
 
 /* 🔴 R1·後續-2b M1|單據 PDF。
@@ -74,6 +81,7 @@ export class PdfController {
       body.formId,
       body.recordIds,
       permissions,
+      body.mergeAttachments,
     )
     return toDto(job)
   }
@@ -130,6 +138,7 @@ function toDto(job: {
   error: string | null
   createdAt: Date
   readyAt: Date | null
+  mergeReport: readonly PdfMergeSkip[] | null
 }): JobDto {
   return {
     id: job.id,
@@ -139,5 +148,6 @@ function toDto(job: {
     error: job.error,
     createdAt: new Date(job.createdAt).toISOString(),
     readyAt: job.readyAt === null ? null : new Date(job.readyAt).toISOString(),
+    mergeReport: job.mergeReport,
   }
 }

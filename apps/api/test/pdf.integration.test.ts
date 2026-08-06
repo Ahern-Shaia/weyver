@@ -8,8 +8,8 @@ import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { PDF_RENDERER } from "../src/pdf/pdf-renderer.js"
-import { STORAGE_DRIVER, type StorageDriver } from "../src/storage/storage-driver.js"
 import { PdfWorkerService } from "../src/pdf/pdf-worker.service.js"
+import { STORAGE_DRIVER, type StorageDriver } from "../src/storage/storage-driver.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 R1·後續-2b|伺服器端 PDF(`docs/modules/R1/server-pdf.md`)。
@@ -54,8 +54,20 @@ beforeAll(async () => {
     .returning()
   tenantA = rows[0]?.id ?? 0
 
+  /* 🔴 app 車道走**限權角色**,不是 superuser。
+     2026-08-06:M2 的浮水印 PATCH 在此檔綠、在 dev 500 —— 因為 `tenants` 的
+     UPDATE 是欄位級授權,新欄漏授權而這裡的 app 車道其實是特權連線,
+     grant 一律不執法(`pitfall-privileged-lane-masks-security`,同型第六次)。
+     測試綠而線上壞,正是那條 pitfall 的定義。 */
+  await pool.query(
+    `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS;
+     GRANT weyver_app TO app_login`,
+  )
+  const appUri = new URL(container.getConnectionUri())
+  appUri.username = "app_login"
+  appUri.password = "app_login"
   process.env.DATABASE_URL = container.getConnectionUri()
-  process.env.APP_DATABASE_URL = container.getConnectionUri()
+  process.env.APP_DATABASE_URL = appUri.toString()
   const { AppModule } = await import("../src/app.module.js")
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(PDF_RENDERER)
@@ -389,4 +401,99 @@ describe("伺服器端 PDF", () => {
     })
     expect(res.statusCode).toBeGreaterThanOrEqual(400)
   })
+
+  /* ── M2:版面 / 浮水印 / 附件合併 ──────────────────────────────────── */
+
+  it("🔴 M2|版面進得了 payload —— 列印頁靠它排版,而 M1 這裡宣告成 unknown", async () => {
+    const fieldId = await firstFieldId()
+    const put = await app.inject({
+      method: "PATCH",
+      url: `/api/forms/${String(formId)}/layout`,
+      headers: ADMIN(),
+      payload: {
+        grid: { cols: 12 },
+        fields: { [String(fieldId)]: { row: 0, col: 0, colSpan: 4 } },
+        statics: [],
+        sections: [],
+        print: { headerRows: [0], footerRows: [], pageBreakAfterRows: [1] },
+      },
+    })
+    expect(put.statusCode).toBeLessThan(300)
+
+    const render = await renderOnce()
+    expect(render.status).toBe(200)
+    const payload = JSON.parse(render.body) as {
+      layout: { grid: { cols: number }; print: { headerRows: number[] } } | null
+    }
+    /* 這兩條在 M1 拿不到值 —— 那正是「設計器排的版 PDF 一項都不採用」的證據。 */
+    expect(payload.layout?.grid.cols).toBe(12)
+    expect(payload.layout?.print.headerRows).toEqual([0])
+  })
+
+  it("🔴 M2|租戶浮水印進 payload;清空即關閉", async () => {
+    const patched = await app.inject({
+      method: "PATCH",
+      url: "/api/settings/tenant",
+      headers: ADMIN(),
+      payload: { pdfWatermarkText: "副本" },
+    })
+    expect(patched.statusCode).toBeLessThan(300)
+
+    const render = await renderOnce()
+    const payload = JSON.parse(render.body) as { watermark: { text: string | null } | null }
+    expect(payload.watermark?.text).toBe("副本")
+
+    /* 空字串在 controller 轉成 null,否則會撞 DB 的長度 CHECK 而整筆更新被拒。 */
+    const cleared = await app.inject({
+      method: "PATCH",
+      url: "/api/settings/tenant",
+      headers: ADMIN(),
+      payload: { pdfWatermarkText: "" },
+    })
+    expect(cleared.statusCode).toBeLessThan(300)
+    const after = await renderOnce()
+    expect((JSON.parse(after.body) as { watermark: { text: string | null } }).watermark.text).toBe(
+      null,
+    )
+  })
+
+  it("🔴 M2|沒要求合併 → mergeReport 為 null;要求了但無附件 → 空陣列", async () => {
+    /* 兩者混為一談的話,一張本來就沒有附件的單據會被顯示成「附件全部略過」。 */
+    const plain = await app.inject({
+      method: "POST",
+      url: "/api/pdf",
+      headers: A(),
+      payload: { formId, recordIds: [recordId] },
+    })
+    expect(plain.statusCode).toBe(200)
+    expect(await worker.drainOne()).toBe(true)
+    const plainAfter = await app.inject({
+      method: "GET",
+      url: `/api/pdf/jobs/${String((plain.json() as { id: number }).id)}`,
+      headers: A(),
+    })
+    expect((plainAfter.json() as { mergeReport: unknown }).mergeReport).toBe(null)
+
+    const merged = await app.inject({
+      method: "POST",
+      url: "/api/pdf",
+      headers: A(),
+      payload: { formId, recordIds: [recordId], mergeAttachments: true },
+    })
+    expect(merged.statusCode).toBe(200)
+    expect(await worker.drainOne()).toBe(true)
+    const mergedAfter = await app.inject({
+      method: "GET",
+      url: `/api/pdf/jobs/${String((merged.json() as { id: number }).id)}`,
+      headers: A(),
+    })
+    const dto = mergedAfter.json() as { status: string; mergeReport: unknown }
+    expect(dto.status).toBe("ready")
+    expect(dto.mergeReport).toEqual([])
+  })
 })
+
+async function firstFieldId(): Promise<number> {
+  const res = await app.inject({ method: "GET", url: `/api/forms/${String(formId)}`, headers: A() })
+  return (res.json() as { fields: { id: number }[] }).fields[0]?.id ?? 0
+}

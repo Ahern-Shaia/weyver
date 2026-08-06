@@ -25,6 +25,8 @@ export interface TenantSettings {
   readonly name: string
   readonly taxId: string | null
   readonly logoFileKey: string | null
+  /* R1·後續-2b M2 A3|伺服器端 PDF 的浮水印文字。null / 空 = 不加。 */
+  readonly pdfWatermarkText: string | null
   readonly timezone: string
   readonly defaultLocale: string
   readonly defaultCurrency: string
@@ -57,6 +59,7 @@ export class SettingsService {
         name: row.name,
         taxId: row.taxId,
         logoFileKey: row.logoFileKey,
+        pdfWatermarkText: row.pdfWatermarkText,
         timezone: row.timezone,
         defaultLocale: row.defaultLocale,
         requireMfa: row.requireMfa,
@@ -70,6 +73,8 @@ export class SettingsService {
     patch: {
       name?: string | undefined
       taxId?: string | null | undefined
+      /* 顯式 null = 關掉浮水印。與 taxId 同一個語意。 */
+      pdfWatermarkText?: string | null | undefined
       timezone?: string | undefined
       defaultLocale?: string | undefined
       defaultCurrency?: string | undefined

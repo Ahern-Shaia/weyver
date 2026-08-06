@@ -60,6 +60,14 @@ const tenantPatchSchema = z
     defaultLocale: z.enum(LOCALES),
     defaultCurrency: z.string().trim().length(3).toUpperCase(),
     requireMfa: z.boolean(),
+    /* PDF 浮水印。空字串 → null(關閉)—— 使用者清空輸入框的意思就是不要浮水印,
+       而存空字串進去會被 DB 的長度 CHECK 擋掉整筆更新。上限與 CHECK 同步。 */
+    pdfWatermarkText: z
+      .string()
+      .trim()
+      .max(32)
+      .nullable()
+      .transform((v) => (v === "" ? null : v)),
   })
   .partial()
 

@@ -9,6 +9,7 @@ import { MetadataService } from "../form-engine/metadata/metadata.service.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import { LinkOptionsService } from "../form-engine/relations/link-options.service.js"
 import { SettingsService } from "../settings/settings.service.js"
+import type { AttachmentRef } from "./pdf-merge.service.js"
 import { type PdfJobRow, PdfRepository } from "./pdf.repository.js"
 
 /* 票的有效期。渲染器就在同一台機器上,60 秒綽綽有餘 ——
@@ -37,6 +38,10 @@ export interface RenderPayload {
     readonly byParent: Readonly<Record<string, readonly unknown[]>>
   } | null
   readonly tenant: { readonly name: string }
+  /* M2 A3|租戶級浮水印(Ragic `doc/56` parity)。目前只有文字 ——
+     圖片浮水印卡在「租戶級資產上傳」這條尚不存在的路上,`tenants.logo_file_key`
+     同樣至今零 writer。詳見 migration 0063 的說明。 */
+  readonly watermark: { readonly text: string | null } | null
   readonly ctx: { readonly locale: string; readonly timeZone: string }
 }
 
@@ -61,6 +66,7 @@ export class PdfService {
     formId: number,
     recordIds: readonly number[],
     permissions: EffectivePermissions,
+    mergeAttachments = false,
   ): Promise<PdfJobRow> {
     if (recordIds.length === 0 || recordIds.length > PDF_MAX_RECORDS) {
       throw new ForbiddenException({
@@ -73,7 +79,7 @@ export class PdfService {
     if (!permissions.canRead(formId)) {
       throw new ForbiddenException({ code: "FORBIDDEN", message: "沒有檢視這張表單的權限" })
     }
-    return this.repo.create({ tenantId, actorId, formId, recordIds })
+    return this.repo.create({ tenantId, actorId, formId, recordIds, mergeAttachments })
   }
 
   /* 🔴 OQ-PDF-6 的落點:渲染器拿票換資料,而資料是以**該工作的 actor**
@@ -122,6 +128,7 @@ export class PdfService {
       linkLabels: await this.resolveLinkLabels(job, fields, records, perms),
       members: await this.resolveMembers(job.tenantId, fields),
       tenant: { name: tenant.name },
+      watermark: { text: tenant.pdfWatermarkText },
       /* 🔴 **租戶時區,不是伺服器時區**。PDF 是離線憑證,印出來的時間若用
          伺服器的 UTC,單據上的日期會與系統裡看到的差一天(台灣 UTC+8,
          `autoNumber` 的日期分界已經為同一個理由踩過一次)。 */
@@ -213,6 +220,53 @@ export class PdfService {
     return Object.fromEntries(actors.map((a) => [String(a.id), a.name]))
   }
 
+  /* 🔴 M2 A3|把這份工作的記錄裡的附件併進單據。
+
+     ## 為什麼合併發生在**渲染之後**而不是渲染頁裡
+
+     渲染頁是 HTML,沒有辦法把一份既有的 PDF 當成頁面插進去。而且附件是原樣
+     交付的憑證(對方要的是那份發票本身,不是它的截圖),重新排版反而是損失。
+
+     ## 權限與 `redeem` 走同一條路
+
+     這裡**重新解析**該工作 actor 的有效權限,而不是沿用建立工作時的快照 ——
+     理由與 `redeem` 逐字相同:沿用快照會把「當時能看」變成「永遠能印」。
+     值的遮罩由 `getRecord` 執行,檔案那一層由 `openForDownload` 執行,
+     兩者都不在這裡重寫。
+
+     ⚠️ 只看**父記錄**的附件欄。子表明細各自的附件不併 —— 一張採購單的
+     二十列明細各帶三個附件就是六十份檔案,那不是「印一張單」的意圖。 */
+  async collectAttachments(job: PdfJobRow): Promise<{
+    readonly permissions: EffectivePermissions
+    readonly refs: readonly AttachmentRef[]
+  }> {
+    const perms = await this.permissions.resolveForActor(job.tenantId, job.requestedByActorId)
+    const { fields } = await this.metadata.getForm(job.tenantId, job.formId)
+    const attachmentFields = fields.filter((f) => f.cellValueType === "attachment")
+    if (attachmentFields.length === 0) return { permissions: perms, refs: [] }
+
+    const refs: AttachmentRef[] = []
+    const seen = new Set<string>()
+    for (const recordId of job.recordIds) {
+      const record = await this.records.getRecord(
+        job.tenantId,
+        job.formId,
+        Number(recordId),
+        perms,
+        job.requestedByActorId,
+      )
+      for (const field of attachmentFields) {
+        for (const one of toRefs(record.values[field.name])) {
+          /* 同一個檔案被兩筆記錄引用時只併一次 —— 併兩次是重複的紙。 */
+          if (seen.has(one.key)) continue
+          seen.add(one.key)
+          refs.push(one)
+        }
+      }
+    }
+    return { permissions: perms, refs }
+  }
+
   async listOwn(tenantId: number, actorId: number): Promise<PdfJobRow[]> {
     return this.repo.listOwn(tenantId, actorId)
   }
@@ -224,6 +278,21 @@ export class PdfService {
   async countDownload(id: number): Promise<void> {
     await this.repo.countDownload(id)
   }
+}
+
+/* 附件欄的值形狀是 `[{key,name}]`(F-5 契約)。
+   ⚠️ 這是**被遮罩過的值**:欄位不可見時 `getRecord` 根本不會回這個鍵,
+   於是不可見欄的附件自然不會被併進來 —— 不需要在這裡再判一次權限。 */
+function toRefs(value: unknown): AttachmentRef[] {
+  if (!Array.isArray(value)) return []
+  const out: AttachmentRef[] = []
+  for (const one of value) {
+    if (typeof one !== "object" || one === null) continue
+    const { key, name } = one as { key?: unknown; name?: unknown }
+    if (typeof key !== "string" || key === "") continue
+    out.push({ key, name: typeof name === "string" && name !== "" ? name : key })
+  }
+  return out
 }
 
 /* SHA-256 而非慢雜湊:票是**高熵隨機值**(32 bytes),沒有字典可猜,

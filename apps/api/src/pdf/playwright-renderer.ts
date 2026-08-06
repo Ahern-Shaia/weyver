@@ -76,7 +76,25 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleDestroy {
            但它也絕不會被載入。擋掉的次數進日誌供排查。 */ else void route.abort()
       })
 
-      await page.goto(req.url, { waitUntil: "networkidle", timeout: RENDER_TIMEOUT_MS })
+      const response = await page.goto(req.url, {
+        waitUntil: "networkidle",
+        timeout: RENDER_TIMEOUT_MS,
+      })
+      /* 🔴 M2|**頁面壞掉不能算成功**。
+
+         渲染頁若在伺服器端丟例外,Next 會回 500 並顯示一頁
+         「Application error: a server-side exception has occurred」——
+         而 `page.pdf()` 會忠實地把那一頁印成一份**完全合法的 PDF**。
+         於是工作標 ready、檔案下載得到、`%PDF-` 開頭也對,使用者拿到的卻是
+         一頁錯誤訊息。2026-08-06 手測時真的踩到(`fieldSymbology` 從伺服器
+         元件呼叫客戶端函式),而 e2e 只斷言魔術位元組,綠過。
+
+         HTTP 狀態是這裡唯一拿得到、又確實反映「頁面有沒有成功產生」的訊號。 */
+      if (response === null || !response.ok()) {
+        throw new Error(
+          `print page returned ${response === null ? "no response" : String(response.status())}`,
+        )
+      }
       /* 列印樣式要生效,媒體型別必須是 print —— 否則印出來的是螢幕版
          (含側欄、按鈕、`data-noprint` 的東西全都會進 PDF)。 */
       await page.emulateMedia({ media: "print" })

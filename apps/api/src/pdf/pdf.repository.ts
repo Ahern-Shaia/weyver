@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { DRIZZLE, type DrizzleDb, TenantDb } from "../db/db.module.js"
-import { pdfJobs } from "../db/schema.js"
+import { type PdfMergeSkip, pdfJobs } from "../db/schema.js"
 
 export interface PdfJobRow {
   readonly id: number
@@ -15,6 +15,9 @@ export interface PdfJobRow {
   readonly ticketUsedAt: Date | null
   readonly downloadCount: number
   readonly error: string | null
+  readonly mergeAttachments: boolean
+  /* 沒併進去的附件與原因。null = 這次沒要求合併 / 尚未跑到 */
+  readonly mergeReport: readonly PdfMergeSkip[] | null
   readonly createdAt: Date
   readonly readyAt: Date | null
   readonly expiresAt: Date | null
@@ -38,6 +41,7 @@ export class PdfRepository {
     actorId: number
     formId: number
     recordIds: readonly number[]
+    mergeAttachments: boolean
   }): Promise<PdfJobRow> {
     return this.tenantDb.withTenant(input.tenantId, async (tx) => {
       const rows = await tx
@@ -47,6 +51,7 @@ export class PdfRepository {
           requestedByActorId: input.actorId,
           formId: input.formId,
           recordIds: [...input.recordIds],
+          mergeAttachments: input.mergeAttachments,
         })
         .returning()
       const row = rows[0]
@@ -126,11 +131,16 @@ export class PdfRepository {
     objectKey: string,
     sizeBytes: number,
     ttlDays: number,
+    /* 空陣列與 null 是兩件事:空陣列 =「有合併,全部都成功」,
+       null =「這次沒要求合併」。UI 要分得開,否則沒有附件的單據會被
+       誤報成「附件全部略過」。 */
+    mergeReport: readonly PdfMergeSkip[] | null = null,
   ): Promise<void> {
     await this.db.execute(sql`
       UPDATE pdf_job
       SET status = 'ready', object_key = ${objectKey}, size_bytes = ${sizeBytes},
-          ready_at = now(), expires_at = now() + make_interval(days => ${ttlDays}), error = NULL
+          ready_at = now(), expires_at = now() + make_interval(days => ${ttlDays}), error = NULL,
+          merge_report = ${mergeReport === null ? null : JSON.stringify(mergeReport)}::jsonb
       WHERE id = ${id}
     `)
   }
@@ -190,6 +200,8 @@ function normalize(row: Record<string, unknown>): PdfJobRow {
     ticketUsedAt: (row.ticket_used_at as Date | null) ?? null,
     downloadCount: Number(row.download_count ?? 0),
     error: (row.error as string | null) ?? null,
+    mergeAttachments: row.merge_attachments === true,
+    mergeReport: (row.merge_report as readonly PdfMergeSkip[] | null) ?? null,
     createdAt: row.created_at as Date,
     readyAt: (row.ready_at as Date | null) ?? null,
     expiresAt: (row.expires_at as Date | null) ?? null,

@@ -2,10 +2,12 @@ import { randomBytes, randomUUID } from "node:crypto"
 import { Inject, Injectable, Logger } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { Cron, CronExpression, Interval } from "@nestjs/schedule"
+import type { PdfMergeSkip } from "../db/schema.js"
 import { STORAGE_DRIVER, type StorageDriver } from "../storage/storage-driver.js"
+import { PdfMergeService } from "./pdf-merge.service.js"
 import { PDF_RENDERER, type PdfRenderer } from "./pdf-renderer.js"
-import { PdfRepository } from "./pdf.repository.js"
-import { PDF_TTL_DAYS, hashTicket } from "./pdf.service.js"
+import { type PdfJobRow, PdfRepository } from "./pdf.repository.js"
+import { PDF_TTL_DAYS, PdfService, hashTicket } from "./pdf.service.js"
 
 /* 🔴 R1·後續-2b M1|PDF 佇列 worker。形狀與 `ExportWorkerService` 一致 ——
    狀態欄就是佇列,`@Interval` 撿件,`busy` 旗標擋重入。
@@ -27,6 +29,8 @@ export class PdfWorkerService {
     @Inject(PDF_RENDERER) private readonly renderer: PdfRenderer,
     @Inject(STORAGE_DRIVER) private readonly storage: StorageDriver,
     @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(PdfService) private readonly pdf: PdfService,
+    @Inject(PdfMergeService) private readonly merger: PdfMergeService,
   ) {}
 
   @Interval(5_000)
@@ -51,15 +55,42 @@ export class PdfWorkerService {
 
     try {
       const base = this.config.get<string>("PRINT_BASE_URL") ?? "http://localhost:3002"
-      const pdf = await this.renderer.render({ url: `${base}/print/${ticket}` })
+      const rendered = await this.renderer.render({ url: `${base}/print/${ticket}` })
+      /* 🔴 附件合併發生在渲染**之後**:渲染頁是 HTML,插不進一份既有的 PDF。
+         合併失敗不讓整份工作倒 —— 單據本身沒問題卻拿不到,比「附件少了幾個
+         但清單上寫得清清楚楚」更糟。 */
+      const { pdf, report } = await this.mergeIfRequested(job, rendered)
       const key = `t${String(job.tenantId)}/pdf/${randomUUID()}.pdf`
       await this.storage.put(key, pdf, { mime: "application/pdf" })
-      await this.repo.markReady(job.id, key, pdf.byteLength, PDF_TTL_DAYS)
+      await this.repo.markReady(job.id, key, pdf.byteLength, PDF_TTL_DAYS, report)
     } catch (error) {
       this.logger.warn(`PDF #${String(job.id)} 失敗:${String(error)}`)
       await this.repo.markFailed(job.id, "產生 PDF 失敗,請稍後再試或聯絡管理員")
     }
     return true
+  }
+
+  private async mergeIfRequested(
+    job: PdfJobRow,
+    rendered: Buffer,
+  ): Promise<{ pdf: Buffer; report: readonly PdfMergeSkip[] | null }> {
+    if (!job.mergeAttachments) return { pdf: rendered, report: null }
+    try {
+      const { permissions, refs } = await this.pdf.collectAttachments(job)
+      const out = await this.merger.merge(
+        job.tenantId,
+        job.requestedByActorId,
+        permissions,
+        rendered,
+        refs,
+      )
+      return { pdf: out.pdf, report: out.skipped }
+    } catch (error) {
+      /* 合併整段掛掉(而非單一附件失敗)時仍交付單據本身,並讓使用者知道
+         附件那一段沒跑成 —— 靜默回傳一份「看起來完整」的 PDF 才是最糟的。 */
+      this.logger.warn(`PDF #${String(job.id)} 附件合併失敗:${String(error)}`)
+      return { pdf: rendered, report: [{ name: "(全部附件)", reason: "unavailable" }] }
+    }
   }
 
   /* 🔴 到期清理。**刪 storage 物件,列留著標 expired** ——

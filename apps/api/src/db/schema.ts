@@ -55,7 +55,13 @@ export const tenants = pgTable("tenants", {
   /* R1·A-1 M1 租戶設定。皆有預設或 nullable → 既有租戶零遷移。
      `default_*` 是**預設值**語意:個人可覆寫語言(見 userPrefs),幣別目前無個人軸。 */
   taxId: text("tax_id"),
+  /* ⚠️ 2026-08-06 查:**此欄零 writer** —— 有 reader(`getTenant` 回傳、前端 schema
+     也宣告了)卻沒有任何地方寫得進去。租戶級資產上傳這條路尚未存在
+     (`FilesService.upload` 綁欄位型別,不吃租戶級資產)。圖片浮水印在等同一條路。 */
   logoFileKey: text("logo_file_key"),
+  /* R1·後續-2b M2 A3|PDF 浮水印文字(作廢 / 副本 / 機密)。
+     圖片浮水印與 logo 同卡在上面那條缺的路上,故此處先只做文字。 */
+  pdfWatermarkText: text("pdf_watermark_text"),
   defaultLocale: text("default_locale").notNull().default("zh-Hant"),
   defaultCurrency: text("default_currency").notNull().default("TWD"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1560,6 +1566,10 @@ export const pdfJobs = pgTable(
     downloadCount: integer("download_count").notNull().default(0),
     /* 給使用者看的訊息 —— 不得放內部細節 */
     error: text("error"),
+    /* M2 A3|把記錄的附件 PDF 併進單據。預設關 —— 理由見 migration 0063。 */
+    mergeAttachments: boolean("merge_attachments").notNull().default(false),
+    /* 沒併進去的附件與原因。靜默略過等於讓使用者拿到一份看似完整的東西。 */
+    mergeReport: jsonb("merge_report").$type<readonly PdfMergeSkip[]>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     readyAt: timestamp("ready_at", { withTimezone: true }),
@@ -1567,6 +1577,19 @@ export const pdfJobs = pgTable(
   },
   (t) => [index("pdf_job_tenant_idx").on(t.tenantId, t.createdAt)],
 )
+
+export type PdfMergeSkipReason =
+  | "not-pdf"
+  | "encrypted"
+  | "unreadable"
+  | "too-large"
+  | "unavailable"
+  | "page-cap"
+
+export interface PdfMergeSkip {
+  readonly name: string
+  readonly reason: PdfMergeSkipReason
+}
 
 export const exportJobs = pgTable(
   "export_job",
