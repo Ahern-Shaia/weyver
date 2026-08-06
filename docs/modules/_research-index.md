@@ -21,6 +21,7 @@
 | [F-2] 認證 + 租戶 context + 使用者身分 | ⭐ 有一手依據 | 10 | 0 | — | ASVS · Better Auth · CVE-2025-61928 · CVE-2025-64484 · CVE-2026-35051 · CVE-2026-53513 · CVE-2026-53514 · Fastify · NestJS · OWASP | [foundation/auth.md](foundation/auth.md) |
 | [F-5] 檔案儲存基礎設施(上傳 / 下載 / 附件欄完成) | ⭐ 有一手依據 | 11 | 0 | — | Airtable · CVE-2025-24033 · CVE-2026-25223 · CVE-2026-33806 · CVE-2026-3635 · ClamAV · Fastify · NestJS · OWASP | [foundation/file-storage.md](foundation/file-storage.md) |
 | [F-9] 框架升版(NestJS 11 + Fastify 5) | ⭐⭐ 深且推翻過 | 34 | 1 | — | Better Auth · CVE-2025-32442 · CVE-2026-25223 · CVE-2026-33806 · CVE-2026-3635 · ClamAV · Fastify · NestJS | [foundation/framework-upgrade.md](foundation/framework-upgrade.md) |
+| [F-7] 影像處理(EXIF 剝除 / 縮圖 / HEIC) | ⭐⭐ 深且推翻過 | 12 | 5 | `148` | Airtable · Baserow · Teable | [foundation/image-processing.md](foundation/image-processing.md) |
 | [F-11] 上傳掃毒 + presigned 混合下載 | ⭐⭐ 深且推翻過 | 19 | 0 | — | CVE-2020-7613 · CVE-2025-20128 · CVE-2025-20234 · CVE-2025-20260 · CVE-2026-20213 · ClamAV · OWASP | [foundation/malware-scanning.md](foundation/malware-scanning.md) |
 | [F-4] 二步驟驗證(MFA / TOTP) | ⭐⭐ 深且推翻過 | 12 | 1 | — | Better Auth · OWASP · Salesforce | [foundation/mfa.md](foundation/mfa.md) |
 | [F-10] 分頁級租戶上下文(修跨分頁污染) | ⭐ 有一手依據 | 11 | 3 | — | Better Auth · Notion · OWASP · Shopify | [foundation/tenant-context.md](foundation/tenant-context.md) |
@@ -34,6 +35,7 @@
 | [R1·UP-3] 2D 表單設計器（form-designer-ui uplift） | ⭐ 有一手依據 | 0 | 24 | `21` `35` `121` `306` | Airtable · Baserow · NocoDB · Teable | [R1/form-designer-2d.md](R1/form-designer-2d.md) |
 | [P0-1·UI] 表單設計器 + 填單 接引擎 API | ⭐⭐ 深且推翻過 | 12 | 0 | `21` `37` `72` `143` `167` `286` | Airtable · Baserow · Notion · Salesforce · W3C · Zoho | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | [R1·UP-3c] 設計檢視 = 表單本身（設計器心智模型補完） | ⭐ 有一手依據 | 0 | 12 | `21` `26` `34` `35` `37` `38` `53` `121` `306` | Airtable · Baserow · Teable | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
+| [P0-3] 公式引擎 + 關聯 Link&Load | ⭐ 有一手依據 | 1 | 10 | — | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | [R1·UX-1] 前端重構(視覺 / 心智模型 / 操作體驗 / UI / UX) | ⭐ 有一手依據 | 0 | 15 | — | ARIA APG · Airtable · Baserow · Glide Data Grid · NocoDB · Notion · SAP · Salesforce · W3C | [R1/frontend-uplift.md](R1/frontend-uplift.md) |
 | [P0-2] 網格主檢視 + Excel 建表 onboarding | ⭐⭐ 深且推翻過 | 14 | 2 | `41` `54` `65` | Airtable · Glide Data Grid · Salesforce · Teable | [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
 | [R1·P0-2 殘留] 網格貼上 Excel 區塊 | ⭐ 有一手依據 | 0 | 15 | `107` `139` `210` | Airtable · Baserow · Glide Data Grid · Smartsheet · Teable | [R1/grid-paste.md](R1/grid-paste.md) |
@@ -60,7 +62,6 @@
 | 「站在巨人的肩膀」稽核（第 A 批:連 §0 標題都沒有的 14 份) | — | ⭐ 有一手依據 | 0 | `4` `11` `21` `32` `37` `121` `149` `306` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) |
 | giants-shoulders-audit-B.md —— 已具 §0 研究節之 18 份模組文件稽核 | — | ⭐ 有一手依據 | 0 | `6` `27` | [_audit/giants-shoulders-audit-B.md](_audit/giants-shoulders-audit-B.md) |
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐ 有一手依據 | 0 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
-| [F-7] 影像處理(EXIF 剝除 / 縮圖 / HEIC) | ✅ | — | 0 | — | [foundation/image-processing.md](foundation/image-processing.md) |
 | [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job) | ✅ | · 零星引用 | 8 | — | [foundation/reliability.md](foundation/reliability.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [P0-4a·uplift] 資源軸繼承(分類授權 + owner + 敏感旗標) | ✅ | · 零星引用 | 0 | `0` `11` `32` | [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) |
@@ -69,7 +70,6 @@
 | [R1·A11Y] 欄位輸入的無障礙名稱 | ✅ | — | 0 | — | [R1/field-label-a11y.md](R1/field-label-a11y.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | — | 0 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·B-2] 表單範本庫 | ✅ | · 零星引用 | 0 | `37` `111` `176` `204` `268` | [R1/form-templates.md](R1/form-templates.md) |
-| [P0-3] 公式引擎 + 關聯 Link&Load | ✅ | · 零星引用 | 1 | — | [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | 0 | — | [R1/full-text-search.md](R1/full-text-search.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 0 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
 | [H-1] 通知系統(訂閱 / 提醒 / 通道) | ✅ | · 零星引用 | 0 | `5` `12` `78` `94` `96` | [R1/notifications.md](R1/notifications.md) |
@@ -152,6 +152,7 @@
 | `doc/139` | [R1/grid-paste.md](R1/grid-paste.md) |
 | `doc/143` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | `doc/145` | [R1/field-types-parity.md](R1/field-types-parity.md) |
+| `doc/148` | [foundation/image-processing.md](foundation/image-processing.md) |
 | `doc/149` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [R1/print-merge.md](R1/print-merge.md) |
 | `doc/153` | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | `doc/163` | [R1/event-triggers.md](R1/event-triggers.md) |

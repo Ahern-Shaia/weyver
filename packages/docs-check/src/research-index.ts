@@ -22,7 +22,10 @@ export interface ModuleResearch {
   readonly title: string
   /** MODULES.md 標 SHIPPED */
   readonly shipped: boolean
-  /** 有明確的〈站在巨人的肩膀〉章節 */
+  /** 有〈巨人的肩膀〉章節。⚠️ **不強制「站在」二字** ——
+      `formula-and-linkload` 與 `form-engine-core` 的標題是「## 2-bis. 巨人的肩膀:…」,
+      而舊 regex 要求「站在巨人的肩膀」,於是把兩份有研究的 doc 判成沒有。
+      那是 2026-08-06 同型假陰性的第五次。 */
   readonly hasGiantsSection: boolean
   /** 有 `## 0.` / `## 0-bis.` 證據段(`_template.md` 規定的位置)*/
   readonly hasEvidenceSection: boolean
@@ -138,7 +141,7 @@ export function collectResearch(root: string): ModuleResearch[] {
       path: rel,
       title: titleOf(text, rel),
       shipped: shippedNames.has(rel),
-      hasGiantsSection: /站在巨人的肩膀/.test(text),
+      hasGiantsSection: /巨人的肩膀/.test(text),
       hasEvidenceSection: /^##\s+0(-bis|-ter)?\./m.test(text),
       sourceLinks: (text.match(/https:\/\//g) ?? []).length,
       overturned: /推翻|自我更正|自我修正|改判/.test(text),

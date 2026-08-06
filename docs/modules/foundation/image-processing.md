@@ -28,16 +28,40 @@
 | 現行上傳白名單對 HEIC | `detectType` → `null` → **415 拒絕** | iPhone 直傳照片現在會被擋 |
 | 真實照片之 EXIF(IFD0 解析)| 含 **GPS IFD 指標 / Make / Model / DateTime**(916 bytes)| **隱私風險已證實,非假想**(僅驗存在,未取座標值)|
 | sharp 輸出是否帶 EXIF | ❌ 預設不帶 | 剝除是**預設行為**,不需額外處理 |
-| **1.6 MB 檔案宣告 149.8 MP** | sharp 預設 `limitInputPixels` = 268 MP → **擋不住** | 解成 raw RGB ≈ **450 MB**;20 MB 上傳上限**完全不約束解碼期記憶體** |
+| **1.6 MB 檔案宣告 149.8 MP** | sharp 預設 [`limitInputPixels`](https://sharp.pixelplumbing.com/api-constructor/) = **268402689**(約 268 MP)→ **擋不住** | 解成 raw RGB ≈ **450 MB**;20 MB 上傳上限**完全不約束解碼期記憶體** |
 | 顯式 `limitInputPixels: 12M` | ✅ `Input image exceeds pixel limit` | 緩解有效 |
 | 24 MP → 240px 縮圖 | **28 ms** | **同步處理可行,不需背景 job / 佇列** |
 
 ### 0.2 網路研究(sharp 官方文件 / 維護者聲明 / 專利池條款)
 
-1. **sharp 預建二進位永遠不會含 HEIC** —— 維護者 2025-11 於 issue #4479 明確表態:提供源碼不受專利拘束,提供**能處理專利技術的二進位**則不同;以 sharp 下載量估授權費約 **US$25m/年**。這是**永久政策**,不是待辦。
-2. **授權不是問題,專利才是**|libheif / libde265 為 **LGPL**(自由軟體;SaaS 不散布二進位故 copyleft 不觸發,亦非 AGPL);x265 為 GPL 但那是**編碼器**,只做解碼可完全不編入。**但** Access Advance(HEVC 專利池)條款**明文將雲端服務納入**,decoder「used to provide or made available for use through Cloud-Based Services」按 authorized user 逐年計費 —— Weyver 是商用多租戶 SaaS,落在其收費範圍。
+1. **sharp 預建二進位不會含 HEIC** —— 維護者(repo owner `lovell`)2025-11-25 於 [issue #4479](https://github.com/lovell/sharp/issues/4479) 逐字:
+   > providing source code is a different legal matter to providing binaries that can process data using patent-encumbered technology.
+   > I've been advised that the current download counts of sharp might incur licensing fees of around **US$25m/year**.
+   > sharp will always support use of a **globally-installed libvips** that itself has been compiled with support for HEIC images.
+
+   ⚠️ **措辭更正(2026-08-06 覆查)**:原文寫「這是**永久政策**」—— 維護者並未逐字這樣說。
+   他說的是上述理由,以及「永遠支援自編的 libvips」。**合理推讀不等於原文**,故改為引述原句。
+2. **授權不是問題,專利才是**([Access Advance: What Do We License](https://accessadvance.com/topic-what-do-we-license/) 逐字:「**Royalties are due annually (or as otherwise agreed) per authorized user** for HEVC Decoders and/or Encoders **used to provide or made available for use through Cloud-Based Services**」)|libheif / libde265 為 **LGPL**(自由軟體;SaaS 不散布二進位故 copyleft 不觸發,亦非 AGPL);x265 為 GPL 但那是**編碼器**,只做解碼可完全不編入。**但** Access Advance(HEVC 專利池)條款**明文將雲端服務納入**,decoder「used to provide or made available for use through Cloud-Based Services」按 authorized user 逐年計費 —— Weyver 是商用多租戶 SaaS,落在其收費範圍。
 3. **iOS Safari 會自動轉檔**|`<input type="file">` 之 `accept` **不含** `image/heic` 時,系統自動把 HEIC 轉成 JPEG 才送出(社群普遍回報,非 Apple 官方文件 → 證據強度中)。
-4. **`ignore-scripts` 不是障礙**|sharp ≥ 0.33 改用 optionalDependencies + cpu/os/libc 篩選,**已無 install script**;「sharp 需要 ignore-scripts=false」是 0.33 前的過期資訊。本專案 `pnpm.onlyBuiltDependencies` 已列 sharp,且 sharp 0.34.5 **已在 node_modules**(Next.js 傳遞相依)。
+4. **`ignore-scripts` 不是障礙 —— 但 2026-08-06 覆查發現原本寫的理由是錯的。**
+
+   原文:「sharp **≥ 0.33** 改用 optionalDependencies + cpu/os/libc 篩選,**已無 install script**」。
+   🔴 **斷點不是 0.33,是 0.35.0。** 本專案開檔實測(`node_modules/.pnpm/`):
+
+   | 版本 | `scripts.install` |
+   |---|---|
+   | 0.34.5(本專案實裝)| `node install/check.js \|\| npm run build` ← **有** |
+   | 0.35.3(本專案亦有)| 無 |
+
+   對的那一半:0.33.0 確實改走 optionalDependencies + 平台篩選
+   ([changelog v0.33.0](https://sharp.pixelplumbing.com/changelog/v0.33.0/):
+   「Prebuilt binaries distributed via npm registry and installed via package manager.」;
+   [安裝說明](https://sharp.pixelplumbing.com/install/) 有 `--os` / `--cpu` / `--libc` 章節)。
+
+   **結論仍然成立,理由要換**:`--ignore-scripts` 沒問題不是因為「沒有 install script」,
+   而是因為**預建二進位由 optionalDependencies 提供**,install script 只是 fallback
+   (`|| npm run build`)。CI(`ci.yml` 用 `--ignore-scripts`)實跑綠可佐證。
+   ⚠️ **對的結論配錯的理由**,會誤導日後除錯的人 —— 這正是要附出處的原因。
 5. **容器坑**|glibc 與 musl 是不同套件;跨平台安裝需 `supportedArchitectures`;glibc 記憶體碎片化建議設 `MALLOC_ARENA_MAX`(Cloud Run 有記憶體上限)。
 
 ### 0.3 競品實作(clean-room:只讀公開文件與截圖檔名)
@@ -45,18 +69,31 @@
 | 面向 | Ragic | Airtable | Teable | Baserow |
 |---|---|---|---|---|
 | 縮圖檔數 | **1(可調)** | 3(small / large / full)| 2(`smThumbnailUrl` / `lgThumbnailUrl`)| 2+ |
-| 縮圖尺寸 | **預設高 120px、寬等比;可設上限;永不放大**(50×50 原圖 → 縮圖 50×50)| **官方未載像素**(社群說 72 / 1024 / 3000,數值分歧不宜當規格)| 未載 | 未載 |
-| 是否改原檔 | 未查到 | **官方明載「does not modify the underlying file」** —— 原檔含 EXIF 原封不動,縮圖另生 | 未查到 | 未查到 |
+| 縮圖尺寸 | **預設高 120px、寬等比;可設上限;永不放大**([Ragic `doc-kb/148`](https://www.ragic.com/intl/zh-TW/doc-kb/148/) 逐字:「系統預設的縮圖尺寸為**高度 120 px**,並依照原圖比例自動調整寬度」「縮圖的尺寸都**不會超過原圖大小**(不會放大圖片)」)| **官方未載像素**(社群說 72 / 1024 / 3000,數值分歧不宜當規格)| 未載 | 未載 |
+| 是否改原檔 | 未查到 | **官方明載**([attachment field](https://support.airtable.com/docs/attachment-field)):「Airtable **does not modify the underlying file**, which can be retrieved through the download button.」| 未查到 | 未查到 |
 | 縮圖定址 | — | metadata 記錄衍生 URL(**2 小時過期**)| metadata 記錄衍生 URL | — |
 | HEIC | 未查到 | 官方明載可預覽(機制未說明)| 未查到 | — |
 
 **其他業界證據**
-- **Teable changelog 是「方向坑」的直接實證**:「Fixed mobile photo thumbnail orientation: New or **regenerated** thumbnails now respect EXIF orientation」—— 競品實際踩過 iPhone 照片轉向錯誤。
-- **Teable 同時證明「預生成派」的代價**:「**regenerated** thumbnails」「Improved recovery for **missing thumbnails on older** attachments」→ 預生成必須自建重生/補產工具。
-- **Dropbox 提供客戶端「以 JPG 上傳」設定**(camera upload)—— 大廠採**上傳端轉檔**之先例,支持 OQ-IP-1=A。
+- **Teable changelog 是「方向坑」的直接實證**([changelog](https://help.teable.ai/en/changelog),2026-07-14):
+  「Fixed mobile photo thumbnail orientation: New or **regenerated** thumbnails now respect EXIF orientation **in Gallery and Grid views**.」
+  —— 競品實際踩過 iPhone 照片轉向錯誤。
+- **Teable 同時證明「預生成派」的代價**:「**regenerated** thumbnails」。
+  🔴 **2026-08-06 覆查更正**:原文引「Improved recovery for missing thumbnails on older **attachments**」——
+  官方原句是「on older **PDF** attachments」(2026-04-27),**漏掉 PDF 一字把 PDF 專屬的修補寫成泛指所有附件**,
+  範圍被放大。同段另有「Older PDFs now show cover thumbnails more consistently」佐證其為 PDF 專屬。
+- **Dropbox 提供客戶端「以 JPG 上傳」設定**([iOS 檔案格式](https://help.dropbox.com/create-upload/ios-formats):「you can set your HEIF and HEVC files to **upload as JPG**」;設定路徑 Camera Uploads → 「Save HEIC Photos as」)—— 大廠採**上傳端轉檔**之先例,支持 OQ-IP-1=A。
 - **EXIF 業界分歧**:FB/IG/X 剝 GPS;**Slack 原樣保留**;B2B 工具偏向保留原檔。
-- **事故先例(強證據)**:活動 SaaS **Partiful 於 2025-10 遭 TechCrunch 揭露**未剝除使用者照片的 GPS,任何人以瀏覽器 devtools 即可讀出街道級座標;兩日內修補並**回溯清洗既有照片**。對 Weyver 之現場品檢照 / 工單照,這是可預見的 PDPA 風險。
-- **格式**:2026 縮圖預設 **WebP**(同畫質較 JPEG 小 25–34%,支援度 >97%)。
+- **事故先例(強證據)**:活動 SaaS **Partiful** 遭 [TechCrunch 揭露](https://techcrunch.com/2025/10/04/event-startup-partiful-wasnt-stripping-gps-locations-from-user-uploaded-photos/)(2025-10-04)未剝除使用者照片的 GPS。逐字:
+  > TechCrunch found that the app was **not stripping the location data** of user-uploaded images, including public profile photos.
+  > TechCrunch found by Saturday that **metadata was removed from existing user-uploaded photos**.
+
+  ⚠️ **措辭更正**:原文寫「**兩日內**修補」—— 那不是原文。Partiful 起初回覆「next week」,
+  經 TechCrunch 催促後於當週六修補並回溯清洗。回溯清洗這件事確認無誤。對 Weyver 之現場品檢照 / 工單照,這是可預見的 PDPA 風險。
+- **格式**:2026 縮圖預設 **WebP**。同畫質較 JPEG 小 **25–34%**
+  ([Google 官方](https://developers.google.com/speed/webp):「WebP lossy images are **25-34% smaller** than comparable JPEG images at equivalent SSIM quality index.」)。
+  🔴 **支援度更正**:原文寫「>97%」,[caniuse](https://caniuse.com/webp) **2026-08-06 實測為 96.07% + 0.08% ≈ 96%**
+  (以原始資料集 `features-json/webp.json` 覆核)。**這個數字會隨瀏覽器統計浮動,本來就必須綁查證日期。**
 
 ### 0.4 本機再測(重新編碼 vs 無損剝除;2400×1600 照片級圖)
 
