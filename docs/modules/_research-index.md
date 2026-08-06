@@ -63,6 +63,7 @@
 | [F-10] 分頁級租戶上下文(修跨分頁污染) | ✅ | — | — | [foundation/tenant-context.md](foundation/tenant-context.md) |
 | [R1·後續-1] 自訂按鈕 + 簽核流程(workflow UX 面) | ✅ | · 零星引用 | `13` `15` `68` | [R1/actions-approval.md](R1/actions-approval.md) |
 | [P0-4a] 三層權限(授權層) | ✅ | · 零星引用 | `32` `64` | [R1/authz.md](R1/authz.md) |
+| [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐ 有一手依據 | — | [R1/event-triggers.md](R1/event-triggers.md) |
 | [P0-1·UI] 表單設計器 + 填單 接引擎 API | ✅ | · 零星引用 | `21` `37` `72` `143` `167` `286` | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | — | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | — | [R1/full-text-search.md](R1/full-text-search.md) |
