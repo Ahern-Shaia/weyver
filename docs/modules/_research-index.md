@@ -51,6 +51,7 @@
 | [R1·後續-2] 標籤/QR 產生器 + 列印增強(合併列印為 P1) | ⭐ 有一手依據 | 31 | 6 | `4` `27` `40` `42` `53` `138` `149` | — | [R1/print-merge.md](R1/print-merge.md) |
 | [G-2] 公開表單 | ⭐ 有一手依據 | 24 | 0 | `23` `32` `54` `110` `195` | Airtable · Baserow · ClamAV · OWASP | [R1/public-form.md](R1/public-form.md) |
 | [R1·H-4] 記錄修改紀錄(誰、什麼時候、把什麼改成什麼) | ⭐ 有一手依據 | 0 | 7 | `81` | — | [R1/record-revisions.md](R1/record-revisions.md) |
+| [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page) | ⭐ 有一手依據 | 15 | 9 | — | Airtable · NocoDB · Notion · SAP · Salesforce | [R1/record-workbench-ui.md](R1/record-workbench-ui.md) |
 | [H-2] 資源回收桶 + 保留期硬刪 | ⭐⭐ 深且推翻過 | 25 | 0 | `115` `124` | Airtable · Baserow · EDPB · GDPR · NocoDB · Notion · Salesforce · Teable | [R1/recycle-bin.md](R1/recycle-bin.md) |
 | [R1·A-1] 設定中心(S22) | ⭐ 有一手依據 | 0 | 16 | `3` | ASVS · Airtable · Better Auth · CVE-2026-53514 · Fastify · NestJS · Notion · OWASP · Odoo · Salesforce | [R1/settings-center.md](R1/settings-center.md) |
 | [F-1] 分組 / 看板 / 行事曆檢視 | ⭐⭐ 深且推翻過 | 43 | 1 | `9` `92` | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/views-group-kanban-calendar.md](R1/views-group-kanban-calendar.md) |
@@ -73,7 +74,6 @@
 | [R1·B-2] 表單範本庫 | ✅ | · 零星引用 | 0 | `37` `111` `176` `204` `268` | [R1/form-templates.md](R1/form-templates.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | 0 | — | [R1/full-text-search.md](R1/full-text-search.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 0 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
-| [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page) | ✅ | · 零星引用 | 7 | — | [R1/record-workbench-ui.md](R1/record-workbench-ui.md) |
 | [R1·後續-2b] 伺服器端 PDF 與列印範本 | ✅ | · 零星引用 | 0 | `42` `56` `138` `284` | [R1/server-pdf.md](R1/server-pdf.md) |
 | [R1·UP-2] 視圖系統 + 集合(browse)視圖 | ✅ | · 零星引用 | 0 | `4` `15` `19` `38` `54` | [R1/views-list.md](R1/views-list.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 2 | `56` | [R1/white-label.md](R1/white-label.md) |

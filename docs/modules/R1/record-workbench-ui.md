@@ -264,15 +264,29 @@
 
 **🔴 表格量級階梯(同樣適用關聯區,可直接照做)**
 
-| 筆數 | 官方作法 |
-|---|---|
-| ≤ 20 | 直接顯示全部 |
-| ≤ 100 | **lazy load** |
-| 50–400 | 改用 **tab** |
-| > 400 | **只顯示 10–20 筆預覽 + 右下 `Show All (x)`** 導向 list report |
+🔴 **2026-08-06 更正:原本寫的門檻把官方數字灌水了一倍。**
+本專案以真瀏覽器開 [官方頁面](https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/floorplans/object-page/usage)
+覆核,**全頁搜尋 `400` 零次命中**。官方表格逐字:
 
-> 本專案關聯 rail 目前一律截斷 20 筆並標示 —— 對 ≤20 正確,但**中量級(20–400)缺 lazy load 與 tab、
-> 大量級缺 Show All 導向**,使用者無法得知「其實還有 300 筆」。
+| Number of Table Items | Use |
+|---|---|
+| Up to 20 | Items can be displayed right away |
+| Up to 100 | Lazy loading |
+| **More than 50-100 but less than 200** | Tab navigation |
+| **More than 200** or tab approach is unsuitable | Navigation to another page |
+
+導出去之後的作法(同頁逐字):
+> We recommend showing a preview of only **10 items, but not more than 20**.
+> place a right-aligned link below the table with the label **`Show All (x)`**, where x represents the total number of items.
+
+| 原文寫 | 官方實為 |
+|---|---|
+| 50–400 改用 tab | **50-100 以上但 less than 200** |
+| > 400 才導出去 | **more than 200** |
+
+> 本專案關聯 rail 目前一律截斷 20 筆並標示 —— 對 ≤20 正確,但**中量級(20–200)缺 lazy load 與 tab、
+> 大量級(>200)缺 Show All 導向**,使用者無法得知「其實還有 300 筆」。
+> **結論方向不變,但門檻要用官方的數字。**
 
 **明確不該用 object page 的情況**|需**同時編輯多筆**、或**不知明細下找項目** → 應用 list report。
 
@@ -281,11 +295,11 @@
 | 項目 | 判斷 | 官方規範 |
 |---|---|---|
 | 借用「Object Page」名稱 | ✅ **站得住** | header / anchor / sections / display↔edit 四要件齊備 |
-| display 與 edit **同版面不移位** | ✅ **完全合規** | 官方原文「切換模式時內容不得改變位置」—— 這是最像 Fiori 的一點 |
-| Save / 取消放 header,**無 footer toolbar** | ⚠️ **應調整** | 官方分工明文:**Edit / Delete / Copy 在 header,Save / Post / Accept / Reject 在 footer**;簽核動作更該在 footer |
-| anchor bar **未涵蓋全部區段**(摘要 facet、關聯記錄未列入 `sections`)| 🔴 **違反** | 官方硬規則:**section 一律直接反映在導覽列** |
+| display 與 edit **同版面不移位** | ✅ **完全合規** | [官方逐字](https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/floorplans/object-page/usage):「Use the same content layout for both display and edit mode – **content should not change location** when the user switches between display and edit modes.」⚠️ 官方用 `should not`(建議),原文寫「**不得**」語氣偏強 |
+| Save / 取消放 header,**無 footer toolbar** | ⚠️ **應調整** | [官方逐字](https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/floorplans/object-page/usage):header「contains global actions for the object, such as **Edit or Delete**」;footer「is used for closing and finalizing actions in: **Edit and create mode, for example, Save, Post, Accept, Reject, and Activate**; **Display mode, for example, Approve, Accept, and Reject**」。⚠️ **兩處更正**:(a) **Copy 不在該頁**,在 [Fiori elements object page header](https://www.sap.com/design-system/fiori-design-web/v1-136/discover/frameworks/sap-fiori-elements/object-page/object-page-header-sap-fiori-elements)(「the Copy button is displayed after the Delete button」);(b) **Accept / Reject 在 display mode 的 footer 也有**,不是 edit 專屬 |
+| anchor bar **未涵蓋全部區段**(摘要 facet、關聯記錄未列入 `sections`)| 🔴 **違反** | [官方逐字](https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/floorplans/object-page/usage):「Sections are containers for subsections… and are **directly reflected in the navigation bar**.」「**Sections can only contain subsections, not content.**」「**On small screens, the anchor bar becomes a dropdown list.**」⚠️ 最後一條**只適用 anchor bar** —— 官方另明說 tab bar 用水平輪播溢位,「This differs from the dropdown approach used for the anchor bar」|
 | 狀態章 + 金額擠在 title 列,**header content 不可收合** | ⚠️ | 官方為 **key value facet** 置於 header content,捲動時 snap 收合 |
-| 缺 FCL 的展開 / 全螢幕 / 關閉 + 上下筆 paging | ⚠️ | **flexible column layout** 為官方標配 |
+| 缺 FCL 的展開 / 全螢幕 / 關閉 + 上下筆 paging | ⚠️ | [Flexible Column Layout 逐字](https://www.sap.com/design-system/fiori-design-web/v1-136/page-types/page-layouts/flexible-column-layout/usage):「offers different layouts with **up to three columns (1, 2, 3)**… **view the rightmost column in full screen mode**」「**already incorporated within SAP Fiori elements**」。⚠️ 原文寫「官方標配」略強 —— object page 那頁用的是條件句「**If** the object page is used in the flexible column layout」,即**可選非必用** |
 
 > **一個重要澄清**|**List Report → Object Page 不等於「左清單右詳情」** ——
 > 兩者是各自獨立的 floorplan,靠 **flexible column layout(1/2/3 欄可展開全螢幕)** 才並置。
@@ -295,9 +309,9 @@
 
 | 項 | 判斷 |
 |---|---|
-| **三種版型的取捨** | 參考 | **Airtable = modal**(格線是主體,詳情是暫時性)· **Notion = side peek**(保留脈絡)· **Salesforce = 全頁**(記錄極寬、related lists 多)。→ **選擇取決於「記錄有多寬」與「是否需保留清單脈絡」**;記錄很寬時右欄確實過窄,這正是 Fiori FCL 必須能**全螢幕**的原因 |
+| **三種版型的取捨** | 參考 | ⚠️ **2026-08-06 更正**:**「Airtable = modal」查無官方依據** —— 實查 8 篇官方文件,`modal` 的命中全是別的東西(隱藏欄位面板 / 貼上確認框 / interface 表單)。**諷刺的是「center modal」其實是 Notion 的官方用詞**。此條降為**觀察所得**,不得當官方依據。<br>**Notion ✅ 逐字**([views, filters, and sorts](https://www.notion.com/help/views-filters-and-sorts)):「**Side peek**: Open pages on the right side of the database. The rest of the database view continues to be interactive on the left.」「**Center peek**: Open pages in a focused, center modal.」且「Table, Board, List & Timeline layouts will open pages in **side peek by default**」。<br>**Salesforce = 全頁**(記錄極寬、related lists 多)。→ **選擇取決於「記錄有多寬」與「是否需保留清單脈絡」**;記錄很寬時右欄確實過窄,這正是 Fiori FCL 必須能**全螢幕**的原因 |
 | **響應式** | 🔴 `form-workspace.tsx` **全無斷點**(無 `md:` / `lg:`),平板 / 手機必爆版。Material 官方 list-detail 降級:窄螢幕時清單與詳情各佔一畫面。詳情欄亦應隨寬度 4/3/2/1 欄降級(現固定 `sm:grid-cols-2`)|
-| **行內編輯** | ✅ **事實澄清** —— 實作**不是**「點欄位即編輯 + 自動儲存」,而是 **global edit + 明確儲存 + `expectedVersion` 樂觀鎖**,正是企業慣例與 Fiori 正解。⚠️ 建議補「依狀態切換」:已核准 → 唯讀(Salesforce 對簽核鎖定記錄**直接禁止 inline edit**)|
+| **行內編輯** | ✅ **事實澄清** —— 實作**不是**「點欄位即編輯 + 自動儲存」,而是 **global edit + 明確儲存 + `expectedVersion` 樂觀鎖**,正是企業慣例與 Fiori 正解。⚠️ 建議補「依狀態切換」:已核准 → 唯讀(⚠️ **2026-08-06 更正**:原本引 `basics_customviews_lv_lex_considerations` 說 Salesforce「**直接禁止** inline edit」—— 該頁 `approval` **零次命中**,引錯了。正確出處是 [Record Editability in Approvals](https://help.salesforce.com/s/articleView?id=platform.approvals_create_recordeditability.htm&type=5) 逐字:「When a record is **submitted for approval, it's locked to prevent users from editing it**… **Use the record editability properties to determine who can edit** records that are locked」。兩處要改:那是**全面鎖定編輯**不是 inline edit 專屬,而且**不是「直接禁止」而是可設定放行對象**。「已核准 → 唯讀」的方向仍成立)|
 | **關聯 rail** | ✅ 已分組、後端截斷 20 筆並標示。⚠️ 缺**筆數計數**與 **Show All (x)** 導向該表已篩選檢視 —— Fiori 對 >400 筆明文此解;Salesforce **Related Lists** 同構 |
 | **「審一批不換頁」** | ✅ 訴求成立,但 Fiori 官方明說**「需同時編輯多筆」不該用 object page** → 真要批次審應在列表模式做**多選 + 批次動作**。⚠️ 目前缺批次動作,兩者應並存 |
 | 清單列「標題 + 狀態章 + 金額」 | ✅ **不算過載** —— 與 Fiori key value facet 同構,是「不點進去就能決策」的最小集合 |
