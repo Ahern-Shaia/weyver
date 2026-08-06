@@ -22,6 +22,7 @@ import {
   type ListResponse,
   type RecordRow,
   type TriggerConfig,
+  type TriggerSchedule,
   type ViewConfig,
   type ViewDto,
   type ViewFilterCondition,
@@ -608,6 +609,7 @@ export function useCreateTrigger(formId: number) {
       onUpdate: boolean
       watchFields: string[]
       conditions: { field: string; op: string; value?: unknown }[]
+      schedule?: TriggerSchedule
       config: TriggerConfig
     }) =>
       engineFetch(`/forms/${formId}/triggers`, triggerDtoSchema, { method: "POST", body: input }),

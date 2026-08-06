@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, X } from "lucide-react"
+import { Play } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
 import { Input } from "@weyver/ui/input"
@@ -10,6 +10,9 @@ import {
   type ConditionRow,
   ConditionRows,
 } from "@/app/app/builder/_components/designer/condition-rows"
+import { ScheduleFields } from "@/app/app/builder/_components/designer/schedule-fields"
+import { TriggerList } from "@/app/app/builder/_components/designer/trigger-list"
+import { TriggerRuns } from "@/app/app/builder/_components/designer/trigger-runs"
 import { describeEngineError } from "@/lib/engine/client"
 import {
   useCreateTrigger,
@@ -38,14 +41,6 @@ import type { FormDto } from "@/lib/engine/schemas"
    同步觸發器算不出來時**會擋住存檔**,所以設計者必須能在不弄壞一張表的
    前提下驗證自己設的規則。沒有試跑,試錯的成本是「整張表存不了,而且不知道為什麼」。 */
 
-const OUTCOME_LABEL: Record<string, string> = {
-  ran: "已執行",
-  skipped: "條件不符",
-  denied: "權限不足",
-  failed: "執行失敗",
-  depth: "連鎖過深已停",
-}
-
 export function TriggersPanel({
   formId,
   form,
@@ -64,6 +59,10 @@ export function TriggersPanel({
   const [name, setName] = useState("")
   const [onCreate, setOnCreate] = useState(true)
   const [onUpdate, setOnUpdate] = useState(false)
+  const [onSchedule, setOnSchedule] = useState(false)
+  const [freq, setFreq] = useState<"daily" | "weekly" | "monthly">("daily")
+  const [hour, setHour] = useState(8)
+  const [schedDay, setSchedDay] = useState(1)
   const [watchField, setWatchField] = useState("")
   const [conditions, setConditions] = useState<ConditionRow[]>([])
   const [actionType, setActionType] = useState<"updateSelf" | "pushTo">("updateSelf")
@@ -89,6 +88,10 @@ export function TriggersPanel({
       setMsg("要填名稱")
       return
     }
+    if (onSchedule && actionType !== "updateSelf") {
+      setMsg("定時觸發目前只支援「更新本筆欄位」")
+      return
+    }
     if (actionType === "updateSelf" && targetField === "") {
       setMsg("要選一個要設定的欄位")
       return
@@ -104,6 +107,15 @@ export function TriggersPanel({
         onUpdate,
         watchFields: watchField === "" ? [] : [watchField],
         conditions: conditions.map((c) => ({ field: c.field, op: c.op, value: c.value })),
+        ...(onSchedule
+          ? {
+              schedule: {
+                freq,
+                hour,
+                ...(freq === "daily" ? {} : { day: schedDay }),
+              },
+            }
+          : {}),
         config:
           actionType === "updateSelf"
             ? {
@@ -138,67 +150,15 @@ export function TriggersPanel({
         不必有人記得按按鈕。設定會在存檔當下生效。
       </p>
 
-      {triggers.length > 0 ? (
-        <div className="flex flex-col gap-1.5">
-          {triggers.map((t) => (
-            <div key={t.id} className="flex items-start gap-2 border border-line p-2">
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-semibold text-ink">{t.name}</div>
-                <div className="text-ink-3">
-                  {[t.onCreate ? "建立時" : null, t.onUpdate ? "更新時" : null]
-                    .filter(Boolean)
-                    .join(" / ")}
-                  {t.watchFields.length > 0 ? `(${t.watchFields.join("、")}變更)` : ""}
-                  {t.conditions.length > 0 ? ` · ${String(t.conditions.length)} 個條件` : ""}
-                </div>
-                {/* 🔴 講清楚「畫面上這一版」與「正在跑的那一版」不是同一份。
-                    不講的話設計者改完就走,以為已經生效了。 */}
-                {t.hasUnpublishedChanges ? (
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-wa">有未發布的變更 —— 目前跑的是上一版</span>
-                    <button
-                      type="button"
-                      disabled={publish.isPending}
-                      onClick={() => publish.mutate({ triggerId: t.id })}
-                      className="border border-primary px-1.5 text-primary hover:bg-primary hover:text-white disabled:opacity-50"
-                    >
-                      發布
-                    </button>
-                    <button
-                      type="button"
-                      disabled={publish.isPending}
-                      onClick={() => publish.mutate({ triggerId: t.id, discard: true })}
-                      className="text-ink-3 hover:text-ink"
-                    >
-                      丟棄
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-              <label className="flex shrink-0 items-center gap-1 text-ink-3">
-                <input
-                  type="checkbox"
-                  checked={t.enabled}
-                  className="accent-(--color-primary)"
-                  aria-label={`${t.name} 啟用`}
-                  onChange={() => update.mutate({ triggerId: t.id, enabled: !t.enabled })}
-                />
-                啟用
-              </label>
-              <button
-                type="button"
-                aria-label={`刪除 ${t.name}`}
-                onClick={() => remove.mutate(t.id)}
-                className="shrink-0 text-ink-disabled hover:text-er"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-ink-3">還沒有觸發器。</p>
-      )}
+      <TriggerList
+        triggers={triggers}
+        busy={publish.isPending}
+        onPublish={(triggerId, discard) =>
+          publish.mutate({ triggerId, ...(discard === true ? { discard } : {}) })
+        }
+        onToggle={(triggerId, enabled) => update.mutate({ triggerId, enabled })}
+        onRemove={(triggerId) => remove.mutate(triggerId)}
+      />
 
       <div className="flex flex-col gap-2 border-t border-line-2 pt-2.5">
         <span className="text-ink-3">新增觸發器</span>
@@ -229,7 +189,35 @@ export function TriggersPanel({
             />
             更新時
           </label>
+          {/* 🔴 R1·C-5|第三種時機。**與前兩者可並存** —— 「建立時標記 + 每天重掃一次」
+              是合理的組合(補上建立當下條件還不成立、後來才成立的那些)。 */}
+          <label className="flex items-center gap-1.5 text-ink-2">
+            <input
+              type="checkbox"
+              checked={onSchedule}
+              className="accent-(--color-primary)"
+              aria-label="定時"
+              onChange={(e) => {
+                setOnSchedule(e.target.checked)
+                /* 定時只支援更新本筆。**切過去的當下就把動作換掉**,
+                   而不是讓人設完才被伺服器擋 —— 那時他已經填了一半的目標表單。 */
+                if (e.target.checked) setActionType("updateSelf")
+              }}
+            />
+            定時
+          </label>
         </div>
+
+        {onSchedule ? (
+          <ScheduleFields
+            freq={freq}
+            hour={hour}
+            day={schedDay}
+            onFreq={setFreq}
+            onHour={setHour}
+            onDay={setSchedDay}
+          />
+        ) : null}
 
         {/* 🔴 只在「更新時」出現。建立時沒有前值可比,給了只會讓人以為它有作用。 */}
         {onUpdate ? (
@@ -268,8 +256,15 @@ export function TriggersPanel({
           aria-label="動作型別"
         >
           <option value="updateSelf">更新本筆欄位</option>
-          <option value="pushTo">在其他表單建一筆資料</option>
+          {/* 🔴 定時 + `pushTo` 會被伺服器擋(掃一次全表可能建出上千筆,
+              且跨到別張表 —— 量級與授權兩個問題疊在一起)。
+              **選項直接不出現,並說明為什麼** —— 讓它出現然後報錯,
+              使用者只會覺得系統壞了。 */}
+          {onSchedule ? null : <option value="pushTo">在其他表單建一筆資料</option>}
         </Select>
+        {onSchedule ? (
+          <p className="text-ink-3">定時觸發只能更新本筆欄位,不能在其他表單建資料。</p>
+        ) : null}
 
         {actionType === "updateSelf" ? (
           <div className="flex items-center gap-1.5">
@@ -394,22 +389,7 @@ export function TriggersPanel({
         )}
       </div>
 
-      {/* 🔴 執行紀錄。`denied` 與 `depth` 一定要看得到 ——
-          靜默停止的自動化比不會動的自動化更難查,使用者只會說「它沒反應」。 */}
-      {runs.length > 0 ? (
-        <div className="flex flex-col gap-1 border-t border-line-2 pt-2.5">
-          <span className="text-ink-3">最近執行</span>
-          {runs.slice(0, 20).map((r) => (
-            <div key={r.id} className="flex gap-2">
-              <span className="min-w-0 flex-1 truncate text-ink-2">{r.triggerName}</span>
-              <span className="shrink-0 text-ink-3">#{r.recordId}</span>
-              <span className={r.outcome === "ran" ? "shrink-0 text-ink-3" : "shrink-0 text-wa"}>
-                {OUTCOME_LABEL[r.outcome] ?? r.outcome}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <TriggerRuns runs={runs} />
     </div>
   )
 }

@@ -57,7 +57,7 @@
 | [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page) | ⭐ 有一手依據 | 33 | 9 | — | Airtable · NocoDB · Notion · SAP · Salesforce | [R1/record-workbench-ui.md](R1/record-workbench-ui.md) |
 | [H-2] 資源回收桶 + 保留期硬刪 | ⭐⭐ 深且推翻過 | 27 | 0 | `115` `124` | Airtable · Baserow · EDPB · GDPR · NocoDB · Notion · Salesforce · Teable | [R1/recycle-bin.md](R1/recycle-bin.md) |
 | [R1·C-6] 視覺化規則引擎(ZEN 決策表) | ⭐ 有一手依據 | 11 | 6 | `32` `155` `193` `215` `253` | — | [R1/rule-editor.md](R1/rule-editor.md) |
-| [R1·C-5] 排程管理 + 定時觸發 | ⭐⭐ 深且推翻過 | 13 | 4 | `29` `96` `125` `260` `281` | Airtable · NestJS · Teable | [R1/scheduling.md](R1/scheduling.md) |
+| [R1·C-5] 排程管理 + 定時觸發 | ⭐⭐ 深且推翻過 | 14 | 4 | `29` `96` `125` `260` `281` | Airtable · NestJS · Teable | [R1/scheduling.md](R1/scheduling.md) |
 | [R1·後續-2b] 伺服器端 PDF 與列印範本 | ⭐ 有一手依據 | 19 | 4 | `42` `56` `138` `284` | ClamAV | [R1/server-pdf.md](R1/server-pdf.md) |
 | [R1·A-1] 設定中心(S22) | ⭐ 有一手依據 | 3 | 16 | `3` | ASVS · Airtable · Better Auth · CVE-2026-53514 · Fastify · NestJS · Notion · OWASP · Odoo · Salesforce | [R1/settings-center.md](R1/settings-center.md) |
 | [F-1] 分組 / 看板 / 行事曆檢視 | ⭐⭐ 深且推翻過 | 51 | 1 | `9` `92` | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/views-group-kanban-calendar.md](R1/views-group-kanban-calendar.md) |

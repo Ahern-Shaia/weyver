@@ -438,6 +438,15 @@ export const triggerConfigSchema = z.discriminatedUnion("actionType", [
 ])
 export type TriggerConfig = z.infer<typeof triggerConfigSchema>
 
+/* R1·C-5 定時觸發。`day`:weekly 為 0–6(0 = 週日)· monthly 為 1–28,**或 0 = 當月最後一天**。
+   ⚠️ 上限 28 是刻意的 —— 2 月沒有 29–31 號。 */
+export const triggerScheduleSchema = z.object({
+  freq: z.enum(["daily", "weekly", "monthly"]),
+  hour: z.number().int().min(0).max(23),
+  day: z.number().int().min(0).max(28).optional(),
+})
+export type TriggerSchedule = z.infer<typeof triggerScheduleSchema>
+
 export const triggerDtoSchema = z.object({
   id: z.number().int(),
   formId: z.number().int(),
@@ -448,6 +457,8 @@ export const triggerDtoSchema = z.object({
   conditions: z.array(z.object({ field: z.string(), op: z.string(), value: z.unknown() })),
   actionType: z.enum(["updateSelf", "pushTo"]),
   config: triggerConfigSchema,
+  schedule: triggerScheduleSchema.nullable(),
+  lastRunAt: z.string().nullable(),
   position: z.number().int(),
   enabled: z.boolean(),
   /* 編輯中的版本。上面的 config / conditions 是**正在跑的**那一版。 */
