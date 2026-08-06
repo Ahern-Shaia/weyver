@@ -141,10 +141,14 @@
 
 ### 🔴 已修:失敗請求的冪等語意(原本一律釋放佔位列)
 
-- **Stripe 官方**|保存首次請求的 status code 與 body,**無論成功或失敗**;
-  **唯一例外**是「參數驗證失敗或併發衝突 → 端點尚未開始執行 → 不保存」。
-- **brandur** 明確二分:**5xx / 逾時 = 暫時性 → 釋放允許重跑**;
-  **4xx = 永久性**(業務規則拒絕)→ **存為 done 並回放**,因為重試結果不會改變。
+- **Stripe 官方**([idempotent requests](https://docs.stripe.com/api/idempotent_requests),2026-08-06 逐字覆核):
+  > Stripe's idempotency works by **saving the resulting status code and body of the first request** made for any given idempotency key, **regardless of whether it succeeds or fails**. Subsequent requests with the same key return the same result, **including `500` errors**.
+
+  唯一例外(同頁逐字):
+  > We **save results only after the execution of an endpoint begins**. If incoming parameters fail validation, or the request conflicts with another request that's executing concurrently, **we don't save the idempotent result** because no API endpoint initiates the execution.
+- **[brandur](https://brandur.org/idempotency-keys)**(Stripe 冪等實作藍本作者)明確二分:
+  **5xx / 逾時 = 暫時性 → 釋放允許重跑**;**4xx = 永久性**(業務規則拒絕)→ **存為 done 並回放**,
+  因為重試結果不會改變。
 
 **原實作一律釋放的實際危害**|handler 已執行、寫了部分副作用後才拋 4xx
 (例:自訂按鈕已更新 A 表、驗 B 失敗)→ 重試會**重複那些副作用**,正是冪等要防的事。
@@ -165,12 +169,12 @@
 
 | # | 決定 | 裁定 | 依據 |
 |---|---|---|---|
-| 1 | 冪等 key **選填** | ✅ 維持 | Stripe、AWS `ClientToken`、PayPal `PayPal-Request-Id` **全為選填**。惟 **AWS SDK 自動代產 key** → 建議前端 client 層統一自動附加,補回「忘了帶」的缺口 |
+| 1 | 冪等 key **選填** | ✅ 維持 | [Stripe](https://docs.stripe.com/api/idempotent_requests)、[AWS `ClientToken`](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)、[PayPal `PayPal-Request-Id`](https://developer.paypal.com/api/rest/reference/idempotency/) **全為選填**。惟 **AWS SDK 自動代產 key** → 建議前端 client 層統一自動附加,補回「忘了帶」的缺口 |
 | 2 | 配額常數 + env | ✅ 維持(**前提已過時**)| `quota.service.ts` 實際已是 `tenants` 覆寫 → plan → env 三層(F-8 加的),早已是 per-tenant |
 | 3 | 只切租戶範疇 metadata | ✅ 維持 | 無外部標準可比;`TenantDb.withTenant` 為唯一入口的收斂是正解 |
 | 4 | `@nestjs/schedule` + advisory lock | ⚠️ **應調整** | 見下 |
-| 5 | 冪等保存 **24h** | ⚠️ **應調整為 72h** | Stripe 官方為 "at least 24 hours";**brandur 建議 72h**,理由是「**週五部署的 bug,週末仍查得到**」—— retention 同時是**除錯窗口**,不只是回放窗口 |
-| 6 | 併發同 key → **409** | ✅ 維持 | **IETF draft-07**:「原請求處理中 SHOULD 回 409」;Stripe 亦 409。⚠️ 建議加 `Retry-After: 1` |
+| 5 | 冪等保存 **24h** | ⚠️ **應調整為 72h** | Stripe [逐字](https://docs.stripe.com/api/idempotent_requests):「You can remove keys from the system automatically **after they're at least 24 hours old**.」—— 那是**下限不是建議值**。[brandur](https://brandur.org/idempotency-keys) 建議 **72h**,理由是「週五部署的 bug,週末仍查得到」—— retention 同時是**除錯窗口**,不只是回放窗口 |
+| 6 | 併發同 key → **409** | ✅ 維持 | [IETF draft-ietf-httpapi-idempotency-key-header-07](https://www.ietf.org/archive/id/draft-ietf-httpapi-idempotency-key-header-07.html):原請求仍在處理中時 **SHOULD 回 409 Conflict**;Stripe 同頁亦明載併發衝突不保存結果、**可重試**。⚠️ 建議加 `Retry-After: 1` |
 | 7 | 不做 outbox | ✅ 維持 | 無 GL / 外部通知前無對帳對象 |
 
 ### 逐條對照 Stripe 語意

@@ -24,6 +24,7 @@
 | [F-7] 影像處理(EXIF 剝除 / 縮圖 / HEIC) | ⭐⭐ 深且推翻過 | 12 | 5 | `148` | Airtable · Baserow · Teable | [foundation/image-processing.md](foundation/image-processing.md) |
 | [F-11] 上傳掃毒 + presigned 混合下載 | ⭐⭐ 深且推翻過 | 19 | 0 | — | CVE-2020-7613 · CVE-2025-20128 · CVE-2025-20234 · CVE-2025-20260 · CVE-2026-20213 · ClamAV · OWASP | [foundation/malware-scanning.md](foundation/malware-scanning.md) |
 | [F-4] 二步驟驗證(MFA / TOTP) | ⭐⭐ 深且推翻過 | 12 | 1 | — | Better Auth · OWASP · Salesforce | [foundation/mfa.md](foundation/mfa.md) |
+| [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job) | ⭐ 有一手依據 | 16 | 3 | — | NestJS · Stripe | [foundation/reliability.md](foundation/reliability.md) |
 | [F-10] 分頁級租戶上下文(修跨分頁污染) | ⭐ 有一手依據 | 11 | 3 | — | Better Auth · Notion · OWASP · Shopify | [foundation/tenant-context.md](foundation/tenant-context.md) |
 | [R1·後續-1] 自訂按鈕 + 簽核流程(workflow UX 面) | ⭐⭐ 深且推翻過 | 15 | 0 | `13` `15` `68` | Airtable · NestJS · Odoo · SAP · Salesforce · ServiceNow · Teable | [R1/actions-approval.md](R1/actions-approval.md) |
 | [R1·後續-1b] 簽核進階語意(動態簽核人 / 會簽擇辦 / 加簽 / 退回 / 不可竄改) | ⭐⭐ 深且推翻過 | 21 | 11 | `13` `15` | Kissflow · Odoo · SAP · Salesforce · ServiceNow | [R1/approval-advanced.md](R1/approval-advanced.md) |
@@ -65,7 +66,6 @@
 | 「站在巨人的肩膀」稽核（第 A 批:連 §0 標題都沒有的 14 份) | — | ⭐ 有一手依據 | 0 | `4` `11` `21` `32` `37` `121` `149` `306` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) |
 | giants-shoulders-audit-B.md —— 已具 §0 研究節之 18 份模組文件稽核 | — | ⭐ 有一手依據 | 0 | `6` `27` | [_audit/giants-shoulders-audit-B.md](_audit/giants-shoulders-audit-B.md) |
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐ 有一手依據 | 0 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
-| [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job) | ✅ | · 零星引用 | 8 | — | [foundation/reliability.md](foundation/reliability.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐ 有一手依據 | 1 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [R1·A11Y] 欄位輸入的無障礙名稱 | ✅ | — | 0 | — | [R1/field-label-a11y.md](R1/field-label-a11y.md) |
