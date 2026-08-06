@@ -42,6 +42,7 @@
 | [R1·UP-4b] 圖片欄 + 簽名欄(field-types-parity P1 解鎖) | ⭐ 有一手依據 | 1 | 6 | `15` `27` | Airtable · Baserow · Teable | [R1/image-signature-fields.md](R1/image-signature-fields.md) |
 | [R1·#106] 匯入既有表單(upsert + 撤銷) | ⭐⭐ 深且推翻過 | 32 | 6 | `41` `65` `81` `91` `232` | Airtable · Baserow · NocoDB · Notion · Odoo · Salesforce · Shopify · Zoho | [R1/import-to-existing-form.md](R1/import-to-existing-form.md) |
 | [R1·LNK] 連結欄選記錄 + Load 帶入 | ⭐ 有一手依據 | 0 | 8 | `14` | Airtable · Teable | [R1/link-picker-and-load.md](R1/link-picker-and-load.md) |
+| [H-1] 通知系統(訂閱 / 提醒 / 通道) | ⭐⭐ 深且推翻過 | 12 | 4 | `5` `12` `32` `78` `94` `96` | Airtable · CVE-2019-11544 · CVE-2021-39119 · CVE-2021-41312 · Fastify · Notion · Teable | [R1/notifications.md](R1/notifications.md) |
 | [R1·UP-4c] 選項顏色設定 UI(field-types-parity P1 解鎖) | ⭐ 有一手依據 | 0 | 6 | `6` `27` | Airtable · Baserow · NocoDB · Teable | [R1/option-colors.md](R1/option-colors.md) |
 | [F-2] 樞紐分析 + 圖表 | ⭐⭐ 深且推翻過 | 50 | 27 | `7` `9` `22` `27` `32` `42` `58` `86` `90` `99` `122` `137` | Airtable · Baserow · CVE-2024-55951 · Metabase · NocoDB · Notion · Salesforce · Teable | [R1/pivot-and-charts.md](R1/pivot-and-charts.md) |
 | [R1·後續-2] 標籤/QR 產生器 + 列印增強(合併列印為 P1) | ⭐ 有一手依據 | 31 | 6 | `4` `27` `40` `42` `53` `138` `149` | — | [R1/print-merge.md](R1/print-merge.md) |
@@ -72,7 +73,6 @@
 | [R1·B-2] 表單範本庫 | ✅ | · 零星引用 | 0 | `37` `111` `176` `204` `268` | [R1/form-templates.md](R1/form-templates.md) |
 | [R1·H-3] 跨表全文搜尋 | ✅ | — | 0 | — | [R1/full-text-search.md](R1/full-text-search.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 0 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
-| [H-1] 通知系統(訂閱 / 提醒 / 通道) | ✅ | · 零星引用 | 0 | `5` `12` `78` `94` `96` | [R1/notifications.md](R1/notifications.md) |
 | [R1·workbench-uplift] 記錄工作台收斂(集合視圖 → Object Page) | ✅ | · 零星引用 | 7 | — | [R1/record-workbench-ui.md](R1/record-workbench-ui.md) |
 | [R1·後續-2b] 伺服器端 PDF 與列印範本 | ✅ | · 零星引用 | 0 | `42` `56` `138` `284` | [R1/server-pdf.md](R1/server-pdf.md) |
 | [R1·UP-2] 視圖系統 + 集合(browse)視圖 | ✅ | · 零星引用 | 0 | `4` `15` `19` `38` `54` | [R1/views-list.md](R1/views-list.md) |
@@ -108,7 +108,7 @@
 | `doc/27` | [_audit/giants-shoulders-audit-B.md](_audit/giants-shoulders-audit-B.md) · [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) · [R1/field-types-parity.md](R1/field-types-parity.md) · [R1/image-signature-fields.md](R1/image-signature-fields.md) · [R1/option-colors.md](R1/option-colors.md) · [R1/pivot-and-charts.md](R1/pivot-and-charts.md) · [R1/print-merge.md](R1/print-merge.md) |
 | `doc/29` | [R1/event-triggers.md](R1/event-triggers.md) |
 | `doc/31` | [R1/field-types-parity.md](R1/field-types-parity.md) |
-| `doc/32` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) · [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) · [R1/authz.md](R1/authz.md) · [R1/dynamic-permissions.md](R1/dynamic-permissions.md) · [R1/pivot-and-charts.md](R1/pivot-and-charts.md) · [R1/public-form.md](R1/public-form.md) |
+| `doc/32` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) · [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) · [R1/authz.md](R1/authz.md) · [R1/dynamic-permissions.md](R1/dynamic-permissions.md) · [R1/notifications.md](R1/notifications.md) · [R1/pivot-and-charts.md](R1/pivot-and-charts.md) · [R1/public-form.md](R1/public-form.md) |
 | `doc/34` | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
 | `doc/35` | [R1/form-designer-2d.md](R1/form-designer-2d.md) · [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
 | `doc/37` | [_audit/giants-shoulders-audit-A.md](_audit/giants-shoulders-audit-A.md) · [R1/form-designer-ui.md](R1/form-designer-ui.md) · [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) · [R1/form-templates.md](R1/form-templates.md) |
