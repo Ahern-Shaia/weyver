@@ -42,6 +42,7 @@
 | [R1·B-2] 表單範本庫 | ⭐⭐ 深且推翻過 | 13 | 5 | `37` `111` `176` `204` `268` | Airtable · Baserow · NocoDB · Notion · Salesforce · Teable | [R1/form-templates.md](R1/form-templates.md) |
 | [P0-3] 公式引擎 + 關聯 Link&Load | ⭐⭐ 深且推翻過 | 11 | 10 | — | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | [R1·UX-1] 前端重構(視覺 / 心智模型 / 操作體驗 / UI / UX) | ⭐⭐ 深且推翻過 | 32 | 15 | — | ARIA APG · Airtable · Baserow · Glide Data Grid · NocoDB · Notion · SAP · Salesforce · W3C | [R1/frontend-uplift.md](R1/frontend-uplift.md) |
+| [R1·H-3] 跨表全文搜尋 | ⭐ 有一手依據 | 8 | 4 | — | Airtable · Baserow · NocoDB · Teable | [R1/full-text-search.md](R1/full-text-search.md) |
 | [P0-2] 網格主檢視 + Excel 建表 onboarding | ⭐⭐ 深且推翻過 | 31 | 2 | `41` `54` `65` | Airtable · Glide Data Grid · Salesforce · Teable | [R1/grid-and-excel-import.md](R1/grid-and-excel-import.md) |
 | [R1·P0-2 殘留] 網格貼上 Excel 區塊 | ⭐⭐ 深且推翻過 | 22 | 15 | `107` `139` `210` | Airtable · Baserow · Glide Data Grid · Smartsheet · Teable | [R1/grid-paste.md](R1/grid-paste.md) |
 | [R1·UP-4b] 圖片欄 + 簽名欄(field-types-parity P1 解鎖) | ⭐ 有一手依據 | 6 | 6 | `15` `27` | Airtable · Baserow · Teable | [R1/image-signature-fields.md](R1/image-signature-fields.md) |
@@ -74,7 +75,6 @@
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐⭐ 深且推翻過 | 27 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | · 零星引用 | 5 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
-| [R1·H-3] 跨表全文搜尋 | ✅ | — | 0 | — | [R1/full-text-search.md](R1/full-text-search.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
 | [R2 命門] 語意計算綁定層(自由表單 ↔ 算) | — | — | 0 | — | [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |

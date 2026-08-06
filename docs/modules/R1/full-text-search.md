@@ -9,6 +9,13 @@
 
 ## 0. 研究與實測
 
+> **可重跑的驗證位置**(2026-08-06 補 —— 原本一條路徑都沒寫):
+> 索引寫入 `apps/api/src/search/search-index.service.ts` ·
+> 回填 `apps/api/src/search/search-backfill.service.ts` ·
+> 整合測試 `apps/api/test/search.integration.test.ts` 與 `search-backfill.integration.test.ts` ·
+> `pg_bigm` 的映像建置 `docker/postgres/Dockerfile`。
+> ⚠️ **實測沒有寫下「在哪裡可以重跑」,別人一樣回查不到** —— 與外部研究沒放 URL 是同一件事。
+
 ### 0.1 🔴 本機實測:繁中在原生 PG 的真實行為
 
 > **方法**|本機 PG 16.13(`weyver-pg`),200,000 筆繁中資料(品名 / 供應商 / 批號)。
@@ -28,11 +35,32 @@ to_tsvector('simple','大成食品股份有限公司 鋼板 SS400 3mm')
 | 搜「食品」 | **false** —— 搜不到 |
 | 搜「大成食品股份有限公司」(完整) | true |
 
-→ **那不是搜尋,是等值比對。** PG 內建 15 種語言設定**不含中日韓**。
+→ **那不是搜尋,是等值比對。**
+
+🔴 **2026-08-06 更正 + 補可回查的驗法**:原文寫「PG 內建 **15 種**語言設定不含中日韓」——
+數字不對,而且沒說怎麼驗。**直接對本專案的 PG 16.13 查**(任何人都能重跑):
+
+```sql
+SELECT string_agg(cfgname, ', ' ORDER BY cfgname) FROM pg_ts_config;
+```
+> arabic, armenian, basque, catalan, danish, dutch, english, finnish, french, german,
+> greek, hindi, hungarian, indonesian, irish, italian, lithuanian, nepali, norwegian,
+> portuguese, romanian, russian, serbian, **simple**, spanish, swedish, tamil, turkish, yiddish
+
+**29 個(含 `simple`),中日韓一個都沒有。** 結論不變,但數字要對、而且要說得出怎麼查。
+⚠️ **對自家資料庫下一句 SQL,比引一段官方文件更強** —— 它連版本差異都一起答了。
 
 **(b) `pg_trgm` 的相似度對中文無效,但 `LIKE` 可走索引 —— 有 3 字門檻**
 
 `similarity('食品','大成食品股份有限公司')` = **0**(`%` 運算子對中文子字串無效),但 `ILIKE '%食品%'` = true。兩者走**不同路徑**:GIN trigram 索引可加速 `LIKE`。
+
+為什麼是 3 字元 —— [PostgreSQL `pg_trgm` 官方](https://www.postgresql.org/docs/16/pgtrgm.html)逐字:
+> A trigram is **a group of three consecutive characters** taken from a string.
+> Each word is considered to have **two spaces prefixed and one space suffixed** when determining the set of trigrams.
+
+英文靠那三個補白湊得出 trigram(`"cat"` → `" c"`, `" ca"`, `"cat"`, `"at "`),
+但**中文詞之間沒有空白**,兩字詞在長字串中間取不到完整 trigram —— 這正是下表的成因,
+不是實作沒調好。
 
 實測 200K 筆,建 `gin_trgm_ops` 索引後:
 
@@ -44,7 +72,11 @@ to_tsvector('simple','大成食品股份有限公司 鋼板 SS400 3mm')
 
 🔴 **中文最常見的搜尋詞正好是兩個字**(食品 / 鋼板 / 螺栓 / 單號)。trigram 需要 3 字元才湊得出完整 trigram,**故最常用的情境退化成全表掃描**。20 萬筆 50ms 尚可忍,再上去就不行。
 
-**(c) 🔴 `pg_bigm` 解掉 2 字門檻 —— 本題的轉折點**
+**(c) 🔴 [`pg_bigm`](https://pgbigm.osdn.jp/pg_bigm_en-1-2.html) 解掉 2 字門檻 —— 本題的轉折點**
+
+> [官方](https://pgbigm.osdn.jp/pg_bigm_en-1-2.html)逐字:pg_bigm「provides **2-gram** (bigram) index」——
+> 相對於 `pg_trgm` 的 3-gram,**2-gram 正好對上中文最常見的兩字詞**。
+> 這不是調參可以解決的差異,是索引單位本身不同。
 
 於容器內自 v1.2-20240606 原始碼編譯安裝後實測(同一份 200K 資料):
 
@@ -66,7 +98,7 @@ show_bigm('食品公司') → {" 食", 公司, "司 ", 品公, 食品}
 
 | 擴充 | Cloud SQL | 官方逐字描述 |
 |---|---|---|
-| **`pg_bigm`** | ✅ **支援** | 「Enables full-text search, and allows a two-gram (bigram) index for faster full-text search」;需先設 `cloudsql.enable_pg_bigm` = on |
+| **`pg_bigm`** | ✅ **支援** | [Cloud SQL 擴充清單](https://cloud.google.com/sql/docs/postgres/extensions)逐字:「Enables full-text search, and allows a two-gram (bigram) index for faster full-text search」;需先設 `cloudsql.enable_pg_bigm` = on |
 | `pg_trgm` | ✅ 支援 | 「…based on trigram matching…」 |
 | `pgroonga` · `zhparser` · `pg_jieba` · `pg_cjk_parser` | ❌ **清單未列 = 不可用** | — |
 
