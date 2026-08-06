@@ -1,9 +1,5 @@
 "use client"
 
-import { Button } from "@weyver/ui/button"
-import { Input } from "@weyver/ui/input"
-import { Select } from "@weyver/ui/select"
-import { type FormEvent, type ReactNode, useEffect, useState } from "react"
 import { BusyBar, FirstLoad } from "@/components/busy-indicator"
 import { describeEngineError } from "@/lib/engine/client"
 import {
@@ -13,6 +9,10 @@ import {
   useTenantSettings,
   useUpdateTenantSettings,
 } from "@/lib/engine/use-settings"
+import { Button } from "@weyver/ui/button"
+import { Input } from "@weyver/ui/input"
+import { Select } from "@weyver/ui/select"
+import { type FormEvent, type ReactNode, useEffect, useState } from "react"
 
 /* R1·A-1 M1|公司設定(S22 之租戶軸)。
 
@@ -28,6 +28,7 @@ export default function CompanySettingsPage(): ReactNode {
   const [form, setForm] = useState<{
     name: string
     taxId: string
+    pdfWatermarkText: string
     timezone: string
     defaultLocale: string
     defaultCurrency: string
@@ -41,6 +42,7 @@ export default function CompanySettingsPage(): ReactNode {
     setForm({
       name: data.name,
       taxId: data.taxId ?? "",
+      pdfWatermarkText: data.pdfWatermarkText ?? "",
       timezone: data.timezone,
       defaultLocale: data.defaultLocale,
       defaultCurrency: data.defaultCurrency,
@@ -62,6 +64,9 @@ export default function CompanySettingsPage(): ReactNode {
         name: form.name.trim(),
         // 空字串 = 清空統編。DB CHECK 只接受 NULL 或 8 碼數字,故不可送 ""
         taxId: form.taxId.trim() === "" ? null : form.taxId.trim(),
+        /* 空字串 = 關掉浮水印。後端也會轉一次(DB CHECK 不收空字串),
+           這裡先轉是為了不讓「清空後按儲存」多跑一趟往返才失敗。 */
+        pdfWatermarkText: form.pdfWatermarkText.trim() === "" ? null : form.pdfWatermarkText.trim(),
         timezone: form.timezone,
         defaultLocale: form.defaultLocale,
         defaultCurrency: form.defaultCurrency,
@@ -94,6 +99,18 @@ export default function CompanySettingsPage(): ReactNode {
               onChange={(e) => set({ taxId: e.target.value })}
               inputMode="numeric"
               placeholder="12345678"
+            />
+          </Field>
+          {/* R1·後續-2b M2 A3。留空 = 不加浮水印。 */}
+          <Field
+            label="PDF 浮水印"
+            hint="斜印在每一頁背景上,例如「副本」「作廢」「機密」。留空則不加。最多 32 字。"
+          >
+            <Input
+              value={form.pdfWatermarkText}
+              onChange={(e) => set({ pdfWatermarkText: e.target.value })}
+              maxLength={32}
+              placeholder="副本"
             />
           </Field>
         </section>

@@ -21,6 +21,8 @@ const tenantSettingsSchema = z.object({
   name: z.string(),
   taxId: z.string().nullable(),
   logoFileKey: z.string().nullable(),
+  /* R1·後續-2b M2 A3|伺服器端 PDF 的浮水印文字。null / 空 = 不加。 */
+  pdfWatermarkText: z.string().nullable(),
   timezone: z.string(),
   defaultLocale: z.string(),
   defaultCurrency: z.string(),

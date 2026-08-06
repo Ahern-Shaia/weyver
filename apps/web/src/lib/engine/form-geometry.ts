@@ -50,3 +50,31 @@ export function cellPosition(layout: Pick<FieldLayout, "col" | "row" | "colSpan"
   const span = layout.colSpan ?? FORM_DEFAULT_SPAN
   return { gridColumn: `${String(layout.col + 1)} / span ${String(span)}`, gridRow: layout.row + 1 }
 }
+
+/* 🔴 R1·後續-2b M2|列印角色也收進**同一份幾何**。
+
+   列印設定面板(`print-settings.tsx`)存的是列號,而「哪一列是頁首」原本
+   只有記錄頁自己解讀一份 —— 伺服器端 PDF 若再寫一份判斷,就是本 repo
+   已經付過六次代價的「兩份鏡射必然漂移」。判斷只留這裡,兩邊都吃它。 */
+export type PrintRole = "header" | "footer" | "body"
+
+export function printRoleOf(layout: Layout | null, row: number): PrintRole {
+  const print = layout?.print
+  if (print === undefined) return "body"
+  if (print.headerRows.includes(row)) return "header"
+  if (print.footerRows.includes(row)) return "footer"
+  return "body"
+}
+
+export function breaksAfter(layout: Layout | null, row: number): boolean {
+  return layout?.print?.pageBreakAfterRows.includes(row) ?? false
+}
+
+/* 版面上實際用到的列號,由小到大。欄位與靜態元素都算 —— 只看欄位的話,
+   一列若只放了說明文字就會從列印分組裡整個消失。 */
+export function usedRows(layout: Layout): number[] {
+  const rows = new Set<number>()
+  for (const f of Object.values(layout.fields)) rows.add(f.row)
+  for (const s of layout.statics) rows.add(s.row)
+  return [...rows].sort((a, b) => a - b)
+}

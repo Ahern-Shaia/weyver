@@ -7,12 +7,13 @@ import { ImageThumb } from "@/components/form/image-input"
 import { MarkdownView } from "@/components/form/markdown-view"
 import { MaskedValue } from "@/components/form/masked-value"
 import { RuleMessages } from "@/components/form/rule-messages"
-import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
-import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { formatFieldValue } from "@/components/form/value"
 import { useMemberNames, useRuleContext } from "@/lib/engine/authz"
+import { BarcodeView } from "@/lib/engine/barcode"
+import { describeEngineError, downloadFile } from "@/lib/engine/client"
 import { evaluateFormats, evaluateMessages } from "@/lib/engine/conditional-format"
 import { formatDateTime } from "@/lib/engine/display-value"
+import { breaksAfter, printRoleOf } from "@/lib/engine/form-geometry"
 import {
   useButtons,
   useCreateRecord,
@@ -23,6 +24,7 @@ import {
 import { useLayout, useLinkLabels, useRecordRevisions } from "@/lib/engine/hooks"
 import { chipValues, isChipField, optionTone } from "@/lib/engine/option-tone"
 import type { FieldDto, FormSummary, RecordRow } from "@/lib/engine/schemas"
+import { fieldSymbology } from "@/lib/engine/symbology"
 import { useRecordPdf } from "@/lib/engine/use-pdf"
 import { useUserSettings } from "@/lib/engine/use-settings"
 import { StatusChip, chipToneTextClass } from "@weyver/ui/status-chip"
@@ -150,6 +152,7 @@ export function ObjectPage({
   /* ⚠️ hook 一律放在任何提前 return 之前 —— 本檔上方 20 行就有這條警語,
      而我在別處剛違反過一次。 */
   const pdf = useRecordPdf()
+  const [withAttachments, setWithAttachments] = useState(false)
   /* 條件式格式的「登入使用者 / 群組」與「當前時間」條件要用 */
   const ruleCtx = useRuleContext()
 
@@ -184,18 +187,22 @@ export function ObjectPage({
     fields.map((f) => f.name),
     ruleCtx,
   )
-  /* R1·後續-2 M4 列印設定:依 layout.print 之列範圍,對該列欄位套列印樣式
-     (頁首/頁尾列於每頁重複;換頁列後分頁)。紙張設定委派瀏覽器(OQ-PM-3)。 */
+  /* R1·後續-2 M4 列印設定:依 layout.print 之列範圍,對該列欄位套列印樣式。
+     紙張設定委派瀏覽器(OQ-PM-3)。 */
   const printStyleFor = (fieldId: number): CSSProperties | undefined => {
-    const layout = layoutResp?.layout
-    if (!layout?.print) return undefined
-    const row = layout.fields[String(fieldId)]?.row
+    const layout = layoutResp?.layout ?? null
+    const row = layout?.fields[String(fieldId)]?.row
     if (row === undefined) return undefined
-    const { headerRows, footerRows, pageBreakAfterRows } = layout.print
+    /* 🔴 M2|「哪一列是頁首 / 頁尾 / 換頁」一律問 `form-geometry`。
+       原本這裡自己拆 `layout.print`,而伺服器端 PDF 現在也要同一份判斷 ——
+       各寫一份就是本 repo 已付過六次代價的「兩份鏡射必然漂移」。
+
+       ⚠️ 前一版的註解寫「頁首/頁尾列**於每頁重複**」,而這段程式只做到
+       `break-inside: avoid`(不被切斷)。螢幕沒有頁的概念,那是這裡的極限;
+       **每頁重複**由分頁媒體那一端兌現(PDF 的 thead / tfoot)。 */
     const style: CSSProperties = {}
-    if (headerRows.includes(row)) style.breakInside = "avoid"
-    if (footerRows.includes(row)) style.breakInside = "avoid"
-    if (pageBreakAfterRows.includes(row)) style.breakAfter = "page"
+    if (printRoleOf(layout, row) !== "body") style.breakInside = "avoid"
+    if (breaksAfter(layout, row)) style.breakAfter = "page"
     return Object.keys(style).length === 0 ? undefined : style
   }
 
@@ -212,6 +219,12 @@ export function ObjectPage({
     deleteRecord.mutate(record.id, { onError: (e) => setMsg(describeEngineError(e)) })
   }
   const busy = createRecord.isPending || deleteRecord.isPending || saving
+  /* 這筆**真的有附件**才給「含附件」選項 —— 只看「表單有附件欄」的話,
+     絕大多數記錄上它會是一個勾了不會發生任何事的控制項。 */
+  const hasAttachments = fields.some((f) => {
+    const v = record.values[f.name]
+    return f.type === "attachment" && Array.isArray(v) && v.length > 0
+  })
   /* 🔴 Fiori 硬規則:**section 一律直接反映在導覽列**。
      原本只列了三段,而畫面上實際還有「摘要」與「動作/簽核」兩個區塊 ——
      使用者看得到卻跳不過去,捲到它們時導覽列也不會亮任何一項。
@@ -315,12 +328,31 @@ export function ObjectPage({
               label="列印"
               onClick={() => window.print()}
             />
+            {/* 🔴 M2 A3|「含附件」**只在這筆真的有附件時出現**。
+                永遠顯示的話,九成的表單上它是一個勾了也沒事發生的控制項 ——
+                那是本專案禁止的死控件。 */}
+            {hasAttachments ? (
+              <label
+                className="flex items-center gap-1 px-1 text-[12px] text-ink-2"
+                title="把這筆記錄的附件 PDF 接在單據後面"
+              >
+                <input
+                  type="checkbox"
+                  className="size-3.5"
+                  checked={withAttachments}
+                  onChange={(e) => setWithAttachments(e.target.checked)}
+                />
+                含附件
+              </label>
+            ) : null}
             {/* 🔴 「列印」與「下載 PDF」是兩件事:前者要人站在電腦前,
                 後者才寄得出去、存得回附件欄。R1·後續-2b。 */}
             <ActBtn
               icon={<FileDown size={13} strokeWidth={1.9} />}
               label={pdf.state.kind === "working" ? "產生中…" : "下載 PDF"}
-              onClick={() => pdf.request(formId, [record.id])}
+              onClick={() =>
+                pdf.request(formId, [record.id], { mergeAttachments: withAttachments })
+              }
               disabled={pdf.state.kind === "working"}
             />
             <Link
@@ -336,6 +368,15 @@ export function ObjectPage({
           <div className="mt-2 rounded-sm border border-line bg-label px-2.5 py-1 text-[12px] text-ink-2">
             {msg}
           </div>
+        ) : null}
+        {/* 🔴 M2 A3|沒併進去的附件一定要說出來。PDF 已經下載成功了,
+            所以這不是錯誤而是提醒 —— 但「靜靜地少了三個附件」比報錯更糟。 */}
+        {pdf.notice !== null ? (
+          /* `<output>` 而非 `role="status"` 的 div —— 同樣是即時區域,
+             但它是這件事的語意元素(biome 的 useSemanticElements 也這麼判)。 */
+          <output className="mt-2 block rounded-sm border border-warn/40 bg-warn/5 px-2.5 py-1 text-[12px] text-ink-2">
+            {pdf.notice}
+          </output>
         ) : null}
         <div className="mt-2.5 flex gap-1" data-noprint>
           {sections.map((s) => (

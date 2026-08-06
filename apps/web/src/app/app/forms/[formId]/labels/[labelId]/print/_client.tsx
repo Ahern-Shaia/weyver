@@ -1,13 +1,9 @@
 "use client"
 
-import { Printer } from "lucide-react"
-import { useParams, useSearchParams } from "next/navigation"
-import { type ReactNode, useMemo } from "react"
 import { formatFieldValue } from "@/components/form/value"
-import { BarcodeView, fieldSymbology } from "@/lib/engine/barcode"
 import { useMemberNames } from "@/lib/engine/authz"
+import { BarcodeView } from "@/lib/engine/barcode"
 import { useForm, useLabels, useLinkLabels, useRecords } from "@/lib/engine/hooks"
-import { useDisplayCtx } from "@/lib/engine/use-settings"
 import {
   type FieldDto,
   type LabelConfig,
@@ -15,6 +11,11 @@ import {
   MAX_LABELS_PER_RUN,
   type RecordRow,
 } from "@/lib/engine/schemas"
+import { fieldSymbology } from "@/lib/engine/symbology"
+import { useDisplayCtx } from "@/lib/engine/use-settings"
+import { Printer } from "lucide-react"
+import { useParams, useSearchParams } from "next/navigation"
+import { type ReactNode, useMemo } from "react"
 
 /* R1·後續-2 M3 標籤列印頁。A4 平舖(或一頁一標籤)+ `@page` 樣式 → 瀏覽器列印/另存 PDF
    (OQ-PM-3:紙張/邊界/方向委派瀏覽器)。批次來源 = ?ids= 勾選 或 當前表全部。
