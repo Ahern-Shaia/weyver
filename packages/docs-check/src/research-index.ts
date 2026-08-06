@@ -142,7 +142,23 @@ export function collectResearch(root: string): ModuleResearch[] {
       title: titleOf(text, rel),
       shipped: shippedNames.has(rel),
       hasGiantsSection: /巨人的肩膀/.test(text),
-      hasEvidenceSection: /^##\s+0(-bis|-ter)?\./m.test(text),
+      /* 🔴 證據段的**編號不固定**。這個 repo 至少用過四種寫法:
+         `## 0. 證據` · `## 0-bis. 追溯稽核` · `## 2-bis. 巨人的肩膀` ·
+         `## 10-bis. 向上設計研究證據`。
+
+         舊 regex 只認 `## 0.`,於是把 `authz-resource-inheritance`
+         (§10-bis 對照 Notion / Salesforce / Drive 餵給 OQ 裁定)判成沒有證據段
+         —— **那是同型假陰性的第六次**。
+
+         改為**聯集**:`## 0.` 開頭(不論標題)**或**任何 `##` 標題含證據類關鍵詞。
+         ⚠️ 第一版只寫了後半,結果 `data-export`(標題是 `## 0.` 但不含關鍵詞)
+         反而從通過變成不通過 —— **「放寬」在另一個維度變窄了**。
+         改動判準時要兩個方向都量,不能只看想修的那幾份。
+         寧可寬一點 —— 這支是導航訊號,漏判的代價(把做過研究的判成沒做)
+         比誤判的代價(把沒做的判成做過)高得多,因為前者會讓人重做一次研究。 */
+      hasEvidenceSection:
+        /^##\s+0(-bis|-ter)?\./m.test(text) ||
+        /^##\s+[^\n]*(證據|研究|巨人的肩膀|業界對照|競品對照|追溯稽核)/m.test(text),
       sourceLinks: (text.match(/https:\/\//g) ?? []).length,
       overturned: /推翻|自我更正|自我修正|改判/.test(text),
       verbatim: (text.match(/逐字/g) ?? []).length,

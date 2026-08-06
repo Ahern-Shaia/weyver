@@ -27,6 +27,7 @@
 | [F-10] 分頁級租戶上下文(修跨分頁污染) | ⭐ 有一手依據 | 11 | 3 | — | Better Auth · Notion · OWASP · Shopify | [foundation/tenant-context.md](foundation/tenant-context.md) |
 | [R1·後續-1] 自訂按鈕 + 簽核流程(workflow UX 面) | ⭐⭐ 深且推翻過 | 15 | 0 | `13` `15` `68` | Airtable · NestJS · Odoo · SAP · Salesforce · ServiceNow · Teable | [R1/actions-approval.md](R1/actions-approval.md) |
 | [R1·後續-1b] 簽核進階語意(動態簽核人 / 會簽擇辦 / 加簽 / 退回 / 不可竄改) | ⭐⭐ 深且推翻過 | 21 | 11 | `13` `15` | Kissflow · Odoo · SAP · Salesforce · ServiceNow | [R1/approval-advanced.md](R1/approval-advanced.md) |
+| [P0-4a·uplift] 資源軸繼承(分類授權 + owner + 敏感旗標) | ⭐ 有一手依據 | 0 | 11 | `0` `11` `32` | Airtable · Notion · Odoo · Salesforce | [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) |
 | [P0-4a] 三層權限(授權層) | ⭐ 有一手依據 | 19 | 1 | `32` `64` | Airtable · Baserow · Better Auth · CVE-2019-11780 · CVE-2024-12368 · CVE-2024-36259 · NestJS · NocoDB · Odoo · Salesforce | [R1/authz.md](R1/authz.md) |
 | [R1·UP-3b] 條件式格式(form-designer-2d P1 解鎖) | ⭐ 有一手依據 | 5 | 28 | `6` | Airtable · Baserow · NocoDB · Teable | [R1/conditional-format.md](R1/conditional-format.md) |
 | R1·I-1|資料匯出(帶得走的完整副本) | ⭐ 有一手依據 | 0 | 10 | — | ASVS · Better Auth · GDPR · NestJS · OWASP · Salesforce | [R1/data-export.md](R1/data-export.md) |
@@ -66,7 +67,6 @@
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐ 有一手依據 | 0 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
 | [F-6] 平台可靠性工程(冪等性 / 資源配額 / metadata 車道 RLS 兜底 / 清理 job) | ✅ | · 零星引用 | 8 | — | [foundation/reliability.md](foundation/reliability.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
-| [P0-4a·uplift] 資源軸繼承(分類授權 + owner + 敏感旗標) | ✅ | · 零星引用 | 0 | `0` `11` `32` | [R1/authz-resource-inheritance.md](R1/authz-resource-inheritance.md) |
 | [R1·C-4] 事件觸發器(建立 / 更新時自動執行) | — | ⭐ 有一手依據 | 1 | `26` `29` `98` `125` `163` `173` `183` `185` `214` `260` `281` | [R1/event-triggers.md](R1/event-triggers.md) |
 | [R1·A11Y] 欄位輸入的無障礙名稱 | ✅ | — | 0 | — | [R1/field-label-a11y.md](R1/field-label-a11y.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | — | 0 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
