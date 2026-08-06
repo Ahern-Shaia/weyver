@@ -179,13 +179,13 @@
 
 ## 5. 里程碑(草擬)
 
-| M | 內容 |
-|---|---|
-| M1 | provider 抽象 + BYO key 加密存放 + 租戶開關 + 同意鏈(schema + 服務) |
-| M2 | 用量計量(`QuotaService` 新增 LLM 軸)+ 設定頁(**UI 從簡,前端將重構**) |
-| M3 | schema 提案器:intent DSL + Zod/allowlist 驗證 + 非同步工作 |
-| M4 | 核准 UI(逐表單 / 逐欄位可改)+ 走既有建表 API + audit |
-| M5 | e2e 固化 + FMEA 覆核 |
+| M | 內容 | 狀態 |
+|---|---|---|
+| M1 | provider 抽象 + BYO key 加密存放 + 租戶開關 + 同意鏈(schema + 服務) | ✅ **2026-08-06** |
+| M2 | 用量計量(`QuotaService` 新增 LLM 軸)+ 設定頁(**UI 從簡,前端將重構**) | — |
+| M3 | schema 提案器:intent DSL + Zod/allowlist 驗證 + 非同步工作 | — |
+| M4 | 核准 UI(逐表單 / 逐欄位可改)+ 走既有建表 API + audit | — |
+| M5 | e2e 固化 + FMEA 覆核 | — |
 
 ⚠️ **前端從簡是刻意的**|2026-08-06 決策方確認前端要**連 IA 一起重想**(等於重寫)。
 本模組把重量放在後端契約(provider 層 / intent DSL / 核准鏈),UI 做到能用即可 ——
@@ -193,8 +193,41 @@
 
 ---
 
+### 5.1 M1 落地紀錄(2026-08-06)
+
+**做到的**|BYO key 設定(加密存放 / 末四碼 / 同意鏈 / 租戶開關)+ 用量計量 + 端點。
+用量已在 M1 一併做掉(它與設定同一張 migration,拆開反而多一次 schema 變更)。
+
+| 交付 | 位置 |
+|---|---|
+| `tenant_ai_config` / `ai_usage`(RLS FORCE + 限權 GRANT) | `drizzle/0064_ai_config_and_usage.sql` |
+| 設定服務(金鑰只進不出;`resolveForCall` 是唯一解密出口) | `src/ai/ai-config.service.ts` |
+| 端點(讀不限 admin / 寫限 admin / 用量) | `src/ai/ai.controller.ts` |
+| 契約與建議模型清單(不寫死,OQ-AI-9=B) | `src/ai/ai-specs.ts` |
+| 整合測試(限權車道)+ controller 單元測試 | `test/ai-config.integration.test.ts` · `src/ai/ai.controller.test.ts` |
+
+#### 🔴 M1 踩到的三個
+
+1. **`ON CONFLICT DO UPDATE` 的 CHECK 求值順序**|PostgreSQL 是**先對 INSERT 候選列
+   求值 CHECK、再偵測衝突**。只送 delta `{enabled:true}` 時,候選列的 provider / model /
+   key 全是 NULL,`tenant_ai_config_enabled_shape` 直接違反,**根本走不到 DO UPDATE**。
+   錯誤是 `23514`,看不出原因。改成寫入合併後的完整列。
+
+2. **`sealSecret` 回的是物件不是字串**,存了整個 `{sealed, fingerprint}`。
+   而「DB 存密文」那條測試**空過** —— 它只驗長度 > 20 與不含明文,
+   而 pg 會把物件 JSON 化,兩條照樣過。**往返測試(密文 → 解回原文)才抓到**。
+   斷言已改成驗格式(`v1.` 開頭、8 段)。⚠️ 教訓:**形狀斷言擋不住編碼錯誤,往返才行**。
+
+3. **「非 admin 改不了設定」在整合測試層表達不出來**|dev 車道一律 `isSuperAdmin`
+   (`authz-http.ts:22` 逐字「dev 一律 isSuperAdmin,整條分支從來沒有人走過」),
+   於是 `permissions.isAdmin` 對任何 dev actor 都是 true。改由 controller 單元測試
+   以假的 permissions 釘住,並在整合測試裡註明理由 —— **留一條跑不出鑑別力的斷言比沒有更糟**。
+
+---
+
 ## 6. 版本
 
 | 日期 | 版 | 內容 |
 |---|---|---|
+| 2026-08-06 | v1.1 | **M1 SHIPPED**:BYO key 設定 + 同意鏈 + 用量計量。三個踩點見 §5.1(ON CONFLICT 的 CHECK 求值順序 / sealSecret 回物件而形狀斷言空過 / admin 分界在 dev 車道表達不出來)。api 15 綠 |
 | 2026-08-06 | v1.0 | M0 APPROVED(OQ-AI-1..9 全採建議)。三站查完。站①**直接縮小了 scope**(Excel 型別推斷已有確定性解且比 LLM 可靠,AI 不碰);站②三個 SDK 逐檔讀 LICENSE 本文;站③**推翻一條轉述**(Ragic 建表吃問卷不吃檔案)並查出 **Ragic/Airtable 皆為原廠代購額度而非 BYO key** → 我方「用量顯示」語意須改寫。OQ-AI-1..9 待裁定 |
