@@ -4,13 +4,14 @@ import { FormEngineModule } from "../form-engine/form-engine.module.js"
 import { TemplateInstallService } from "./install.service.js"
 import { TemplateService } from "./template.service.js"
 import { TemplatesController } from "./templates.controller.js"
+import { TemplateUpdateService } from "./update.service.js"
 
 /* R1·TPL 範本庫。只依賴 FormEngineModule 曝露的 DdlService —— 建表走既有引擎,
    本模組不碰動態 DDL(那是引擎的職責,也是最大的注入破口所在)。 */
 @Module({
   imports: [FormEngineModule, AuthzModule],
   controllers: [TemplatesController],
-  providers: [TemplateService, TemplateInstallService],
-  exports: [TemplateService, TemplateInstallService],
+  providers: [TemplateService, TemplateInstallService, TemplateUpdateService],
+  exports: [TemplateService, TemplateInstallService, TemplateUpdateService],
 })
 export class TemplatesModule {}

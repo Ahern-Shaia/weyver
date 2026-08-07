@@ -6,10 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
+import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
+import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { TemplateInstallService } from "../src/templates/install.service.js"
 import { TEMPLATE_PACKS } from "../src/templates/packs.js"
 import { templatePackSchema } from "../src/templates/template-specs.js"
 import { TemplateService } from "../src/templates/template.service.js"
+import { TemplateUpdateService } from "../src/templates/update.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
 
 /* 🔴 R1·TPL M1|套用範本包。
@@ -25,6 +28,9 @@ let pool: pg.Pool
 let app: NestFastifyApplication
 let templates: TemplateService
 let installs: TemplateInstallService
+let updates: TemplateUpdateService
+let metadata: MetadataService
+let ddl: DdlService
 let tenantA = 0
 let tenantB = 0
 
@@ -60,6 +66,9 @@ beforeAll(async () => {
   await app.getHttpAdapter().getInstance().ready()
   templates = app.get(TemplateService)
   installs = app.get(TemplateInstallService)
+  updates = app.get(TemplateUpdateService)
+  metadata = app.get(MetadataService)
+  ddl = app.get(DdlService)
 }, 180_000)
 
 afterAll(async () => {
@@ -357,5 +366,201 @@ describe("M6 安裝紀錄", () => {
        (purchase / twice / with-layout …),那些也會留紀錄,而且理當如此。
        真正的守衛是 DB 的 CHECK:key 必須符合 `^[a-z][a-z0-9-]{1,40}$`。 */
     for (const k of map.keys()) expect(k).toMatch(/^[a-z][a-z0-9-]{1,40}$/)
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════
+   M7|僅新增式更新(OQ-TPL-11 = B)
+
+   唯一的不變量:**只新增,絕不改名、不改型別、不刪除、不碰資料。**
+   下面每一條都在守它 —— 這組測試紅了,就是定位出問題,不是功能壞掉。
+   ══════════════════════════════════════════════════════════════════ */
+describe("M7 僅新增式更新", () => {
+  const v1 = templatePackSchema.parse({
+    key: "upd-demo",
+    version: "1.0",
+    name: "更新示範",
+    description: "測 M7 用",
+    forms: [
+      {
+        ref: "head",
+        name: "更新示範單",
+        fields: [
+          { name: "單號", type: "text" },
+          { name: "會被改名的欄位", type: "text" },
+          { name: "v1 才有的欄位", type: "text" },
+        ],
+      },
+    ],
+  })
+  /* v1.1:加一張表、在既有表加一欄、**拿掉** 一欄(拿掉的絕不能被刪) */
+  const v11 = templatePackSchema.parse({
+    key: "upd-demo",
+    version: "1.1",
+    name: "更新示範",
+    description: "測 M7 用",
+    forms: [
+      {
+        ref: "head",
+        name: "更新示範單",
+        fields: [
+          { name: "單號", type: "text" },
+          { name: "會被改名的欄位", type: "text" },
+          { name: "v1.1 新欄位", type: "number" },
+        ],
+      },
+      {
+        ref: "child",
+        name: "更新示範明細",
+        parentRef: "head",
+        fields: [{ name: "品名", type: "text" }],
+      },
+    ],
+  })
+
+  let headId = 0
+
+  it("裝 v1.0 → 預覽 v1.1:只列新增,不列任何刪改", async () => {
+    const res = await templates.apply(tenantA, v1)
+    headId = res.refMap.head ?? 0
+    expect(headId).toBeGreaterThan(0)
+
+    const plan = await updates.plan(tenantA, v11)
+    expect(plan.fromVersion).toBe("1.0")
+    expect(plan.toVersion).toBe("1.1")
+    expect(plan.newForms.map((f) => f.ref)).toEqual(["child"])
+    expect(plan.newFields).toHaveLength(1)
+    expect(plan.newFields[0]?.fields).toEqual(["v1.1 新欄位"])
+    expect(plan.nothingToDo).toBe(false)
+    /* 🔴 計畫裡沒有「刪除」或「改名」這種東西可表達 —— 型別上就沒有那些欄位。
+       這條斷言是活的文件:有人日後加上 removedFields,它會逼他重新想過。 */
+    expect(Object.keys(plan)).toEqual(
+      expect.arrayContaining(["newForms", "newFields", "skipped", "caveat"]),
+    )
+    expect(Object.keys(plan)).not.toContain("removedFields")
+    expect(Object.keys(plan)).not.toContain("renamedFields")
+  })
+
+  it("套用後:新表新欄都在,而 pack 拿掉的舊欄**沒有被刪**", async () => {
+    await updates.apply(tenantA, v11)
+
+    const head = await metadata.getForm(tenantA, headId)
+    const names = head.fields.map((f) => f.name)
+    expect(names).toContain("v1.1 新欄位")
+    /* 🔴 不變量:v1.1 的 pack 已經沒有這一欄,但它**必須還在** */
+    expect(names).toContain("v1 才有的欄位")
+    /* 🔴 既有欄位的型別不能被動過。cellValueType / dbFieldType 都要原封不動 ——
+       「更新順便把型別改對」是最容易讓人接受、也最會弄壞資料的一種好意。 */
+    const no = head.fields.find((f) => f.name === "單號")
+    expect(no?.cellValueType).toBe("text")
+    expect(no?.dbFieldType).toBe("text")
+    const kept = head.fields.find((f) => f.name === "v1 才有的欄位")
+    expect(kept?.deletedAt).toBeNull()
+
+    /* 新表建出來了,而且是 head 的子表 */
+    const forms = await metadata.listForms(tenantA)
+    const child = forms.find((f) => f.name === "更新示範明細")
+    expect(child).toBeDefined()
+    expect(child?.parentFormId).toBe(headId)
+  })
+
+  it("更新留下 kind='update' 的紀錄,且指回被更新的那一次", async () => {
+    const list = await installs.list(tenantA, "upd-demo")
+    expect(list).toHaveLength(2)
+    const [latest, first] = list
+    expect(latest?.kind).toBe("update")
+    expect(latest?.version).toBe("1.1")
+    expect(latest?.supersedesInstallId).toBe(first?.id)
+    expect(first?.kind).toBe("install")
+    /* 更新後的那一列要帶**完整**對映,下一次更新才不用回頭追鏈 */
+    expect(latest?.forms.map((f) => f.ref).sort()).toEqual(["child", "head"])
+  })
+
+  it("已經是最新版 → 拒絕,而不是做一次空更新", async () => {
+    await expect(updates.plan(tenantA, v11)).rejects.toThrow(/最新版/)
+  })
+
+  it("沒裝過 → 拒絕,並講「請先套用」而不是「沒有新版」", async () => {
+    const other = templatePackSchema.parse({
+      key: "never-installed",
+      version: "2.0",
+      name: "沒裝過的",
+      description: "x",
+      forms: [{ ref: "a", name: "沒裝過的表", fields: [{ name: "x", type: "text" }] }],
+    })
+    await expect(updates.plan(tenantA, other)).rejects.toThrow(/還沒有安裝過/)
+  })
+
+  it("🔴 使用者刪掉的表:列為 skipped,**不重建**", async () => {
+    const p1 = templatePackSchema.parse({
+      key: "upd-deleted",
+      version: "1.0",
+      name: "刪表示範",
+      description: "x",
+      forms: [
+        { ref: "a", name: "刪表示範A", fields: [{ name: "x", type: "text" }] },
+        { ref: "b", name: "刪表示範B", fields: [{ name: "y", type: "text" }] },
+      ],
+    })
+    const p11 = templatePackSchema.parse({
+      ...p1,
+      version: "1.1",
+      forms: [
+        {
+          ref: "a",
+          name: "刪表示範A",
+          fields: [
+            { name: "x", type: "text" },
+            { name: "新增的", type: "text" },
+          ],
+        },
+        { ref: "b", name: "刪表示範B", fields: [{ name: "y", type: "text" }] },
+      ],
+    })
+    const res = await templates.apply(tenantA, p1)
+    const bId = res.refMap.b ?? 0
+    await ddl.dropForm(tenantA, bId)
+
+    const plan = await updates.plan(tenantA, p11)
+    expect(plan.skipped.map((s) => s.ref)).toContain("b")
+    expect(plan.skipped[0]?.reason).toMatch(/已被刪除,不會重建/)
+    /* 被刪的表不會出現在「要新建」裡 —— 那才是「重建」 */
+    expect(plan.newForms.map((f) => f.ref)).not.toContain("b")
+
+    await updates.apply(tenantA, p11)
+    const forms = await metadata.listForms(tenantA)
+    expect(forms.filter((f) => f.name === "刪表示範B")).toHaveLength(0)
+  })
+
+  it("預覽沒有副作用 —— 連跑三次,表數不變", async () => {
+    const before = (await metadata.listForms(tenantA)).length
+    const p = templatePackSchema.parse({
+      key: "upd-noside",
+      version: "1.0",
+      name: "無副作用",
+      description: "x",
+      forms: [{ ref: "a", name: "無副作用表", fields: [{ name: "x", type: "text" }] }],
+    })
+    await templates.apply(tenantA, p)
+    const p11 = templatePackSchema.parse({
+      ...p,
+      version: "1.1",
+      forms: [
+        {
+          ref: "a",
+          name: "無副作用表",
+          fields: [
+            { name: "x", type: "text" },
+            { name: "z", type: "text" },
+          ],
+        },
+      ],
+    })
+    const after1 = (await metadata.listForms(tenantA)).length
+    await updates.plan(tenantA, p11)
+    await updates.plan(tenantA, p11)
+    await updates.plan(tenantA, p11)
+    expect((await metadata.listForms(tenantA)).length).toBe(after1)
+    expect(after1).toBe(before + 1)
   })
 })

@@ -1662,6 +1662,9 @@ export const templateInstalls = pgTable(
     templateKey: text("template_key").notNull(),
     version: text("version").notNull(),
     withRecords: boolean("with_records").notNull().default(false),
+    /* 'install' = 再裝一份(使用者多一套表)· 'update' = 同一套表升版 */
+    kind: text("kind").notNull().default("install"),
+    supersedesInstallId: bigint("supersedes_install_id", { mode: "number" }),
     appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
     appliedBy: bigint("applied_by", { mode: "number" }),
   },

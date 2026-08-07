@@ -10,6 +10,8 @@ export interface InstallRecord {
   readonly templateKey: string
   readonly version: string
   readonly withRecords: boolean
+  readonly kind: "install" | "update"
+  readonly supersedesInstallId: number | null
   readonly appliedAt: string
   readonly forms: readonly InstalledForm[]
 }
@@ -41,6 +43,9 @@ export class TemplateInstallService {
     readonly version: string
     readonly withRecords: boolean
     readonly actorId?: number
+    /* 'install' = 再裝一份 · 'update' = 同一套表升版。預設 install。 */
+    readonly kind?: "install" | "update"
+    readonly supersedesInstallId?: number
     /* ref → 實際建出來的 formId,以及當下用的名字(可能被加了序號) */
     readonly forms: readonly { readonly ref: string; readonly formId: number }[]
     readonly nameOf: (formId: number) => string
@@ -53,6 +58,10 @@ export class TemplateInstallService {
           templateKey: input.pack.key,
           version: input.version,
           withRecords: input.withRecords,
+          kind: input.kind ?? "install",
+          ...(input.supersedesInstallId === undefined
+            ? {}
+            : { supersedesInstallId: input.supersedesInstallId }),
           ...(input.actorId === undefined ? {} : { appliedBy: input.actorId }),
         })
         .returning({ id: templateInstalls.id })
@@ -124,6 +133,9 @@ export class TemplateInstallService {
         templateKey: i.templateKey,
         version: i.version,
         withRecords: i.withRecords,
+        /* DB CHECK 只允許這兩個值;此處收窄型別而非重驗 */
+        kind: i.kind === "update" ? "update" : "install",
+        supersedesInstallId: i.supersedesInstallId,
         appliedAt: i.appliedAt.toISOString(),
         forms: byInstall.get(i.id) ?? [],
       }))

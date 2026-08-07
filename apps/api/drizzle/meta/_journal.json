@@ -463,6 +463,13 @@
       "when": 1785946413006,
       "tag": "0065_template_installs",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1785946413007,
+      "tag": "0066_template_install_kind",
+      "breakpoints": true
     }
   ]
 }

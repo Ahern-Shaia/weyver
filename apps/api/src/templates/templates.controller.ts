@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Inject, Param, Post, UseGuards } from "@nestjs/common"
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  NotFoundException,
+  Param,
+  Post,
+  UseGuards,
+} from "@nestjs/common"
 import { z } from "zod"
 import { TenantGuard } from "../auth/tenant.guard.js"
 import type { TenantContext } from "../http/tenant-context.js"
@@ -6,8 +15,9 @@ import { Tenant } from "../http/tenant.decorator.js"
 import { ZodValidationPipe } from "../http/zod-validation.pipe.js"
 import { type InstallRecord, TemplateInstallService } from "./install.service.js"
 import { TEMPLATE_PACKS, findPack } from "./packs.js"
-import { compareVersion } from "./template-specs.js"
+import { type TemplatePack, compareVersion } from "./template-specs.js"
 import { type ApplyResult, TemplateService } from "./template.service.js"
+import { TemplateUpdateService, type UpdatePlan } from "./update.service.js"
 
 const applySchema = z.object({ withRecords: z.boolean().default(false) })
 
@@ -21,6 +31,7 @@ export class TemplatesController {
   constructor(
     @Inject(TemplateService) private readonly templates: TemplateService,
     @Inject(TemplateInstallService) private readonly installs: TemplateInstallService,
+    @Inject(TemplateUpdateService) private readonly updates: TemplateUpdateService,
   ) {}
 
   /* M6:清單帶上「這個租戶裝過沒 / 裝的是哪一版 / 有沒有新版」。
@@ -61,20 +72,35 @@ export class TemplatesController {
     return this.installs.list(tenant.tenantId)
   }
 
+  /* OQ-TPL-11=B|**預覽先於套用**。預覽與套用走同一段計算,
+     否則「預覽講的」與「實際做的」會漂 —— 那比不給預覽更糟。 */
+  @Get(":key/update-preview")
+  updatePreview(@Tenant() tenant: TenantContext, @Param("key") key: string): Promise<UpdatePlan> {
+    return this.updates.plan(tenant.tenantId, this.mustFind(key))
+  }
+
+  /* 僅新增式更新:只建缺的表 / 補缺的欄位,**絕不改名、不改型別、不刪除**。 */
+  @Post(":key/update")
+  update(@Tenant() tenant: TenantContext, @Param("key") key: string): Promise<UpdatePlan> {
+    return this.updates.apply(tenant.tenantId, this.mustFind(key), tenant.actorId)
+  }
+
   @Post(":key/apply")
   async apply(
     @Tenant() tenant: TenantContext,
     @Param("key") key: string,
     @Body(new ZodValidationPipe(applySchema)) body: z.infer<typeof applySchema>,
   ): Promise<ApplyResult> {
-    const pack = findPack(key)
-    if (pack === undefined) {
-      /* 不用 NotFoundException 的通用訊息 —— 講清楚是「這個範本不存在」,
-         而不是讓使用者以為是路由錯了 */
-      throw new Error(`template not found: ${key}`)
-    }
-    return this.templates.apply(tenant.tenantId, pack, tenant.actorId, {
+    return this.templates.apply(tenant.tenantId, this.mustFind(key), tenant.actorId, {
       withRecords: body.withRecords,
     })
+  }
+
+  private mustFind(key: string): TemplatePack {
+    const pack = findPack(key)
+    /* 不用 NotFoundException 的通用訊息 —— 講清楚是「這個範本不存在」,
+       而不是讓使用者以為是路由錯了 */
+    if (pack === undefined) throw new NotFoundException(`找不到範本「${key}」`)
+    return pack
   }
 }
