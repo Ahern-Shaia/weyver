@@ -5,7 +5,11 @@
 > **裁定摘要**｜1=A 示例值依型別生成 · 2=A 設計/填單完全共用渲染 · **3=B′ Enter 即建欄 + 三項補償**（維持 OQ-FD2-2，不推翻）· 4=C 型別固定分組固定順序 + 預設單行文字 · 5=A 表單級條件式格式歸「表單設定」· 6=A hydration/401 另立。
 > **附帶裁定**｜順序＝B-3 拆框線 → 換字體（IBM Plex → Inter + Noto Sans TC）→ 本模組 M1。
 > ⚠️ 原列於首位的「個人自助註冊是否在 R1」**已撤回** —— 那是我把 Ragic 的產品文案誤讀為 Weyver 定位變更所致（§2.4）。
-> **下一步**｜高保真 mockup `docs/mockups/form-designer-wysiwyg.html` 供 review，通過後才動 code。
+> **下一步**｜✅ **高保真 mockup 已出(2026-08-08)** —— 併入 `docs/mockups/weyver-v2.html`
+> 第七頁「表單設計」(截圖 `docs/research/ui-extract-2026-08-06/v2-designer.png`),
+> 未另開 `form-designer-wysiwyg.html`:**同一套 shell 與 token 只能有一份**,兩檔必漂。
+> **三條量測型不變量已用 Playwright 實測**:主體 **73.6%**(要 ≥60%)· header **1 帶**(要 ≤1)· 輔助面板**單欄**。
+> 通過 review 後才動 code。
 >
 > **一句話**｜`form-designer-2d`（SHIPPED v1.0）的 D1 裁定逐字是「**2D 格線畫布 = 填單畫面本身**」。
 > 實測發現**只實作了前半**：2D 座標與拖曳做了（畫布確為 `52px × 12` CSS grid），

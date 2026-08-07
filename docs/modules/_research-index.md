@@ -40,7 +40,7 @@
 | [R1·UP-4] 欄位型別 parity（form-engine-core 增量） | ⭐⭐ 深且推翻過 | 83 | 16 | `14` `20` `25` `27` `31` `145` `153` `295` `344` `357` | Airtable · Baserow · NocoDB · Notion · Odoo · SAP · Salesforce · Teable | [R1/field-types-parity.md](R1/field-types-parity.md) |
 | [R1·UP-3] 2D 表單設計器（form-designer-ui uplift） | ⭐ 有一手依據 | 54 | 24 | `21` `35` `121` `306` | Airtable · Baserow · NocoDB · Teable | [R1/form-designer-2d.md](R1/form-designer-2d.md) |
 | [P0-1·UI] 表單設計器 + 填單 接引擎 API | ⭐⭐ 深且推翻過 | 23 | 0 | `21` `37` `72` `143` `167` `286` | Airtable · Baserow · Notion · Salesforce · W3C · Zoho | [R1/form-designer-ui.md](R1/form-designer-ui.md) |
-| [R1·UP-3c] 設計檢視 = 表單本身（設計器心智模型補完） | ⭐⭐ 深且推翻過 | 17 | 12 | `21` `26` `34` `35` `37` `38` `53` `121` `306` | Airtable · Baserow · Teable | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
+| [R1·UP-3c] 設計檢視 = 表單本身（設計器心智模型補完） | ⭐⭐ 深且推翻過 | 18 | 12 | `21` `26` `34` `35` `37` `38` `53` `121` `306` | Airtable · Baserow · Teable | [R1/form-designer-wysiwyg.md](R1/form-designer-wysiwyg.md) |
 | [R1·B-2] 表單範本庫 | ⭐⭐ 深且推翻過 | 16 | 8 | `37` `111` `176` `204` `268` | Airtable · Baserow · NocoDB · Notion · Salesforce · Teable | [R1/form-templates.md](R1/form-templates.md) |
 | [P0-3] 公式引擎 + 關聯 Link&Load | ⭐⭐ 深且推翻過 | 11 | 10 | — | Airtable · Baserow · Glide Data Grid · NocoDB · Notion · Salesforce · Teable | [R1/formula-and-linkload.md](R1/formula-and-linkload.md) |
 | [R1·UX-1] 前端重構(視覺 / 心智模型 / 操作體驗 / UI / UX) | ⭐⭐ 深且推翻過 | 32 | 15 | — | ARIA APG · Airtable · Baserow · Glide Data Grid · NocoDB · Notion · SAP · Salesforce · W3C | [R1/frontend-uplift.md](R1/frontend-uplift.md) |

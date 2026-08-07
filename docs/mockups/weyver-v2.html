@@ -833,6 +833,165 @@ a:hover{text-decoration:underline;}
 .norows kbd{font-size:11px;font-weight:600;background:var(--paper-3);border:1px solid var(--line);
   border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink-2);}
 
+
+/* ══════════════════════════════════════════════════════════════════
+   畫面七|表單設計器
+
+   🔴 這一頁不是我發明的,`form-designer-wysiwyg.md` M0 逐字寫著
+   「**下一步|高保真 mockup 供 review,通過後才動 code**」。以下每個決定
+   都對得到一條已裁定的 OQ,對不到的不畫。
+
+   ── 核心心智模型(form-designer-2d D1 逐字)──────────────────
+   「**2D 格線畫布 = 填單畫面本身**」。設計模式**不是**另一套抽象編輯器 ——
+   它就是你之後會看到的那張單,只是欄位裡填的是示例值。
+   OQ-FDW-2=A：**設計/填單完全共用渲染**(同一個 FormSection / FieldGrid)。
+
+   ── 三條量測型不變量(M2/M3 驗收條件,未出貨)──────────────
+   ① **輔助面板 ≤ 1 欄** —— 現況三個工具列開關 + 多面板,M2 要收成一個屬性抽屜
+   ② **header ≤ 1 帶** —— 現況三帶(task #154),M3 要收成一帶
+   ③ **主體 ≥ 60%** —— 畫布才是主角,面板是配角
+   這三條是**可以量的**,不是感覺。本 mockup 已用 Playwright 量過(見 commit)。
+
+   ⚠️ 字體維持 IBM Plex 與 v2 其餘五頁一致。決策方的登入頁用 Archivo + Noto Sans TC,
+      而 wysiwyg M0 的附帶裁定寫的是 Inter + Noto Sans TC —— **三方不一致,待統一**,
+      不在這一頁單獨解決(單頁換字體只會讓不一致從 1 處變 2 處)。
+   ══════════════════════════════════════════════════════════════════ */
+.fd{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--paper);}
+
+/* ① header 收成一帶。現況是三帶(task #154)—— 三帶正是「後台四層水平帶」的近親。 */
+.fd-bar{height:46px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px;
+  border-bottom:1px solid var(--line);background:var(--paper-2);}
+.fd-bar .nm{font-size:15px;font-weight:600;}
+.fd-bar .mode{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;font-size:10.5px;
+  font-weight:700;letter-spacing:.04em;color:var(--wn);background:var(--wn-t);border:1px solid var(--wn-l);
+  border-radius:var(--r-chip);}
+.fd-bar .mode svg{width:11px;height:11px;}
+.fd-bar .sp{flex:1;}
+/* B′ 補償之二:dirty 標記 —— 使用者必須看得出「有東西還沒套用」 */
+.fd-bar .dirty{font-size:11.5px;color:var(--wn);font-weight:600;}
+
+.fd-body{flex:1;display:flex;min-height:0;}
+
+/* 欄位面板 —— OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
+   不做搜尋不做最近使用:位置固定,肌肉記憶才建立得起來。 */
+.fd-pal{width:186px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
+  overflow-y:auto;padding:8px 8px 14px;}
+.fd-pal .g{padding:9px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  color:var(--ink-4);text-transform:uppercase;}
+/* 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地,2026-08-04)——
+   同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 */
+.fd-row{display:flex;align-items:center;gap:8px;height:29px;padding:0 7px;border-radius:var(--r-ctl);
+  font-size:12.5px;color:var(--ink-2);cursor:grab;}
+.fd-row:hover{background:var(--paper-3);}
+.fd-row .ty{width:16px;height:16px;}
+.fd-row .ty svg{width:10px;height:10px;}
+.fd-row.def{color:var(--ink);font-weight:600;}
+.fd-pal .hint{margin-top:10px;padding:8px 7px;border-top:1px solid var(--line-2);
+  font-size:11px;line-height:1.7;color:var(--ink-4);}
+.fd-pal .hint kbd{font-size:10px;font-weight:600;background:var(--paper-3);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink-2);}
+
+/* ── 2D 畫布 ── 🔴 它長得**就是填單畫面**,不是抽象編輯器。 ── */
+.fd-canvas{flex:1;min-width:0;overflow:auto;background:var(--paper-3);padding:18px 22px 40px;}
+.fd-paper{max-width:860px;margin:0 auto;background:var(--paper);border:1px solid var(--line);
+  box-shadow:0 1px 2px rgba(19,26,36,.05);}
+.fd-doc{padding:16px 18px 20px;}
+.fd-doc h2{font-size:17px;font-weight:600;letter-spacing:-.2px;}
+.fd-doc .sub{margin-top:3px;font-size:12px;color:var(--ink-3);}
+
+/* 分段 = 列範圍(form-designer-2d OQ-4=A) */
+.fd-sec{display:flex;align-items:center;gap:7px;margin:16px 0 0;padding:6px 0;
+  border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700;color:var(--ink-2);}
+.fd-sec .hd{margin-left:auto;display:flex;gap:3px;opacity:0;}
+.fd-sec:hover .hd{opacity:1;}
+.fd-sec .hd button{width:20px;height:20px;border-radius:3px;color:var(--ink-4);display:flex;
+  align-items:center;justify-content:center;}
+.fd-sec .hd button:hover{background:var(--paper-3);color:var(--ink-2);}
+.fd-sec .hd svg{width:12px;height:12px;}
+
+/* 12 欄格線。欄位 = 灰標籤格 | 白值格,與填單完全同一套渲染 */
+.fd-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:0;margin-top:8px;
+  border:1px solid var(--line);border-bottom:none;}
+.fd-f{display:grid;grid-template-columns:92px 1fr;border-bottom:1px solid var(--line);
+  border-right:1px solid var(--line);position:relative;cursor:pointer;}
+.fd-f:last-child{border-right:none;}
+.fd-f .k{background:var(--paper-2);padding:7px 9px;font-size:11.5px;color:var(--ink-3);text-align:right;
+  border-right:1px solid var(--line-2);display:flex;align-items:center;justify-content:flex-end;gap:3px;}
+.fd-f .k i{color:var(--er);font-style:normal;font-weight:700;}
+.fd-f .v{padding:7px 10px;font-size:12.8px;min-height:32px;display:flex;align-items:center;gap:6px;}
+/* 🔴 OQ-FDW-1=A:示例值**依型別生成**,不取真實記錄(設計者未必有讀資料權,
+   而且空表就沒東西可顯示)。ink-3 + 淡底標示為**非真值**。 */
+.fd-f .v .ex{color:var(--ink-4);background:var(--paper-2);padding:1px 5px;border-radius:2px;}
+.fd-f.on{outline:2px solid var(--brand);outline-offset:-2px;z-index:2;}
+.fd-f.on .k{background:var(--brand-t);color:var(--brand-h);}
+/* 拖曳把手只在 hover / 選中時出現 —— 常駐把手會讓畫布看起來不像填單畫面 */
+.fd-f .grip{position:absolute;left:-1px;top:50%;transform:translateY(-50%);width:5px;height:22px;
+  background:var(--brand);opacity:0;border-radius:0 2px 2px 0;}
+.fd-f:hover .grip,.fd-f.on .grip{opacity:1;}
+/* 空格子:直接打字就建欄(OQ-FDW-3=B′ Enter 即建欄) */
+.fd-empty{border-bottom:1px solid var(--line);border-right:1px solid var(--line);min-height:33px;
+  display:flex;align-items:center;padding:0 10px;font-size:12px;color:var(--ink-4);cursor:text;}
+.fd-empty:hover{background:var(--brand-t);color:var(--brand);}
+.fd-empty:last-child{border-right:none;}
+.fd-typing{border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+  display:grid;grid-template-columns:92px 1fr;outline:2px solid var(--brand);outline-offset:-2px;}
+.fd-typing .k{background:var(--brand-t);padding:7px 9px;display:flex;align-items:center;
+  justify-content:flex-end;font-size:12.5px;color:var(--ink);}
+.fd-typing .k .cur{width:1px;height:15px;background:var(--ink);margin-left:1px;
+  animation:fd-bl 1.1s step-end infinite;}
+@keyframes fd-bl{50%{opacity:0}}
+.fd-typing .v{padding:7px 10px;font-size:11.5px;color:var(--ink-4);display:flex;align-items:center;gap:6px;}
+.fd-typing .v kbd{font-size:10px;font-weight:600;background:var(--paper);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink-2);}
+
+/* 子表在畫布上就是子表(共識 R2:可編輯 → 完整格線 + 列號) */
+.fd-sub{margin-top:8px;border:1px solid var(--line);}
+.fd-sub table{width:100%;border-collapse:collapse;}
+.fd-sub th{background:var(--paper-2);font-size:11px;font-weight:600;color:var(--ink-3);padding:5px 8px;
+  text-align:left;border:1px solid var(--line-2);}
+/* 表頭裡的型別圖示要給尺寸 —— 全域 svg 規則沒設 width/height,
+   放進 <th> 就會撐成整格高(這次真的撐成一個巨大的 fx)。 */
+.fd-sub th svg{display:inline-block;width:11px;height:11px;vertical-align:-1px;}
+.fd-sub td{padding:5px 8px;font-size:12.3px;border:1px solid var(--line-2);color:var(--ink-4);}
+.fd-sub td.rn{width:24px;text-align:center;background:var(--paper-2);font-size:11px;}
+.fd-sub .addcol{width:32px;text-align:center;color:var(--ink-4);cursor:pointer;}
+
+/* ② 屬性抽屜 —— accordion 四段,**單欄**。
+   現況是三個工具列開關 + 多面板,M2 的驗收條件逐字是「輔助面板 ≤1 欄」。 */
+.fd-insp{width:268px;flex-shrink:0;border-left:1px solid var(--line);background:var(--paper);
+  display:flex;flex-direction:column;}
+.fd-insp .hd{padding:10px 13px;border-bottom:1px solid var(--line-2);}
+.fd-insp .hd .t{font-size:13px;font-weight:600;}
+.fd-insp .hd .s{margin-top:2px;font-size:11.5px;color:var(--ink-3);}
+.fd-insp .bd{flex:1;overflow-y:auto;}
+.fd-acc{border-bottom:1px solid var(--line-2);}
+.fd-acc > button{display:flex;align-items:center;gap:7px;width:100%;padding:9px 13px;text-align:left;
+  font-size:11.5px;font-weight:700;color:var(--ink-2);}
+.fd-acc > button:hover{background:var(--paper-2);}
+.fd-acc > button svg{width:12px;height:12px;color:var(--ink-4);transition:transform .14s;}
+.fd-acc > button .n{margin-left:auto;font-size:10.5px;font-weight:500;color:var(--ink-4);}
+.fd-acc.open > button svg{transform:rotate(180deg);}
+.fd-acc .in{padding:2px 13px 12px;}
+.fd-prop{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;padding:5px 0;
+  font-size:12.3px;}
+.fd-prop .pk{color:var(--ink-3);}
+.fd-prop .pv{color:var(--ink);}
+.fd-prop input[type=text]{width:100%;height:28px;padding:0 8px;border:1px solid var(--line);
+  border-radius:var(--r-ctl);font-size:12.3px;background:var(--paper);}
+.fd-prop .sel{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid var(--line);
+  border-radius:var(--r-ctl);font-size:12.3px;color:var(--ink);}
+.fd-prop .sel svg{width:12px;height:12px;margin-left:auto;color:var(--ink-4);}
+.fd-sw{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:12.3px;color:var(--ink-2);}
+.fd-sw input{width:14px;height:14px;accent-color:var(--brand);}
+
+/* B′ 補償之一:可撤銷 toast。
+   「Enter 即建欄」是**立即 DDL**,所以必須給得回去 —— 沒有撤銷的即時 DDL 是陷阱。 */
+.fd-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;
+  gap:11px;padding:9px 13px;background:var(--ink);color:#fff;border-radius:var(--r-box);
+  box-shadow:0 6px 20px rgba(19,26,36,.25);font-size:12.5px;z-index:20;}
+.fd-toast button{color:#8fd0e8;font-weight:600;font-size:12.5px;}
+.fd-toast button:hover{text-decoration:underline;}
+
 /* ══ mockup 外框(不是產品的一部分) ══ */
 .switch{position:fixed;left:200px;bottom:6px;z-index:99;display:flex;gap:1px;padding:3px;
   background:var(--shell);border-radius:var(--r-box);box-shadow:0 4px 14px rgba(19,26,36,.28);}
@@ -1699,6 +1858,162 @@ a:hover{text-decoration:underline;}
   </div>
 </div>
 
+<div class="app" id="s-design" hidden>
+  <div class="top">
+    <div class="mark"><div class="sq">W</div><div class="nm">Weyver</div></div>
+    <div class="cats">
+      <button class="on">採購<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button>生產排程</button><button>HACCP 紀錄</button>
+      <button>供應商稽核</button><button>客訴處理</button><button>財會</button>
+      <!-- `＋` 常駐於頁籤列 —— ragic-03 逐字對照。分類是租戶自建的,不是內建模組 -->
+      <button class="add" title="新增分類">＋</button>
+    </div>
+    <div class="rt">
+      <!-- ⑦ 現況沒有全域搜尋 -->
+      <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+    </div>
+  </div>
+  <div class="mainrow" style="position:relative">
+    <div class="fd">
+      <!-- ① header 收成**一帶**(M3 驗收條件:header ≤1)。
+           現況三帶(task #154),而三帶正是「後台四層水平帶」的近親。 -->
+      <div class="fd-bar">
+        <span class="nm">採購單</span>
+        <span class="mode"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計中</span>
+        <span class="sp"></span>
+        <!-- B′ 補償之二:dirty 標記。使用者必須看得出「有東西還沒套用」 -->
+        <span class="dirty">3 項未套用</span>
+        <button class="tool"><svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>復原</button>
+        <button class="btn gho">取消</button>
+        <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>套用設計</button>
+      </div>
+
+      <div class="fd-body">
+        <!-- OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
+             不做搜尋、不做「最近使用」—— 位置固定,肌肉記憶才建立得起來。 -->
+        <div class="fd-pal">
+          <div class="g">基本</div>
+          <div class="fd-row def"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>單行文字</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>多行文字</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>日期</div>
+          <div class="g">數值</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>數字</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>金額</div>
+          <div class="g">選擇</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="m8 11 4 4 4-4"/></svg></span>單選</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="m8 11 4 4 4-4"/></svg></span>多選</div>
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>核取</div>
+          <div class="g">關聯與計算</div>
+          <div class="fd-row"><span class="ty rel"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>連結其他表單</div>
+          <div class="fd-row"><span class="ty fx"><svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></span>公式</div>
+          <!-- 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地 2026-08-04)——
+               同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 -->
+          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>子表(明細)</div>
+          <div class="hint">
+            拖到畫布,或直接在空格子上打字。<br>
+            打完按 <kbd>Enter</kbd> 就建欄。
+          </div>
+        </div>
+
+        <!-- 🔴 畫布長得**就是填單畫面** —— form-designer-2d D1 逐字:
+             「2D 格線畫布 = 填單畫面本身」。設計模式不是另一套抽象編輯器。 -->
+        <div class="fd-canvas">
+          <div class="fd-paper">
+            <div class="fd-doc">
+              <h2>採購單</h2>
+              <div class="sub">向供應商下訂原物料。核准後自動過帳至存貨與應付帳款。</div>
+
+              <div class="fd-sec">基本資料
+                <span class="hd">
+                  <button title="上移"><svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+                  <button title="設定"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+                </span>
+              </div>
+              <div class="fd-grid">
+                <!-- 示例值依型別生成(OQ-FDW-1=A),ink-3 + 淡底標示為非真值 —— 不取真實記錄:
+                     設計者未必有讀資料權,而且空表根本沒東西可顯示。 -->
+                <div class="fd-f on" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k"><i>*</i>供應商</div><div class="v"><span class="ex">裕豐農產行</span></div></div>
+                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k">聯絡人</div><div class="v"><span class="ex">範例文字</span></div></div>
+                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k"><i>*</i>預定交期</div><div class="v"><span class="ex">2026-08-08</span></div></div>
+                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k">付款條件</div><div class="v"><span class="ex">月結 30 天</span></div></div>
+                <div class="fd-f" style="grid-column:span 12"><span class="grip"></span>
+                  <div class="k">備註</div><div class="v"><span class="ex">範例文字</span></div></div>
+                <!-- OQ-FDW-3=B′「Enter 即建欄」:空格子直接打字 -->
+                <div class="fd-typing" style="grid-column:span 6">
+                  <div class="k">交貨地點<span class="cur"></span></div>
+                  <div class="v">單行文字 · <kbd>Enter</kbd> 建立 · <kbd>Tab</kbd> 換型別</div>
+                </div>
+                <div class="fd-empty" style="grid-column:span 6">＋ 點這裡新增欄位</div>
+              </div>
+
+              <div class="fd-sec">品項明細</div>
+              <div class="fd-sub">
+                <table>
+                  <thead><tr><th class="rn">#</th><th>品項</th><th>料號</th><th>數量</th><th>單價</th>
+                    <th>金額 <svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></th><th class="addcol">＋</th></tr></thead>
+                  <tbody>
+                    <tr><td class="rn">1</td><td>去骨雞腿肉(冷藏)</td><td>K-1042</td><td>340.5</td>
+                      <td>168.00</td><td>57,204</td><td></td></tr>
+                    <tr><td class="rn">2</td><td>範例文字</td><td>範例文字</td><td>0</td>
+                      <td>0.00</td><td>0</td><td></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ② 屬性抽屜:accordion 四段,**單欄**。
+             M2 驗收條件逐字「輔助面板 ≤1 欄」—— 現況是三個工具列開關 + 多面板。 -->
+        <div class="fd-insp">
+          <div class="hd">
+            <div class="t">供應商</div>
+            <div class="s">連結其他表單 · 第 1 列</div>
+          </div>
+          <div class="bd">
+            <div class="fd-acc open">
+              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>基本</button>
+              <div class="in">
+                <div class="fd-prop"><span class="pk">欄位名稱</span><input type="text" value="供應商"></div>
+                <div class="fd-prop"><span class="pk">型別</span><span class="sel">連結其他表單<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+                <div class="fd-prop"><span class="pk">連到</span><span class="sel">供應商主檔<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+                <div class="fd-prop"><span class="pk">寬度</span><span class="sel">6 / 12 欄<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+              </div>
+            </div>
+            <div class="fd-acc open">
+              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>驗證<span class="n">1 條</span></button>
+              <div class="in">
+                <label class="fd-sw"><input type="checkbox" checked>必填</label>
+                <label class="fd-sw"><input type="checkbox">不可重複</label>
+                <div class="fd-prop"><span class="pk">預設值</span><input type="text" value=""></div>
+              </div>
+            </div>
+            <div class="fd-acc">
+              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>顯示</button>
+            </div>
+            <div class="fd-acc">
+              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>進階</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B′ 補償之一:可撤銷 toast。「Enter 即建欄」是**立即 DDL** ——
+         沒有撤銷的即時 DDL 是陷阱,所以三項補償缺一不可。 -->
+    <div class="fd-toast">
+      <span>已新增欄位「單號」</span>
+      <button>復原</button>
+    </div>
+  </div>
+</div>
+
 <div class="switch">
   <button id="b1">登入</button>
   <button id="b2" class="on">工作區首頁</button>
@@ -1706,11 +2021,12 @@ a:hover{text-decoration:underline;}
   <button id="b4">範本庫</button>
   <button id="b5">空·首頁</button>
   <button id="b6">空·表單</button>
+  <button id="b7">表單設計</button>
 </div>
 
 <script>
-const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl'),blank:document.getElementById('s-blank'),norows:document.getElementById('s-norows')};
-const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4'),blank:document.getElementById('b5'),norows:document.getElementById('b6')};
+const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl'),blank:document.getElementById('s-blank'),norows:document.getElementById('s-norows'),design:document.getElementById('s-design')};
+const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4'),blank:document.getElementById('b5'),norows:document.getElementById('b6'),design:document.getElementById('b7')};
 function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}}
 
 /* ── 登入頁:織紋位移 + 標記「織入」動畫(移植自決策方的 x-dc 版本)──
@@ -1762,7 +2078,7 @@ goBtn.onclick=()=>{ if(loadStart!==null)return
   goBtn.classList.add('busy'); goLabel.textContent='正在織入你的工作區' }
 
 for(const n in B)B[n].onclick=()=>go(n);
-go('login');
+go('design');
 // 分類目錄可收合 —— 現況 144 張平鋪成 4040px,而使用者一次只想找一張
 document.querySelectorAll('.ch').forEach(h=>{h.onclick=()=>{const b=h.nextElementSibling;b.hidden=!b.hidden;h.classList.toggle('open',!b.hidden);};});
 </script>
