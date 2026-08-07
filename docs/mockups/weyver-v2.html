@@ -726,32 +726,36 @@ a:hover{text-decoration:underline;}
 .blank .lead{margin-top:8px;font-size:13.5px;line-height:1.8;color:var(--ink-3);}
 .blank .lead b{color:var(--ink-2);font-weight:600;}
 
-/* 三條路。🚫 不畫插畫、不做 hero —— AI 味清單第一條就是裝飾性視覺。
-   卡片之間**刻意不等權**:範本卡帶主色左框線,另外兩張純線框。 */
-/* ⚠️ **這個檔第二次踩類別撞名**:先是 `.mid`(登入左屏 vs 工作面中欄),
-   再是 `.rec`(這裡的「建議」章 vs 記錄面板 `width:430px;display:flex`)——
-   章被撐成 430px 寬。單檔多畫面共用一個 CSS 命名空間就會這樣,
-   短又通用的類名(rec / mid / card / tip)要加前綴。
+/* ══ 三條路 ══════════════════════════════════════════════════════
+   🔴 **v2 初稿是三張並排卡片,已作廢。** 放大看之後,每個元素都指不出出處 ——
+   而那正是 [[feedback-ai-vibe-tells]] 的 D5 構造規則要擋的:
+   **每個元素指得出出處,指不出=刪。**
 
-   🔴 minmax(0,1fr) 不是 1fr —— `1fr` 等於 `minmax(auto,1fr)`,而 auto 會被
-   內容的 min-content 撐開。這裡踩到的是 **CJK 之間的 `=` 和 `+` 不斷行**:
-   「請購申請=請購單+明細+供應商」變成一個 13 字的不可斷 token,
-   把第一欄撐到 468px 而另外兩欄剩 150px。量出來才發現,眼睛只看得到「怪」。 */
-.paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:26px;}
-.path{border:1px solid var(--line);border-radius:var(--r-box);padding:15px 15px 14px;
-  display:flex;flex-direction:column;background:var(--paper);}
-.path.first{border-color:var(--brand-l);box-shadow:inset 3px 0 0 var(--brand);}
-.path .ic{width:26px;height:26px;border-radius:var(--r-ctl);display:flex;align-items:center;
-  justify-content:center;background:var(--paper-3);color:var(--ink-3);margin-bottom:10px;}
-.path.first .ic{background:var(--brand-t);color:var(--brand);}
-.path .ic svg{width:15px;height:15px;}
-.path h3{font-size:13.5px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:2px;}
-.path .sug{flex-shrink:0;margin-left:4px;font-size:10.5px;font-weight:600;color:var(--brand);
-  background:var(--brand-t);border:1px solid var(--brand-l);border-radius:var(--r-chip);padding:1px 5px;}
-.path p{margin-top:6px;font-size:12.3px;line-height:1.75;color:var(--ink-3);flex:1;}
-.path p b{color:var(--ink-2);font-weight:600;}
-.path .go{margin-top:13px;}
-.path .go .btn{width:100%;}
+   | 被刪的 | 為什麼 |
+   |---|---|
+   | 圖示放在淡色圓角方塊裡 | 225 張參考圖**沒有一家**這樣做 |
+   | 「建議」章 | Ragic 的「精選應用」是**分類名**不是章;建議該用順序表達 |
+   | 3px 主色左框線 | 指不出出處 |
+   | 整寬實心按鈕 | Ragic 應用商店是**右側一顆小的「取得」**(ragic-03) |
+   | 三張並排卡片 | 這是 AI-SaaS 的預設版式,不是這個任務的形狀 |
+
+   ── 改用清單,依據有三 ────────────────────────────────
+   ① **站①:我們自己出貨的 builder 側欄**(`form-list.tsx:66`)就是
+      三個並排的**純文字按鈕**。空狀態是同樣三個動作,該用同一套語彙。
+   ② **共識 R2**:瀏覽用清單**只畫水平線**(6/6)。這就是一個瀏覽清單。
+   ③ **共識 R7**:按鈕三階,實心每頁只給一顆 → 範本實心,另兩個外框。
+
+   「建議」改由**順序 + 一句話**承載,不用章 —— Ragic 也是靠「精選應用」
+   這個分類位置在表達,不是在每一列貼標籤。 */
+.paths{margin-top:22px;border-top:1px solid var(--line);}
+.pathrow{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:20px;align-items:center;
+  padding:15px 2px;border-bottom:1px solid var(--line-2);}
+.pathrow .nm{font-size:13.5px;font-weight:600;color:var(--ink);}
+.pathrow .nm em{display:block;font-style:normal;font-size:11.5px;font-weight:400;color:var(--ink-4);
+  margin-top:2px;}
+.pathrow .ds{font-size:12.8px;line-height:1.75;color:var(--ink-3);}
+.pathrow .ds b{color:var(--ink-2);font-weight:600;}
+.pathrow .ac{justify-self:end;}
 
 /* 底下一段「接下來會怎樣」—— 空狀態最常見的失敗是只講「怎麼開始」,
    不講「開始之後呢」。使用者猶豫的其實是後者。 */
@@ -1555,7 +1559,7 @@ a:hover{text-decoration:underline;}
         <div class="lead">
           這裡還沒有表單。<b>Weyver 的表單都是你自己建的</b> —— 沒有預設模組,
           也沒有需要先設定完才能用的東西。<br>
-          三條路,挑一條開始就好,之後都可以改。
+          <b>第一次建表,從範本開始最省事</b> —— 你會先看到一張表該長什麼樣,再照自己的需要改。
         </div>
 
         <!-- 排序不是「由簡到繁」,是**由「別人已經想過」到「你自己想」**。
@@ -1563,23 +1567,30 @@ a:hover{text-decoration:underline;}
              依據:form-list.tsx:66 逐字「範本放最前面 —— 對第一次建表的人,
              『從範本開始』比空白畫布好下手」。 -->
         <div class="paths">
-          <div class="path first">
-            <div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
-            <h3>從範本開始<span class="sug">建議</span></h3>
-            <p>8 個現成的範本,<b>一裝就是一整套已經接好關聯的表</b>(例如「請購申請」會建出請購單、明細、供應商三張表)。裝完全部可以改。</p>
-            <div class="go"><button class="btn pri">瀏覽範本</button></div>
+          <!-- 順序即建議:範本在最前,而理由寫成一句話而不是一枚章。
+               依據 form-list.tsx:66「範本放最前面 —— 對第一次建表的人,
+               『從範本開始』比空白畫布好下手」。 -->
+          <div class="pathrow">
+            <div class="nm">範本<em>最省事</em></div>
+            <div class="ds">
+              8 個現成的範本,<b>一裝就是一整套已經接好關聯的表</b>。
+              例如「請購申請」會建出請購單、明細、供應商三張。裝完全部可以改。
+            </div>
+            <div class="ac"><button class="btn pri">瀏覽範本</button></div>
           </div>
-          <div class="path">
-            <div class="ic"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="m9 13 6 6M15 13l-6 6"/></svg></div>
-            <h3>用現有的 Excel 建表</h3>
-            <p>上傳 .xlsx,<b>欄位與型別自動推斷</b>,可以先預覽再確認。你手上已經有資料時最省事。</p>
-            <div class="go"><button class="btn sec">上傳檔案</button></div>
+          <div class="pathrow">
+            <div class="nm">現有的 Excel<em>你已經有資料</em></div>
+            <div class="ds">
+              上傳 .xlsx,<b>欄位與型別自動推斷</b>,可以先預覽再確認。
+            </div>
+            <div class="ac"><button class="btn sec">上傳檔案</button></div>
           </div>
-          <div class="path">
-            <div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 8v8M8 12h8"/></svg></div>
-            <h3>空白開始</h3>
-            <p>自己拉欄位、排版面。<b>完全自訂</b>,但要先想好這張表長什麼樣。</p>
-            <div class="go"><button class="btn sec">建立空白表單</button></div>
+          <div class="pathrow">
+            <div class="nm">空白<em>完全自訂</em></div>
+            <div class="ds">
+              自己拉欄位、排版面。要先想好這張表長什麼樣。
+            </div>
+            <div class="ac"><button class="btn sec">建立空白表單</button></div>
           </div>
         </div>
 
