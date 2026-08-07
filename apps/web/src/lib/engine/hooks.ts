@@ -206,8 +206,56 @@ const templateSummarySchema = z.object({
   description: z.string(),
   industry: z.string().optional(),
   formCount: z.number().int(),
+  version: z.string(),
+  /* M6:這個租戶裝到的最高版。null = 沒裝過。
+     🔴「沒裝過」與「有新版」是兩件事,UI 上是不同的字 —— 別合成一個布林。 */
+  installedVersion: z.string().nullable(),
+  updateAvailable: z.boolean(),
 })
 export type TemplateSummary = z.infer<typeof templateSummarySchema>
+
+/* M8 詳情。關聯圖由 ref / parentRef / targetRef 推導,不是另外畫的圖 ——
+   所以圖不可能和實際裝進去的東西不一致。 */
+const templateFieldSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  required: z.boolean(),
+  targetRef: z.string().optional(),
+})
+const templateDetailSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  description: z.string(),
+  industry: z.string().optional(),
+  categoryName: z.string().optional(),
+  version: z.string(),
+  installedVersion: z.string().nullable(),
+  updateAvailable: z.boolean(),
+  categoryExists: z.boolean(),
+  fieldCount: z.number().int(),
+  hasSampleRows: z.boolean(),
+  hasLayout: z.boolean(),
+  forms: z.array(
+    z.object({
+      ref: z.string(),
+      name: z.string(),
+      parentRef: z.string().optional(),
+      fields: z.array(templateFieldSchema),
+    }),
+  ),
+})
+export type TemplateDetail = z.infer<typeof templateDetailSchema>
+export type TemplateDetailForm = TemplateDetail["forms"][number]
+export type TemplateDetailField = z.infer<typeof templateFieldSchema>
+
+export function useTemplateDetail(key: string | null) {
+  return useQuery({
+    queryKey: ["template-detail", key] as const,
+    queryFn: () => engineFetch(`/templates/${key ?? ""}/detail`, templateDetailSchema),
+    enabled: key !== null,
+    staleTime: 5 * 60_000,
+  })
+}
 
 export function useTemplates() {
   return useQuery({

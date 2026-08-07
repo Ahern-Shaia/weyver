@@ -92,6 +92,10 @@
   --color-fx: #0b6b5d; /* 公式 / 計算 */
   --color-fx-bg: #e8f4f1;
   --color-rel: #5b3fa8; /* 關聯 Link&Load */
+  /* fx 有 -bg 而 rel 沒有,是不對稱的遺漏 —— 兩者都是型別語意色,
+     而共識 R9(docs/38)正是「純量灰、只有指向別張表的才上色」,rel 必然要帶底。
+     ⚠️ 補這條之前 --color-rel 全庫 reader 為 0(範本關聯圖是第一個用它的)。 */
+  --color-rel-bg: #efebfa;
 
   /* ── 狀態色(帶框章三值:字 / 框 / 底)─────────────────── */
   --color-ok: #1a7a43;
