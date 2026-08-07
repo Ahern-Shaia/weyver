@@ -579,6 +579,119 @@ a:hover{text-decoration:underline;}
 .rec .ft{flex-shrink:0;border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;}
 .rec .ft .btn.pri{flex:1;}
 
+
+/* ══════════════════════════════════════════════════════════════════
+   畫面四|範本庫 —— 詳情面板 + 表單關聯圖
+
+   為什麼做這個:查驗結果是我方 8 個 pack / 14 張表,而選擇器只有一行被
+   `truncate` 切掉的說明。Ragic 的應用商店右側是一整面詳情 + 關聯圖。
+   🔴 最傷的不是數量,是**看不懂就不敢裝** —— 範本庫的價值前提是「打開就能用」,
+      而使用者得先相信它能用。
+
+   🔴 本畫面的關聯圖**由 pack 定義推導,不是另外畫的圖**:
+      `ref` / `parentRef` / `targetRef` 已經是結構化資料(`template-specs.ts`),
+      圖是它的視覺化 → **不可能和實際裝進去的東西不一致**。
+      ⚠️ 不宣稱 Ragic 的是靜態圖(未查證),只陳述我方的性質。
+
+   資料全部取自真實的 `apps/api/src/templates/packs.ts`,沒有編。
+   ══════════════════════════════════════════════════════════════════ */
+.tpl{flex:1;display:flex;min-width:0;}
+
+/* 中欄:範本清單 */
+.tlist{width:286px;flex-shrink:0;border-right:1px solid var(--line);display:flex;flex-direction:column;
+  background:var(--paper);}
+.tlist .hd{height:38px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px;
+  border-bottom:1px solid var(--line-2);}
+.tlist .hd h2{font-size:13px;font-weight:600;}
+.tlist .hd .n{font-size:11.5px;color:var(--ink-4);}
+.tlist .sr{margin:8px 10px 4px;display:flex;align-items:center;gap:7px;height:29px;padding:0 9px;
+  border:1px solid var(--line);border-radius:var(--r-ctl);color:var(--ink-4);font-size:12.3px;}
+.tlist .sr svg{width:13px;height:13px;}
+.tlist .body{flex:1;overflow-y:auto;padding:4px 8px 12px;}
+.ti{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:var(--r-ctl);
+  border:1px solid transparent;}
+.ti:hover{background:var(--paper-2);}
+.ti.on{background:var(--brand-t);border-color:var(--brand-l);}
+.ti .r1{display:flex;align-items:center;gap:6px;}
+.ti .r1 .nm{font-size:12.8px;font-weight:600;color:var(--ink);}
+.ti .r1 .ind{font-size:10.5px;color:var(--ink-3);border:1px solid var(--line-2);
+  border-radius:var(--r-chip);padding:0 5px;}
+.ti .r1 .cn{margin-left:auto;font-size:11px;color:var(--ink-4);}
+.ti .d{margin-top:2px;font-size:11.5px;color:var(--ink-3);line-height:1.5;}
+.tlist .gh{padding:11px 10px 5px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  color:var(--ink-4);text-transform:uppercase;}
+
+/* 右欄:詳情 */
+.tdet{flex:1;min-width:0;overflow-y:auto;background:var(--paper-2);}
+.tdet .inner{max-width:760px;padding:18px 24px 40px;}
+.tdet .th{display:flex;align-items:flex-start;gap:12px;}
+.tdet .th h1{font-size:19px;font-weight:600;letter-spacing:-.3px;}
+.tdet .th .meta{margin-top:4px;font-size:12px;color:var(--ink-3);}
+.tdet .th .sp{flex:1;}
+.tdet .lead{margin-top:12px;font-size:13px;color:var(--ink-2);line-height:1.75;}
+
+.blk{margin-top:20px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-box);}
+.blk > .bh{display:flex;align-items:center;gap:7px;padding:8px 13px;border-bottom:1px solid var(--line-2);
+  font-size:11.5px;font-weight:700;color:var(--ink-2);letter-spacing:.02em;}
+.blk > .bh svg{width:13px;height:13px;color:var(--ink-4);}
+.blk > .bh .note{margin-left:auto;font-size:10.5px;font-weight:500;color:var(--ink-4);}
+
+/* 🔴 關聯圖 —— 由 ref / parentRef / targetRef 推導 */
+.dia{padding:20px 18px 22px;display:grid;grid-template-columns:auto 60px auto;
+  gap:0;align-items:start;justify-content:start;}
+.node{border:1px solid var(--line);border-radius:var(--r-box);background:var(--paper);
+  min-width:172px;overflow:hidden;}
+.node.main{border-color:var(--brand-l);box-shadow:inset 0 2px 0 var(--brand);}
+.node .nh{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--paper-2);
+  border-bottom:1px solid var(--line-2);}
+.node.main .nh{background:var(--brand-t);}
+.node .nh .t{font-size:12.5px;font-weight:600;color:var(--ink);}
+.node .nh .k{margin-left:auto;font-size:10px;font-weight:600;color:var(--ink-4);
+  border:1px solid var(--line-2);border-radius:var(--r-chip);padding:0 5px;background:var(--paper);}
+.node.main .nh .k{color:var(--brand);border-color:var(--brand-l);}
+.node .nb{padding:6px 10px 8px;}
+.node .fl{display:flex;align-items:center;gap:5px;height:19px;font-size:11.5px;color:var(--ink-2);}
+.node .fl .ty{width:13px;height:13px;}
+.node .fl .ty svg{width:9px;height:9px;}
+.node .more{font-size:10.5px;color:var(--ink-4);padding-top:2px;}
+
+/* 連結:水平箭頭 + 標籤 */
+/* 箭頭對齊節點標題列,不是對齊整欄(整欄高度被下方子表撐高,置中會掉到底部) */
+.arr{align-self:start;margin-top:9px;position:relative;height:34px;display:flex;align-items:center;justify-content:center;}
+.arr .lbl{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;
+  color:var(--rel);background:var(--rel-t);border:1px solid var(--rel-l);border-radius:var(--r-chip);
+  padding:0 5px;white-space:nowrap;}
+.arr svg{width:60px;height:12px;color:var(--rel);stroke-width:1.5;}
+/* 子表:垂直連接 */
+.down{display:flex;flex-direction:column;align-items:flex-start;}
+/* 子表用垂直連接線,和「連結」的水平箭頭刻意不同形 —— 它們是兩種不同的關係:
+   子表是**同一筆記錄的一部分**,連結是**指向另一張表的另一筆**。 */
+.down .stem{position:relative;height:30px;width:172px;}
+.down .stem::before{content:'';position:absolute;left:24px;top:0;height:30px;width:1px;background:var(--line);}
+.down .stem .lbl{position:absolute;left:34px;top:50%;transform:translateY(-50%);
+  font-size:10px;font-weight:600;color:var(--ink-3);background:var(--paper-3);
+  border:1px solid var(--line-2);border-radius:var(--r-chip);padding:1px 5px;}
+.dia .col{display:flex;flex-direction:column;}
+
+/* 🔴「套用後會發生什麼」—— 所見即後果。
+   對不會寫程式的使用者,按下「取得」前最想知道的是「會不會弄壞我現在的東西」。 */
+.fx-list{padding:4px 0;}
+.fx-row{display:grid;grid-template-columns:20px 1fr;gap:9px;padding:8px 13px;
+  border-bottom:1px solid var(--line-3);font-size:12.5px;line-height:1.55;}
+.fx-row:last-child{border-bottom:none;}
+.fx-row .i{display:flex;align-items:center;justify-content:center;width:18px;height:18px;
+  border-radius:50%;margin-top:1px;}
+.fx-row .i svg{width:11px;height:11px;stroke-width:2.6;}
+.fx-row.add .i{background:var(--ok-t);color:var(--ok);}
+.fx-row.keep .i{background:var(--nt-t);color:var(--nt);}
+.fx-row.opt .i{background:var(--brand-t);color:var(--brand);}
+.fx-row b{font-weight:600;}
+.fx-row em{font-style:normal;color:var(--ink-3);}
+.fx-row .opt-ck{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--ink-2);}
+
+.tdet .act{margin-top:20px;display:flex;align-items:center;gap:9px;}
+.tdet .act .hint{font-size:11.5px;color:var(--ink-4);}
+
 /* ══ mockup 外框(不是產品的一部分) ══ */
 .switch{position:fixed;left:200px;bottom:6px;z-index:99;display:flex;gap:1px;padding:3px;
   background:var(--shell);border-radius:var(--r-box);box-shadow:0 4px 14px rgba(19,26,36,.28);}
@@ -1139,18 +1252,203 @@ a:hover{text-decoration:underline;}
   </div>
 </div>
 
+<div class="app" id="s-tpl" hidden>
+  <div class="top">
+    <div class="mark"><div class="sq">W</div><div class="nm">Weyver</div></div>
+    <div class="cats">
+      <button class="on">採購<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button>生產排程</button><button>HACCP 紀錄</button>
+      <button>供應商稽核</button><button>客訴處理</button><button>財會</button>
+      <!-- `＋` 常駐於頁籤列 —— ragic-03 逐字對照。分類是租戶自建的,不是內建模組 -->
+      <button class="add" title="新增分類">＋</button>
+    </div>
+    <div class="rt">
+      <!-- ⑦ 現況沒有全域搜尋 -->
+      <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+    </div>
+  </div>
+  <div class="mainrow">
+
+    <!-- ② 分類軸 —— 現況完全沒有(Ragic 側欄至少 24 個分類)。
+         我方的分類直接來自 pack 的 categoryName / industry,不另立一套詞彙。 -->
+    <div class="ctx">
+      <div class="hd">範本分類</div>
+      <div class="list">
+        <div class="it on">全部<span class="n">8</span></div>
+        <div class="it">採購<span class="n">1</span></div>
+        <div class="it">設備<span class="n">1</span></div>
+        <div class="it">倉儲<span class="n">1</span></div>
+        <div class="it">客戶<span class="n">1</span></div>
+        <div class="it">行政<span class="n">1</span></div>
+        <div class="it">品管<span class="n">3</span></div>
+      </div>
+      <div class="foot">分類來自範本自身的 categoryName<br>不另立一套詞彙</div>
+    </div>
+
+    <div class="tpl">
+      <div class="tlist">
+        <div class="hd"><h2>範本庫</h2><span class="n">8 個 · 14 張表</span></div>
+        <div class="sr"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋範本</div>
+        <div class="body">
+          <div class="gh">通用職能</div>
+          <button class="ti on">
+            <div class="r1"><span class="nm">請購申請</span><span class="cn">3 張表</span></div>
+            <div class="d">請購單 + 明細子表,附供應商主檔。最常見的內部申請流程。</div>
+          </button>
+          <button class="ti">
+            <div class="r1"><span class="nm">設備報修</span><span class="cn">2 張表</span></div>
+            <div class="d">報修單連到設備主檔,報修到結案一條線。</div>
+          </button>
+          <button class="ti">
+            <div class="r1"><span class="nm">庫存盤點</span><span class="cn">2 張表</span></div>
+            <div class="d">盤點單 + 明細,帳面與實盤並列算差異。</div>
+          </button>
+          <button class="ti">
+            <div class="r1"><span class="nm">客戶名單</span><span class="cn">1 張表</span></div>
+            <div class="d">最小可用的主檔,取代散在各處的 Excel 聯絡人。</div>
+          </button>
+          <button class="ti">
+            <div class="r1"><span class="nm">會議紀錄</span><span class="cn">2 張表</span></div>
+            <div class="d">會議紀錄 + 待辦子表,決議直接變成可追的事項。</div>
+          </button>
+          <!-- OQ-TPL-8=C:主軸是職能,產業做成可選 pack。
+               主軸放產業等於用範本庫把「多產業通用」的定位講反。 -->
+          <div class="gh">產業 pack · 食品加工</div>
+          <button class="ti">
+            <div class="r1"><span class="nm">進貨驗收</span><span class="ind">食品加工</span><span class="cn">2 張表</span></div>
+            <div class="d">批號 / 有效期限 / 到貨溫度,允收與異常說明。</div>
+          </button>
+          <button class="ti">
+            <div class="r1"><span class="nm">每日清潔紀錄</span><span class="ind">食品加工</span><span class="cn">1 張表</span></div>
+            <div class="d">區域 × 查核結果 × 簽名,稽核時直接匯出。</div>
+          </button>
+          <button class="ti">
+            <div class="r1"><span class="nm">CCP 監控</span><span class="ind">食品加工</span><span class="cn">1 張表</span></div>
+            <div class="d">管制上下限與偏差判定,偏差時要求填矯正措施。</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="tdet">
+        <div class="inner">
+          <div class="th">
+            <div>
+              <h1>請購申請</h1>
+              <div class="meta">通用職能 · 分類「採購」 · 3 張表 / 11 個欄位 · v1.0</div>
+            </div>
+          </div>
+          <div class="lead">請購單 + 明細子表,附供應商主檔。最常見的內部申請流程。</div>
+
+          <!-- 🔴 關聯圖 —— 由 pack 定義的 ref / parentRef / targetRef 推導。
+               它不是另外畫的圖,所以**不可能和實際裝進去的東西不一致**。 -->
+          <div class="blk">
+            <div class="bh">
+              <svg viewBox="0 0 24 24"><rect width="8" height="8" x="3" y="3" rx="1"/><rect width="8" height="8" x="13" y="13" rx="1"/><path d="M7 11v6h6"/></svg>
+              這三張表怎麼連
+              <span class="note">由範本定義推導,與實際建出來的一致</span>
+            </div>
+            <div class="dia">
+              <div class="col">
+                <div class="node">
+                  <div class="nh"><span class="t">供應商</span><span class="k">主檔</span></div>
+                  <div class="nb">
+                    <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>供應商名稱</div>
+                    <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>聯絡人</div>
+                    <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M22 17v3a2 2 0 0 1-2.2 2 19 19 0 0 1-8.3-3 19 19 0 0 1-6-6 19 19 0 0 1-3-8.4A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg></span>電話</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="arr">
+                <span class="lbl">連結</span>
+                <svg viewBox="0 0 60 12"><path d="M58 6H4"/><path d="M10 2 4 6l6 4"/></svg>
+              </div>
+
+              <div class="col">
+                <div class="node main">
+                  <div class="nh"><span class="t">請購單</span><span class="k">主表</span></div>
+                  <div class="nb">
+                    <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>單號 <span style="color:var(--ink-4);font-size:10.5px">自動編號 PR</span></div>
+                    <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>申請日</div>
+                    <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>供應商</div>
+                    <div class="more">用途說明 · 狀態</div>
+                  </div>
+                </div>
+                <div class="down">
+                  <div class="stem"><span class="lbl">子表</span></div>
+                  <div class="node">
+                    <div class="nh"><span class="t">請購明細</span><span class="k">子表</span></div>
+                    <div class="nb">
+                      <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>品名</div>
+                      <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>數量</div>
+                      <div class="fl"><span class="ty"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>預估單價</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 🔴 所見即後果 —— 不會寫程式的人按下「取得」前最想知道的是
+               「會不會弄壞我現在的東西」。這一段就是回答它。 -->
+          <div class="blk">
+            <div class="bh">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+              套用後會發生什麼
+            </div>
+            <div class="fx-list">
+              <div class="fx-row add">
+                <span class="i"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></span>
+                <span>新增 <b>3 張表</b>、<b>11 個欄位</b>,並建立上圖的連結與子表關係。</span>
+              </div>
+              <div class="fx-row keep">
+                <span class="i"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span>分類「採購」<b>你已經有了 → 直接放進去</b>,不會多開一個同名分類。
+                  <em>(若沒有才會建立)</em></span>
+              </div>
+              <div class="fx-row keep">
+                <span class="i"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span><b>不會動到你現有的任何一張表</b>,也不會改你的角色與權限設定。</span>
+              </div>
+              <div class="fx-row keep">
+                <span class="i"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <span>版面已經排好 —— 單號與申請日並排、用途說明放寬。
+                  <em>裝完欄位、版面、流程全部可以自己改。</em></span>
+              </div>
+              <div class="fx-row opt">
+                <span class="i"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+                <span>附 <b>1 筆示範資料</b>(供應商「示例供應商」),讓你一打開就看得到東西長怎樣。
+                  <span class="opt-ck"><span class="cbx on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>一併帶入示範資料</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="act">
+            <button class="btn pri lg"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>套用到我的工作區</button>
+            <button class="btn sec lg">先預覽一張表</button>
+            <span class="hint">套用後可從「資源回收桶」整包還原。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="switch">
   <button id="b1">登入</button>
   <button id="b2" class="on">工作區首頁</button>
   <button id="b3">表單工作面</button>
+  <button id="b4">範本庫</button>
 </div>
 
 <script>
-const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form')};
-const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3')};
+const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl')};
+const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4')};
 function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}}
 for(const n in B)B[n].onclick=()=>go(n);
-go('home');
+go('tpl');
 // 分類目錄可收合 —— 現況 144 張平鋪成 4040px,而使用者一次只想找一張
 document.querySelectorAll('.ch').forEach(h=>{h.onclick=()=>{const b=h.nextElementSibling;b.hidden=!b.hidden;h.classList.toggle('open',!b.hidden);};});
 </script>
