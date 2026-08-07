@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<title>Weyver · 型別圖示四案對照</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   型別圖示四案對照(2026-08-08)
+
+   起因:決策方問「表單設計的 icon 有沒有豐富視覺、色彩的元件庫」。
+
+   ── 查驗結果 ──────────────────────────────────────────
+   · 站②:已裝的只有 **lucide-react 0.469.0**(1748 個,ISC)。
+     mockup 裡的路徑**是真的 Lucide**(`dollar-sign` 逐字比對相同),不是手畫。
+   · **Lucide 沒有系統性填色 / 雙色變體** —— 1748 個裡只有 **7 個**帶 `fill`(實測)。
+     想在 Lucide 內部做「更豐富」,做不到。
+   · 本頁所有路徑由 `node_modules/lucide-react/dist/esm/icons/*.js` **程式抽出**,
+     不是我照著畫的。
+
+   ── 兩個反對「彩色圖示」的理由(不是品味)────────────────
+   ① **物理**:渲染在 10–15px。多色在這個尺寸糊成一團,顏色資訊消失。
+   ② **證據**:共識 R9(NocoDB 實測:`T` `#` 迴紋針 信封 電話 **全部單色深灰**)
+      + `docs/38 §3.3` 明列「**圖示多套混用**(線性 + 彩色迷你插畫 + 卡通頭像)」
+      為**舊感來源**(Ragic 三套 / Odoo)。
+
+   ── 四案 ────────────────────────────────────────────
+   A 現況        Lucide 全灰。共識 R9 的做法。
+   B 分組上色    Lucide + c1–c8 **依型別分組**上色。顏色承載「這是哪一類」,
+                 不是每個圖示各自一色 —— 對應 §6.2「色彩要承載結構資訊」。
+   C Duotone     描邊 + 同色低透明填底。⚠️ **這是用 Lucide 模擬 Phosphor 的 duotone
+                 「技法」,不是真的 Phosphor 字形** —— Phosphor 未安裝,不為了對照加相依。
+                 真要採用得換掉整套 1500+ 圖示。
+   D 字符化      有現成字符的用字符(T ¶ # $ № @ ƒx),沒有的才用象形。
+                 🔴 **這是今天研究本身冒出來的**:NocoDB 實測就是字符與象形混用,
+                 而字符在小尺寸比象形清楚得多。
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --paper:#fff;--paper-2:#f7f9fb;--paper-3:#eef2f6;--line:#d7dee7;--line-2:#e6ebf1;
+  --ink:#131a24;--ink-2:#3f4b5b;--ink-3:#68778a;--ink-4:#93a1b2;
+  --c1:#1f5f9e;--c3:#6b46a8;--c4:#8f3a76;--c5:#0f6b6b;--c6:#1a6a86;
+  --brand:#22568a;--brand-t:#eaf1f8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans','IBM Plex Sans TC',system-ui,sans-serif;font-size:13px;
+  color:var(--ink);background:var(--paper-2);padding:26px;}
+.wrap{max-width:920px;margin:0 auto;}
+h1{font-size:18px;font-weight:600;letter-spacing:-.2px;}
+.lead{margin-top:8px;font-size:12.8px;line-height:1.8;color:var(--ink-3);}
+.lead b{color:var(--ink-2);font-weight:600;}
+table{width:100%;border-collapse:collapse;margin-top:20px;background:var(--paper);
+  border:1px solid var(--line);}
+th{padding:9px 10px;font-size:11.5px;font-weight:700;color:var(--ink-2);text-align:left;
+  border-bottom:1px solid var(--line);background:var(--paper-2);vertical-align:top;}
+th small{display:block;font-weight:400;font-size:10.5px;color:var(--ink-4);margin-top:3px;line-height:1.5;}
+td{padding:5px 10px;border-bottom:1px solid var(--line-2);}
+tr.gh td{background:var(--paper-2);font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  color:var(--ink-4);text-transform:uppercase;padding:7px 10px;}
+td.lb{font-size:12.5px;color:var(--ink-2);width:150px;}
+th:not(:first-child),td:not(.lb){width:110px;}
+
+/* 全部渲染在 **14px**,這是設計器面板裡的真實尺寸 —— 對照必須在真實尺寸下看,
+   放大看每一案都好看,那不是對照是自我安慰。 */
+.ic{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;position:relative;}
+.ic svg{width:14px;height:14px;}
+.ic.a{color:var(--ink-4);}
+.ic.b svg{position:relative;z-index:1;}
+.ic.c{color:var(--tc);}
+.ic.c .duo{position:absolute;inset:3px;background:var(--tc);opacity:.16;border-radius:3px;}
+.ic.c svg{position:relative;z-index:1;}
+.ic.gl{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:var(--ink-2);}
+.ic.gl.px{color:var(--ink-4);}
+
+/* 真實脈絡:放進面板列裡看,不是看色票 */
+.ctx{margin-top:26px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.ctx .p{border:1px solid var(--line);background:var(--paper);}
+.ctx .p .t{padding:7px 10px;border-bottom:1px solid var(--line-2);background:var(--paper-2);
+  font-size:11px;font-weight:700;color:var(--ink-2);}
+.ctx .p .b{padding:5px;}
+.pr{display:flex;align-items:center;gap:8px;height:29px;padding:0 7px;border-radius:4px;
+  font-size:12.5px;color:var(--ink-2);}
+.pr:hover{background:var(--paper-3);}
+.pr.on{background:var(--brand-t);color:var(--brand);font-weight:600;}
+.note{margin-top:22px;padding:12px 14px;border:1px solid var(--line);background:var(--paper);
+  font-size:12.3px;line-height:1.85;color:var(--ink-2);}
+.note b{font-weight:600;}
+.note .w{color:#8a5410;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>型別圖示 · 四案對照</h1>
+  <div class="lead">
+    全部渲染在 <b>14px</b> —— 這是設計器面板裡的真實尺寸。
+    <b>對照必須在真實尺寸下看</b>,放大看每一案都好看,那不是對照是自我安慰。<br>
+    路徑由 <b>node_modules 的 lucide-react 0.469.0 程式抽出</b>,不是照著畫的。
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>型別</th>
+      <th>A 現況<small>Lucide 全灰。共識 R9 的做法</small></th>
+      <th>B 分組上色<small>依型別分組給色,不是每個一色</small></th>
+      <th>C Duotone<small>⚠️ 用 Lucide 模擬技法,非真 Phosphor</small></th>
+      <th>D 字符化<small>有字符用字符,沒有才用象形</small></th>
+    </tr></thead>
+    <tbody>
+<tr class="gh"><td colspan="5">基本</td></tr>
+<tr>
+      <td class="lb">單行文字</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c1)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span></td>
+      <td><span class="ic gl">T</span></td>
+    </tr>
+<tr>
+      <td class="lb">多行文字</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c1)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/></svg></span></td>
+      <td><span class="ic gl">¶</span></td>
+    </tr>
+<tr>
+      <td class="lb">日期</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c1)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span></td>
+    </tr>
+<tr>
+      <td class="lb">日期時間</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c1)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span></td>
+    </tr>
+<tr class="gh"><td colspan="5">數值</td></tr>
+<tr>
+      <td class="lb">數字</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c5)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></span></td>
+      <td><span class="ic gl">#</span></td>
+    </tr>
+<tr>
+      <td class="lb">金額</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c5)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span></td>
+      <td><span class="ic gl">$</span></td>
+    </tr>
+<tr>
+      <td class="lb">自動編號</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c5)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="14" width="4" height="6" rx="2"/><rect x="6" y="4" width="4" height="6" rx="2"/><path d="M6 20h4"/><path d="M14 10h4"/><path d="M6 14h2v6"/><path d="M14 4h2v6"/></svg></span></td>
+      <td><span class="ic gl">№</span></td>
+    </tr>
+<tr class="gh"><td colspan="5">選擇</td></tr>
+<tr>
+      <td class="lb">單選</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c3)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span></td>
+    </tr>
+<tr>
+      <td class="lb">多選</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c3)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span></td>
+    </tr>
+<tr>
+      <td class="lb">核取</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c3)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span></td>
+    </tr>
+<tr class="gh"><td colspan="5">聯絡</td></tr>
+<tr>
+      <td class="lb">電話</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c6)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span></td>
+    </tr>
+<tr>
+      <td class="lb">Email</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c6)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span></td>
+      <td><span class="ic gl">@</span></td>
+    </tr>
+<tr>
+      <td class="lb">網址</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c6)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span></td>
+    </tr>
+<tr class="gh"><td colspan="5">關聯與計算</td></tr>
+<tr>
+      <td class="lb">連結其他表單</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c4)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span></td>
+    </tr>
+<tr>
+      <td class="lb">公式</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c4)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span></td>
+      <td><span class="ic gl">ƒx</span></td>
+    </tr>
+<tr>
+      <td class="lb">子表(明細)</td>
+      <td><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span></td>
+      <td><span class="ic b" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span></td>
+      <td><span class="ic c" style="--tc:var(--c4)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span></td>
+      <td><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <div class="ctx">
+    <div class="p"><div class="t">A 現況</div><div class="b">
+      <div class="pr on"><span class="ic a" style="color:var(--brand)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span>單行文字</div>
+      <div class="pr"><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>金額</div>
+      <div class="pr"><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
+      <div class="pr"><span class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span>公式</div>
+    </div></div>
+    <div class="p"><div class="t">B 分組上色</div><div class="b">
+      <div class="pr on"><span class="ic b" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span>單行文字</div>
+      <div class="pr"><span class="ic b" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>金額</div>
+      <div class="pr"><span class="ic b" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
+      <div class="pr"><span class="ic b" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span>公式</div>
+    </div></div>
+    <div class="p"><div class="t">C Duotone</div><div class="b">
+      <div class="pr on"><span class="ic c" style="--tc:var(--c1)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span>單行文字</div>
+      <div class="pr"><span class="ic c" style="--tc:var(--c5)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>金額</div>
+      <div class="pr"><span class="ic c" style="--tc:var(--c4)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
+      <div class="pr"><span class="ic c" style="--tc:var(--c4)"><span class="duo"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span>公式</div>
+    </div></div>
+    <div class="p"><div class="t">D 字符化</div><div class="b">
+      <div class="pr on"><span class="ic gl" style="color:var(--brand)">T</span>單行文字</div>
+      <div class="pr"><span class="ic gl">$</span>金額</div>
+      <div class="pr"><span class="ic gl px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
+      <div class="pr"><span class="ic gl">ƒx</span>公式</div>
+    </div></div>
+  </div>
+
+  <div class="note">
+    <b>兩個反對「彩色圖示」的理由,不是品味</b><br>
+    ① <b>物理</b>:14px 下多色會糊成一團,顏色資訊消失 —— 這是可量的,不是喜好。<br>
+    ② <b>證據</b>:共識 R9(NocoDB 實測 <b>全部單色深灰</b>)+ <code>docs/38 §3.3</code>
+    把「圖示多套混用(線性 + 彩色迷你插畫 + 卡通頭像)」列為<b>舊感來源</b>(Ragic 三套 / Odoo)。<br>
+    <br>
+    <span class="w">⚠️ C 案的誠實聲明</span>:那是用 Lucide 模擬 Phosphor 的 duotone
+    <b>技法</b>,<b>不是真的 Phosphor 字形</b>。Phosphor 未安裝,我不為了做對照而加相依。
+    真要採用,代價是換掉整套 1500+ 圖示並重對所有既有畫面。<br>
+    <br>
+    <b>D 案是今天研究本身冒出來的</b> —— NocoDB 的型別圖示實測是<b>字符與象形混用</b>
+    (<code>T</code> 文字、<code>#</code> 數字是字符,迴紋針 / 信封 / 電話才是象形),
+    而字符在小尺寸比象形清楚得多。這一案零成本、零新相依。
+  </div>
+</div>
+</body>
+</html>
