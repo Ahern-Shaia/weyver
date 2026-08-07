@@ -112,6 +112,11 @@
 
   /* ⚖️ 判斷 —— docs/38 §2 量到各家 0–8px 無共識,取中位偏小 */
   --r-chip:3px;--r-ctl:4px;--r-box:6px;
+
+  /* 🔴 類別色 c1–c8(取自 tokens.css,統一去飽和 + 一致明度)。
+     E 案「B+D 混合」用它給**型別分組**上色 —— 顏色回答「這是哪一類欄位」,
+     不是每個圖示各自一色。 */
+  --c1:#1f5f9e;--c3:#6b46a8;--c4:#8f3a76;--c5:#0f6b6b;--c6:#1a6a86;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
@@ -883,8 +888,21 @@ a:hover{text-decoration:underline;}
 .fd-row{display:flex;align-items:center;gap:8px;height:29px;padding:0 7px;border-radius:var(--r-ctl);
   font-size:12.5px;color:var(--ink-2);cursor:grab;}
 .fd-row:hover{background:var(--paper-3);}
-.fd-row .ty{width:16px;height:16px;}
-.fd-row .ty svg{width:10px;height:10px;}
+/* 🔴 E 案(2026-08-08 裁定)= B 分組上色 + D 字符化。
+   有天然字符的用字符(T ¶ # $ @ ƒx,6/16),其餘用象形 ——
+   **但兩者都吃分組色、同尺寸**。
+   這一點是關鍵:D 單獨看是「兩套系統混用」(§3.3 的舊感來源),
+   而一旦共用同一組分組色與同一個字級,它就不是兩套系統,
+   **是同一套系統的兩種字身** —— 就像一份排版裡同時有數字與文字。
+   ⚠️ 去掉方框 chip:方框在 14px 下和字符打架(字符本來就有自己的字身)。
+   🔴 **字符化有前提條件,而且是實測出來的**:字體要有那個字符,**且小尺寸下可讀**。
+   `№`(自動編號)在 13.5px 的 IBM Plex Mono 下**糊成一塊不可讀** —— 放大截圖才看見,
+   已改回象形(`list-ordered`,語意上也更貼切:自動編號 = 有序序列)。
+   最終字符 6 個:T ¶ # $ @ ƒx。 */
+.fd-row .ic{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;
+  flex-shrink:0;border:0;background:none;}
+.fd-row .ic svg{width:14px;height:14px;}
+.fd-row .ic.gl{font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;line-height:1;}
 .fd-row.def{color:var(--ink);font-weight:600;}
 .fd-pal .hint{margin-top:10px;padding:8px 7px;border-top:1px solid var(--line-2);
   font-size:11px;line-height:1.7;color:var(--ink-4);}
@@ -1895,22 +1913,26 @@ a:hover{text-decoration:underline;}
              不做搜尋、不做「最近使用」—— 位置固定,肌肉記憶才建立得起來。 -->
         <div class="fd-pal">
           <div class="g">基本</div>
-          <div class="fd-row def"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>單行文字</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>多行文字</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>日期</div>
+          <div class="fd-row def"><span class="ic gl" style="color:var(--c1)">T</span>單行文字</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c1)">¶</span>多行文字</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span>日期</div>
           <div class="g">數值</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>數字</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>金額</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c5)">#</span>數字</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c5)">$</span>金額</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></span>自動編號</div>
           <div class="g">選擇</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="m8 11 4 4 4-4"/></svg></span>單選</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="m8 11 4 4 4-4"/></svg></span>多選</div>
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>核取</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span>單選</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>多選</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span>核取</div>
+          <div class="g">聯絡</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c6)">@</span>Email</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>電話</div>
           <div class="g">關聯與計算</div>
-          <div class="fd-row"><span class="ty rel"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>連結其他表單</div>
-          <div class="fd-row"><span class="ty fx"><svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></span>公式</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c4)">ƒx</span>公式</div>
           <!-- 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地 2026-08-04)——
                同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 -->
-          <div class="fd-row"><span class="ty"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>子表(明細)</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span>子表(明細)</div>
           <div class="hint">
             拖到畫布,或直接在空格子上打字。<br>
             打完按 <kbd>Enter</kbd> 就建欄。
