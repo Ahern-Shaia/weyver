@@ -1649,3 +1649,47 @@ export const aiUsage = pgTable(
   },
   (t) => [index("ai_usage_tenant_idx").on(t.tenantId, t.createdAt)],
 )
+
+/* R1·TPL M6|安裝紀錄。OQ-TPL-6=C 裁定要記「來源 + 版本」,v1.0 沒落地 ——
+   `version` 在 packs.ts 寫了 8 次而 reader 為 0(pitfall-unread-schema-field-drift)。 */
+export const templateInstalls = pgTable(
+  "template_installs",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    templateKey: text("template_key").notNull(),
+    version: text("version").notNull(),
+    withRecords: boolean("with_records").notNull().default(false),
+    appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+    appliedBy: bigint("applied_by", { mode: "number" }),
+  },
+  (t) => [index("template_installs_tenant_key_idx").on(t.tenantId, t.templateKey)],
+)
+
+/* 裝出來的是哪幾張表。**更新能不能對位全靠這張** ——
+   沒有它就只能靠表單名去猜,而改名是我們明文允許的。 */
+export const templateInstallForms = pgTable(
+  "template_install_forms",
+  {
+    id: bigint("id", { mode: "number" }).generatedAlwaysAsIdentity().primaryKey(),
+    installId: bigint("install_id", { mode: "number" })
+      .notNull()
+      .references((): AnyPgColumn => templateInstalls.id, { onDelete: "cascade" }),
+    tenantId: bigint("tenant_id", { mode: "number" })
+      .notNull()
+      .references(() => tenants.id),
+    ref: text("ref").notNull(),
+    /* 表被硬清出回收桶 → SET NULL。那是要顯示的狀態,不是要避免的狀態。 */
+    formId: bigint("form_id", { mode: "number" }).references((): AnyPgColumn => formDefs.id, {
+      onDelete: "set null",
+    }),
+    /* form_id 變 NULL 後,唯一還講得出「那是哪一張」的東西 */
+    formName: text("form_name").notNull(),
+  },
+  (t) => [
+    uniqueIndex("template_install_forms_install_ref_uq").on(t.installId, t.ref),
+    index("template_install_forms_tenant_idx").on(t.tenantId),
+  ],
+)

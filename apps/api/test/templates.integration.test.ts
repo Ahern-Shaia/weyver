@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
+import { TemplateInstallService } from "../src/templates/install.service.js"
 import { TEMPLATE_PACKS } from "../src/templates/packs.js"
 import { templatePackSchema } from "../src/templates/template-specs.js"
 import { TemplateService } from "../src/templates/template.service.js"
@@ -23,7 +24,9 @@ let container: StartedPostgreSqlContainer
 let pool: pg.Pool
 let app: NestFastifyApplication
 let templates: TemplateService
+let installs: TemplateInstallService
 let tenantA = 0
+let tenantB = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
@@ -31,18 +34,32 @@ beforeAll(async () => {
   await runMigrations(pool)
   const rows = await createDrizzle(pool)
     .insert(tenants)
-    .values([{ name: "範本租戶" }])
+    .values([{ name: "範本租戶" }, { name: "隔壁租戶" }])
     .returning()
   tenantA = rows[0]?.id ?? 0
+  tenantB = rows[1]?.id ?? 0
 
+  /* 🔴 app 車道必須是**受限角色**,不能是 superuser。
+     拿 superuser 當 app 車道時 RLS 與 grant 一律不執法 ——
+     `pitfall-privileged-lane-masks-security`,測試綠而線上壞。
+     M6 新增的 template_installs / template_install_forms 兩張表都有 RLS + grant,
+     沿用 superuser 的話這兩樣東西在測試裡完全不會被走到。 */
+  await pool.query(
+    `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS;
+     GRANT weyver_app TO app_login`,
+  )
+  const appUri = new URL(container.getConnectionUri())
+  appUri.username = "app_login"
+  appUri.password = "app_login"
   process.env.DATABASE_URL = container.getConnectionUri()
-  process.env.APP_DATABASE_URL = container.getConnectionUri()
+  process.env.APP_DATABASE_URL = appUri.toString()
   const { AppModule } = await import("../src/app.module.js")
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
   app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
   await app.init()
   await app.getHttpAdapter().getInstance().ready()
   templates = app.get(TemplateService)
+  installs = app.get(TemplateInstallService)
 }, 180_000)
 
 afterAll(async () => {
@@ -262,5 +279,83 @@ describe("版面帶入", () => {
     })
     const res = await templates.apply(tenantA, pack, 1)
     expect(res.formIds).toHaveLength(1)
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════
+   M6|安裝紀錄
+
+   OQ-TPL-6 裁定 C「先脫鉤,但記錄來源與版本」,而 v1.0 沒落地 ——
+   `version` 在 packs.ts 寫了 8 次、reader 為 0。這一組測試就是那個 reader 的守衛。
+   ══════════════════════════════════════════════════════════════════ */
+describe("M6 安裝紀錄", () => {
+  it("套用會留下紀錄,且對得回 ref → 實際 formId", async () => {
+    const pack = TEMPLATE_PACKS.find((p) => p.key === "purchase-request")
+    if (pack === undefined) throw new Error("找不到 purchase-request")
+    const res = await templates.apply(tenantA, pack, undefined, { withRecords: true })
+
+    expect(res.installId).not.toBeNull()
+    const list = await installs.list(tenantA, "purchase-request")
+    expect(list.length).toBeGreaterThanOrEqual(1)
+    const rec = list[0]
+    if (rec === undefined) throw new Error("no install record")
+
+    expect(rec.templateKey).toBe("purchase-request")
+    expect(rec.version).toBe(pack.version)
+    expect(rec.withRecords).toBe(true)
+    /* ref → formId 要對得回去,否則更新永遠無法對位 */
+    expect(rec.forms.map((f) => f.ref).sort()).toEqual(pack.forms.map((f) => f.ref).sort())
+    for (const f of rec.forms) {
+      expect(f.formId).toBe(res.refMap[f.ref])
+      /* 表還在 → currentName 有值 */
+      expect(f.currentName).not.toBeNull()
+    }
+  })
+
+  it("🔴 跨租戶隔離:B 讀不到 A 的安裝紀錄", async () => {
+    const listB = await installs.list(tenantB)
+    expect(listB).toHaveLength(0)
+    const listA = await installs.list(tenantA)
+    expect(listA.length).toBeGreaterThan(0)
+  })
+
+  it("同一個範本套第二次 → 兩筆紀錄,不是覆蓋", async () => {
+    const pack = TEMPLATE_PACKS.find((p) => p.key === "meeting-notes")
+    if (pack === undefined) throw new Error("找不到 meeting-notes")
+    /* ⚠️ 本檔前面的「逐包實建」測試已經裝過每一包 —— 測差量,不測絕對值 */
+    const before = (await installs.list(tenantA, "meeting-notes")).length
+    const r1 = await templates.apply(tenantA, pack)
+    const r2 = await templates.apply(tenantA, pack)
+    const list = await installs.list(tenantA, "meeting-notes")
+    /* M4 已確立「再套一份」是合法意圖(不同部門 / 不同年度),
+       所以刻意沒有 (tenant, key) 唯一約束 —— 覆蓋會抹掉安裝史 */
+    expect(list).toHaveLength(before + 2)
+    /* 兩次裝出來的是不同的表 */
+    const ids = new Set([...r1.formIds, ...r2.formIds])
+    expect(ids.size).toBe(pack.forms.length * 2)
+  })
+
+  it("記的是安裝當下的名字 —— 使用者改名後仍講得出原本是哪一張", async () => {
+    const pack = TEMPLATE_PACKS.find((p) => p.key === "customer-directory")
+    if (pack === undefined) throw new Error("找不到 customer-directory")
+    await templates.apply(tenantA, pack)
+    const rec = (await installs.list(tenantA, "customer-directory"))[0]
+    if (rec === undefined) throw new Error("no record")
+    const f = rec.forms[0]
+    if (f === undefined) throw new Error("no form")
+    expect(f.installedAs).toBe("客戶名單")
+    expect(f.currentName).toBe("客戶名單")
+  })
+
+  it("highestVersions 只列裝過的,且沒裝過的不出現", async () => {
+    const map = await installs.highestVersions(tenantA)
+    expect(map.get("purchase-request")).toBe("1.0")
+    /* 沒裝過的租戶身上什麼都沒有 —— 這條同時守住「沒裝 ≠ 有新版」 */
+    const mapB = await installs.highestVersions(tenantB)
+    expect(mapB.size).toBe(0)
+    /* ⚠️ 不能斷言「key 都在 TEMPLATE_PACKS 裡」—— 本檔多數測試用的是**臨時組的 pack**
+       (purchase / twice / with-layout …),那些也會留紀錄,而且理當如此。
+       真正的守衛是 DB 的 CHECK:key 必須符合 `^[a-z][a-z0-9-]{1,40}$`。 */
+    for (const k of map.keys()) expect(k).toMatch(/^[a-z][a-z0-9-]{1,40}$/)
   })
 })

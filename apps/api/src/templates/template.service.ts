@@ -6,6 +6,7 @@ import { LayoutService } from "../form-engine/layout/layout.service.js"
 import { MetadataService } from "../form-engine/metadata/metadata.service.js"
 import { RecordService } from "../form-engine/records/record.service.js"
 import type { AddFieldSpec } from "../form-engine/specs/form-specs.js"
+import { TemplateInstallService } from "./install.service.js"
 import {
   type TemplateForm,
   type TemplatePack,
@@ -19,6 +20,8 @@ export interface ApplyResult {
   readonly refMap: Readonly<Record<string, number>>
   /* 因為同名而被加了序號的表 —— 呼叫端要講給使用者聽 */
   readonly renamed: readonly string[]
+  /* M6 安裝紀錄的 id。**可能為 null** —— 紀錄寫失敗不會讓套用失敗(表已經建好了) */
+  readonly installId: number | null
 }
 
 /* 🔴 R1·TPL M1|套用範本包。
@@ -42,6 +45,7 @@ export class TemplateService {
     @Inject(MetadataService) private readonly metadata: MetadataService,
     @Inject(LayoutService) private readonly layouts: LayoutService,
     @Inject(AuthzRepository) private readonly authz: AuthzRepository,
+    @Inject(TemplateInstallService) private readonly installs: TemplateInstallService,
   ) {}
 
   async apply(
@@ -97,6 +101,8 @@ export class TemplateService {
 
     const refMap: Record<string, number> = {}
     const created: number[] = []
+    /* M6:記安裝紀錄要知道 ref → formId 以及**實際用的名字**(可能被加了序號) */
+    const builtForms: { ref: string; formId: number; name: string }[] = []
     try {
       for (const form of ordered) {
         const built = await this.ddl.createForm(
@@ -112,6 +118,7 @@ export class TemplateService {
         )
         refMap[form.ref] = built.form.id
         created.push(built.form.id)
+        builtForms.push({ ref: form.ref, formId: built.form.id, name: built.form.name })
 
         await this.applyLayout(tenantId, built, form)
 
@@ -127,10 +134,41 @@ export class TemplateService {
       /* 分類最後套 —— 它不影響表能不能用,失敗不該讓整包回滾。
          但**也不能靜默** ,故失敗時記 log(見 `assignCategory`)。 */
       await this.assignCategory(tenantId, pack, created)
-      return { formIds: created, refMap, renamed }
+      /* 🔴 M6 安裝紀錄 —— **刻意放在 try 的最後、但失敗不進補償**。
+         表已經建好而且可用了,為了一筆紀錄把使用者的表刪掉是本末倒置。
+         但**不吞**:記 log,因為少了這一筆,這包日後就偵測不到新版。 */
+      const installId = await this.recordInstall(tenantId, pack, builtForms, opts, actorId)
+      return { formIds: created, refMap, renamed, installId }
     } catch (e) {
       await this.compensate(tenantId, created, actorId)
       throw e
+    }
+  }
+
+  private async recordInstall(
+    tenantId: number,
+    pack: TemplatePack,
+    builtForms: readonly { ref: string; formId: number; name: string }[],
+    opts: { readonly withRecords?: boolean } | undefined,
+    actorId?: number,
+  ): Promise<number | null> {
+    const names = new Map(builtForms.map((f) => [f.formId, f.name]))
+    try {
+      return await this.installs.record({
+        tenantId,
+        pack,
+        version: pack.version,
+        withRecords: opts?.withRecords === true,
+        ...(actorId === undefined ? {} : { actorId }),
+        forms: builtForms.map((f) => ({ ref: f.ref, formId: f.formId })),
+        nameOf: (id) => names.get(id) ?? String(id),
+      })
+    } catch (e) {
+      this.log.error(
+        `範本「${pack.key}」已套用成功,但安裝紀錄寫入失敗 —— 這包日後偵測不到新版。formIds=${builtForms.map((f) => String(f.formId)).join(",")}`,
+        e instanceof Error ? e.stack : String(e),
+      )
+      return null
     }
   }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   type TemplatePack,
+  compareVersion,
   templatePackSchema,
   topoOrder,
   validatePackRefs,
@@ -76,5 +77,28 @@ describe("topoOrder", () => {
   it("link 指回本表是合法的(樹狀主檔),不算環", () => {
     const p = pack([f("a", { fields: [{ name: "上層", type: "link", targetRef: "a" }] })])
     expect(topoOrder(p)?.map((x) => x.ref)).toEqual(["a"])
+  })
+})
+
+describe("compareVersion", () => {
+  it("比大小", () => {
+    expect(compareVersion("1.0", "1.1")).toBeLessThan(0)
+    expect(compareVersion("1.1", "1.0")).toBeGreaterThan(0)
+    expect(compareVersion("1.0", "1.0")).toBe(0)
+  })
+
+  it("段數不同時補 0 —— 1.0 與 1.0.0 是同一版", () => {
+    expect(compareVersion("1.0", "1.0.0")).toBe(0)
+    expect(compareVersion("1.0.1", "1.0")).toBeGreaterThan(0)
+  })
+
+  it("2.0 大於 10 進位的假象(字串比較會判反)", () => {
+    expect(compareVersion("10.0", "9.0")).toBeGreaterThan(0)
+    expect(compareVersion("1.10", "1.9")).toBeGreaterThan(0)
+  })
+
+  it("壞版本字串不拋,退化成「沒有新版」這個安全方向", () => {
+    expect(compareVersion("abc", "1.0")).toBeLessThan(0)
+    expect(compareVersion("", "")).toBe(0)
   })
 })

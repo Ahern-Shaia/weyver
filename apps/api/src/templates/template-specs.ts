@@ -135,3 +135,22 @@ export function topoOrder(pack: TemplatePack): TemplateForm[] | null {
   for (const form of pack.forms) if (!visit(form)) return null
   return out
 }
+
+/* 版本比較。packs 用 `"1.0"` 這種點分數字,**不是完整 semver** ——
+   所以不引 semver 套件,免得為了三行邏輯多一個相依。
+
+   回傳 <0 / 0 / >0。非數字段一律當 0(壞版本不該讓整個範本庫爆掉,
+   它只會表現成「沒有新版」——安全的方向)。 */
+export function compareVersion(a: string, b: string): number {
+  const pa = a.split(".")
+  const pb = b.split(".")
+  const n = Math.max(pa.length, pb.length)
+  for (let i = 0; i < n; i++) {
+    const na = Number.parseInt(pa[i] ?? "0", 10)
+    const nb = Number.parseInt(pb[i] ?? "0", 10)
+    const va = Number.isNaN(na) ? 0 : na
+    const vb = Number.isNaN(nb) ? 0 : nb
+    if (va !== vb) return va < vb ? -1 : 1
+  }
+  return 0
+}

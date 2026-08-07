@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common"
 import { AuthzModule } from "../authz/authz.module.js"
 import { FormEngineModule } from "../form-engine/form-engine.module.js"
+import { TemplateInstallService } from "./install.service.js"
 import { TemplateService } from "./template.service.js"
 import { TemplatesController } from "./templates.controller.js"
 
@@ -9,7 +10,7 @@ import { TemplatesController } from "./templates.controller.js"
 @Module({
   imports: [FormEngineModule, AuthzModule],
   controllers: [TemplatesController],
-  providers: [TemplateService],
-  exports: [TemplateService],
+  providers: [TemplateService, TemplateInstallService],
+  exports: [TemplateService, TemplateInstallService],
 })
 export class TemplatesModule {}
