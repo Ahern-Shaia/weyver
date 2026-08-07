@@ -707,8 +707,13 @@ a:hover{text-decoration:underline;}
   color:var(--ink-4);text-transform:uppercase;}
 
 /* 右欄:詳情 */
-.tdet{flex:1;min-width:0;overflow-y:auto;background:var(--paper-2);}
-.tdet .inner{max-width:760px;padding:18px 24px 40px;}
+/* 詳情置中(2026-08-08 決策方指定)。
+   ⚠️ `align-items` 不能吃預設的 stretch —— 那會讓 .inner 被拉到與容器等高,
+      內容短時底部留一大塊由 .inner 佔著的空白,而它有背景就會看得出來。
+      改 flex-start,並讓 .inner 自己 flex:1 拿到 760 上限內的寬。 */
+.tdet{flex:1;min-width:0;overflow-y:auto;background:var(--paper-2);
+  display:flex;justify-content:center;align-items:flex-start;}
+.tdet .inner{flex:1;max-width:760px;padding:18px 24px 40px;}
 .tdet .th{display:flex;align-items:flex-start;gap:12px;}
 .tdet .th h1{font-size:19px;font-weight:600;letter-spacing:-.3px;}
 .tdet .th .meta{margin-top:4px;font-size:12px;color:var(--ink-3);}
