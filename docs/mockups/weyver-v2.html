@@ -692,6 +692,102 @@ a:hover{text-decoration:underline;}
 .tdet .act{margin-top:20px;display:flex;align-items:center;gap:9px;}
 .tdet .act .hint{font-size:11.5px;color:var(--ink-4);}
 
+
+/* ══════════════════════════════════════════════════════════════════
+   畫面五 / 六|無資料(空狀態)
+
+   🔴 為什麼這兩頁值得單獨畫:**空狀態是「不用寫 code」這個承諾的第一次兌現**。
+   新租戶登入後看到的第一個畫面如果是「一片空白 + 一顆 ＋」,
+   那句承諾就還沒開始生效 —— 他還是得自己想辦法。
+
+   ── 站① 自家 repo 的一手依據 ──────────────────────────────
+   `builder/_components/shell/form-list.tsx:66` 逐字:
+     「🔴 建表的三條路並列(OQ-TPL / docs/27 D3):範本 · Excel · 空白。
+       **範本放最前面 —— 對第一次建表的人,「從範本開始」比空白畫布好下手。**」
+
+   🔴 **而現況首頁沒有遵守它。** `app/page.tsx:139` 逐字:
+     「還沒有表單。點『新增表單』用設計器建立,或從 Excel 匯入。」
+   —— 一行純文字,**而且漏掉範本**,正好漏掉最適合新手的那一條。
+   設計器側欄做對了,首頁沒有;而首頁才是新租戶第一個看到的畫面。
+
+   ── 三條路的排序理由(不是我編的順序)──────────────────────
+   範本 → 已經有 Excel → 空白。這不是「由簡到繁」,是**由「別人已經想過」到
+   「你自己想」**:第一次建表的人最缺的不是工具,是「一張表長什麼樣才對」。
+
+   ⚠️ AI 建表是**第四條路**(`ai-assist.md` M0),但 M3 提案器未出貨 → 不畫。
+      畫沒出貨的東西會讓 mockup 變成願望清單。
+
+   ⚠️ 225 張參考圖裡**沒有空狀態畫面**,所以版面全部是 [判斷]。
+      唯一有依據的是「三條路 + 範本最前」,那是站①。
+   ══════════════════════════════════════════════════════════════════ */
+.blank{flex:1;overflow-y:auto;background:var(--paper);}
+.blank .wrap{max-width:840px;margin:0 auto;padding:56px 24px 60px;}
+.blank h1{font-size:20px;font-weight:600;letter-spacing:-.3px;}
+.blank .lead{margin-top:8px;font-size:13.5px;line-height:1.8;color:var(--ink-3);}
+.blank .lead b{color:var(--ink-2);font-weight:600;}
+
+/* 三條路。🚫 不畫插畫、不做 hero —— AI 味清單第一條就是裝飾性視覺。
+   卡片之間**刻意不等權**:範本卡帶主色左框線,另外兩張純線框。 */
+/* ⚠️ **這個檔第二次踩類別撞名**:先是 `.mid`(登入左屏 vs 工作面中欄),
+   再是 `.rec`(這裡的「建議」章 vs 記錄面板 `width:430px;display:flex`)——
+   章被撐成 430px 寬。單檔多畫面共用一個 CSS 命名空間就會這樣,
+   短又通用的類名(rec / mid / card / tip)要加前綴。
+
+   🔴 minmax(0,1fr) 不是 1fr —— `1fr` 等於 `minmax(auto,1fr)`,而 auto 會被
+   內容的 min-content 撐開。這裡踩到的是 **CJK 之間的 `=` 和 `+` 不斷行**:
+   「請購申請=請購單+明細+供應商」變成一個 13 字的不可斷 token,
+   把第一欄撐到 468px 而另外兩欄剩 150px。量出來才發現,眼睛只看得到「怪」。 */
+.paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:26px;}
+.path{border:1px solid var(--line);border-radius:var(--r-box);padding:15px 15px 14px;
+  display:flex;flex-direction:column;background:var(--paper);}
+.path.first{border-color:var(--brand-l);box-shadow:inset 3px 0 0 var(--brand);}
+.path .ic{width:26px;height:26px;border-radius:var(--r-ctl);display:flex;align-items:center;
+  justify-content:center;background:var(--paper-3);color:var(--ink-3);margin-bottom:10px;}
+.path.first .ic{background:var(--brand-t);color:var(--brand);}
+.path .ic svg{width:15px;height:15px;}
+.path h3{font-size:13.5px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;gap:2px;}
+.path .sug{flex-shrink:0;margin-left:4px;font-size:10.5px;font-weight:600;color:var(--brand);
+  background:var(--brand-t);border:1px solid var(--brand-l);border-radius:var(--r-chip);padding:1px 5px;}
+.path p{margin-top:6px;font-size:12.3px;line-height:1.75;color:var(--ink-3);flex:1;}
+.path p b{color:var(--ink-2);font-weight:600;}
+.path .go{margin-top:13px;}
+.path .go .btn{width:100%;}
+
+/* 底下一段「接下來會怎樣」—— 空狀態最常見的失敗是只講「怎麼開始」,
+   不講「開始之後呢」。使用者猶豫的其實是後者。 */
+.next{margin-top:30px;border-top:1px solid var(--line-2);padding-top:18px;}
+.next h4{font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--ink-4);text-transform:uppercase;}
+.next ol{margin-top:10px;list-style:none;counter-reset:n;}
+.next li{counter-increment:n;display:flex;gap:11px;padding:5px 0;font-size:12.8px;color:var(--ink-2);}
+.next li::before{content:counter(n);flex-shrink:0;width:18px;height:18px;border-radius:50%;
+  background:var(--paper-3);color:var(--ink-3);font-size:10.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.next li em{font-style:normal;color:var(--ink-3);}
+
+/* ── 畫面六:表單建好了,但一筆資料都沒有 ────────────────────
+   這是第二個空狀態,而且比第一個更常見(每建一張新表就出現一次)。
+   🔴 現況問題⑥「表格右側一大片無主空白欄」在這裡會最明顯 ——
+      沒有資料時,一排空格線看起來就像壞掉。 */
+.norows{flex:1;display:flex;align-items:flex-start;justify-content:center;
+  background:var(--paper-2);padding:52px 24px;}
+.norows .card{max-width:520px;text-align:center;}
+.norows .ic{width:38px;height:38px;border-radius:var(--r-box);background:var(--paper-3);
+  color:var(--ink-4);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
+.norows .ic svg{width:19px;height:19px;}
+.norows h3{font-size:15px;font-weight:600;}
+.norows p{margin-top:7px;font-size:12.8px;line-height:1.8;color:var(--ink-3);}
+.norows .acts{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+/* 🔴 貼上的提示放在這裡,不是放在說明文件裡 —— 使用者剛建完表,
+   下一個動作十之八九是「把 Excel 裡那份搬進來」。
+   而 OQ-GP-5「貼上前標紅」是我方相對競品的向上點,值得在此明講。 */
+.norows .tip{margin-top:18px;border:1px solid var(--line-2);border-radius:var(--r-box);
+  background:var(--paper);padding:11px 13px;text-align:left;display:flex;gap:9px;}
+.norows .tip svg{width:14px;height:14px;color:var(--ink-4);flex-shrink:0;margin-top:2px;}
+.norows .tip div{font-size:12.3px;line-height:1.75;color:var(--ink-3);}
+.norows .tip b{color:var(--ink-2);font-weight:600;}
+.norows kbd{font-size:11px;font-weight:600;background:var(--paper-3);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink-2);}
+
 /* ══ mockup 外框(不是產品的一部分) ══ */
 .switch{position:fixed;left:200px;bottom:6px;z-index:99;display:flex;gap:1px;padding:3px;
   background:var(--shell);border-radius:var(--r-box);box-shadow:0 4px 14px rgba(19,26,36,.28);}
@@ -1436,19 +1532,157 @@ a:hover{text-decoration:underline;}
   </div>
 </div>
 
+<div class="app" id="s-blank" hidden>
+  <div class="top">
+    <div class="mark"><div class="sq">W</div><div class="nm">Weyver</div></div>
+    <div class="cats">
+      <!-- 🔴 全新租戶**沒有任何分類** —— 分類是租戶自建的,不是內建模組。
+           這裡只留 ＋,而不是先擺六個空分類等人填。 -->
+      <button class="add" title="新增分類">＋</button>
+    </div>
+    <div class="rt">
+      <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg></button>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+    </div>
+  </div>
+  <div class="mainrow">
+    <!-- 🔴 情境側欄**不畫** —— 空狀態不畫空殼。
+         擺一條「0 張表單」的側欄只是把空曠感放大兩倍。 -->
+    <div class="blank">
+      <div class="wrap">
+        <h1>鮮勇食品的工作區</h1>
+        <div class="lead">
+          這裡還沒有表單。<b>Weyver 的表單都是你自己建的</b> —— 沒有預設模組,
+          也沒有需要先設定完才能用的東西。<br>
+          三條路,挑一條開始就好,之後都可以改。
+        </div>
+
+        <!-- 排序不是「由簡到繁」,是**由「別人已經想過」到「你自己想」**。
+             第一次建表的人最缺的不是工具,是「一張表長什麼樣才對」。
+             依據:form-list.tsx:66 逐字「範本放最前面 —— 對第一次建表的人,
+             『從範本開始』比空白畫布好下手」。 -->
+        <div class="paths">
+          <div class="path first">
+            <div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+            <h3>從範本開始<span class="sug">建議</span></h3>
+            <p>8 個現成的範本,<b>一裝就是一整套已經接好關聯的表</b>(例如「請購申請」會建出請購單、明細、供應商三張表)。裝完全部可以改。</p>
+            <div class="go"><button class="btn pri">瀏覽範本</button></div>
+          </div>
+          <div class="path">
+            <div class="ic"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="m9 13 6 6M15 13l-6 6"/></svg></div>
+            <h3>用現有的 Excel 建表</h3>
+            <p>上傳 .xlsx,<b>欄位與型別自動推斷</b>,可以先預覽再確認。你手上已經有資料時最省事。</p>
+            <div class="go"><button class="btn sec">上傳檔案</button></div>
+          </div>
+          <div class="path">
+            <div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 8v8M8 12h8"/></svg></div>
+            <h3>空白開始</h3>
+            <p>自己拉欄位、排版面。<b>完全自訂</b>,但要先想好這張表長什麼樣。</p>
+            <div class="go"><button class="btn sec">建立空白表單</button></div>
+          </div>
+        </div>
+
+        <!-- 空狀態最常見的失敗:只講「怎麼開始」,不講「開始之後呢」。
+             使用者猶豫的其實是後者 —— 他怕的是走進一條回不了頭的路。 -->
+        <div class="next">
+          <h4>建好之後</h4>
+          <ol>
+            <li><span>填資料。<em>可以一格一格打,也可以直接把 Excel 的選取範圍貼進來。</em></span></li>
+            <li><span>要簽核就加簽核關卡,要通知就設通知。<em>都在表單設定裡,不用寫程式。</em></span></li>
+            <li><span>要「算」的時候再接 —— 過帳、成本、庫存估值。<em>這一段也不用寫程式。</em></span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="s-norows" hidden>
+  <div class="top">
+    <div class="mark"><div class="sq">W</div><div class="nm">Weyver</div></div>
+    <div class="cats">
+      <button class="on">採購<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+      <!-- `＋` 常駐於頁籤列 —— ragic-03 逐字對照。分類是租戶自建的,不是內建模組 -->
+      <button class="add" title="新增分類">＋</button>
+    </div>
+    <div class="rt">
+      <!-- ⑦ 現況沒有全域搜尋 -->
+      <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
+      <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+    </div>
+  </div>
+  <div class="mainrow">
+    <div class="ctx">
+      <div class="hd">採購</div>
+      <div class="list">
+        <div class="it on">採購單<span class="n">0</span></div>
+      </div>
+      <div class="foot">陳品妤 · 採購主管<br>Weyver 1.0.0 · 自架</div>
+    </div>
+    <div class="mid">
+      <div class="fw">
+        <div class="work">
+          <h1>採購單</h1>
+          <span class="cnt">0 筆</span>
+          <span class="sp"></span>
+          <div class="views">
+            <button class="on"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg>列表</button>
+            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg>看板</button>
+            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>行事曆</button>
+          </div>
+          <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計表單</button>
+          <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>建立記錄</button>
+        </div>
+
+        <!-- 🔴 **沒有資料時不畫空網格。**
+             現況問題⑥「表格右側一大片無主空白欄」在 0 筆時最明顯 ——
+             一排畫滿格線的空列看起來就像壞掉,而不是「還沒填」。
+             表頭也不畫:欄位設計可以從「設計表單」看,這裡不必重複一次。 -->
+        <div class="norows">
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg></div>
+            <h3>「採購單」還沒有資料</h3>
+            <p>這張表已經建好了(8 個欄位、1 個子表)。<br>接下來把資料放進來 —— 三種方式都行。</p>
+            <div class="acts">
+              <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>建立第一筆</button>
+              <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="m9 13 6 6M15 13l-6 6"/></svg>匯入 Excel</button>
+              <button class="btn gho">用範例資料試填一筆</button>
+            </div>
+            <div class="tip">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+              <div>
+                也可以直接從 Excel 複製一塊貼進來 —— 選好範圍按 <kbd>⌘C</kbd>,
+                回到這裡按 <kbd>⌘V</kbd>。<br>
+                <b>型別對不上的格會先標紅並整批不送出</b>,不會靜默把資料寫壞或變成空白。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sbar"><span>0 筆</span><span class="sp"></span><span>8 個欄位 · 1 個子表</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="switch">
   <button id="b1">登入</button>
   <button id="b2" class="on">工作區首頁</button>
   <button id="b3">表單工作面</button>
   <button id="b4">範本庫</button>
+  <button id="b5">空·首頁</button>
+  <button id="b6">空·表單</button>
 </div>
 
 <script>
-const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl')};
-const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4')};
+const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl'),blank:document.getElementById('s-blank'),norows:document.getElementById('s-norows')};
+const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4'),blank:document.getElementById('b5'),norows:document.getElementById('b6')};
 function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}}
 for(const n in B)B[n].onclick=()=>go(n);
-go('tpl');
+go('blank');
 // 分類目錄可收合 —— 現況 144 張平鋪成 4040px,而使用者一次只想找一張
 document.querySelectorAll('.ch').forEach(h=>{h.onclick=()=>{const b=h.nextElementSibling;b.hidden=!b.hidden;h.classList.toggle('open',!b.hidden);};});
 </script>
