@@ -6,7 +6,7 @@
 <title>Weyver · v2(重新設計現況前端)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    Weyver 合併稿 v2 —— 重新設計現況前端
@@ -176,71 +176,112 @@ a:hover{text-decoration:underline;}
 .ty.fx{background:var(--fx-t);color:var(--fx);border-color:var(--fx-l);}
 
 /* ══════════════════════════════════════════════════════════════════
-   畫面一|登入
-   ⚠️ 誠實聲明:225 張參考圖裡**沒有任何一張登入頁**。
-   所以本畫面沒有競品共識可依,以下全部是 [判斷],依據只有兩條可遷移的:
-     · 深殼淺紙的分工([E],Qualio / Directus 實證)→ 這裡變成左右分屏
-     · 信任訊號要在場([M] 底部釘版本戳記的同一個理由)
-   🚫 明確避開 AI 味清單:無漸層、無玻璃、無光暈、無浮島、無裝飾插畫。
-      左屏是**一塊平的品牌色**,不做任何質感處理。
+   畫面一|登入 —— 🔴 **決策方自己做的**(2026-08-08),原樣移植不重新詮釋。
+   來源:`WeyverLoginCenterCard.dc.html`(x-dc 元件框架 → 這裡改寫成純 HTML/CSS/JS)。
+
+   ⚠️ **它推翻了我好幾條規則,而它是對的** —— 記在這裡,因為其他畫面遲早要對齊:
+
+   | 元素 | 決策方 | 我原本的規則 | 判 |
+   |---|---|---|---|
+   | 標題字重 | **900** + `letter-spacing:-.035em` | 600 | 我太保守 |
+   | 圓角 | **0**,全部方角 | 3–6px | 方角更硬更有態度 |
+   | 陰影 | `0 18px 40px -22px` 真陰影 | 🚫 禁 resting 陰影(共識 R3 9/9) | **共識再次敗給品類問題**(§6.1) |
+   | 織雲隱喻 | **動態織紋背景 + 15 塊織起來的標記** | 🚫 docs/26「存於敘事非介面裝飾」 | 隱喻可以進介面,只要它是**構造**不是貼圖 |
+   | 字體 | Archivo 900 + Noto Sans TC + Plex Mono | IBM Plex 全家 | Archivo 900 才有重量 |
+   | 小標 | `SIGN IN` / `OR` mono 大寫寬字距 | 無 | 這是**排版**不是裝飾 |
+   | 按鈕字 | 「登 入」中間空格 | 無 | 台日排版慣例,兩字按鈕的標準做法 |
+
+   🔴 **這個檔第三次類別撞名**(`.mid` → `.rec` → `.cap`)。
+   `.cap` 撞到工作面的「已接過帳」能力章(`display:inline-flex;height:19px`),
+   卡片頂緣那條 4px 主色帶縮成一個小點。而**我兩步前才在同一個檔裡寫下
+   「短又通用的類名要加前綴」,自己沒遵守** ——
+   規則寫了沒檢查就會漏,連寫規則的人自己也一樣([[pitfall-rule-without-check-always-drifts]])。
+
+   🔴 **最值得學的一條**:織紋不是貼上去的圖,是 **1px 線以 56px 為週期重複**,
+   而且**會動**(每 190ms 位移 1px)。它同時是品牌隱喻與「這是活的」的訊號,
+   而構造簡單到指得出出處 —— 這正好通過 D5 規則,是我先前一律禁裝飾時漏掉的可能性。
    ══════════════════════════════════════════════════════════════════ */
-.login{display:flex;height:100vh;}
+.login{position:relative;min-height:100vh;background:oklch(97% .004 260);color:oklch(24% .02 260);
+  font-family:'Noto Sans TC',Archivo,sans-serif;overflow:hidden;display:flex;flex-direction:column;}
+/* 織紋:兩組 1px 重複線(墨色縱 / 主色橫),56px 週期,以 JS 位移製造織動 */
+.login .loom{position:absolute;inset:-80px;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(90deg, oklch(24% .02 260 / .06) 0 1px, transparent 1px 56px),
+    repeating-linear-gradient(0deg, oklch(58% .15 240 / .055) 0 1px, transparent 1px 56px);}
+.login .bar{position:relative;display:flex;align-items:center;gap:12px;padding:24px 40px;}
+.login .bar .mk{width:24px;height:24px;display:flex;}
+.login .bar .wm{font-family:Archivo,sans-serif;font-weight:900;font-size:17px;letter-spacing:-.03em;}
+.login .bar .zh{font-size:11.5px;letter-spacing:.24em;color:oklch(60% .01 260);}
+.login .bar .lang{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;
+  letter-spacing:.12em;color:oklch(60% .01 260);}
 
-.login .side{width:44%;min-width:400px;background:var(--shell);color:var(--shell-ink);
-  padding:44px 52px;display:flex;flex-direction:column;}
-.login .side .mark{display:flex;align-items:center;gap:10px;}
-.login .side .mark .sq{width:30px;height:30px;border-radius:var(--r-ctl);background:#fff;color:var(--shell);
-  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
-.login .side .mark .nm{font-size:17px;font-weight:600;letter-spacing:-.3px;color:#fff;}
-.login .side .mark .nm small{font-weight:400;font-size:13px;color:var(--shell-ink-2);margin-left:6px;}
+.login .stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;
+  padding:24px 32px 72px;}
+.login .col{width:100%;max-width:424px;animation:wv-pop .5s cubic-bezier(.2,.7,.3,1) both;}
+@keyframes wv-pop{from{opacity:0;transform:translateY(18px) scale(.985);}to{opacity:1;transform:none;}}
 
-.login .side .pitch{margin-top:auto;margin-bottom:auto;padding:36px 0;}
-/* 這句直接取自 docs/30 §1 —— 對外文案有單一來源,不在每個介面各寫一套 */
-.login .side h1{font-size:29px;font-weight:600;line-height:1.42;letter-spacing:-.6px;color:#fff;}
-.login .side h1 em{font-style:normal;border-bottom:2px solid var(--shell-ink-3);padding-bottom:1px;}
-.login .side .sub{margin-top:16px;font-size:13.5px;line-height:1.85;color:var(--shell-ink-2);max-width:400px;}
+.login .pitch{text-align:center;margin-bottom:26px;}
+.login .pitch h1{font-weight:900;font-size:clamp(24px,2.6vw,32px);line-height:1.34;
+  letter-spacing:-.035em;margin:0;text-wrap:balance;}
+.login .pitch h1 span{color:oklch(58% .15 240);}
+.login .pitch p{font-size:13.5px;line-height:1.8;color:oklch(50% .015 260);margin:10px auto 0;max-width:360px;}
 
-/* 信任訊號 —— [M] 「自架產品的信任訊號」同一個理由,但放在登入頁而非側欄底部。
-   ⚠️ 這裡刻意**不放**客戶 logo 牆 / 評價 / 數據吹捧 —— 那是行銷素材不是信任訊號,
-      而 docs/38 §0 已把純行銷素材列為「不可用於視覺工程判斷」。 */
-.login .side .facts{border-top:1px solid var(--shell-3);padding-top:18px;display:flex;flex-direction:column;gap:1px;}
-.login .side .facts div{display:flex;align-items:baseline;gap:12px;padding:7px 0;font-size:12.5px;}
-.login .side .facts .k{width:76px;flex-shrink:0;color:var(--shell-ink-3);font-size:11px;font-weight:600;
-  letter-spacing:.05em;text-transform:uppercase;}
-.login .side .facts .v{color:var(--shell-ink-2);}
-.login .side .facts .v b{color:var(--shell-ink);font-weight:500;}
+.login .card{position:relative;background:oklch(99% .002 260);border:1px solid oklch(24% .02 260 / .16);
+  box-shadow:0 18px 40px -22px oklch(24% .02 260 / .30);}
+.login .card .capbar{height:4px;background:oklch(58% .15 240);}
+/* 標記騎在卡片上緣 —— 它是這一頁唯一的「浮」,而且浮的是品牌標記不是容器 */
+.login .card .badge{position:absolute;top:-26px;left:50%;transform:translateX(-50%);
+  width:52px;height:52px;padding:9px;background:oklch(99% .002 260);
+  border:1px solid oklch(24% .02 260 / .16);display:flex;}
+.login .card .in{padding:44px 32px 30px;}
+.login .kicker{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  letter-spacing:.18em;color:oklch(60% .01 260);}
 
-.login .form{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;
-  padding:44px;background:var(--paper);}
-.login .form .box{width:100%;max-width:360px;}
-.login .form h2{font-size:21px;font-weight:600;letter-spacing:-.3px;}
-.login .form .lead{margin-top:6px;font-size:13px;color:var(--ink-3);}
+.login .fg{display:flex;flex-direction:column;gap:5px;margin-top:16px;}
+.login .fg:first-of-type{margin-top:22px;}
+.login .fg label{font-size:12.5px;font-weight:500;color:oklch(45% .015 260);}
+.login .fg .lbrow{display:flex;align-items:baseline;}
+.login .fg .lbrow a{margin-left:auto;font-size:12px;color:oklch(60% .01 260);border:0;}
+.login input[type=email],.login input[type=password]{height:42px;padding:0 12px;
+  border:1px solid oklch(24% .02 260 / .22);background:oklch(99% .002 260);font-size:14.5px;
+  font-weight:500;color:oklch(24% .02 260);font-family:inherit;width:100%;
+  transition:border-color .16s ease,box-shadow .16s ease;}
+.login input::placeholder{color:oklch(72% .008 260);}
+.login input:focus{outline:none;border-color:oklch(58% .15 240);box-shadow:0 0 0 3px oklch(58% .15 240 / .16);}
+.login .pw{position:relative;display:flex;}
+.login .pw input{padding-right:42px;}
+.login .pw .eye{position:absolute;right:4px;top:4px;width:34px;height:34px;border:0;background:none;
+  color:oklch(60% .01 260);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.login .pw .eye:hover{background:oklch(94% .005 260);}
+.login .pw .eye svg{width:17px;height:17px;stroke-width:1.6;}
+.login .remember{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:12.5px;
+  color:oklch(45% .015 260);cursor:pointer;}
+.login .remember input{width:14px;height:14px;accent-color:oklch(58% .15 240);margin:0;}
 
-.fg{margin-top:18px;}
-.fg .lb{display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;}
-.fg .lb a{margin-left:auto;font-size:11.5px;font-weight:500;}
-/* 有框 = 可輸入。[M] 的「可編輯 = 有框輸入框,計算值 = 純文字」,同一條規則的另一端 */
-.fld{display:flex;align-items:center;gap:9px;height:38px;padding:0 12px;background:var(--paper);
-  border:1px solid var(--line);border-radius:var(--r-ctl);transition:border-color .12s,box-shadow .12s;}
-.fld:hover{border-color:#bcc8d6;}
-.fld.on{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-t);}
-.fld svg{width:15px;height:15px;color:var(--ink-4);}
-.fld input{flex:1;font-size:13.5px;}
-.fld input::placeholder{color:var(--ink-4);}
-.fld .eye{color:var(--ink-4);display:flex;}
-.fld .eye:hover{color:var(--ink-2);}
-/* 組織欄的尾綴:多租戶從第一天就在場([M] 租戶切換器的同一個判斷) */
-.fld .suf{font-size:12.5px;color:var(--ink-4);border-left:1px solid var(--line-2);padding-left:9px;}
+.login .acts{display:flex;gap:8px;margin-top:22px;}
+.login .acts .go{flex:1;height:46px;display:flex;align-items:center;justify-content:center;gap:10px;
+  border:0;background:oklch(58% .15 240);color:oklch(99% .002 260);font-family:inherit;font-size:14.5px;
+  font-weight:800;letter-spacing:.04em;cursor:pointer;transition:background .18s ease;}
+.login .acts .go.busy{background:oklch(24% .02 260);cursor:progress;}
+.login .acts .go .sp{width:0;height:17px;display:inline-flex;overflow:hidden;transition:width .2s ease;}
+.login .acts .go.busy .sp{width:17px;}
+.login .acts .reg{flex:0 0 auto;height:46px;padding:0 20px;border:1px solid oklch(24% .02 260);
+  background:transparent;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.04em;
+  color:oklch(24% .02 260);cursor:pointer;white-space:nowrap;transition:background .16s ease,color .16s ease;}
+.login .acts .reg:hover{background:oklch(24% .02 260);color:oklch(99% .002 260);}
+.login .prog{height:3px;background:oklch(91% .006 260);}
+.login .prog i{display:block;height:100%;background:oklch(58% .15 240);width:0;opacity:0;transition:width .1s linear;}
 
-.rowline{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12.5px;color:var(--ink-2);}
-.orx{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--ink-4);font-size:11.5px;}
-.orx::before,.orx::after{content:'';flex:1;height:1px;background:var(--line-2);}
-.sso{display:flex;gap:8px;}
-.sso .btn{flex:1;}
-.login .form .foot{margin-top:26px;padding-top:16px;border-top:1px solid var(--line-2);
-  font-size:11.5px;color:var(--ink-4);line-height:1.8;}
-.login .form .foot b{color:var(--ink-3);font-weight:500;}
-
+.login .orx{display:flex;align-items:center;gap:10px;margin:20px 0 14px;}
+.login .orx i{flex:1;height:1px;background:oklch(24% .02 260 / .14);}
+.login .orx span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+  color:oklch(72% .008 260);}
+.login .sso{width:100%;height:42px;display:flex;align-items:center;justify-content:center;gap:9px;
+  border:1px solid oklch(24% .02 260 / .22);background:transparent;font-family:inherit;font-size:13.5px;
+  font-weight:600;color:oklch(24% .02 260);cursor:pointer;transition:border-color .16s ease,background .16s ease;}
+.login .sso:hover{border-color:oklch(24% .02 260);background:oklch(95% .004 260);}
+.login .sso svg{width:15px;height:15px;stroke-width:1.7;}
+.login .tail{text-align:center;font-size:12px;color:oklch(60% .01 260);margin-top:18px;line-height:1.7;}
 
 /* ══════════════════════════════════════════════════════════════════
    共用外殼 —— 深色頂欄 + 情境側欄。三個 app 畫面共用同一份。
@@ -802,87 +843,66 @@ a:hover{text-decoration:underline;}
 </head>
 <body>
 
-<!-- ══════════════════ 畫面一|登入 ══════════════════ -->
+<!-- ══════════════════ 畫面一|登入(決策方版,原樣移植) ══════════════════ -->
 <div class="login" id="s-login" hidden>
-  <div class="side">
-    <div class="mark">
-      <div class="sq">W</div>
-      <div class="nm">Weyver<small>織雲</small></div>
-    </div>
+  <div class="loom" id="loom"></div>
 
-    <div class="pitch">
-      <h1>不用寫 code 的表單資料庫,<br>連<em>「算」</em>也不用寫。</h1>
-      <div class="sub">
-        表單、流程、權限,自己拉自己改。<br>
-        過帳、成本、庫存估值、MRP 展開,在同一張表上接起來 —— 不必寫程式,也不必等顧問。
-      </div>
-    </div>
-
-    <div class="facts">
-      <div><span class="k">資料落地</span><span class="v">台灣 · <b>asia-east1</b>,或自架於貴司機房</span></div>
-      <div><span class="k">稽核</span><span class="v">每筆異動留 <b>who / when / before / after</b>,可匯出</span></div>
-      <div><span class="k">帳務</span><span class="v">傳票過帳後<b>不刪不改</b>,更正走反向沖轉</span></div>
-    </div>
+  <div class="bar">
+    <div class="mk" id="mkStatic"></div>
+    <span class="wm">Weyver</span>
+    <span class="zh">織雲</span>
+    <span class="lang">繁中 / EN / 日本語</span>
   </div>
 
-  <div class="form">
-    <div class="box">
-      <h2>登入</h2>
-      <div class="lead">使用公司帳號進入工作區。</div>
+  <div class="stage">
+    <div class="col">
+      <div class="pitch">
+        <h1>不用寫 code 的表單資料庫,<br>連<span>「算」</span>也不用寫。</h1>
+        <p>表單、流程、權限,自己拉自己改。</p>
+      </div>
 
-      <div class="fg">
-        <div class="lb">工作區</div>
-        <div class="fld">
-          <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
-          <input value="sunyung" spellcheck="false">
-          <span class="suf">.weyver.app</span>
+      <div class="card">
+        <div class="capbar"></div>
+        <div class="badge" id="mkLive"></div>
+        <div class="in">
+          <div class="kicker">SIGN IN</div>
+
+          <div class="fg">
+            <label>電子郵件信箱</label>
+            <input type="email" placeholder="you@company.com">
+          </div>
+
+          <div class="fg">
+            <div class="lbrow"><label>密碼</label><a href="#">忘記密碼?</a></div>
+            <div class="pw">
+              <input type="password" placeholder="••••••••••">
+              <button class="eye" aria-label="顯示密碼">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <label class="remember"><input type="checkbox">在這台電腦記得我</label>
+
+          <div class="acts">
+            <button class="go" id="goBtn"><span class="sp" id="goSp"></span><span id="goLabel">登 入</span></button>
+            <button class="reg">註 冊</button>
+          </div>
+          <div class="prog"><i id="progBar"></i></div>
+
+          <div class="orx"><i></i><span>OR</span><i></i></div>
+
+          <button class="sso">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18"/><path d="M3 9h18M9 21V9"/></svg>
+            使用 SSO 登入
+          </button>
         </div>
       </div>
 
-      <div class="fg">
-        <div class="lb">電子郵件</div>
-        <div class="fld on">
-          <svg viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-          <input value="chen.pinyu@sunyung.com.tw" spellcheck="false">
-        </div>
-      </div>
-
-      <div class="fg">
-        <div class="lb">密碼<a href="#">忘記密碼</a></div>
-        <div class="fld">
-          <svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <input type="password" value="............">
-          <button class="eye"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        </div>
-      </div>
-
-      <div class="rowline">
-        <span class="cbx on"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
-        在這台裝置保持登入 30 天
-      </div>
-
-      <div class="fg"><button class="btn pri lg blk">登入</button></div>
-
-      <div class="orx">或</div>
-      <div class="sso">
-        <button class="btn sec lg" style="flex:1">
-          <svg viewBox="0 0 24 24"><rect width="8" height="8" x="3" y="3"/><rect width="8" height="8" x="13" y="3"/><rect width="8" height="8" x="3" y="13"/><rect width="8" height="8" x="13" y="13"/></svg>
-          Microsoft
-        </button>
-        <button class="btn sec lg" style="flex:1">
-          <svg viewBox="0 0 24 24"><path d="M12 3v18"/><circle cx="12" cy="12" r="9"/></svg>
-          SAML SSO
-        </button>
-      </div>
-
-      <div class="foot">
-        <b>Weyver 1.0.0</b> · 建置 <b>2026.08.07</b> · 自架版本<br>
-        遇到問題請聯絡貴司系統管理員,或查看 <a href="#">系統狀態</a>。
-      </div>
+      <div class="tail">過帳、成本、庫存估值、MRP 展開,在同一張表上接起來。</div>
     </div>
   </div>
 </div>
-
 
 <div class="app" id="s-home" hidden>
   <div class="top">
@@ -1692,8 +1712,57 @@ a:hover{text-decoration:underline;}
 const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl'),blank:document.getElementById('s-blank'),norows:document.getElementById('s-norows')};
 const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4'),blank:document.getElementById('b5'),norows:document.getElementById('b6')};
 function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}}
+
+/* ── 登入頁:織紋位移 + 標記「織入」動畫(移植自決策方的 x-dc 版本)──
+   15 塊矩形分批飛入再退場,週期 2800ms。橫塊是墨色、直塊是主色 ——
+   交錯就是「織」。這是**構造性的**隱喻,不是貼一張雲的圖。 */
+const WEAVE=[[10,20,42,16,0,-60,0,0.00],[68,20,42,16,0,60,0,0.03],[10,52,10,16,0,-60,0,0.06],
+[36,52,48,16,0,0,0,0.09],[100,52,10,16,0,60,0,0.12],[10,84,42,16,0,-60,0,0.15],
+[68,84,42,16,0,60,0,0.18],[20,10,16,10,1,0,-60,0.22],[20,36,16,48,1,0,-60,0.25],
+[20,100,16,10,1,0,60,0.28],[52,10,16,42,1,0,-60,0.31],[52,68,16,42,1,0,60,0.34],
+[84,10,16,10,1,0,-60,0.37],[84,36,16,48,1,0,-60,0.40],[84,100,16,10,1,0,60,0.43]]
+const INK='oklch(24% .02 260)', ACC='oklch(58% .15 240)'
+const clamp=(v)=>Math.min(1,Math.max(0,v))
+const ease=(x)=>{const c1=1.4,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}
+function mark(el,t,animated,ink,acc){
+  const parts=WEAVE.map(([x,y,w,h,c,dx,dy,d])=>{
+    let lt=1,ox=0,oy=0,op=1
+    if(animated){
+      if(t<d)lt=0; else if(t<d+0.42)lt=clamp((t-d)/0.42); else if(t<0.8)lt=1; else lt=clamp(1-(t-0.8)/0.16)
+      const e=t<0.8?ease(lt):lt; ox=dx*(1-e); oy=dy*(1-e); op=t<0.8?clamp(lt*1.6):clamp(lt)
+    }
+    return `<rect x="${x+ox}" y="${y+oy}" width="${w}" height="${h}" opacity="${op}" fill="${c?acc:ink}"/>`
+  }).join('')
+  el.innerHTML=`<svg viewBox="0 0 120 120" width="100%" height="100%">${parts}</svg>`
+}
+const loom=document.getElementById('loom'), mkLive=document.getElementById('mkLive'),
+      mkStatic=document.getElementById('mkStatic'), goBtn=document.getElementById('goBtn'),
+      goSp=document.getElementById('goSp'), goLabel=document.getElementById('goLabel'),
+      progBar=document.getElementById('progBar')
+mark(mkStatic,0,false,INK,ACC)
+let start=null, loadStart=null
+function tick(ts){
+  if(start===null)start=ts
+  const ms=ts-start
+  mark(mkLive,(ms%2800)/2800,true,INK,ACC)
+  const d=(ms/190)%56
+  loom.style.backgroundPosition=`${d}px 0, 0 ${-d}px`
+  if(loadStart!==null){
+    const pr=Math.min(1,(ts-loadStart)/2400)
+    progBar.style.width=(pr*100).toFixed(1)+'%'
+    mark(goSp,(ms%2800)/2800,true,'oklch(99% .002 260)','oklch(99% .002 260)')
+    if(pr>=1){loadStart=null;progBar.style.opacity='0';progBar.style.width='0';
+      goBtn.classList.remove('busy');goLabel.textContent='登 入'}
+  }
+  requestAnimationFrame(tick)
+}
+requestAnimationFrame(tick)
+goBtn.onclick=()=>{ if(loadStart!==null)return
+  loadStart=performance.now(); progBar.style.opacity='1'
+  goBtn.classList.add('busy'); goLabel.textContent='正在織入你的工作區' }
+
 for(const n in B)B[n].onclick=()=>go(n);
-go('blank');
+go('login');
 // 分類目錄可收合 —— 現況 144 張平鋪成 4040px,而使用者一次只想找一張
 document.querySelectorAll('.ch').forEach(h=>{h.onclick=()=>{const b=h.nextElementSibling;b.hidden=!b.hidden;h.classList.toggle('open',!b.hidden);};});
 </script>
