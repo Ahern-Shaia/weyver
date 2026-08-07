@@ -350,19 +350,54 @@ a:hover{text-decoration:underline;}
 /* W20 —— 換畫面只換這一層,外殼一格都不動 */
 .mid{flex:1;display:flex;min-width:0;}
 
-/* 情境側欄:只列當前分類,不是 144 張的四層樹([M]「把 Ragic 的 4 層導覽壓成 1 層」) */
-.ctx{width:194px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
+/* 情境側欄 —— 🔴 2026-08-08 重做,原版被判「有 vibe 感」而且判得對。
+
+   ── 原版三個問題,逐條指得出為什麼 ────────────────────────
+   ① **選取態 = 品牌色淡底 + 圓角膠囊 + 左側 2px 條**
+      → 這是 Tailwind / shadcn 後台模板的**出廠預設**,指不出出處。
+      NocoDB 實測(`nocodb-grid-02`)是**中性灰實心、滿版** ——
+      選取是「你在這」,不是「這個很重要」,不需要動用品牌色。
+   ② **每列都有圓角** → 十個小膠囊浮在面板裡。NocoDB 的列是滿版的。
+   ③ **10 張表平鋪、零層級** → 這才是它看起來像模板的真正原因:
+      沒有結構的清單,長什麼樣都一樣。
+      NocoDB 用**縮排**表達「表 → 檢視」,而我們的 `views-list` 已 SHIPPED,
+      儲存檢視是真實存在的東西 —— 側欄本來就該長出這一層。
+
+   ── 一條新規則 ──────────────────────────────────────
+   **側欄是導覽,不是資料。** 導覽用**形狀與層級**表達,
+   顏色留給資料面的型別(網格表頭的分組色)。
+   兩個地方都上色會讓「顏色代表什麼」失去單一答案 ——
+   而 §3.3 記的 NocoDB 缺點正是「側欄選取灰 vs 藍」這種同一畫面兩套語言。 */
+.ctx{width:206px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
   display:flex;flex-direction:column;}
-.ctx .hd{padding:11px 13px 7px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
-  color:var(--ink-4);text-transform:uppercase;}
-.ctx .list{flex:1;overflow-y:auto;padding:0 7px;}
-.ctx .it{display:flex;align-items:center;gap:8px;height:29px;padding:0 8px;border-radius:var(--r-ctl);
+.ctx .hd{display:flex;align-items:center;gap:6px;padding:10px 12px 6px;font-size:12px;
+  font-weight:600;color:var(--ink-2);}
+.ctx .hd .n{margin-left:auto;font-size:11px;font-weight:400;color:var(--ink-4);}
+.ctx .list{flex:1;overflow-y:auto;padding-bottom:8px;}
+/* 滿版、方角、中性灰選取 —— 三條都照 NocoDB 實測 */
+.ctx .it{display:flex;align-items:center;gap:8px;height:29px;padding:0 12px;
   font-size:12.5px;color:var(--ink-2);cursor:pointer;}
 .ctx .it:hover{background:var(--paper-3);}
-.ctx .it.on{background:var(--brand-t);color:var(--brand-h);font-weight:600;box-shadow:inset 2px 0 0 var(--brand);}
-.ctx .it .n{margin-left:auto;font-size:11px;color:var(--ink-4);}
-.ctx .it.on .n{color:var(--brand);}
-.ctx .foot{border-top:1px solid var(--line-2);padding:8px 13px;font-size:10.5px;color:var(--ink-4);line-height:1.7;}
+.ctx .it.on{background:#dfe6ea;color:var(--ink);font-weight:600;}
+.ctx .it .n{margin-left:auto;font-size:11px;color:var(--ink-4);font-weight:400;}
+.ctx .it .cv{margin-left:auto;display:flex;gap:2px;opacity:0;}
+.ctx .it.on .cv,.ctx .it:hover .cv{opacity:1;}
+.ctx .it .cv button{width:18px;height:18px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-3);border-radius:2px;}
+.ctx .it .cv button:hover{background:rgba(0,0,0,.08);}
+.ctx .it .cv svg{width:12px;height:12px;}
+/* 檢視 —— 縮排一層。**只有選中的表會展開**,不是全部攤開 */
+.ctx .vlist{padding-bottom:3px;}
+.ctx .vw{display:flex;align-items:center;gap:8px;height:26px;padding:0 12px 0 30px;
+  font-size:12.3px;color:var(--ink-3);cursor:pointer;}
+.ctx .vw:hover{background:var(--paper-3);color:var(--ink-2);}
+.ctx .vw.on{color:var(--ink);font-weight:600;}
+.ctx .vw svg{width:13px;height:13px;color:var(--ink-4);flex-shrink:0;}
+.ctx .vw.on svg{color:var(--ink-2);}
+.ctx .vw .n{margin-left:auto;font-size:10.5px;color:var(--ink-4);}
+.ctx .vw.add{color:var(--brand);}
+.ctx .vw.add svg{color:var(--brand);}
+.ctx .foot{border-top:1px solid var(--line-2);padding:8px 12px;font-size:10.5px;color:var(--ink-4);line-height:1.7;}
 
 /* ══════════════════════════════════════════════════════════════════
    畫面二|工作區首頁 /app —— 重新設計
@@ -379,7 +414,7 @@ a:hover{text-decoration:underline;}
    也不放行銷標語:那是 sales deck 的東西,不是產品 chrome。 */
 .hrow{display:flex;align-items:baseline;gap:10px;padding-bottom:13px;border-bottom:1px solid var(--line);}
 .hrow h1{font-size:17px;font-weight:600;letter-spacing:-.2px;}
-.hrow .sub{font-size:12px;color:var(--ink-4);}
+.hrow .meta{font-size:12px;color:var(--ink-4);}
 .hrow .sp{flex:1;}
 
 .sect{margin-top:22px;}
@@ -885,7 +920,7 @@ a:hover{text-decoration:underline;}
    不做搜尋不做最近使用:位置固定,肌肉記憶才建立得起來。 */
 .fd-pal{width:186px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
   overflow-y:auto;padding:8px 8px 14px;}
-.fd-pal .g{padding:9px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+.fd-pal .grp{padding:9px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
   color:var(--ink-4);text-transform:uppercase;}
 /* 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地,2026-08-04)——
    同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 */
@@ -919,7 +954,7 @@ a:hover{text-decoration:underline;}
   box-shadow:0 1px 2px rgba(19,26,36,.05);}
 .fd-doc{padding:16px 18px 20px;}
 .fd-doc h2{font-size:17px;font-weight:600;letter-spacing:-.2px;}
-.fd-doc .sub{margin-top:3px;font-size:12px;color:var(--ink-3);}
+.fd-doc .meta{margin-top:3px;font-size:12px;color:var(--ink-3);}
 
 /* 分段 = 列範圍(form-designer-2d OQ-4=A) */
 .fd-sec{display:flex;align-items:center;gap:7px;margin:16px 0 0;padding:6px 0;
@@ -1110,7 +1145,7 @@ a:hover{text-decoration:underline;}
              那是 C 版被否定的後台簽名,而且標語是 sales deck 的東西不該進產品 chrome。 -->
         <div class="hrow">
           <h1>鮮勇食品</h1>
-          <span class="sub">6 個分類 · 144 張表單</span>
+          <span class="meta">6 個分類 · 144 張表單</span>
           <span class="sp"></span>
           <button class="btn gho"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>用 Excel 建表</button>
           <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>新增表單</button>
@@ -1239,9 +1274,19 @@ a:hover{text-decoration:underline;}
   </div>
   <div class="mainrow">
       <div class="ctx">
-        <div class="hd">採購</div>
+        <div class="hd">採購<span class="n">10 張表</span></div>
         <div class="list">
-          <div class="it on">採購單<span class="n">248</span></div>
+          <div class="it on">採購單<span class="cv"><button title="更多"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></span></div>
+          <!-- 🔴 只有選中的表展開檢視 —— NocoDB 就是這樣。全部攤開會把 10 張表
+               變成 40 列,而使用者一次只在一張表裡工作。
+               儲存檢視是真實功能(views-list SHIPPED),不是為了填版面編出來的層級。 -->
+          <div class="vlist">
+            <div class="vw on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>列表(全部)<span class="n">248</span></div>
+            <div class="vw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>待我覆核<span class="n">11</span></div>
+            <div class="vw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg>依狀態看板</div>
+            <div class="vw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>依交期</div>
+            <div class="vw add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg>新增檢視</div>
+          </div>
           <div class="it">請購單<span class="n">63</span></div>
           <div class="it">詢價單<span class="n">31</span></div>
           <div class="it">採購退回<span class="n">12</span></div>
@@ -1575,7 +1620,7 @@ a:hover{text-decoration:underline;}
     <!-- ② 分類軸 —— 現況完全沒有(Ragic 側欄至少 24 個分類)。
          我方的分類直接來自 pack 的 categoryName / industry,不另立一套詞彙。 -->
     <div class="ctx">
-      <div class="hd">範本分類</div>
+      <div class="hd">範本分類<span class="n">8 個</span></div>
       <div class="list">
         <div class="it on">全部<span class="n">8</span></div>
         <div class="it">採購<span class="n">1</span></div>
@@ -1828,8 +1873,9 @@ a:hover{text-decoration:underline;}
   </div>
   <div class="mainrow">
     <div class="ctx">
-      <div class="hd">採購</div>
+      <div class="hd">採購<span class="n">1 張表</span></div>
       <div class="list">
+        <!-- 0 筆時**不展開檢視** —— 還沒有資料可以分,展開一堆空檢視是噪音 -->
         <div class="it on">採購單<span class="n">0</span></div>
       </div>
       <div class="foot">陳品妤 · 採購主管<br>Weyver 1.0.0 · 自架</div>
@@ -1916,22 +1962,22 @@ a:hover{text-decoration:underline;}
         <!-- OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
              不做搜尋、不做「最近使用」—— 位置固定,肌肉記憶才建立得起來。 -->
         <div class="fd-pal">
-          <div class="g">基本</div>
+          <div class="grp">基本</div>
           <div class="fd-row def"><span class="ic gl" style="color:var(--c1)">T</span>單行文字</div>
           <div class="fd-row"><span class="ic gl" style="color:var(--c1)">¶</span>多行文字</div>
           <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span>日期</div>
-          <div class="g">數值</div>
+          <div class="grp">數值</div>
           <div class="fd-row"><span class="ic gl" style="color:var(--c5)">#</span>數字</div>
           <div class="fd-row"><span class="ic gl" style="color:var(--c5)">$</span>金額</div>
           <div class="fd-row"><span class="ic" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></span>自動編號</div>
-          <div class="g">選擇</div>
+          <div class="grp">選擇</div>
           <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span>單選</div>
           <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>多選</div>
           <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span>核取</div>
-          <div class="g">聯絡</div>
+          <div class="grp">聯絡</div>
           <div class="fd-row"><span class="ic gl" style="color:var(--c6)">@</span>Email</div>
           <div class="fd-row"><span class="ic" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>電話</div>
-          <div class="g">關聯與計算</div>
+          <div class="grp">關聯與計算</div>
           <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
           <div class="fd-row"><span class="ic gl" style="color:var(--c4)">ƒx</span>公式</div>
           <!-- 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地 2026-08-04)——
@@ -1949,7 +1995,7 @@ a:hover{text-decoration:underline;}
           <div class="fd-paper">
             <div class="fd-doc">
               <h2>採購單</h2>
-              <div class="sub">向供應商下訂原物料。核准後自動過帳至存貨與應付帳款。</div>
+              <div class="meta">向供應商下訂原物料。核准後自動過帳至存貨與應付帳款。</div>
 
               <div class="fd-sec">基本資料
                 <span class="hd">
