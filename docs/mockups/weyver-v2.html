@@ -6,7 +6,7 @@
 <title>Weyver · v2(重新設計現況前端)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    Weyver 合併稿 v2 —— 重新設計現況前端
@@ -123,6 +123,21 @@
   /* ⚖️ 判斷 —— docs/38 §2 量到各家 0–8px 無共識,取中位偏小 */
   --r-chip:3px;--r-ctl:4px;--r-box:6px;
 
+  /* 🔴 G8(docs/39 步驟 6)|字體三分工。2026-08-08 裁定。
+     三方原本不一致:v2 的 IBM Plex / 規則的 Inter / 決策方登入頁的 Archivo。
+
+     ⚠️ **物理事實先講:Archivo 沒有 CJK 字符** —— 中文一定 fallback 到 Noto Sans TC。
+        所以「大標用 Archivo」實際只影響**拉丁字與數字**,
+        那正是登入頁「不用寫 **code** 的表單資料庫」的效果:同一行裡兩種字身。
+
+     · display —— 品牌字樣與大標。Archivo 是展示型,重量夠,但不適合長文
+     · sans    —— 內文 / UI / 資料。`DESIGN-RULES.md` §2.2 選 Inter 是為了**內文可讀性**
+     · mono    —— **只給機器識別碼**(§2.2:記錄編號 / 版號 / IP / 欄位 ID)。
+                  規則寫 JetBrains Mono,這裡用決策方登入頁已選的 IBM Plex Mono */
+  --font-display:'Archivo','Noto Sans TC',sans-serif;
+  --font-sans:'Inter','Noto Sans TC',-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+
   /* 🔴 類別色 c1–c8(取自 tokens.css,統一去飽和 + 一致明度)。
      E 案「B+D 混合」用它給**型別分組**上色 —— 顏色回答「這是哪一類欄位」,
      不是每個圖示各自一色。 */
@@ -131,7 +146,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
 body{
-  font-family:'IBM Plex Sans','IBM Plex Sans TC','Noto Sans TC',system-ui,sans-serif;
+  font-family:var(--font-sans);
   font-size:13px;color:var(--ink);background:var(--paper);
   -webkit-font-smoothing:antialiased;
   /* 🔴 共識 R4 —— 全域 tnum。[M] 唯一做對這條的一份,[D][E] 都錯用 mono 字體。
@@ -192,7 +207,7 @@ a:hover{text-decoration:underline;}
 .ty{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;
   flex-shrink:0;border:0;background:none;color:var(--ink-4);}
 .ty svg{width:13px;height:13px;stroke-width:2;}
-.ty.gl{font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;line-height:1;}
+.ty.gl{font-family:var(--font-mono);font-size:12.5px;font-weight:600;line-height:1;}
 
 /* ══════════════════════════════════════════════════════════════════
    畫面一|登入 —— 🔴 **決策方自己做的**(2026-08-08),原樣移植不重新詮釋。
@@ -231,7 +246,7 @@ a:hover{text-decoration:underline;}
 .login .bar .mk{width:24px;height:24px;display:flex;}
 .login .bar .wm{font-family:Archivo,sans-serif;font-weight:900;font-size:17px;letter-spacing:-.03em;}
 .login .bar .zh{font-size:11.5px;letter-spacing:.24em;color:oklch(60% .01 260);}
-.login .bar .lang{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;
+.login .bar .lang{margin-left:auto;font-family:var(--font-mono);font-size:11px;
   letter-spacing:.12em;color:oklch(60% .01 260);}
 
 .login .stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;
@@ -253,7 +268,7 @@ a:hover{text-decoration:underline;}
   width:52px;height:52px;padding:9px;background:oklch(99% .002 260);
   border:1px solid oklch(24% .02 260 / .16);display:flex;}
 .login .card .in{padding:44px 32px 30px;}
-.login .kicker{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+.login .kicker{text-align:center;font-family:var(--font-mono);font-size:10.5px;
   letter-spacing:.18em;color:oklch(60% .01 260);}
 
 .login .fg{display:flex;flex-direction:column;gap:5px;margin-top:16px;}
@@ -293,7 +308,7 @@ a:hover{text-decoration:underline;}
 
 .login .orx{display:flex;align-items:center;gap:10px;margin:20px 0 14px;}
 .login .orx i{flex:1;height:1px;background:oklch(24% .02 260 / .14);}
-.login .orx span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+.login .orx span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;
   color:oklch(72% .008 260);}
 .login .sso{width:100%;height:42px;display:flex;align-items:center;justify-content:center;gap:9px;
   border:1px solid oklch(24% .02 260 / .22);background:transparent;font-family:inherit;font-size:13.5px;
@@ -310,7 +325,7 @@ a:hover{text-decoration:underline;}
 .top .mark{display:flex;align-items:center;gap:8px;padding-right:13px;margin-right:5px;}
 .top .mark .sq{width:23px;height:23px;border-radius:3px;background:#fff;color:var(--shell);
   display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
-.top .mark .nm{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.2px;}
+.top .mark .nm{font-family:var(--font-display);font-size:14.5px;font-weight:800;color:#fff;letter-spacing:-.03em;}
 
 /* 分類 = 租戶自建,不是內建模組。`＋` 常駐(ragic-03 逐字對照)。
    示範名刻意混入 HACCP / 客訴 —— 不是任何 ERP 的標準模組名。 */
@@ -447,7 +462,7 @@ a:hover{text-decoration:underline;}
 /* 一列標題 + 主要動作 —— 不做「大淺標題 → 留白」的兩層帶(C 版失敗處),
    也不放行銷標語:那是 sales deck 的東西,不是產品 chrome。 */
 .hrow{display:flex;align-items:baseline;gap:10px;padding-bottom:13px;border-bottom:1px solid var(--line);}
-.hrow h1{font-size:17px;font-weight:600;letter-spacing:-.2px;}
+.hrow h1{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.02em;}
 .hrow .meta{font-size:12px;color:var(--ink-4);}
 .hrow .sp{flex:1;}
 
@@ -783,7 +798,7 @@ a:hover{text-decoration:underline;}
   display:flex;justify-content:center;align-items:flex-start;}
 .tdet .inner{flex:1;max-width:760px;padding:18px 24px 40px;}
 .tdet .th{display:flex;align-items:flex-start;gap:12px;}
-.tdet .th h1{font-size:19px;font-weight:600;letter-spacing:-.3px;}
+.tdet .th h1{font-family:var(--font-display);font-size:19px;font-weight:700;letter-spacing:-.02em;}
 .tdet .th .meta{margin-top:4px;font-size:12px;color:var(--ink-3);}
 .tdet .th .sp{flex:1;}
 .tdet .lead{margin-top:12px;font-size:13px;color:var(--ink-2);line-height:1.75;}
@@ -881,7 +896,7 @@ a:hover{text-decoration:underline;}
 .blank{flex:1;overflow-y:auto;background:var(--paper);}
 /* 首屏是**散文 + 三條路的清單**,不是表單 → 吃 740 那條(文件正文上限) */
 .blank .wrap{max-width:740px;margin:0 auto;padding:56px 24px 60px;}
-.blank h1{font-size:20px;font-weight:600;letter-spacing:-.3px;}
+.blank h1{font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:-.025em;}
 .blank .lead{margin-top:8px;font-size:13.5px;line-height:1.8;color:var(--ink-3);}
 .blank .lead b{color:var(--ink-2);font-weight:600;}
 
@@ -1016,7 +1031,7 @@ a:hover{text-decoration:underline;}
 .fd-row .ic{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;
   flex-shrink:0;border:0;background:none;}
 .fd-row .ic svg{width:14px;height:14px;}
-.fd-row .ic.gl{font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;line-height:1;}
+.fd-row .ic.gl{font-family:var(--font-mono);font-size:13.5px;font-weight:600;line-height:1;}
 .fd-row.def{color:var(--ink);font-weight:600;}
 .fd-pal .hint{margin-top:10px;padding:8px 7px;border-top:1px solid var(--line-2);
   font-size:11px;line-height:1.7;color:var(--ink-4);}
@@ -1028,7 +1043,7 @@ a:hover{text-decoration:underline;}
 .fd-paper{max-width:860px;margin:0 auto;background:var(--paper);border:1px solid var(--line);
   box-shadow:0 1px 2px rgba(19,26,36,.05);}
 .fd-doc{padding:16px 18px 20px;}
-.fd-doc h2{font-size:17px;font-weight:600;letter-spacing:-.2px;}
+.fd-doc h2{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.02em;}
 .fd-doc .meta{margin-top:3px;font-size:12px;color:var(--ink-3);}
 
 /* 分段 = 列範圍(form-designer-2d OQ-4=A) */
