@@ -18,19 +18,44 @@
   --thread:oklch(58% .15 240);         /* Thread Blue 織藍 #0083c9 —— 標誌用 */
   --brand-neutral:oklch(60% .01 260);  /* Neutral 中灰 #7d8086 */
   --paper:oklch(97% .004 260);         /* Paper 底色  #f3f5f8 */
-  /* 動作色:由織藍推導。織藍白字僅 4.13 < AA 4.5(見 §03),故介面動作用 52%。 */
-  --base-brand:#22568a;
-  --primary:var(--base-brand);
-  --primary-d:color-mix(in srgb,#22568a,black 20%);
-  --primary-t:color-mix(in srgb,#22568a,white 91%);
+  /* 🔴 2026-08-08|**中性階與動作色改以 `weyver-v3.html` 的 computed style 為準。**
 
-  /* 介面 12 階冷中性(hue 260,與品牌板同調;Radix 語意)*/
-  --bg:#f6f8fa; --card:#fcfdfe; --head:#eef1f5; --label:#eef1f5;
-  --s4:#e4e9ef; --s5:#d8dfe8;
-  --ink:#0f1720; --ink2:#3a4553; --ink3:#5c6876; --ink4:#9aa6b4;
-  --line:#e6eaf0; --line2:#eef1f5; --cell:#dfe4ea;
-  --hover:#eef1f5; --active:#e4e9ef;
-  --link:#0070b5;--fx:#0b6b5d;--fx-bg:#e8f4f1;--rel:#5b3fa8;
+     為什麼要動:此前 `--base-brand:#22568a` 是**舊三配色主題的深藍**,而元件矩陣
+     (Button / Input / Select 的 rest·hover·focus·disabled)全部吃它 ——
+     於是「品牌四色」只加在品牌章節,**元件規格還留在 v3 之前**。
+     v3 已裁定為視覺權威,狀態規格卻對著舊色盤,那是文件說一套、產品走另一套。
+
+     值的來源|`weyver-v3.html` 全 8 頁 computed style 統計(不是讀 CSS 文字 ——
+     v3 頁面本體是 inline style,`<style>` 區塊對它是死的)。
+     v3 的結構是**兩個 base 靠明度與 alpha 推導全部**:
+     文字是 Ink 的明度階、框線是 Ink alpha .12–.22、強調底是織藍 9% alpha。 */
+
+  /* 🔴 **動作實心底不取 v3 的 58%,取 52%** —— 這是唯一一處刻意偏離,有量測依據:
+     v3 的 `oklch(58% .15 240)` 配近白字實測 **4.02 < AA 4.5**(canvas 取像素,
+     黑白自我驗證 = 21)。**v3 自己這一項不合格。**
+     52% 配白字實測 **5.27** 通過 —— 而這正是本檔上一版註解就寫下
+     「故介面動作用 52%」、卻從未落實的裁定(當時 code 仍是 #22568a)。
+     ⚠️ 識別用途(標誌)維持 58% 織藍不變,只有**介面動作**降到 52%。 */
+  --base-brand:oklch(52% .15 240);
+  --primary:var(--base-brand);
+  --primary-d:oklch(45% .15 240);
+  /* v3 的強調淡底是**主色 9% alpha**(147 處),不是混白的中性灰 —— 換的是做法不是色號 */
+  --primary-t:oklch(58% .15 240 / .09);
+
+  /* 中性階:v3 實測值(hue 260)。括號內為對紙面 `oklch(99% .002 260)` 的實測對比 */
+  --bg:oklch(96% .004 260); --card:oklch(99% .002 260);
+  --head:oklch(95% .004 260); --label:oklch(95% .004 260);
+  --s4:oklch(92% .006 260); --s5:oklch(90% .006 260);
+  --ink:oklch(24% .02 260);    /* 15.94 ✓ 主文字 */
+  --ink2:oklch(35% .015 260);  /* 10.4  ✓ */
+  --ink3:oklch(45% .015 260);  /*  7.21 ✓ 次要 */
+  --ink4:oklch(60% .01 260);   /*  3.85 ✗ **僅停用 / incidental**,不得用於一般內文 */
+  /* 框線是 Ink 帶 alpha,不是獨立灰色 —— 疊在任何底色上都保持同一層次關係 */
+  --line:oklch(24% .02 260 / .16); --line2:oklch(24% .02 260 / .12);
+  --cell:oklch(24% .02 260 / .14);
+  --hover:oklch(95% .004 260); --active:oklch(92% .006 260);
+  --link:oklch(48% .13 240);   /*  6.15 ✓ v3 的強調文字色 */
+  --fx:#0b6b5d;--fx-bg:#e8f4f1;--rel:#5b3fa8;
   --ok:#0f7a4a;--ok-line:#bde3cd;--ok-t:#e8f5ee;
   --wn:#8a5a09;--wn-line:#ecd7ac;--wn-t:#fbf2e3;
   --er:#b02a26;--er-line:#eecac8;--er-t:#fbebea;
@@ -46,7 +71,10 @@
 [data-theme]{
   --primary:var(--base-brand);
   --primary-d:color-mix(in srgb, var(--base-brand), black 22%);
-  --primary-t:color-mix(in srgb, var(--base-brand), white 92%);
+  /* 🔴 2026-08-08 跟著 v3 改成 **alpha 淡底**,不是混白 ——
+     混白會產生一個不透明的新色,疊在深色表面上就露餡;alpha 讓它跟著底色走。
+     主題卡要示範的是 token 架構,示範的做法必須與預設同一套。 */
+  --primary-t:color-mix(in srgb, var(--base-brand) 9%, transparent);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Inter,'Noto Sans TC',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;padding-bottom:60px;}
