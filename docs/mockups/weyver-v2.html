@@ -70,45 +70,65 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 :root{
-  /* ── 品牌 ── docs/14 §2.2 三配色主題,深藍為預設對外色 ──────────────
-     白牌只需給 --base-brand 一個值,深殼由它推導。[E] 的做法,保留。 */
-  --base-brand:#22568a;
-  --shell:#122a45;        /* base-brand 壓深 —— 深殼 */
-  --shell-2:#1b3b5c;      /* hover / 群組底 */
-  --shell-3:#2a4b6e;      /* 深殼上的分隔線 */
-  --shell-ink:#eaf0f7;
-  --shell-ink-2:#a3bad3;
-  --shell-ink-3:#7592b1;
-  --brand:#22568a;        /* 強調色:連結 · 選取 · 焦點 · 進行中。**不再當主按鈕填色** */
+  /* ══ 品牌四色(決策方 Logo)══ 2026-08-08 主視覺換品牌 ═══════════════
+     Ink 墨      oklch(24% .02 260)   Thread Blue 織藍  oklch(58% .15 240)
+     Neutral 中灰 oklch(60% .01 260)   Paper 底色        oklch(97% .004 260)
 
-  /* 🔴 G1(docs/39 步驟 1)|主要動作 = 近黑,不是品牌藍。
-     依據 `DESIGN-RULES.md`:「主要動作用近黑 #18181B,不是品牌藍(ERPNext)。
-     每個畫面只有一顆實心按鈕…比任何品牌藍都耐老,對比度保證,
-     而且『哪個是主動作』一眼可辨。」
-     **品牌藍當主按鈕是 Bootstrap / Tailwind 後台模板的胎記。**
-     值取自決策方自己的登入頁 `oklch(24% .02 260)` = #1a2029(略帶藍),
-     而不是規則的 #18181B —— 同一個東西,但用決策方已經選過的那個。 */
-  --action:#1a2029;
-  --action-h:#2c333e;
-  --brand-h:#1a4471;
-  --brand-t:#eaf1f8;      /* 主色極淡底,只給選取態 */
-  --brand-l:#c3d5e8;
+     🔴 **不是直接換上去,是把四色當色階的 base 推導** —— 因為算過對比之後
+        有兩個直接違反 AA:
+        · Thread Blue 原色在 Paper 上只有 **3.78:1**,而**19 處是 `color:` 文字**
+        · Neutral 中灰在 Paper 上只有 **3.63:1**,而 `--ink-3` 是次要文字
+        做法:**保住色相與彩度(那才是品牌身分),只動明度**到門檻剛好過。
+        織藍 58% → 53.6%(差 4.4%,肉眼是同一個藍);中灰降為**非文字專用**。
 
-  /* ── 面 ── 共識 R1:十家主背景全在 246–255,零例外 ── */
-  --paper:#ffffff;
-  --paper-2:#f7f9fb;      /* 表頭 / 次階面 */
-  --paper-3:#eef2f6;      /* hover / sunken */
-  --readonly:#e8ecf0;     /* 共識 R6:唯讀 = 更深一階灰填色(Ragic #e8e8e8 / isoTracker #E8ECEF) */
+     🔴 **值寫 oklch 不寫 hex**:色階的邏輯是「同色相、階梯明度」,
+        寫成 hex 就看不出它是推導來的,下一個人只能猜。註解附換算值供比對。
 
-  /* ── 線 ── [M] 格線比外框淺(NocoDB),但要看得見(W3:不學它的 7/255) ── */
-  --line:#d7dee7;         /* 結構外框 */
-  --line-2:#e6ebf1;       /* 區塊分隔 */
-  --line-3:#eef2f6;       /* 儲存格格線 —— 最淺 */
-
-  --ink:#131a24;
-  --ink-2:#3f4b5b;
-  --ink-3:#68778a;
-  --ink-4:#93a1b2;
+     ⚠️ 語意色(ok/wn/er/nt)與類別色 c1–c8 **不動** —— 它們不是主視覺,
+        且 c1–c8 才剛逐字對齊 prod `tokens.css`。 */
+  --thread:oklch(58% 0.15 240);           /* #0083c9 品牌原色 —— 標誌與非文字識別(focus 環 / 選取框) */
+  --brand:oklch(52% 0.15 240);            /* #0070b5 介面用:連結 · 選取 · 進行中。
+                                             **同色相壓深 6% 明度**才過 4.5 —— 53.6% 對 Paper 剛好 4.52,
+                                             但連結會落在**選中列的 brand-t 底**上,那裡只剩 4.46。
+                                             取最壞的底來定值,不是取最常見的底。 */
+  --brand-h:oklch(50% 0.15 240);          /* #006aaf hover / 白字填色(白 on 此色 = 5.71) */
+  --brand-t:oklch(96.5% 0.018 240);       /* #e9f5ff 極淡底,只給選取態 */
+  --brand-l:oklch(87% 0.05 240);          /* #b7d9f2 淡框 */
+  --base-brand:oklch(58% 0.15 240);       /* #0083c9 白牌種子 = 品牌原色 */
+  --shell:oklch(28% 0.06 240);            /* #042c43 深殼 */
+  --shell-2:oklch(35% 0.06 240);          /* #193e57 */
+  --shell-3:oklch(42% 0.05 240);          /* #335166 */
+  --shell-ink:oklch(95% 0.01 240);        /* #e9f0f5 */
+  --shell-ink-2:oklch(78% 0.03 240);      /* #a7bac9 */
+  --shell-ink-3:oklch(66% 0.04 240);      /* #7d96a9 */
+  --action:oklch(24% 0.02 260);           /* #1a2029 主要動作 = 品牌墨本身(G1) */
+  --action-h:oklch(32% 0.02 260);         /* #2d333d */
+  /* 🔴 墨階四階,**全部過 AA 4.5:1**(對 Paper 底)。
+     為什麼不是直接把中灰放進來當第四階:**量到 `--ink-4` 有 63 處、全是 `color:` 文字用途**
+     (零處是圖示或邊框)。中灰 60% 在 Paper 上只有 3.63 —— 當文字用就是 63 處不合格。
+     ⚠️ 但這**不是換色造成的**:換色前 `--ink-4` 是 `#93a1b2` = **2.63:1**,更糟。
+     做法:把四階重新排開,讓最亮的那階落在剛好過 4.5 的位置(54.6%);
+     **中灰回到它真正該在的角色 —— 非文字**(門檻 3:1,它過)。 */
+  --ink:oklch(24% 0.02 260);              /* #1a2029 墨 —— 14.99:1 */
+  --ink-2:oklch(38% 0.018 260);           /* #3d434c 9.13:1 */
+  --ink-3:oklch(47% 0.015 260);           /* #565b63 6.26:1 */
+  --ink-4:oklch(53.5% 0.012 260);         /* #696e75 文字的**最亮可用階**。
+                                             54.6% 對 Paper 剛好 4.50,但落在比 Paper 再深一階的
+                                             卡片底上只剩 4.44 —— 同 --brand,**取最壞的底來定值**。 */
+  --neutral:oklch(60% 0.01 260);          /* #7d8086 中灰(品牌四色之一)——**非文字**:圖示描邊 / 分隔 / 停用。3.63:1 > 3 ✅ */
+  --line:oklch(88% 0.006 260);            /* #d5d8db */
+  --line-2:oklch(93% 0.005 260);          /* #e6e8eb */
+  --line-3:oklch(95.5% 0.004 260);        /* #eef0f3 */
+  --paper-2:oklch(97% 0.004 260);         /* #f3f5f8 紙 —— 決策方指定的底色 */
+  --paper-3:oklch(94.5% 0.005 260);       /* #ebedf0 */
+  --readonly:oklch(92.5% 0.006 260);      /* #e4e6ea */
+  /* 控件邊框兩階 —— 明度沿用換色前的量測值(82.8% / 77.0%),
+     只把色相彩度落到新色階上,避免換色後這兩處還偏舊的藍。
+     ⚠️ 兩者對白底都 < 3:1(WCAG 1.4.11 對 UI 元件邊界的門檻)——
+     **這是換色前就有的問題,不是這次造成的**,另行處理。 */
+  --ctl-line:oklch(82.8% 0.01 260);       /* 次要鈕 hover 框 */
+  --ctl-line-d:oklch(77% 0.012 260);      /* 核取框 */
+  --paper:#ffffff;                        /* 卡片與表面維持純白 —— 與帶藍的 Paper 底色分層 */
 
   /* ── 語意 ── [M] 底約 10% 飽和、文字約 55%(ERPNext 的比例) ── */
   --ok:#1a6b3c;--ok-t:#e9f4ed;--ok-l:#bedbc9;
@@ -118,7 +138,9 @@
   /* 共識 R9:純量型別一律灰,只有「指向別張表」才上色(NocoDB) */
   --rel:#2f5fa8;--rel-t:#e9f0fa;--rel-l:#c4d6ee;
   --fx:#0d6357;--fx-t:#e6f1ef;--fx-l:#bcd8d3;
-  --stage:#b8730d;--stage-t:#fdf5e8;   /* isoTracker 進行中階段的橙 */
+  /* 進行中階段的橙。原 #b8730d 配 #fdf5e8 只有 **3.53:1** ——
+     pre-existing,與換色無關,但藍圖不該把不合格編進去。同色相壓深 61.6%→55%。 */
+  --stage:oklch(55% 0.132 68);--stage-t:#fdf5e8;   /* #a35f00 · 4.63:1 */
 
   /* ⚖️ 判斷 —— docs/38 §2 量到各家 0–8px 無共識,取中位偏小 */
   --r-chip:3px;--r-ctl:4px;--r-box:6px;
@@ -186,14 +208,14 @@ a:hover{text-decoration:underline;}
 .btn.pri{background:var(--action);color:#fff;}
 .btn.pri:hover{background:var(--action-h);}
 .btn.sec{border-color:var(--line);color:var(--ink-2);background:var(--paper);}
-.btn.sec:hover{background:var(--paper-2);border-color:#bcc8d6;}
+.btn.sec:hover{background:var(--paper-2);border-color:var(--ctl-line);}
 .btn.gho{color:var(--ink-3);}
 .btn.gho:hover{background:var(--paper-3);color:var(--ink-2);}
 .btn.lg{height:38px;font-size:13.5px;padding:0 18px;}
 .btn.blk{width:100%;}
 
 /* 自繪核取方塊 —— isoTracker / Ragic 的原生控件曝光是「舊感」第一名 */
-.cbx{width:15px;height:15px;border:1.5px solid #a8b6c6;border-radius:3px;background:var(--paper);
+.cbx{width:15px;height:15px;border:1.5px solid var(--ctl-line-d);border-radius:3px;background:var(--paper);
   display:inline-flex;align-items:center;justify-content:center;transition:.1s;flex-shrink:0;}
 .cbx:hover{border-color:var(--brand);}
 .cbx.on{background:var(--brand);border-color:var(--brand);}
@@ -373,7 +395,7 @@ a:hover{text-decoration:underline;}
 .whoami .tx{font-size:12px;color:var(--shell-ink);line-height:1.25;}
 .whoami .tx em{display:block;font-style:normal;font-size:10.5px;color:var(--shell-ink-3);}
 
-.mega{background:#0d2036;border-bottom:2px solid var(--brand);padding:15px 18px 17px;display:flex;gap:44px;}
+.mega{background:oklch(24% .05 240);border-bottom:2px solid var(--brand);padding:15px 18px 17px;display:flex;gap:44px;}
 .mega .col h4{font-size:10.5px;font-weight:700;color:var(--shell-ink-3);letter-spacing:.07em;
   text-transform:uppercase;margin-bottom:8px;}
 .mega .col a{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--shell-ink-2);padding:3.5px 0;}
@@ -435,7 +457,7 @@ a:hover{text-decoration:underline;}
 .ctx .it{display:flex;align-items:center;gap:8px;height:29px;padding:0 12px;
   font-size:12.5px;color:var(--ink-2);cursor:pointer;}
 .ctx .it:hover{background:var(--paper-3);}
-.ctx .it.on{background:#dfe6ea;color:var(--ink);font-weight:600;}
+.ctx .it.on{background:var(--brand-t);color:var(--ink);font-weight:600;}
 .ctx .it .n{margin-left:auto;font-size:11px;color:var(--ink-4);font-weight:400;}
 .ctx .it .cv{margin-left:auto;display:flex;gap:2px;opacity:0;}
 .ctx .it.on .cv,.ctx .it:hover .cv{opacity:1;}
@@ -588,7 +610,7 @@ a:hover{text-decoration:underline;}
   min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
 .vsel{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 9px;border:1px solid var(--line);
   border-radius:var(--r-ctl);background:var(--paper);font-size:12px;color:var(--ink-2);font-weight:500;}
-.vsel:hover{border-color:#bcc8d6;}
+.vsel:hover{border-color:var(--ctl-line);}
 .vsel svg{width:12px;height:12px;color:var(--ink-4);}
 .st{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-3);}
 .st svg{width:12px;height:12px;}
@@ -650,15 +672,15 @@ a:hover{text-decoration:underline;}
 .g tbody tr:hover td{background:var(--paper-2);}
 .g tbody tr:hover .frz,.g tbody tr:hover .gut{background:var(--paper-3);}
 .g tbody tr.sel td{background:var(--brand-t);}
-.g tbody tr.sel .frz{background:#e2ebf6;}
+.g tbody tr.sel .frz{background:var(--brand-t);}
 /* 共識 R6 唯讀 = 更深一階灰填色。同時是 OQ-GP-4 的預先告知:貼之前就看得出寫不進去 */
 /* ⚠️ 計算欄**取消粗體**。原本 600 讓每列有兩個粗體,而規則是一列只有一個 ——
    且那一個應該是**識別欄**(你用它找記錄),不是算出來的值。
    計算欄的區辨已經由「唯讀灰填色 + fx 色」承擔,不需要再加字重。 */
 .g td.ro{background:var(--readonly);color:var(--fx);}
-.g tbody tr:hover td.ro{background:#e2e7ec;}
+.g tbody tr:hover td.ro{background:oklch(92.6% .006 260);}
 .g td.rg{background:var(--brand-t);}
-.g td.rg.ro{background:#dde5ee;}
+.g td.rg.ro{background:var(--readonly);}
 .g td.e-t{box-shadow:inset 0 2px 0 var(--brand);}
 .g td.e-b{box-shadow:inset 0 -2px 0 var(--brand);}
 .g td.e-l{box-shadow:inset 2px 0 0 var(--brand);}
@@ -686,7 +708,7 @@ a:hover{text-decoration:underline;}
 .g td .opt.t6{color:var(--c6);border-color:var(--c6-l);background:var(--c6-t);}
 .g td .opt.t7{color:var(--c7);border-color:var(--c7-l);background:var(--c7-t);}
 .g td .opt.t8{color:var(--c8);border-color:var(--c8-l);background:var(--c8-t);}
-.g td .ck{width:14px;height:14px;border:1.5px solid #a8b6c6;border-radius:3px;display:inline-flex;
+.g td .ck{width:14px;height:14px;border:1.5px solid var(--ctl-line-d);border-radius:3px;display:inline-flex;
   align-items:center;justify-content:center;}
 .g td .ck.on{background:var(--ok);border-color:var(--ok);}
 .g td .ck svg{width:9px;height:9px;color:#fff;stroke-width:3;display:none;}
@@ -1255,7 +1277,7 @@ a:hover{text-decoration:underline;}
 .fd-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;
   gap:11px;padding:9px 13px;background:var(--ink);color:#fff;border-radius:var(--r-box);
   box-shadow:0 6px 20px rgba(19,26,36,.25);font-size:12.5px;z-index:20;}
-.fd-toast button{color:#8fd0e8;font-weight:600;font-size:12.5px;}
+.fd-toast button{color:oklch(82% .074 240);font-weight:600;font-size:12.5px;}
 .fd-toast button:hover{text-decoration:underline;}
 
 /* ══ mockup 外框(不是產品的一部分) ══ */
