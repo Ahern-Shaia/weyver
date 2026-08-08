@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -12,6 +12,7 @@ import type { NotificationRepository } from "../src/notifications/notification.r
 import { resolveLevel } from "../src/notifications/notification.service.js"
 import type { NotificationService } from "../src/notifications/notification.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* H-1 M1|重點:簽核接通(本模組存在的理由)· 跨租戶隔離 · 風暴防護 · 標題不洩漏。 */
 
@@ -47,7 +48,7 @@ async function inbox(actorId: number, tenantId = tenantA): Promise<string[]> {
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
 

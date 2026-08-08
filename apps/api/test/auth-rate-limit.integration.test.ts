@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
 import {
@@ -10,6 +10,7 @@ import {
 } from "../src/auth/login-throttle.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 登入暴力防護的**分桶依據**必須是不可偽造的來源。
 
@@ -38,7 +39,7 @@ const EMAIL = "brute@weyver.test"
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   auth = createAuth(pool, "test-secret-0123456789abcdef")
   const baMigrations = await getMigrations(auth.options)

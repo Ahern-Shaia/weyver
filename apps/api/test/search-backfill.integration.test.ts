@@ -1,11 +1,12 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import knexFactory, { type Knex } from "knex"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { runMigrations } from "../src/db/migrate.js"
 import { SearchBackfillService } from "../src/search/search-backfill.service.js"
 import { SearchIndexService } from "../src/search/search-index.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·H-3 殘留 R1|既有資料的索引補寫(pilot 上線前必做)。
 
@@ -26,7 +27,7 @@ let emptyFormId = 0
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const url = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: url })
+  pool = testPool(url)
   await runMigrations(pool)
   db = knexFactory({ client: "pg", connection: url })
   service = new SearchBackfillService(db, new SearchIndexService())

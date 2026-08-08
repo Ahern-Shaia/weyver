@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { Knex } from "knex"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -11,6 +11,7 @@ import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PublicFormService } from "../src/public-form/public-form.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 G-2 公開表單。這份測試的核心不是「功能會動」,而是**不該外洩的沒外洩**:
    1. 白名單是 opt-in —— 沒選的欄位訪客看不到也送不進來
@@ -32,7 +33,7 @@ let tenantB = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const rows = await db
@@ -53,7 +54,7 @@ beforeAll(async () => {
   uri.password = "app_login"
   const appKnex = createDdlKnex(uri.toString())
   destroyers.push(() => appKnex.destroy())
-  const appPool = new pg.Pool({ connectionString: uri.toString(), max: 5 })
+  const appPool = testPool(uri.toString(), 5)
   destroyers.push(() => appPool.end())
   const appDb = createDrizzle(appPool)
 

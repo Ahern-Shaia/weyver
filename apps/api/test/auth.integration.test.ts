@@ -3,7 +3,7 @@ import { ConfigModule } from "@nestjs/config"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type Auth, createAuth } from "../src/auth/auth.js"
 import { AuthModule } from "../src/auth/auth.module.js"
@@ -13,6 +13,7 @@ import { validateEnv } from "../src/config/env.js"
 import { APP_DRIZZLE, DRIZZLE, PG_POOL, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations as runWeyverMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -20,7 +21,7 @@ let auth: Auth
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   auth = createAuth(pool, "test-secret-0123456789")
   // Better Auth 自建其 schema(user/account/session/organization/member/invitation…)
   /* 🔴 **我們自己的 migration 也要跑**。認證的 before/after hook 會查

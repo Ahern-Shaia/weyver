@@ -1,13 +1,14 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { UsageService } from "../src/billing/usage.service.js"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { roleMembers, roles, tenants, users } from "../src/db/schema.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* F-8 M2|用量快照。重點在 FMEA B3(跨租戶錯置 → 帳單算到別人頭上)與 B4(冪等 / 可補算)。 */
 
@@ -32,7 +33,7 @@ async function metricValue(tenantId: number, metric: string, day = DAY): Promise
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
   const tenantRows = await db
@@ -138,7 +139,7 @@ describe("F-8 用量快照", () => {
   })
 
   it("**append-only**:app 車道無 UPDATE / DELETE 權限", async () => {
-    const appPool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 2 })
+    const appPool = testPool(container.getConnectionUri(), 2)
     try {
       const client = await appPool.connect()
       await client.query("SET ROLE weyver_app")

@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
 import { createDrizzle } from "../src/db/db.module.js"
@@ -9,6 +9,7 @@ import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 追溯稽核|欄位級權限的**旁路**洩漏。
 
@@ -43,7 +44,7 @@ function limitedPerms(): EffectivePermissions {
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
   tenantId =

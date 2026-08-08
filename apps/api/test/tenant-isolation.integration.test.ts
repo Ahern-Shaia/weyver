@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { Knex } from "knex"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import {
   type DrizzleDb,
@@ -17,6 +17,7 @@ import { listQuerySchema } from "../src/form-engine/records/record-specs.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 const ACTOR = 1
 
@@ -35,7 +36,7 @@ let contentColumn = ""
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  adminPool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  adminPool = testPool(container.getConnectionUri(), 5)
   await runMigrations(adminPool)
 
   // 部署模式:LOGIN 使用者掛進 weyver_app group role(migration 0003 已建 + grants)

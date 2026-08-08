@@ -2,10 +2,11 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { SchedulerRegistry } from "@nestjs/schedule"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 F-9 §4.1|排程註冊次數。
 
@@ -52,7 +53,7 @@ let app: NestFastifyApplication
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 4 })
+  pool = testPool(container.getConnectionUri(), 4)
   await runMigrations(pool)
 
   process.env.DATABASE_URL = container.getConnectionUri()

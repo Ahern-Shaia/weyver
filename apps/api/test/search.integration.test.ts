@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import knexFactory, { type Knex } from "knex"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
@@ -15,6 +15,7 @@ import { SearchBackfillService } from "../src/search/search-backfill.service.js"
 import { SearchIndexService } from "../src/search/search-index.service.js"
 import { SearchService } from "../src/search/search.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·H-3|跨表全文搜尋。本檔專攻兩條 P0 與繁中的實際行為。
 
@@ -36,7 +37,7 @@ const FIELDS = [
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const url = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: url })
+  pool = testPool(url)
   await runMigrations(pool)
 
   /* app 車道角色 —— RLS 只對非 owner 生效,用 owner 連線測等於沒測

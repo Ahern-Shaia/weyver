@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { Knex } from "knex"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -15,6 +15,7 @@ import { EventService } from "../src/integrations/event.service.js"
 import { WebhookDeliveryService } from "../src/integrations/webhook-delivery.service.js"
 import { WebhookService } from "../src/integrations/webhook.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 G-1 整合測。三件事在這裡被釘死:
    1. **事件與資料同一 tx** —— rollback 時兩者都不留
@@ -38,7 +39,7 @@ let tenantB = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const rows = await db
@@ -59,7 +60,7 @@ beforeAll(async () => {
   uri.password = "app_login"
   const appKnex = createDdlKnex(uri.toString())
   destroyers.push(() => appKnex.destroy())
-  const appPool = new pg.Pool({ connectionString: uri.toString(), max: 5 })
+  const appPool = testPool(uri.toString(), 5)
   destroyers.push(() => appPool.end())
   const appDb = createDrizzle(appPool)
 

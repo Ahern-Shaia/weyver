@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { Knex } from "knex"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -13,6 +13,7 @@ import { TrashPurgeService } from "../src/form-engine/trash/trash-purge.service.
 import { TrashService } from "../src/form-engine/trash/trash.service.js"
 import { SearchIndexService } from "../src/search/search-index.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 H-2 回收桶。三個東西在這裡被釘死:
    1. **列表走 app 車道** —— 本 session 已四度踩到「服務/測試用特權連線 → 權限被遮住」。
@@ -38,7 +39,7 @@ const configStub = { get: () => undefined } as never
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const rows = await db
@@ -62,7 +63,7 @@ beforeAll(async () => {
 
   /* 🔴 TrashService 一律拿 **app 車道** 的 drizzle。用特權連線的話,
      跨租戶洩漏的測試會綠給你看,但線上會漏。 */
-  const appPool = new pg.Pool({ connectionString: uri.toString(), max: 5 })
+  const appPool = testPool(uri.toString(), 5)
   destroyers.push(() => appPool.end())
   const appDb = createDrizzle(appPool)
   trash = new TrashService(new TenantDb(appDb), db)

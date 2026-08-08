@@ -1,7 +1,7 @@
 import { type ExecutionContext, ForbiddenException } from "@nestjs/common"
 import { Reflector } from "@nestjs/core"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { RequiresFormAction, SelfService } from "../src/authz/authz-http.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
@@ -12,6 +12,7 @@ import { runMigrations } from "../src/db/migrate.js"
 import { formDefs, tenants, users } from "../src/db/schema.js"
 import type { TenantContext } from "../src/http/tenant-context.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -58,7 +59,7 @@ const tc = (tenantId: number, actorId: number): TenantContext => ({ tenantId, ac
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  pool = testPool(container.getConnectionUri(), 5)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const repo = new AuthzRepository(db, new TenantDb(db))

@@ -1,10 +1,11 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
 import { authenticator } from "otplib"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type Auth, createAuth } from "../src/auth/auth.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -52,7 +53,7 @@ async function enroll(email: string): Promise<{ secret: string; backupCodes: rea
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   auth = createAuth(pool, "test-secret-0123456789abcdef")
   const { runMigrations } = await getMigrations(auth.options)
   await runMigrations()

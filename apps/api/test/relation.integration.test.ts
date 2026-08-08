@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { eq } from "drizzle-orm"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -16,6 +16,7 @@ import { RecordService } from "../src/form-engine/records/record.service.js"
 import { RelationService } from "../src/form-engine/relations/relation.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 const ACTOR = 1
 
@@ -31,7 +32,7 @@ let supplierRecId = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const rows = await db

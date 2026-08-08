@@ -34,6 +34,29 @@ export function createDrizzle(pool: pg.Pool): DrizzleDb {
   return drizzle(pool, { schema })
 }
 
+/* 🔴 2026-08-08|**`pg.Pool` 一定要掛 `'error'`,否則閒置連線出錯會掀掉整個 process。**
+
+   `Pool` 是 EventEmitter,而 Node 對沒有監聽者的 `'error'` 事件的語意是**丟出去** ——
+   那不是 rejection(await 不到),是 **uncaught exception**。
+   打到閒置連線的錯誤沒有任何 `await` 接得住它。
+
+   會發生的場合不是假想:Cloud SQL 維護重啟 / failover / `pg_terminate_backend` /
+   網路抖動,全都對閒置連線送 FATAL。**現況是 API 整個掛掉。**
+
+   ⚠️ 這條是追 CI 的 `57P01`(admin_shutdown,測試容器關閉)追出來的 ——
+   症狀在測試,缺口在 prod。追「是哪個測試檔漏關連線」花了五次都是假線索,
+   而 vitest 自己就寫著「這不代表錯誤是這個檔造成的」:平行 worker 下
+   uncaught exception 歸給當時活著的檔,**檔名這條軸從一開始就是錯的**。
+
+   不吞錯:記 log。pg 會自己把壞掉的 client 踢出池子,行程要活著。 */
+function poolWithErrorGuard(pool: pg.Pool, lane: string): pg.Pool {
+  const logger = new Logger("PgPool")
+  pool.on("error", (err) => {
+    logger.error(`${lane} 車道閒置連線錯誤(已由連線池汰除,行程續行):${String(err)}`)
+  })
+  return pool
+}
+
 export function createDdlKnex(connectionString: string): Knex {
   return knex({ client: "pg", connection: connectionString, pool: { min: 0, max: 3 } })
 }
@@ -125,7 +148,10 @@ class DbLifecycle implements OnModuleInit, OnModuleDestroy {
     {
       provide: PG_POOL,
       useFactory: (config: ConfigService): pg.Pool =>
-        new pg.Pool({ connectionString: config.getOrThrow<string>("DATABASE_URL"), max: 10 }),
+        poolWithErrorGuard(
+          new pg.Pool({ connectionString: config.getOrThrow<string>("DATABASE_URL"), max: 10 }),
+          "特權",
+        ),
       inject: [ConfigService],
     },
     {
@@ -136,7 +162,10 @@ class DbLifecycle implements OnModuleInit, OnModuleDestroy {
     {
       provide: APP_PG_POOL,
       useFactory: (config: ConfigService): pg.Pool =>
-        new pg.Pool({ connectionString: config.getOrThrow<string>("APP_DATABASE_URL"), max: 10 }),
+        poolWithErrorGuard(
+          new pg.Pool({ connectionString: config.getOrThrow<string>("APP_DATABASE_URL"), max: 10 }),
+          "app",
+        ),
       inject: [ConfigService],
     },
     {

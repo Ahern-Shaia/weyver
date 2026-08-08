@@ -1,12 +1,13 @@
 import type { ConfigService } from "@nestjs/config"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { ChannelConfigService } from "../src/notifications/channel-config.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·A-1 M4|通道連接設定。本檔釘住的都是**出事才會發現**的性質:
    憑證不進回應、DB 裡不是明文、跨租戶讀不到、以及「未填 = 不動」。 */
@@ -26,7 +27,7 @@ const WEBHOOK = "https://hooks.slack.com/services/EXAMPLE-NOT-A-REAL-WEBHOOK"
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   const db = createDrizzle(pool)
 
@@ -50,7 +51,7 @@ beforeAll(async () => {
   const appUri = new URL(container.getConnectionUri())
   appUri.username = "app_login"
   appUri.password = "app_login"
-  appPool = new pg.Pool({ connectionString: appUri.toString() })
+  appPool = testPool(appUri.toString())
 
   const config = {
     get: (key: string) => (key === "WEYVER_SECRET_KEK" ? KEK : undefined),

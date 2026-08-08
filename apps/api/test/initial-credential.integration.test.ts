@@ -1,11 +1,12 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
 import { mustChangePassword } from "../src/auth/initial-credential.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 OQ-SC-16=A|初始密碼不得成為長期密碼(ASVS 5.0.0 §V6.4.1 逐字:
    「expire after a short period of time **or** after they are initially used」+
@@ -22,7 +23,7 @@ const PW = "Rk7-vLm2-Qz9x-Tp4"
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   auth = createAuth(pool, "test-secret-0123456789abcdef")
   const m = await getMigrations(auth.options)

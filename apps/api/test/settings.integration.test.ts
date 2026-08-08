@@ -1,11 +1,12 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { SettingsService } from "../src/settings/settings.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·A-1 M1|設定中心。本檔專攻三件事:
 
@@ -33,7 +34,7 @@ let bob = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   db = createDrizzle(pool)
 
@@ -62,7 +63,7 @@ beforeAll(async () => {
   const appUri = new URL(container.getConnectionUri())
   appUri.username = "app_login"
   appUri.password = "app_login"
-  appPool = new pg.Pool({ connectionString: appUri.toString() })
+  appPool = testPool(appUri.toString())
   settings = new SettingsService(new TenantDb(createDrizzle(appPool)))
 }, 180_000)
 

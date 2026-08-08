@@ -1,12 +1,13 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
 import { hasMfaEnabled, tenantRequiresMfa } from "../src/auth/mfa-gate.js"
 import { countTrustedDevicesFor, revokeTrustedDevicesFor } from "../src/auth/trusted-device.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 #112|租戶強制 2FA + 信任裝置。
 
@@ -26,7 +27,7 @@ const PW = "Rk7-vLm2-Qz9x-Tp4"
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   auth = createAuth(pool, "test-secret-0123456789abcdef")
   const m = await getMigrations(auth.options)

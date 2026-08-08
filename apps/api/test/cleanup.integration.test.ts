@@ -4,13 +4,14 @@ import { join } from "node:path"
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import type { CleanupService } from "../src/reliability/cleanup.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* F-6 M4|排程清理。覆蓋 core FMEA C2(孤兒 pending form)+ file-storage S6(孤兒檔實體回收)
    + 冪等 key 逾期清除;並驗保守時間窗(未逾時者不動,FMEA L4)。 */
@@ -49,7 +50,7 @@ async function uploadFile(): Promise<string> {
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
   const rows = await db

@@ -2,12 +2,13 @@ import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fa
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { Auth } from "../src/auth/auth.js"
 import { AUTH } from "../src/auth/auth.tokens.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -65,7 +66,7 @@ const names = (res: { json: () => unknown }): string[] =>
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
 
   // prod 模式 → TenantGuard 分派至真實 AuthGuard(非 dev header)

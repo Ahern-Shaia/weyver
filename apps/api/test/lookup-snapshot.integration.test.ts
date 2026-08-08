@@ -1,5 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -10,6 +10,7 @@ import { RecordService, SOURCE_DELETED } from "../src/form-engine/records/record
 import { RelookupService } from "../src/form-engine/relations/relookup.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 追溯稽核 #113|lookup 全部是 live → 主檔一改,去年的舊單據顯示內容被**靜默**改寫。
    深研見 field-types-parity.md §0-ter A。決定性論點是失敗不對稱:
@@ -28,7 +29,7 @@ let tenantA = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const rows = await db

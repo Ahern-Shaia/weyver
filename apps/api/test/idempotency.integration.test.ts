@@ -1,12 +1,13 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* F-6 M1|冪等性攔截器。覆蓋 FMEA L2(跨租戶同 key 不互通)· L3(逾期可再用)
    + 重放不重複建記錄 / 同 key 不同 body 422 / 併發 409 / 失敗後可重試。 */
@@ -42,7 +43,7 @@ const countRecords = async (headers: Record<string, string>): Promise<number> =>
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
   const rows = await db

@@ -1,5 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { EffectivePermissions } from "../src/authz/authz-effective.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
@@ -8,12 +8,13 @@ import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/d
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants } from "../src/db/schema.js"
 import { AccessPreviewService } from "../src/form-engine/access/access-preview.service.js"
-import { LinkOptionsService } from "../src/form-engine/relations/link-options.service.js"
 import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { RecordService } from "../src/form-engine/records/record.service.js"
+import { LinkOptionsService } from "../src/form-engine/relations/link-options.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 #96 E-1 記錄範圍。強制點在 `AS RESTRICTIVE` RLS policy(OQ-DP-7=B)——
    實測與應用層注入執行計畫相同,但語意恆為 AND:使用者篩選的 OR 逃不出去,
@@ -35,7 +36,7 @@ let tenantA = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 8 })
+  pool = testPool(container.getConnectionUri(), 8)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const rows = await db

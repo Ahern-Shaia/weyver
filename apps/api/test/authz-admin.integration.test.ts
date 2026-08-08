@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzAdminService } from "../src/authz/authz-admin.service.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
@@ -8,6 +8,7 @@ import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { fieldDefs, formDefs, tenants, users } from "../src/db/schema.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 let container: StartedPostgreSqlContainer
 let pool: pg.Pool
@@ -27,7 +28,7 @@ function need<T>(v: T | undefined | null, m: string): T {
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  pool = testPool(container.getConnectionUri(), 5)
   await runMigrations(pool)
   db = createDrizzle(pool)
   repo = new AuthzRepository(db, new TenantDb(db))

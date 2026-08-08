@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { createDrizzle } from "../src/db/db.module.js"
@@ -11,6 +11,7 @@ import { PDF_RENDERER } from "../src/pdf/pdf-renderer.js"
 import { PdfWorkerService } from "../src/pdf/pdf-worker.service.js"
 import { STORAGE_DRIVER, type StorageDriver } from "../src/storage/storage-driver.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·後續-2b|伺服器端 PDF(`docs/modules/R1/server-pdf.md`)。
 
@@ -45,7 +46,7 @@ const ADMIN = (): Record<string, string> => ({ ...A(), "x-dev-actor": String(adm
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  pool = testPool(container.getConnectionUri(), 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
   const rows = await db

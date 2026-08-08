@@ -1,13 +1,14 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* R1·workbench-uplift M1|A5 後端小端點:users lookup(OQ-RWB-7=A)+ 反向關聯(OQ-RWB-4=B)。
    重點斷言:跨租戶不外洩(users lookup 只回同租戶成員)、無權來源表之關聯整組不回。 */
@@ -30,7 +31,7 @@ const B = (): Record<string, string> => ({ "x-dev-tenant": String(tenantB), "x-d
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
   const uri = container.getConnectionUri()
-  pool = new pg.Pool({ connectionString: uri, max: 5 })
+  pool = testPool(uri, 5)
   await runMigrations(pool)
   db = createDrizzle(pool)
   const trows = await db

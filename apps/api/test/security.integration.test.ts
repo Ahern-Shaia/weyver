@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { getMigrations } from "better-auth/db/migration"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { createAuth } from "../src/auth/auth.js"
 import { type DrizzleDb, createDrizzle } from "../src/db/db.module.js"
@@ -12,6 +12,7 @@ import {
   describeUserAgent,
 } from "../src/security/security.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·A-1 M3|帳號安全。本檔釘住三條由研究直接推導的性質:
 
@@ -33,7 +34,7 @@ const AUTH_ID = "auth-sec-user"
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   /* Better Auth 自管 schema(user / session / account / organization / member)
      由它自己的 migration 建立,不在我們的 drizzle migration 裡 —— 承 mfa 測試同法。 */
@@ -83,7 +84,7 @@ beforeAll(async () => {
   const appUri = new URL(container.getConnectionUri())
   appUri.username = "app_login"
   appUri.password = "app_login"
-  appPool = new pg.Pool({ connectionString: appUri.toString() })
+  appPool = testPool(appUri.toString())
 
   security = new SecurityService(db)
 }, 180_000)

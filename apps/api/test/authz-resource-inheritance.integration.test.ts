@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { eq } from "drizzle-orm"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
 import { PermissionService } from "../src/authz/permission.service.js"
@@ -8,6 +8,7 @@ import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { formDefs, tenants, users } from "../src/db/schema.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* P0-4a·uplift M1|資源軸繼承資料層(分類 / 分類授權 / 表單 metadata / 租戶預設 profile)。 */
 
@@ -35,7 +36,7 @@ async function insertForm(tenantId: number, name: string, createdBy?: number): P
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  pool = testPool(container.getConnectionUri(), 5)
   await runMigrations(pool)
   db = createDrizzle(pool)
   repo = new AuthzRepository(db, new TenantDb(db))

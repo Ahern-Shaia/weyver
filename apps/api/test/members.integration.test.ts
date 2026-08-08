@@ -1,5 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -11,6 +11,7 @@ import {
 } from "../src/members/initial-password.js"
 import { MemberService } from "../src/members/member.service.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·A-1 M2|使用者管理。本檔釘住三條**研究得到的規格**與一條多租戶語意:
 
@@ -32,7 +33,7 @@ let bob = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   db = createDrizzle(pool)
 
@@ -59,7 +60,7 @@ beforeAll(async () => {
   const appUri = new URL(container.getConnectionUri())
   appUri.username = "app_login"
   appUri.password = "app_login"
-  appPool = new pg.Pool({ connectionString: appUri.toString() })
+  appPool = testPool(appUri.toString())
 
   /* 承 settings 那次的教訓:租戶範疇一律走 app 車道,否則 grant 與 RLS 都不執法 */
   members = new MemberService(new TenantDb(createDrizzle(appPool)), db)

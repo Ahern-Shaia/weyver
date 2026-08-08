@@ -1,6 +1,6 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { and, eq, isNull } from "drizzle-orm"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { type DrizzleDb, TenantDb, createDdlKnex, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
@@ -9,6 +9,7 @@ import { DdlService } from "../src/form-engine/ddl/ddl.service.js"
 import { MetadataService } from "../src/form-engine/metadata/metadata.service.js"
 import { createFormSpecSchema } from "../src/form-engine/specs/form-specs.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* F-6 M3|metadata 車道 RLS 兜底(form-engine-core FMEA T4)。
 
@@ -30,7 +31,7 @@ let formA = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  adminPool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  adminPool = testPool(container.getConnectionUri(), 5)
   await runMigrations(adminPool)
   await adminPool.query(
     `CREATE ROLE app_login LOGIN PASSWORD 'app_login' NOSUPERUSER NOBYPASSRLS; GRANT weyver_app TO app_login`,
@@ -47,7 +48,7 @@ beforeAll(async () => {
   const uri = new URL(container.getConnectionUri())
   uri.username = "app_login"
   uri.password = "app_login"
-  appPool = new pg.Pool({ connectionString: uri.toString(), max: 5 })
+  appPool = testPool(uri.toString(), 5)
   appTenantDb = new TenantDb(createDrizzle(appPool))
   metadataViaApp = new MetadataService(adminDb, appTenantDb)
 

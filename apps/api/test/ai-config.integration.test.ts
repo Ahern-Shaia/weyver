@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify"
 import { Test } from "@nestjs/testing"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { AiConfigService } from "../src/ai/ai-config.service.js"
 import { AuthzRepository } from "../src/authz/authz.repository.js"
@@ -9,6 +9,7 @@ import { createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 /* 🔴 R1·AI-1 M1|AI 設定(`docs/modules/R1/ai-assist.md`)。
 
@@ -38,7 +39,7 @@ const B = (): Record<string, string> => ({ ...A(), "x-dev-tenant": String(tenant
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 5 })
+  pool = testPool(container.getConnectionUri(), 5)
   await runMigrations(pool)
   const db = createDrizzle(pool)
   const rows = await db

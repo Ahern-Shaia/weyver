@@ -1,13 +1,14 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql"
-import pg from "pg"
+import type pg from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { TenantDb, createDrizzle } from "../src/db/db.module.js"
 import { runMigrations } from "../src/db/migrate.js"
 import { tenants, users } from "../src/db/schema.js"
 import { ExportRepository } from "../src/export/export.repository.js"
 import { PG_TEST_IMAGE } from "./pg-image.js"
+import { testPool } from "./pg-pool.js"
 
 const run = promisify(execFile)
 
@@ -33,7 +34,7 @@ let actorB = 0
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer(PG_TEST_IMAGE).start()
-  pool = new pg.Pool({ connectionString: container.getConnectionUri() })
+  pool = testPool(container.getConnectionUri())
   await runMigrations(pool)
   const db = createDrizzle(pool)
 
@@ -61,7 +62,7 @@ beforeAll(async () => {
   const appUri = new URL(container.getConnectionUri())
   appUri.username = "app_login"
   appUri.password = "app_login"
-  appPool = new pg.Pool({ connectionString: appUri.toString() })
+  appPool = testPool(appUri.toString())
 
   /* repo 的兩條車道刻意用**不同連線**:特權(worker)走 pool、app 走 appPool */
   repo = new ExportRepository(db, new TenantDb(createDrizzle(appPool)))
