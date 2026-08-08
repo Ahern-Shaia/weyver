@@ -84,6 +84,7 @@
 | [R2 命門] 語意計算綁定層(自由表單 ↔ 算) | — | · 零星引用 | 1 | — | [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
 | [R2·P0-6] 總帳 GL(複式簿記) | — | ⭐ 有一手依據 | 22 | — | [R2/gl.md](R2/gl.md) |
 | [R2·P0-7] K 進銷存與庫存估值 | — | ⭐ 有一手依據 | 13 | — | [R2/inventory.md](R2/inventory.md) |
+| [R2·P0-7/P1-D] L 生產(BOM / 工單 / 簡易 MRP / 委外加工) | — | ⭐ 有一手依據 | 15 | — | [R2/manufacturing.md](R2/manufacturing.md) |
 
 ## D. 明示豁免外部研究的模組(**逐條列出供稽核**)
 
