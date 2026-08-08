@@ -1024,8 +1024,17 @@ a:hover{text-decoration:underline;}
 
 /* 欄位面板 —— OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
    不做搜尋不做最近使用:位置固定,肌肉記憶才建立得起來。 */
-.fd-pal{width:186px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
+/* 🔴 260px = 與 `.ctx` 同寬。設計模式是**同一條軌換內容**,不是另外加一條 ——
+   位置與寬度不變、只有內容換掉,所以切進設計模式時畫面不跳。
+   依據:Ragic 官方逐字「在設計模式下,**左側面板**的『基本』下可以看到欄位種類」
+   —— 換內容而非加軌。⚠️ 我方產品的殼是 196px 導覽 + 178px 元件庫**兩條**,
+   但 weyver-v2 的導覽模型是「頂列=群組、.ctx=表單/檢視」,沒有圖示軌可收,
+   再加一條等於憑空多出第三層。量測:主體佔比 69%(docs/29 S4 要 ≥60%)。 */
+.fd-pal{width:260px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
   overflow-y:auto;padding:8px 8px 14px;}
+.palhd{display:flex;align-items:baseline;gap:6px;padding:2px 6px 8px;font-size:12px;
+  font-weight:600;color:var(--ink-2);}
+.palhd span{font-weight:400;font-size:11.5px;color:var(--ink-3);}
 .fd-pal .grp{display:flex;align-items:baseline;gap:5px;padding:9px 6px 4px;font-size:10.5px;
   font-weight:700;letter-spacing:.06em;color:var(--ink-4);text-transform:uppercase;}
 /* 群組限制寫在群組上,不是逐列標 —— 同一句話重複 4 次是雜訊 */
@@ -2158,6 +2167,8 @@ a:hover{text-decoration:underline;}
         <!-- OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
              不做搜尋、不做「最近使用」—— 位置固定,肌肉記憶才建立得起來。 -->
         <div class="fd-pal">
+          <!-- 這條軌剛剛還是表單樹,現在是元件庫 —— 換了就要講,否則使用者會以為東西不見了 -->
+          <div class="palhd">加入到這張表<span>採購單</span></div>
           <!-- ② 型別有 31 種(field-type-registry 實數),平鋪掃不完 -->
           <div class="fd-find">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
