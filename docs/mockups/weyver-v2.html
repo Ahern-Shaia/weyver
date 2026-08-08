@@ -79,7 +79,17 @@
   --shell-ink:#eaf0f7;
   --shell-ink-2:#a3bad3;
   --shell-ink-3:#7592b1;
-  --brand:#22568a;        /* 淺紙上的主色,對白底 7.0:1 */
+  --brand:#22568a;        /* 強調色:連結 · 選取 · 焦點 · 進行中。**不再當主按鈕填色** */
+
+  /* 🔴 G1(docs/39 步驟 1)|主要動作 = 近黑,不是品牌藍。
+     依據 `DESIGN-RULES.md`:「主要動作用近黑 #18181B,不是品牌藍(ERPNext)。
+     每個畫面只有一顆實心按鈕…比任何品牌藍都耐老,對比度保證,
+     而且『哪個是主動作』一眼可辨。」
+     **品牌藍當主按鈕是 Bootstrap / Tailwind 後台模板的胎記。**
+     值取自決策方自己的登入頁 `oklch(24% .02 260)` = #1a2029(略帶藍),
+     而不是規則的 #18181B —— 同一個東西,但用決策方已經選過的那個。 */
+  --action:#1a2029;
+  --action-h:#2c333e;
   --brand-h:#1a4471;
   --brand-t:#eaf1f8;      /* 主色極淡底,只給選取態 */
   --brand-l:#c3d5e8;
@@ -146,8 +156,8 @@ a:hover{text-decoration:underline;}
   border-radius:var(--r-ctl);font-size:12.5px;font-weight:500;border:1px solid transparent;
   transition:background .12s,border-color .12s;white-space:nowrap;}
 .btn svg{width:14px;height:14px;}
-.btn.pri{background:var(--brand);color:#fff;}
-.btn.pri:hover{background:var(--brand-h);}
+.btn.pri{background:var(--action);color:#fff;}
+.btn.pri:hover{background:var(--action-h);}
 .btn.sec{border-color:var(--line);color:var(--ink-2);background:var(--paper);}
 .btn.sec:hover{background:var(--paper-2);border-color:#bcc8d6;}
 .btn.gho{color:var(--ink-3);}
@@ -1897,7 +1907,11 @@ a:hover{text-decoration:underline;}
             <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>行事曆</button>
           </div>
           <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計表單</button>
-          <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>建立記錄</button>
+          <!-- 🔴 0 筆時工具列這顆降為次要 —— 它和空狀態的「建立第一筆」是**同一個動作**。
+               同一個畫面同一個動作出現兩顆實心,「哪個是主動作」就沒有答案了。
+               ⚠️ s-form 的兩顆(工具列 + 記錄抽屜)不算違反:參考的 grid.png 自己就是
+               「+ 新增訂單」配抽屜底的「核准並出貨」—— 那是兩個**不同區域的不同動作**。 -->
+          <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>建立記錄</button>
         </div>
 
         <!-- 🔴 **沒有資料時不畫空網格。**
