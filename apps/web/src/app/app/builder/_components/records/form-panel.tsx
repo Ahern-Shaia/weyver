@@ -68,6 +68,8 @@ export function RecordFormPanel({ formId }: { formId: number }) {
   const [lines, setLines] = useState<LineDraft[]>([])
   const [error, setError] = useState<string | null>(null)
   const [savedNo, setSavedNo] = useState<string | null>(null)
+  /* 必填未填時,除了訊息還要標出**是哪一格**。`lineKey: null` = 主檔欄位。 */
+  const [badField, setBadField] = useState<{ lineKey: string | null; name: string } | null>(null)
 
   /* 🔴 Hook 必須在任何 early return **之前**呼叫(Rules of Hooks)。
      子表列數/欄數於資料未到時為 0,不影響正確性;放到 return 之後會讓
@@ -90,13 +92,26 @@ export function RecordFormPanel({ formId }: { formId: number }) {
   const childFields = childQuery.data?.fields ?? []
   const pending = createRecord.isPending || saveWithLines.isPending
 
-  const set = (name: string, value: unknown) => setValues((prev) => ({ ...prev, [name]: value }))
+  /* 一動那格就撤掉標記 —— 紅框留著會變成「我明明填了它還在罵我」 */
+  const clearBad = (lineKey: string | null, name: string) => {
+    if (badField?.lineKey === lineKey && badField.name === name) {
+      setBadField(null)
+      setError(null)
+    }
+  }
+
+  const set = (name: string, value: unknown) => {
+    clearBad(null, name)
+    setValues((prev) => ({ ...prev, [name]: value }))
+  }
   const addLine = () => setLines((prev) => [...prev, { key: `l${lineSeq++}`, values: {} }])
   const removeLine = (key: string) => setLines((prev) => prev.filter((l) => l.key !== key))
-  const patchLine = (key: string, name: string, value: unknown) =>
+  const patchLine = (key: string, name: string, value: unknown) => {
+    clearBad(key, name)
     setLines((prev) =>
       prev.map((l) => (l.key === key ? { ...l, values: { ...l.values, [name]: value } } : l)),
     )
+  }
 
   const missingRequired = (
     fields: readonly FieldDto[],
@@ -135,19 +150,32 @@ export function RecordFormPanel({ formId }: { formId: number }) {
     setError(describeEngineError(e))
   }
 
+  /* 標出那一格並捲到看得見的位置。**只印名字不夠** —— 30 個欄位的表單
+     使用者得自己找,子表還要先數到第 12 行。 */
+  const flagMissing = (lineKey: string | null, name: string, message: string) => {
+    setError(message)
+    setBadField({ lineKey, name })
+    requestAnimationFrame(() => {
+      const el = document.querySelector("[data-invalid-field]")
+      el?.scrollIntoView({ block: "center", behavior: "smooth" })
+      el?.querySelector<HTMLElement>("input, select, textarea")?.focus()
+    })
+  }
+
   const submit = () => {
     const headerMissing = missingRequired(form.fields, values)
     if (headerMissing !== null) {
-      setError(`「${headerMissing}」為必填`)
+      flagMissing(null, headerMissing, `「${headerMissing}」為必填`)
       return
     }
     setError(null)
+    setBadField(null)
 
     if (hasChild && childForm !== null) {
       for (const [index, line] of lines.entries()) {
         const lineMissing = missingRequired(childFields, line.values)
         if (lineMissing !== null) {
-          setError(`第 ${index + 1} 行「${lineMissing}」為必填`)
+          flagMissing(line.key, lineMissing, `第 ${index + 1} 行「${lineMissing}」為必填`)
           return
         }
       }
@@ -217,18 +245,24 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                 )
               }
               return (
-                <FieldInput
-                  field={field}
-                  formId={formId}
-                  value={shown}
-                  onChange={(v) => set(field.name, v)}
-                  /* R1·LNK M2:連結欄選取當下把來源欄值帶進兄弟欄位 */
-                  onLoadMany={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
-                  /* 連動選項:同一筆的其他欄值 + 同表欄位清單(父欄的選項在它自己的 options 裡) */
-                  siblings={values}
-                  fields={form.fields}
-                  placeholder={placeholder}
-                />
+                <div
+                  data-invalid-field={
+                    badField?.lineKey === null && badField.name === field.name ? "" : undefined
+                  }
+                >
+                  <FieldInput
+                    field={field}
+                    formId={formId}
+                    value={shown}
+                    onChange={(v) => set(field.name, v)}
+                    /* R1·LNK M2:連結欄選取當下把來源欄值帶進兄弟欄位 */
+                    onLoadMany={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
+                    /* 連動選項:同一筆的其他欄值 + 同表欄位清單(父欄的選項在它自己的 options 裡) */
+                    siblings={values}
+                    fields={form.fields}
+                    placeholder={placeholder}
+                  />
+                </div>
               )
             }}
           />
@@ -290,6 +324,11 @@ export function RecordFormPanel({ formId }: { formId: number }) {
                             key={field.id}
                             role="gridcell"
                             {...grid.cellProps(index, colIndex)}
+                            data-invalid-field={
+                              badField?.lineKey === line.key && badField.name === field.name
+                                ? ""
+                                : undefined
+                            }
                             className="border-b border-l border-line-2 px-1.5 py-1 focus:outline-2 focus:outline-offset-[-2px] focus:outline-primary"
                           >
                             <FieldInput

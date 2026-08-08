@@ -59,7 +59,17 @@ test("建表 → 加欄 → 填單 → 檢視 → 子表(單一 golden path)", a
      整頁範圍的 `.first()` 對任何版面改動都是脆的,而且它壞掉時的症狀
      (「已儲存」沒出現)完全指不到真正的原因。 */
   const fill = page.locator("section").filter({ hasText: "填寫" }).last()
+
+  /* 🔴 2026-08-08 M3:必填未填時,除了訊息還要**標出是哪一格**。
+     先前只印一句「「供應商」為必填」,欄位本身毫無標記 —— 30 個欄位的表單
+     使用者得自己找。這裡先空按一次儲存,確認那一格被標且輸入後標記撤掉。 */
+  await page.getByRole("button", { name: "儲存" }).click()
+  await expect(page.getByText("「供應商」為必填")).toBeVisible()
+  const marked = page.locator("[data-invalid-field]")
+  await expect(marked).toHaveCount(1)
+
   await fill.getByRole("textbox").first().fill("鑫豐農產品") // 供應商(單號唯讀)
+  await expect(marked).toHaveCount(0) // 一動那格就撤掉,不會「填了還在罵」
   await page.getByRole("textbox", { name: "金額" }).fill("128400.0000")
   await page.getByRole("button", { name: "儲存" }).click()
   await expect(page.getByText(/已儲存:/)).toBeVisible()
