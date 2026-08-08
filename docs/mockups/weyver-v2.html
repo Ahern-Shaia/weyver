@@ -141,9 +141,19 @@
   /* 🔴 類別色 c1–c8(取自 tokens.css,統一去飽和 + 一致明度)。
      E 案「B+D 混合」用它給**型別分組**上色 —— 顏色回答「這是哪一類欄位」,
      不是每個圖示各自一色。 */
-  /* ⚠️ 冷色系已經很擠:c1 色相 210° 與 c6 196° 只差 14 度。
-     c2(靛)是排 31 型別時補的第 6 色 —— 分組色撐不撐得住 7 組,見 docs/39 §5.2。 */
-  --c1:#1f5f9e;--c2:#4a4c94;--c3:#6b46a8;--c4:#8f3a76;--c5:#0f6b6b;--c6:#1a6a86;
+  /* 🔴 這 8 色**逐字取自 prod 的 `tokens.css --color-c1..c8`**,不是自己配的。
+     ⚠️ 我 2026-08-08 下午為了湊第 6 個分組色自己發明過 `--c2:#4a4c94` ——
+     而 prod 早就有 `--color-c2:#4a4fa8`,其餘五色完全相同,只有我加的那個不一樣。
+     **站①(自家 repo)沒查就配色 = 蓋房子時會冒出兩套靛。** 已對齊。
+     prod 註解逐字:「統一去飽和 + 一致明度(字 ~L40% / 框 ~L82% / 底 ~L95%),
+     避免糖果色;章體恆含文字 → 色盲與黑白列印下資訊不失(FMEA C2)」。 */
+  --c1:#1f5f9e;--c2:#4a4fa8;--c3:#6b46a8;--c4:#8f3a76;
+  --c5:#0f6b6b;--c6:#1a6a86;--c7:#5e6b1f;--c8:#8a4b2a;
+  /* 章體的框與底(prod 同名 token 的 -line / -t) */
+  --c1-l:#c2d6e8;--c1-t:#eaf1f8;--c2-l:#ccceea;--c2-t:#eeeff9;
+  --c3-l:#d6cbe9;--c3-t:#f2edf9;--c4-l:#e3c8dc;--c4-t:#f7ecf3;
+  --c5-l:#bcdcdc;--c5-t:#e8f4f4;--c6-l:#c0dbe6;--c6-t:#e9f3f7;
+  --c7-l:#d5dcb8;--c7-t:#f0f3e4;--c8-l:#e2cbbd;--c8-t:#f7eee8;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
@@ -663,8 +673,19 @@ a:hover{text-decoration:underline;}
 .g td.bad .mk{display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;}
 .g td.bad .mk svg{width:11px;height:11px;}
 .g td .lk{color:var(--brand);}
+/* 🔴 選項章吃**資料層顏色**。顏色由建表者逐選項挑一次(`option-colors` 已 SHIPPED
+   2026-07-28),prod 的 `object-page.tsx:289/492` 與 `record-list.tsx` 都在用 ——
+   **mockup 之前畫成單一灰,是 mockup 落後於 prod,不是設計選擇**。
+   照舊稿重構會把這個已出貨的功能蓋掉,所以補上。
+   未設顏色的選項一律中性,**不臆測** —— 對齊 prod 註解「未設定一律 neutral」。 */
 .g td .opt{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:1px solid var(--line);
   background:var(--paper-2);border-radius:var(--r-chip);font-size:11px;color:var(--ink-2);}
+.g td .opt.t1{color:var(--c1);border-color:var(--c1-l);background:var(--c1-t);}
+.g td .opt.t2{color:var(--c2);border-color:var(--c2-l);background:var(--c2-t);}
+.g td .opt.t5{color:var(--c5);border-color:var(--c5-l);background:var(--c5-t);}
+.g td .opt.t6{color:var(--c6);border-color:var(--c6-l);background:var(--c6-t);}
+.g td .opt.t7{color:var(--c7);border-color:var(--c7-l);background:var(--c7-t);}
+.g td .opt.t8{color:var(--c8);border-color:var(--c8-l);background:var(--c8-t);}
 .g td .ck{width:14px;height:14px;border:1.5px solid #a8b6c6;border-radius:3px;display:inline-flex;
   align-items:center;justify-content:center;}
 .g td .ck.on{background:var(--ok);border-color:var(--ok);}
@@ -1577,7 +1598,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0847</a></td>
                 <td><a class="lk">裕豐農產行</a></td>
                 <td>去骨雞腿肉(冷藏)</td>
-                <td><span class="opt">冷藏 A</span></td>
+                <td><span class="opt t6">冷藏 A</span></td>
                 <td class="r">340.5</td>
                 <td class="r">168.00</td>
                 <td class="r ro">57,204</td>
@@ -1593,7 +1614,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0846</a></td>
                 <td><a class="lk">絕鮮實業</a></td>
                 <td>特級釀造醬油</td>
-                <td><span class="opt">常溫 B</span></td>
+                <td><span class="opt t7">常溫 B</span></td>
                 <td class="r">236</td>
                 <td class="r">63.20</td>
                 <td class="r ro">14,915</td>
@@ -1609,7 +1630,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0845</a></td>
                 <td><a class="lk">正大食材</a></td>
                 <td>真空包裝袋 25×35</td>
-                <td><span class="opt">耗材倉</span></td>
+                <td><span class="opt t8">耗材倉</span></td>
                 <td class="r rg e-tl">12,400</td>
                 <td class="r rg e-t">4.10</td>
                 <td class="r ro rg e-tr">50,840</td>
@@ -1625,7 +1646,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0844</a></td>
                 <td><a class="lk">永豐冷鏈</a></td>
                 <td>冷凍芒果丁 1kg</td>
-                <td><span class="opt">冷凍 B</span></td>
+                <td><span class="opt t1">冷凍 B</span></td>
                 <td class="r bad"><span class="mk"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>待確認</span></td>
                 <td class="r rg">1,120.00</td>
                 <td class="r ro rg e-r">100,800</td>
@@ -1641,7 +1662,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0843</a></td>
                 <td><a class="lk">裕豐農產行</a></td>
                 <td>凍鳳梨塊 500g</td>
-                <td><span class="opt">冷凍 A</span></td>
+                <td><span class="opt t1">冷凍 A</span></td>
                 <td class="r bad"><span class="mk"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>—</span></td>
                 <td class="r rg">288.46</td>
                 <td class="r ro rg e-r">75,000</td>
@@ -1657,7 +1678,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0842</a></td>
                 <td><a class="lk">永豐冷鏈</a></td>
                 <td>冷凍毛豆 1kg</td>
-                <td><span class="opt">冷凍 A</span></td>
+                <td><span class="opt t1">冷凍 A</span></td>
                 <td class="r rg e-bl">400</td>
                 <td class="r bad"><span class="mk"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>約 96</span></td>
                 <td class="r ro rg e-br">38,400</td>
@@ -1673,7 +1694,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0841</a></td>
                 <td><a class="lk">正大食材</a></td>
                 <td>冷凍青花菜 1kg</td>
-                <td><span class="opt">冷凍 B</span></td>
+                <td><span class="opt t1">冷凍 B</span></td>
                 <td class="r">180</td>
                 <td class="r">142.00</td>
                 <td class="r ro">25,560</td>
@@ -1689,7 +1710,7 @@ a:hover{text-decoration:underline;}
                 <td class="frz"><a class="lk">PO-2026-0840</a></td>
                 <td><a class="lk">絕鮮實業</a></td>
                 <td>糙米 20kg</td>
-                <td><span class="opt">常溫 A</span></td>
+                <td><span class="opt t7">常溫 A</span></td>
                 <td class="r">64</td>
                 <td class="r">880.00</td>
                 <td class="r ro">56,320</td>
