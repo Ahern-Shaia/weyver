@@ -4750,31 +4750,83 @@ const V3T={
   failed:['建置失敗','此表單建置失敗,無法編輯(見 API ddl_audit)。'],
   taken:['位置被佔用','那個位置已被其他欄位佔用。'],
 }
+/* 🔴 2026-08-08 重新設計|三個暫時態原本都是 `page.insertBefore(d, grid)` ——
+   直接插進文件流,實測**整頁 50 個元素被往下推**(加欄卡 129px、另兩個各 37px)。
+   而且三者的語彙互不相干:左緣 18 / 0 / 0、框 1px / 無 / 無、
+   內距 12·14 / 9·18 / 9·18、字級 13 / 12.5 / 12.5 —— 錯落、不一致、會位移,三項全中。
+
+   重新設計的原則|**三種暫時態是三種不同的東西,該對應到三種既有的承載器,
+   而不是各自新增一條帶。** v3 裡這三種承載器都已經存在:
+
+     · 加欄卡   = 要互動的表單 → **錨在畫布上緣的浮層**(overlay 是本專案唯一容許陰影處)
+     · 建置失敗 = 阻斷型的持續狀態 → **遮罩 + 置中說明**。它不是「一則訊息」,
+                  是「這張表不能編」,遮罩本身就把那件事說完了
+     · 位置被佔用 = 短暫的拒絕回饋 → **沿用畫面既有的 toast**(page.children[2],
+                  `position: fixed`、深色、已內建 opacity/transform 轉場)
+
+   三者共同點:**全部不佔文件流,零位移**。差異走承載器與語意色,不走版式。 */
 function v3Transient(k){
   document.querySelectorAll('[data-v3-t]').forEach(e=>e.remove())
   document.querySelectorAll('[data-v3-tbtn]').forEach(b=>
     b.classList.toggle('on',b.dataset.v3Tbtn===k))
-  if(!k)return
   const page=document.querySelector('#s-design .v3page'); if(!page)return
   const grid=page.children[1]
-  if(k==='addcard'){
+  /* 浮層要錨在畫布上,grid 必須是定位容器。還原時不必收回 ——
+     `position:relative` 對現有版面零影響,反覆切換也不會累積。 */
+  grid.style.position='relative'
+  if(!k)return
+
+  const mk=(css,html)=>{
     const d=document.createElement('div'); d.dataset.v3T='1'
-    d.style.cssText='flex:0 0 auto;margin:12px 18px 0;padding:12px 14px;border:1px solid oklch(0.58 0.15 240 / .45);background:oklch(0.97 0.02 240);'
-    d.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">'
+    d.style.cssText=css; d.innerHTML=html; return d
+  }
+
+  if(k==='addcard'){
+    /* 錨在畫布欄上緣、置中於畫布(不是整頁)—— 它講的是「這張表要加什麼欄」,
+       不是全域通知,所以不該橫跨側欄與右欄。 */
+    const d=mk('position:absolute;z-index:20;top:12px;left:50%;transform:translateX(-50%);'
+      +'width:min(420px,60%);padding:12px 14px;border:1px solid oklch(0.58 0.15 240 /.45);'
+      +'background:oklch(0.99 0.002 260);box-shadow:oklch(0.24 0.02 260 /.28) 0 10px 26px -8px;',
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">'
       +'<b style="font-size:12.5px;color:oklch(0.42 0.13 240)">加入自動編號欄位</b>'
       +'<span style="margin-left:auto;display:flex;gap:7px">'
       +'<button style="height:27px;padding:0 11px;border:1px solid oklch(0.24 0.02 260 /.18);background:#fff;font-family:inherit;font-size:12px">取消</button>'
       +'<button style="height:27px;padding:0 11px;border:0;background:oklch(0.24 0.02 260);color:#fff;font-family:inherit;font-size:12px;font-weight:600">加入</button></span></div>'
       +'<input placeholder="欄位名稱" style="width:100%;height:29px;padding:0 9px;border:1px solid oklch(0.24 0.02 260 /.18);background:#fff;font-family:inherit;font-size:12.5px">'
-      +'<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:oklch(0.45 0.015 260)"><input type="checkbox">必填</label>'
-    page.insertBefore(d,grid)
+      +'<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:oklch(0.45 0.015 260)"><input type="checkbox">必填</label>')
+    grid.appendChild(d)
+
+  }else if(k==='failed'){
+    /* 遮罩蓋住整個工作列(含元件庫與右欄)—— 表建置失敗時,
+       加欄與改欄都做不了,只蓋畫布會讓另外兩欄看起來還能用。
+       頂列不蓋:使用者仍要能離開這張表。
+       說明卡用紅框但不用紅底 —— 整片紅對一個持續狀態太吵。 */
+    const d=mk('position:absolute;z-index:20;inset:0;display:flex;align-items:center;'
+      +'justify-content:center;background:oklch(0.96 0.004 260 /.72);backdrop-filter:blur(1px);',
+      '<div style="max-width:360px;padding:14px 16px;border:1px solid oklch(0.48 0.17 25 /.4);'
+      +'background:oklch(0.99 0.002 260);box-shadow:oklch(0.24 0.02 260 /.22) 0 10px 26px -8px">'
+      +'<b style="display:block;font-size:12.5px;color:oklch(0.48 0.17 25);margin-bottom:5px">此表單建置失敗,無法編輯</b>'
+      +'<span style="font-size:12.5px;color:oklch(0.45 0.015 260)">建表時的 DDL 未完成。失敗原因記在 <span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px">ddl_audit</span>,修好後才能繼續設計。</span></div>')
+    grid.appendChild(d)
+
   }else{
-    const [t,msg]=V3T[k]
-    const d=document.createElement('div'); d.dataset.v3T='1'
-    const er=k==='failed'
-    d.style.cssText=`flex:0 0 auto;padding:9px 18px;font-size:12.5px;border-bottom:1px solid ${er?'oklch(0.84 0.07 25)':'oklch(0.24 0.02 260 /.12)'};background:${er?'oklch(0.965 0.028 25)':'oklch(0.96 0.004 260)'};color:${er?'oklch(0.48 0.17 25)':'oklch(0.4 0.015 260)'}`
-    d.textContent=msg.replace(/\*\*/g,'')
-    page.insertBefore(d,grid)
+    /* 沿用既有 toast 的樣式 —— 短暫拒絕就該用畫面已經在用的那個東西,
+       不要為它再發明第四種帶。只把語意色換成錯誤紅的左緣。
+       ⚠️ 既有那顆是 `position:fixed`(貼視窗),這裡改成貼**工作區**:
+       toast 屬於工作區不屬於瀏覽器視窗;而且 fixed 會壓到 mockup 自己的
+       切換列上,那是框外 chrome,壓上去會讓 review 讀不清楚。 */
+    page.style.position='relative'
+    /* 🔴 **產品值是 `bottom:28px`**(v3 自己那顆 toast 就是 28px)。
+       這裡抬到 104px **只為了避開 mockup 自己的兩條切換列**(960-994 / 1010-1044)——
+       實測 28px 會讓 toast 夾在兩列之間,review 根本看不清楚。
+       ⚠️ 落地 prod 時用 28px,不要把這個 104 帶過去。 */
+    const d=mk('position:absolute;z-index:30;left:50%;bottom:104px;transform:translateX(-50%);'
+      +'display:flex;align-items:center;gap:14px;padding:11px 16px;'
+      +'background:oklch(0.2 0.015 260);color:oklch(0.99 0.002 260);font-size:13px;'
+      +'border-left:3px solid oklch(0.62 0.19 25);'
+      +'box-shadow:oklch(0.24 0.02 260 /.5) 0 12px 28px -10px;',
+      '那個位置已被其他欄位佔用。')
+    page.appendChild(d)
   }
 }
 document.querySelectorAll('[data-v3-tbtn]').forEach(b=>b.onclick=()=>v3Transient(b.dataset.v3Tbtn));
