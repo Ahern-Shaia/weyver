@@ -1,9 +1,9 @@
 # 主流 ERP 市場分析報告
 
 > **研究目的**|Weyver 定位為「Ragic 基底 + 結合主流 ERP 的多產業通用企業級平台」,需系統性理解主流 ERP 之完整功能範疇、模組結構、市場區隔,以支援 docs/04 J-Q 模組 spec 撰寫與競爭定位。
-> **研究範圍**|11 家主流 ERP:國際 Tier 1(5 家)+ Cloud SME(1 家)+ 中國本土(2 家)+ 台灣本土(2 家)+ 開源(1 家)。
+> **研究範圍**|12 家主流 ERP:國際 Tier 1(5 家)+ Cloud SME(1 家)+ 中國本土(2 家)+ 台灣本土(3 家,v2 補千奧)+ 開源(1 家)。
 > **研究方法**|公開資訊(廠商官網、Product Sheet、ERP Research、TEC、Gartner 摘要)。
-> **版本**|2026-07-16 v1
+> **版本**|2026-08-08 v2(台灣三家深掘 + AI 查證 + ERPNext 授權更正)· 2026-07-16 v1
 
 
 > 🔴 **2026-08-03 前提更正**|本文件多處以「**Weyver 路線 A = fork Odoo**」為前提撰寫,
@@ -55,8 +55,9 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 | **Cloud SME** | Zoho ERP / Katana / Cin7 | SMB / 小型製造 | Cloud only | 小型 SME |
 | **中國本土** | 用友 Yonyou(U8 / U9 / NC / YonSuite) | 通用 + 集團 | On-prem / Cloud | 中國 SMB → 大型集團 |
 | 中國本土 | 金蝶 Kingdee(K/3 Cloud / EAS / 星空) | 通用 + 集團 | Cloud + On-prem | 中國 SMB → 大型 |
-| **台灣本土** | 鼎新 TIPTOP GP / T100 / Workflow ERP | 通用 + 製造 | On-prem | 台灣 SMB → 中大型 |
-| 台灣本土 | 正航 ERP(T8 系列 / 一號 / 三號 / 五號 / 七號) | SMB 通用 | On-prem | 台灣中小企業 |
+| **台灣本土** | 鼎新 TIPTOP GP / T100 / Workflow ERP / Cosmos / SmartERP / A1 | 通用 + 製造 | On-prem + Cloud(A1 月租) | 台灣 SMB → 中大型 |
+| 台灣本土 | 正航 ERP(一號 / T357 / T8 / T9 / NBS) | SMB 通用 | On-prem | 台灣中小企業 |
+| 台灣本土(微型) | 千奧資訊(金卡 / ERP6) | 進銷存 / 會計 通用 | On-prem 單機 / 區網 C/S | 微型 / 小型企業(萬元級買斷) |
 | **開源 / Mid-market** | Odoo(Community + Enterprise) | 通用 + 製造 | Cloud + On-prem | SMB → 中型 |
 | 開源(次要) | ERPNext(Frappe) | SMB 通用 | Cloud + On-prem | 小型 SME、印度為主 |
 
@@ -164,39 +165,56 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 
 ### 3.7 鼎新 TIPTOP GP / T100(台灣本土龍頭)
 
-- **定位**|台灣本土 ERP 龍頭,涵蓋 SMB 到大型集團
-- **產品線**|
-  - **TIPTOP GP**|大型集團(跨國多據點、多語言、台灣保稅 + 大陸海關 特化)
-  - **T100**|next-gen 企業智慧雲平台,取代 GP
-  - **Workflow ERP**|中小型
-- **標準模組代碼**|三位字母代碼('a' = 台灣、'g' = 大陸、'c' = 客製化)
-- **主要模組**(部分)|
-  - **aap**(Accounts Payable)、**aar**(AR)、**agl**(GL)|財會
-  - **aim**(Inventory Management)|進銷存
-  - **apm**(Purchasing / Procurement)
-  - **atm**(Asset Management)
-  - **cbm**(Project Management)
-  - 其他:BOM / MRP / MPS / 品保 / 成本 / HR / 薪資 等 20+ 主模組
-- **TIPTOP GP 5.1+**|新增進階排程(可日 / 時級物料需求)
-- **市佔**|台灣 / 中國 / 東南亞市佔高、客戶滿意度高
-- **優勢**|台灣本地化(統一發票 / 電子發票 / 勞健保)、大量客戶樣本
-- **劣勢**|**技術棧偏老**(Genero / Informix 為主)、Cloud 轉型較慢、客製化需 4GL 工程師
-- **來源**|`digiwin.com.tw`
+> 🔄 **2026-08-08 v2 深掘更新**|產品線補 Cosmos / SmartERP / A1;AI 全線查證(推翻 v1 矩陣之 🟡 未查證狀態)。
+
+- **定位**|台灣本土 ERP 龍頭,涵蓋微型到大型集團
+- **產品線(2026-08-08 官方 ERP 總覽頁查證,五線並存、T100 未取代 GP)**|
+  - **T100**|集團型企業
+  - **Workflow ERP GP**|中大型製造業(TIPTOP GP 線;跨國多據點、多語言、台灣保稅 + 大陸海關特化)
+  - **Cosmos ERP**|中大型流通業
+  - **SmartERP**|中小型企業(官方冠名「專為中小企業打造的 AI ERP」)
+  - **A1 商務應用雲**|小微型企業,**月租 SaaS**(官方計費頁逐字:「每月600元起」「模組化月租方案,可依需求隨時加租所需模組」)
+- **標準模組代碼**|三位字母代碼('a' = 台灣、'g' = 大陸、'c' = 客製化);aap/aar/agl(財會)、aim(進銷存)、apm(採購)、atm(資產)、cbm(專案)等 20+ 主模組(官方公開頁未見此層級,屬實施文件層級)
+- **🔴 AI 功能(2026-08-08 查證:已全線鋪開,「鼎新無 AI」不成立)**|
+  - **AiGP 全產品線 AI 升級**|官方新聞逐字:「已率先將Smart ERP、Workflow ERP、Cosmos ERP等ERP系統,以及BPM、HRM、BI等系統,全面導入『數智員工』」;Workflow ERP AiGP「搭載**生單、文件總結、報表分析**三大AI助手」
+  - **Agent Space**(2026-06-23 官方發布)|「可治理、可協作、可追溯的AI代理運行環境」,接 ERP 數據 + Google Workspace / Gemini Enterprise
+  - **METIS ChatFile**|官方逐字:「文件解析技術,結合了微軟OpenAI的GPT生成式AI模型…用對話的方式從文件中快速找到解答」,RAG 建「企業GPT」,可串 BPM / HR / BI
+  - **雅典娜 Athena / Indepth AI**|大陸鼎捷主力 PaaS + 多智能體平台;台灣線以 METIS 對應
+- **食品業方案(有,官方產業特化頁)**|研發配方管理 / 效期與生產管理 / 品質管理,含批號追蹤、HACCP / 食安認證、清真認證;附案例(四海通食品批號追蹤等);方案依規模落 T100 / GP / SmartERP
+- **客製化自助能力**|TIPTOP 線客製須 Genero 4GL 工程師(第三方技轉教材,2010 年資料,現況待驗證);SmartERP 自製報表須**加購**報表產生器模組(第三方問答)。**終端使用者自己加欄位:官方未見此能力陳述(未查證,非確證沒有)**。⚠️ AiGP 生單 / 報表分析 AI 助手已部分繞過此限制 —— 對外措辭不可稱「鼎新改欄位一定要寫程式」
+- **市佔**|台灣 / 中國 / 東南亞市佔高、客戶樣本大
+- **優勢**|台灣本地化(電子發票 / 勞健保:A1 官方手冊有勞健保記帳教學 + 內建雲端電子發票)、產業方案齊、AI 布局積極
+- **劣勢**|TIPTOP/T100 線技術棧偏老(Genero / Informix)、客製化仍走工程師 / 顧問路徑(⚠️ 證據為第三方且偏舊,標中等強度)
+- **來源(查證日 2026-08-08)**|[ERP 總覽](https://www.digiwin.com.tw/ERP/erp-all.html) · [A1 計費](https://a1.digiwin.com/product/price.php) · [AiGP 數智員工](https://www.digiwin.com/tw/news/3551.html) · [Workflow ERP AiGP](https://www.digiwin.com.tw/software/WF/WF) · [SmartERP AI ERP](https://www.digiwin.com.tw/dsc/solution/WB002839/AISM) · [Agent Space](https://www.digiwin.com.tw/news/3640.html) · [METIS ChatFile](https://www.digiwin.com.tw/dsc/METIS/ChatFile/index) · [食品業方案](https://www.digiwin.com/tw/dsc/solution/WB002553/WB00255301_produce) · [TIPTOP 4GL 技轉(第三方)](https://magicliao.wordpress.com/2010/12/01/%E9%BC%8E%E6%96%B0-erp-%E6%8A%80%E8%BD%89%E8%AA%B2%E7%A8%8B%E4%B9%8B-tiptop-gp-%E7%A8%8B%E5%BC%8F%E9%96%8B%E7%99%BC/)
 
 ### 3.8 正航 ERP(台灣本土 SMB)
 
+> 🔄 **2026-08-08 v2 深掘更新**|v1 當日自記「覆蓋弱需補」,本版補齊;產品梯隊更名 + AI 查證(推翻 v1 矩陣之 🟡 未查證狀態)。
+
 - **定位**|台灣中小企業 ERP,樂高式模組化
-- **產品線**|正航一號 / 三號 / 五號 / 七號 / T8(從 SMB 微型到中型階梯)
-- **模組**|
-  - **財務管理**|多樣化財報、即時資金流向
-  - **進銷存管理**|採購 / 銷售 / 庫存 / 存貨積壓避免
-  - **生產管理**|製令 / 排程 / BOM / 製程回報
-  - **人事薪資**|自動計算薪資 + 考勤整合
-  - **電子發票與報稅**|台灣特化
-- **架構**|8 大循環為標準,依企業屬性由實務領域導入
-- **優勢**|SMB 價格 friendly、模組化選配、台灣本地化
+- **產品線(2026-08-08 查證;v1 記的「一號/三號/五號/七號/T8」已過時)**|
+  - **正航一號**|微型 / 新創,單機版(「單一家公司帳冊、單一倉庫與單一幣別」,經銷商 FAQ)
+  - **T357(三號/五號/七號 統稱 T 系列)**|中型製造 / 商貿(三/五/七各自差異官方台灣站未見逐一對照,未查證)
+  - **T8**|官方逐字:「正航T8工業ERP系統…萃取兩百多個標準化管理流程,高度適配製造業核心需求」,涵蓋研發 / 供應鏈 / 財務 / 生產製造 / 品質控制 / 人力資源
+  - **T9 / NBS**|大中型 / 集團平台(官方「正航雲打卡」App 說明列支援 T、T8、T9、NBS)
+  - **雲端**|有雲打卡 App;完整 SaaS 版 ERP 是否存在**未查證**
+- **模組級清單(官方頁)**|
+  - **財務**|帳款管理 / 應付(「多幣別付款沖帳」)/ 固定資產折舊報廢 / 票據
+  - **進銷存**|存貨 / 庫存管理;批號管理官方逐字:「監控每一批的流向與來源…依效期先進先出」
+  - **生產**|MRP 生產管理:「產品結構管理(BOM表)、廠內作業管理、**委外作業管理**、多工序生產」,製令產生到訂單完工入庫全程管控
+  - **人事薪資**|自動算「底薪、加班、獎金、請假扣款、勞健保、退休金」;「產生勞保局 EDI 格式上傳勞保局」完成加退保
+- **🔴 AI 功能(2026-08-08 查證:有兩款具名 AI,「正航無 AI」不成立)**|
+  - **正航智能客服助理**|官方逐字:「採用RAG技術,整合了正航系統操作、使用常見問題解答、產品說明等知識庫」
+  - **正航系統AI助理**|官方逐字:「利用微軟最新的Semantic Kernel技術,讓企業可以自行設定連接雲端或地端的LLM服務」「使用自然語言提示詞,快速查詢ERP系統中的資料」「**自動產生ERP表單**,例如請假單、費用報銷單等」「利用AI分析ERP資料,產生分析圖表」——⚠️ 與 Weyver 之 NL 查詢 / AI 產表直接重疊
+  - **AI 財務管家**|預測下一季營運 / 催收建議 / 需求預測(官方 blog)
+- **食品業方案(有,官方成型方案)**|官方逐字:「透過批號管理、生產履歷、食品履歷及品質管理機制…從原料進貨、生產加工到產品出貨的完整追溯體系」「向前追溯原料來源,向後追蹤產品流向」,效期到期預警;經銷商列「食品雲——非追不可 3.0 批號追溯」(對接衛福部非追不可)
+- **客製化自助能力**|報表「可依需求自訂格式」(官方);T357 支援銷售訂單等模組之「欄位更名、自訂欄位」+ FastReport 報表編輯器(第三方經銷商)。**終端使用者自建全新表單 / 資料庫:官方未見此宣稱(未查證)**,路徑仍是模組導入 + 經銷商 / 顧問
+- **電子發票**|官方:「從ERP轉出銷貨發票內容,上傳財政部電子發票整合服務平台或加值中心」;經銷商稱與財政部 Turnkey 整合
+- **定價**|一號買斷制:進銷存 4,280 / 進銷存+帳務 6,200 / 3 合 1 組合 7,980 元含稅(經銷商);T 系列 3–5 使用者約 35–45 萬(社群討論,非官方);官方公開定價頁**未查證**
+- **架構**|8 大循環為標準(官方站確認採用;完整 8 項逐字清單未查證)
+- **優勢**|SMB 價格 friendly、模組化選配、台灣本地化、食品追溯成型方案
 - **劣勢**|大型企業不足、Cloud 較弱、國際化限制
-- **來源**|`chi.com.tw`、`softwareic.com.tw`
+- **來源(查證日 2026-08-08)**|[官網](https://www.chi.com.tw/) · [T8](https://app.chi.com.tw/t8.html) · [MRP 生產管理](https://www.chi.com.tw/production) · [存貨](https://www.chi.com.tw/stock) · [應付/多幣別](https://www.chi.com.tw/accounts-payable/) · [AI 兩助理](https://www.chi.com.tw/blog/chi2aioffer) · [AI 財務管家](https://www.chi.com.tw/blog/chiaisdm) · [食品業方案](https://www.chi.com.tw/blog/poison-spowder) · [批號應用](https://www.chi.com.tw/blog/ferpbnta) · [電子發票](https://www.chi.com.tw/einvoice) · [勞健保 EDI](https://www.chi.com.tw/blog/hrmafc) · [卓爾 欄位自定義(第三方)](http://erp.join2.com.tw/info.asp?id=331) · [futako 定價(第三方)](https://www.futako.com.tw/stock/)
 
 ### 3.9 用友 Yonyou(U8 / NC / YonSuite,中國本土)
 
@@ -230,12 +248,28 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 
 ### 3.11 ERPNext(Frappe,開源)
 
-- **定位**|印度出身開源 ERP,MIT license,Frappe framework 底層
+- **定位**|印度出身開源 ERP,**GPL-3.0**(⚠️ v1 誤記「MIT」;2026-08-03 AGENTS.md §5-bis 複驗 LICENSE 檔本文為 GPL-3.0 → **只讀公開文件,不得讀原始碼**),Frappe framework 底層
 - **主要模組**|Accounting / Sales / Purchase / CRM / Manufacturing / HR / Payroll / Projects / Asset Management / Website / Portal / Wiki
 - **技術**|Python + MariaDB / Postgres + JavaScript
-- **優勢**|真正 MIT 開源、社群成長中、印度市場強
+- **優勢**|開源、社群成長中、印度市場強
 - **劣勢**|台灣使用者少、企業級功能不如 Odoo Enterprise、SI 生態薄
-- **來源**|`erpnext.com`
+- **來源**|`erpnext.com`(授權查證 2026-08-03,AGENTS.md §5-bis)
+
+### 3.12 千奧資訊(金卡 / ERP6,台灣微型)— 2026-08-08 v2 新增
+
+> **補研究緣由**|首波 pilot 客戶內部三套 ERP 之一(鼎新 / 千奧 / 正航),v1 完全缺席。
+> ⚠️ **撞名注意**|做 ERP 的是「千奧資訊有限公司」(kingcard.com.tw,「金卡」系列);公司登記另有「千奧有限公司」(統編 24251907,新北林口)**非同一家**。
+
+- **定位**|**萬元級 Windows 單機 / 區網買斷軟體商**,與鼎新 / 正航差距 1–2 個數量級
+- **公司**|台北市大安區;資本額 1,000 萬、員工 32 人(518 徵才頁,第三方);官方簡介逐字:「全心全意投注於『進銷存』、『會計財務』、『進出口貿易』、『電子商務』相關管理軟體的研發與改進」;成立年份查無公開資料
+- **產品線**|現行主力 **ERP6** 世代;版本階梯 實用 / 豪華 / 專業 / 企業 / 網路版(經銷商商品標題,第三方);官網有免費試用版 + YouTube 教學 + 每月課程
+- **模組(官網 ERP6 企業版功能頁)**|APP-B2B 銷售 / POS 銷售·餐廳 / IFRSs 會計 / 庫存盤點 / 財務分析 / 人資薪資 / 維修服務 / 進出口單據 / 成本管理 / 發票管理 / 雲端庫存查詢;**生產有獨立 MRP 頁**(官方逐字:「物料檔案建檔、工藝路線建檔、製程檔案建檔」「MPS預估、MPS執行、MRP預估、MRP執行」+ BOM / 工單 / 採購建議)
+- **電子發票**|官網僅見「發票管理」模組;**財政部電子發票平台整合與否未查證**
+- **技術架構**|Windows 桌面軟體、單機或區網 C/S(經銷商:「單機/網路版…win7 win8 win10」);雲端僅「雲端庫存查詢」附加功能,**非雲端 ERP**
+- **AI 功能**|**未查證**(已抓取之產品頁均未見;官網多頁 Big5 編碼未能全站確認,依鐵則不得寫「沒有」)
+- **定價(第三方比價)**|金卡實用版 NT$8,400 / 視窗企業版一號 NT$8,900 / 網路豪華版一號升 3 人 NT$18,900,**買斷制**
+- **對 Weyver 意義**|pilot 客戶用它大概率覆蓋簡單進銷存 / 會計場景;**遷移阻力低**(無雲端黏著、無訂閱綁定),但代表的競爭基準是「便宜、買斷、夠用」—— 取代訴求須勝過「已付清、還能用」的沉沒成本慣性
+- **來源(查證日 2026-08-08)**|[官網](https://www.kingcard.com.tw/) · [ERP6 企業版功能](https://www.kingcard.com.tw/index.php?page=product_stkerp6) · [MRP 功能頁](http://www.kingcard.com.tw/index.php?page=mrp_function) · [518 公司簡介(第三方)](https://www.518.com.tw/company-qzkp40.html) · [BigGo 比價(第三方)](https://biggo.com.tw/s/%E5%8D%83%E5%A5%A7%E9%80%B2%E9%8A%B7)
 
 ---
 
@@ -270,9 +304,11 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 | **電子發票(台灣)** | 🟡(需 add-on) | 🟡 | 🟡 | ❌ | 🟡 | 🟡 | ✅(母語) | ✅(母語) | ❌ | ❌ | ❌ |
 | **勞健保(台灣)** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅(母語) | ✅(母語) | ❌ | ❌ | ❌ |
 | **BI / 分析(內建)** | ✅ | ✅ | ✅ | ✅(Prism) | ✅ | ✅ | 🟡 | 🟡 | ✅ | ✅ | 🟡 |
-| **AI / ML** | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ❌ |
-| **開源 / 可 fork** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅(Community) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Cloud SaaS** | ✅ | ✅(原生) | ✅ | ✅(only) | ✅ | ✅ | 🟡(T100) | 🟡 | ✅(YonSuite) | ✅(K/3 Cloud) | ✅ |
+| **AI / ML** | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | **✅**(AiGP / Agent Space / ChatFile,2026-08-08 查證) | **✅**(RAG 客服 + Semantic Kernel 系統助理,2026-08-08 查證) | 🟡 | 🟡 | ❌ |
+| **開源 / 可 fork** | ❌ | ❌ | ❌ | ❌ | ❌ | 🟡(LGPL,我方不可 fork / 只讀文件) | ❌ | ❌ | ❌ | ❌ | 🟡(GPL-3.0,我方不可 fork / 只讀文件;v1 誤記 MIT) |
+| **Cloud SaaS** | ✅ | ✅(原生) | ✅ | ✅(only) | ✅ | ✅ | 🟡(A1 月租雲為小微線;主力 On-prem) | 🟡(雲打卡 App;SaaS 版 ERP 未查證) | ✅(YonSuite) | ✅(K/3 Cloud) | ✅ |
+
+> **千奧不入本矩陣**|其為萬元級單機 / 區網買斷軟體,與上列 vendor 非同一量級;能力見 §3.12(有 MRP / IFRSs 會計 / POS,無雲端 ERP,AI 未查證)。
 
 ---
 
@@ -318,11 +354,12 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 | Workday | **不直接競爭** | HCM/Fin 專業服務業客群 |
 | **SAP B1** | **⭐ 對接目標(Q 模組)** | v1.6 A1 假設之 3 家 pilot ERP 之一,SLD REST API 對接 |
 | **Odoo Enterprise** | **對照基準**(⚠️ 原記「路線 A fork 基礎」已失效)| **不 fork**;J–Q 全自研 TS,Odoo 僅作為功能對照與 domain 學習來源(限公開文件)|
-| **鼎新 TIPTOP GP / T100** | **⭐ 主要競爭 + Q 模組對接目標** | pipeline 17 家原客群、v1.6 Q 模組 pilot ERP 之一,DB view 對接 |
-| **正航 ERP** | **⭐ Q 模組對接目標** | v1.6 Q 模組 pilot ERP 之一,API 對接 |
+| **鼎新** | **⭐ 主要競爭(被取代對象)** | pilot 客戶現用三套 ERP 之一。⚠️ v2 更新:Q 對接角色已收斂(2026-07-17 決策|客戶放棄原 ERP,至多 onboarding 一次匯入);**AI 已全線鋪開(AiGP / Agent Space / ChatFile),不可再以「傳統 ERP 無 AI」為差異化** |
+| **正航 ERP** | **⭐ 主要競爭(被取代對象)** | pilot 客戶現用三套 ERP 之一;同上 Q 收斂。**已有 NL 查詢 / AI 產表單(Semantic Kernel),與 Weyver AI 功能直接重疊**;食品追溯為官方成型方案 |
+| **千奧(金卡 / ERP6)** | **被取代對象(低阻力)** | pilot 客戶現用三套 ERP 之一;萬元級單機買斷,無雲端黏著,遷移阻力最低,但須勝過「已付清、還能用」慣性 |
 | 用友 Yonyou | **未來擴散市場** | 若台灣客戶跨陸子公司,需支援 |
 | 金蝶 Kingdee | **未來擴散市場** | 同上 |
-| ERPNext | **參考 open source 模式** | Frappe framework 值得參考(比 Odoo 輕) |
+| ERPNext | **參考 open source 模式** | ⚠️ GPL-3.0 只讀公開文件(v1 誤記 MIT);功能對照與 domain 學習來源 |
 
 ### 6.2 Weyver 差異化 vs 主流 ERP
 
@@ -382,22 +419,26 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 - 參 Workday HCM(業界頂尖)為對標
 - v1.6 覆蓋員工主檔 + 排班 + 打卡 + 薪資 + 勞健保,進階 Recruiting / Talent / Learning 延 Phase 2
 
-### 6.4 建議 pilot 策略(呼應 v1.6 pipeline 17 家)
+### 6.4 pilot 策略(2026-08-08 v2 對齊現行定位)
 
-- **首波|食品 / 團膳 客戶**|多用鼎新 TIPTOP / 正航,Weyver 走「保留現有 ERP + Weyver 上層 Q 對帳 + Ragic 表單」漸進 upsell 路徑
-- **不推翻現有 ERP**|Q 模組定位為「上層整合而非取代」,降低導入摩擦
-- **中期 自建 ERP 替代**|若客戶願意換 ERP,提供 Weyver **全自研**的 ERP 核心(R2 計算層;⚠️ 原記「基於 Odoo fork」已失效)
+> ⚠️ v1 之「保留現有 ERP + 上層 Q 對帳、不推翻現有 ERP」已於 **2026-07-17 被推翻**(CLAUDE.md 架構主張|客戶放棄原 ERP,全面改用 Ragic 範式取代 ERP;Q 收斂為至多 onboarding 一次匯入)。
+
+- **首波|食品 / 團膳 客戶**|現用鼎新 / 千奧 / 正航;R1 先以完整 Ragic 平台 land(遷移既有 Ragic 表單),R2 以計算層補「算」後**全面取代** ERP
+- **Q 模組**|多 ERP 對帳角色收斂為 onboarding 一次性匯入(鼎新 DB view / 正航 API / 千奧單機資料檔),非長期並存整合
+- **取代論述注意**|三家現用 ERP 中兩家已有 AI(§3.7 / §3.8),對外措辭遵守 docs/30 §6:正面表述,不講「對手做不到」
 
 ---
 
 ## 7. 待補研究
 
-- [ ] 各廠商實際 pricing 詢價
-- [ ] 訪談既有鼎新 / 正航客戶痛點清單
-- [ ] Odoo Enterprise 授權模式 + 台灣 partner 生態(fork 時的授權疑慮)
-- [ ] SAP B1 SLD REST API 對接 spike(Weyver Q 模組 adapter 開發)
-- [ ] 鼎新 TIPTOP DB view / API 對接可行性(是否需鼎新授權)
+- [x] ~~鼎新 / 正航 AI 功能查證~~ → 2026-08-08 v2 完成(兩家皆有,見 §3.7 / §3.8;docs/17 教訓之「未查證」欠帳清掉兩家)
+- [x] ~~千奧 vendor 分析~~ → 2026-08-08 v2 新增 §3.12
+- [ ] 千奧 AI 功能 + 電子發票整合(官網 Big5 編碼未能全站確認,仍未查證)
+- [ ] 各廠商實際 pricing 詢價(千奧 / 正航一號已有第三方買斷價;鼎新 A1 有官方月租價;T 系列 / 中大型線仍缺)
+- [ ] 訪談既有鼎新 / 千奧 / 正航客戶痛點清單(pilot 客戶內部可直接訪)
+- [ ] 鼎新 TIPTOP DB view / 正航 API / 千奧單機資料檔 之 onboarding 一次性匯出格式(Q 收斂後的實際需求)
 - [ ] 電子發票 + 勞健保 本地化技術規格(政府 API 對接、大平台認證流程)
+- [ ] 鼎新 TIPTOP 客製化現況(4GL 證據為 2010 年第三方,現況待驗證)
 
 ---
 
@@ -409,8 +450,9 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 - Workday|`workday.com`(HCM + Financial Management)
 - SAP Business One|`sap.com/products/business-one.html`
 - Odoo|`odoo.com`
-- 鼎新 TIPTOP|`digiwin.com.tw`、`t100.digiwin.com`
-- 正航 ERP|`chi.com.tw`、`softwareic.com.tw`
+- 鼎新|`digiwin.com.tw`、`t100.digiwin.com`;v2 深掘來源(含 AiGP / Agent Space / ChatFile / A1 計費 / 食品業方案 官方頁)逐條列於 §3.7,查證日 2026-08-08
+- 正航 ERP|`chi.com.tw`、`softwareic.com.tw`;v2 深掘來源(含 AI 兩助理 / 食品業方案 / 電子發票 官方頁)逐條列於 §3.8,查證日 2026-08-08
+- 千奧資訊|`kingcard.com.tw`;v2 來源逐條列於 §3.12,查證日 2026-08-08
 - 用友 Yonyou|`u8.yonyou.com`、`yonyou.com`
 - 金蝶 Kingdee|`kingdee.com`、`m.kingdee.com`
 - ERPNext|`erpnext.com`
@@ -420,4 +462,5 @@ ERP 於 ISA-95 之 **Level 4(Business Planning & Logistics)**,對接 Level 3(MES
 
 ## 版本
 
+- **2026-08-08 v2**|台灣三家深掘 + AI 查證 + 授權更正。(a) **新增 §3.12 千奧資訊**(pilot 客戶三套 ERP 之一,v1 完全缺席;萬元級 Windows 單機買斷,與鼎新/正航不同量級)。(b) **§3.7 鼎新深掘**|產品線五線並存(T100 未取代 GP;補 Cosmos / SmartERP / A1 月租雲);**AI 已全線鋪開**(AiGP 生單·文件總結·報表分析三助手 / Agent Space / METIS ChatFile),清掉 docs/17 教訓之「鼎新 AI 未查證」欠帳;食品業官方特化方案(批號 / 效期 / HACCP)。(c) **§3.8 正航深掘**(v1 當日自記「覆蓋弱需補」)|產品梯隊更名 一號→T357→T8/T9→NBS;**兩款具名 AI**(RAG 客服 + Semantic Kernel 系統助理,可 NL 查詢 / AI 產表單,與 Weyver 直接重疊);食品追溯官方成型方案(含衛福部非追不可對接);委外作業 / 勞保 EDI / 電子發票 Turnkey 模組級補齊。(d) **§3.11 ERPNext 授權更正**|v1 誤記 MIT,實為 **GPL-3.0**(AGENTS.md §5-bis 2026-08-03 複驗)→ 只讀公開文件。(e) §4 矩陣 AI 列鼎新 / 正航 🟡→✅、開源列改標我方可用性;§6.1 / §6.4 對齊 2026-07-17「客戶放棄原 ERP、Q 收斂為 onboarding 一次匯入」定位(v1 之「不推翻現有 ERP、上層 Q 對帳」已推翻)。所有 v2 承重結論附官方逐字引用 + 出處連結 + 查證日 2026-08-08,證據強度(官方一手 / 第三方 / 未查證)逐條標註。
 - **2026-07-16 v1**|首版。11 家 ERP(5 國際 Tier 1 + 1 國際 SME + 2 中國 + 2 台灣 + 1 開源)+ 詳細功能對照矩陣 + 台灣市場 + 對 Weyver v1.6 J-Q 模組策略含意。配合 docs/04 v1.6 + docs/08 MES 分析使用。

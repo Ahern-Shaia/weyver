@@ -17,7 +17,7 @@
 | — | [策略簡報](docs/strategy-slides.html) | ✅ 2026-07-18 重刷(對齊 v2.3 / solo 時程 / 全自研 TS / OSS / 13 張)|
 | **07** | **[產品開發時程規劃書](docs/07-產品開發時程規劃.md)** | ✅ **2026-07-19 v2.14**(**§4 逐月排程重編為 Ragic-first**|表單引擎核心→關聯/權限→pilot Ragic 遷移,移除 Odoo/AG Grid/Q/GL/電子發票(排 Phase 2);§0 表 + LOC + 成本對齊 docs/04 v2.7 503(時程結論不變);OSS-only 砍商業授權;§ 1.4 Vernova 實測校準保留)|
 | **08** | **[MES 市場分析報告](docs/08-MES-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver T 策略)|
-| **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-07-16 v1**(11 家 vendor + 功能矩陣 + Weyver J-Q 策略)|
+| **09** | **[ERP 市場分析報告](docs/09-ERP-市場分析.md)** | ✅ **2026-08-08 v2**(12 家;台灣三家深掘|新增千奧 + 鼎新/正航 AI 查證均有 + ERPNext 授權更正 GPL-3.0 + Q 收斂定位對齊)|
 | **10** | **[Ragic 完整功能分析](docs/10-Ragic-完整功能分析.md)** | ✅ **2026-07-16 v1**(11 大類功能地圖 + Weyver A-I 借鑑分類)|
 | **11** | **[技術棧規劃書](docs/11-技術棧規劃書.md)** | ✅ **2026-07-19 v10**(OSS-only stack + Modular Monolith;**v10 § 7–8 視覺數值對齊 docs/14 v2.1**|清 v1 軟 SaaS 殘留 IBM Plex / 三配色 / 禁陰影框線 / 方角禁 pill / 動效近乎無;§ 7.10 AI 工具鏈保留;§ 16.5-16.11 Prod 雲端部署 AWS/GCP|主推 GCP 台灣區 + Cloud Run)|
 | **12** | **[TypeScript 7 與後端框架企業級評估](docs/12-TypeScript-7-與後端框架企業級評估.md)** | ✅ **2026-07-16 v1**(TS 7 Native + 5 框架對照)|
