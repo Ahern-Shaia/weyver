@@ -572,6 +572,7 @@ a:hover{text-decoration:underline;}
 .tool{display:inline-flex;align-items:center;gap:5px;height:27px;padding:0 9px;border-radius:var(--r-ctl);
   font-size:12px;font-weight:500;color:var(--ink-3);}
 .tool:hover{background:var(--paper-3);color:var(--ink-2);}
+.tool.on{background:var(--brand-t);color:var(--brand);}
 .tool svg{width:13px;height:13px;}
 .tool .n{background:var(--brand);color:#fff;font-size:10px;font-weight:700;
   min-width:15px;height:15px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
@@ -1181,6 +1182,25 @@ a:hover{text-decoration:underline;}
 .fd-sw{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:12.3px;color:var(--ink-2);}
 .fd-sw input{width:14px;height:14px;accent-color:var(--brand);}
 .fd-sw em{font-style:normal;color:var(--ink-4);}
+
+/* 表單級面板(動作·簽核 / 條件式格式 / 列印)—— 與欄位設定**共用同一欄**,互斥。 */
+.fd-tabs{display:flex;border-bottom:1px solid var(--line-2);}
+.fd-tabs button{flex:1;padding:9px 0;text-align:center;font-size:11.5px;color:var(--ink-3);}
+.fd-tabs button.on{color:var(--brand);font-weight:600;box-shadow:inset 0 -2px 0 var(--brand);}
+.fd-rule{margin-bottom:6px;padding:7px 9px;border:1px solid var(--line);border-radius:var(--r-ctl);}
+.fd-rule .c{font-size:11.5px;color:var(--ink-2);}
+.fd-rule .r{margin-top:4px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);}
+.fd-eff{display:flex;flex-wrap:wrap;gap:5px;}
+.fd-eff span{padding:1px 7px;border:1px solid var(--line);border-radius:2px;font-size:11px;color:var(--ink-2);}
+.fd-eff span.on{border-color:var(--brand);background:var(--brand-t);color:var(--brand);}
+.fd-line{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-2);font-size:12px;}
+.fd-line .code{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);}
+.fd-line .rm{margin-left:auto;color:var(--ink-4);}
+.fd-link{font-size:11.5px;color:var(--brand);}
+.fd-link:hover{text-decoration:underline;}
+.fd-prt{display:grid;grid-template-columns:1fr auto auto auto;gap:7px;align-items:center;
+  padding:5px 0;font-size:11.5px;}
+.fd-prt.hd2{color:var(--ink-3);font-size:11px;border-bottom:1px solid var(--line-2);}
 
 /* ③ 連結欄要看得見「會帶進來哪幾欄」。只寫「連到 供應商主檔」的話,
    選了一筆之後畫面上多出兩個值,使用者不知道是哪來的。
@@ -2120,6 +2140,12 @@ a:hover{text-decoration:underline;}
       <div class="fd-bar">
         <div class="crumb"><a>採購</a><span class="sep">/</span><b>採購單</b></div>
         <span class="mode"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計中</span>
+        <!-- 表單級設定(整張表一份)。與欄位設定共用右欄 —— 產品裡它們互斥,
+             理由逐字在 canvas.tsx:「三個都開時工具列由 862px 被壓到 286px,
+             『條件式格式』鈕變成五個中文字直排」。 -->
+        <button class="tool" id="t-act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>動作 · 簽核</button>
+        <button class="tool" id="t-fmt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>條件式格式</button>
+        <button class="tool" id="t-prt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>列印</button>
         <span class="sp"></span>
         <!-- B′ 補償之二:dirty 標記。使用者必須看得出「有東西還沒套用」 -->
         <span class="dirty">3 項未套用</span>
@@ -2177,6 +2203,15 @@ a:hover{text-decoration:underline;}
           <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>圖片</div>
           <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></span>簽名</div>
           <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg></span>條碼</div>
+          <!-- 🔴 版面元素從工具列移進元件庫。兩個依據疊在一起:
+               ① task #154 的原則逐字「加欄位與加子表都是**往這張表加東西**,
+                  所以該在同一個地方、長同一個樣子」—— 分段/說明文字/圖片是同一個動作類別。
+               ② docs/29 S5「水平 header 帶 ≤ 1 條」:產品現在有 3 條,不能為了它們再加一條。
+               不吃分組色 —— 它們不是欄位型別,沒有「值的形狀」可指。 -->
+          <div class="grp">版面<span class="gh">非欄位</span></div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span>分段</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span>說明文字</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>圖片</div>
           <div class="grp">系統<span class="gh">唯讀</span></div>
           <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/></svg></span>建立時間</div>
           <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></span>建立者</div>
@@ -2314,6 +2349,75 @@ a:hover{text-decoration:underline;}
       </div>
     </div>
 
+    <!-- ── 表單級面板 · 三選一,與上面的欄位設定互斥 ── -->
+    <div class="fd-insp" id="p-act" hidden>
+      <div class="fd-tabs">
+        <button class="on">自訂按鈕</button><button>自動觸發</button><button>簽核流程</button><button>標籤</button>
+      </div>
+      <!-- 🔴 這一段是**提案**,不是現況。現況的三個限制都在這裡被解掉:
+           ① 現況一個按鈕只能對映**一個**欄位(actions.tsx 的 fieldMap 只塞單一鍵)
+              → 真實單據的拋轉一次要帶五六欄,使用者只能改打 API = 第一約束違規。
+           ② 現況**只有新增與刪除,沒有編輯** —— 改一個字要刪掉重建。
+           ③ 現況目標欄名是**手打字串**,不是下拉 —— 打錯不會有人告訴你。
+           ④ 順帶:現況清單直接顯示 updateSelf / pushTo,同一面板其他地方全中文。 -->
+      <div class="bd" style="padding:12px 13px">
+        <div class="fd-line"><span>送簽</span><span class="code">更新本表欄位</span>
+          <span class="rm" style="display:flex;gap:8px"><b class="fd-link">編輯</b>✕</span></div>
+        <div class="fd-line"><span>轉進貨單</span><span class="code">拋轉到其他表單 · 2 欄</span>
+          <span class="rm" style="display:flex;gap:8px"><b class="fd-link">編輯</b>✕</span></div>
+        <div class="fd-acc open" style="border:0">
+          <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>新增按鈕</button>
+          <div class="in" style="padding:2px 0 0">
+            <div class="fd-prop"><span class="pk">名稱</span><input type="text" placeholder="按鈕名稱"></div>
+            <div class="fd-prop"><span class="pk">動作</span><span class="sel">拋轉到其他表單<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            <div class="fd-prop"><span class="pk">目標表單</span><span class="sel">進貨單<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            <div class="fd-load">
+              <div class="lcap">要把哪些欄帶過去</div>
+              <div class="lmap"><b>供應商</b>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                <b>供應商</b></div>
+              <div class="lmap"><b>單號</b>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                <b>來源單號</b></div>
+              <button class="ladd">＋ 再加一組</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fd-insp" id="p-fmt" hidden>
+      <div class="hd"><div class="t">條件式格式</div>
+        <div class="s"><b style="color:var(--brand)">記錄頁</b> · 列表頁</div></div>
+      <div class="bd" style="padding:12px 13px">
+        <div class="fd-rule">
+          <div class="c">金額 大於 10000 且 狀態 等於 待審</div>
+          <div class="r"><span class="ty" style="border:1px solid var(--wn-line,#ecd9ae);background:var(--wn-t);color:var(--wn);padding:0 5px;border-radius:2px">待辦</span>→ 金額、狀態</div>
+        </div>
+        <p style="font-size:11px;color:var(--ink-3);line-height:1.6;margin-bottom:8px">
+          排越後面越優先 —— 同一欄位命中多條規則時,以最下面那條為準。</p>
+        <div class="fd-acc open" style="border:0"><button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>效果(可複選)</button>
+          <div class="in" style="padding:2px 0 0">
+            <div class="fd-eff"><span>隱藏欄位</span><span>設為唯讀</span><span class="on">設為必填</span></div>
+            <p style="margin-top:6px;font-size:11px;color:var(--ink-3);line-height:1.6">
+              隱藏與唯讀是版面層效果,擋不住 API;欄位級保護請用權限設定。必填由伺服器強制。</p>
+          </div>
+        </div>
+        <button class="fd-link">新增規則</button>
+      </div>
+    </div>
+
+    <div class="fd-insp" id="p-prt" hidden>
+      <div class="hd"><div class="t">列印設定</div>
+        <div class="s">紙張 / 邊界 / 直橫向由瀏覽器列印對話框設定</div></div>
+      <div class="bd" style="padding:12px 13px">
+        <div class="fd-prt hd2"><span>列</span><span>頁首</span><span>頁尾</span><span>換頁</span></div>
+        <div class="fd-prt"><span>供應商、聯絡人</span><input type="checkbox" checked><input type="checkbox"><input type="checkbox"></div>
+        <div class="fd-prt"><span>預定交期、付款條件</span><input type="checkbox"><input type="checkbox"><input type="checkbox"></div>
+        <div class="fd-prt"><span>品項明細</span><input type="checkbox"><input type="checkbox"><input type="checkbox" checked></div>
+      </div>
+    </div>
+
     <!-- B′ 補償之一:可撤銷 toast。「Enter 即建欄」是**立即 DDL** ——
          沒有撤銷的即時 DDL 是陷阱,所以三項補償缺一不可。 -->
     <div class="fd-toast">
@@ -2337,6 +2441,24 @@ a:hover{text-decoration:underline;}
 const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl'),blank:document.getElementById('s-blank'),norows:document.getElementById('s-norows'),design:document.getElementById('s-design')};
 const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4'),blank:document.getElementById('b5'),norows:document.getElementById('b6'),design:document.getElementById('b7')};
 function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}}
+
+/* 設計器右欄三選一。這不是為了 mockup 好看 —— 產品裡它們本來就互斥
+   (canvas.tsx 的 toggleAux),再點一次收合回欄位設定。 */
+const AUX={'t-act':'p-act','t-fmt':'p-fmt','t-prt':'p-prt'}
+const fieldInsp=()=>document.querySelector('#s-design .fd-insp:not([id])')
+for(const bid in AUX){
+  const btn=document.getElementById(bid)
+  if(!btn) continue
+  btn.addEventListener('click',()=>{
+    const open=document.getElementById(AUX[bid]).hidden
+    for(const b in AUX){
+      document.getElementById(AUX[b]).hidden=true
+      document.getElementById(b).classList.remove('on')
+    }
+    if(open){document.getElementById(AUX[bid]).hidden=false;btn.classList.add('on')}
+    fieldInsp().hidden=open   // 欄位設定與輔助面板同佔右欄,不並存
+  })
+}
 
 /* ── 登入頁:織紋位移 + 標記「織入」動畫(移植自決策方的 x-dc 版本)──
    15 塊矩形分批飛入再退場,週期 2800ms。橫塊是墨色、直塊是主色 ——
