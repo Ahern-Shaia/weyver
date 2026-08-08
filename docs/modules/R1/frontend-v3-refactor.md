@@ -314,7 +314,53 @@ M2 的三項裡,**只有一項該改** —— 另兩項是**有依據的不動**
 → **4 × 4 = 16 個視覺狀態**,而 v3 產品稿畫了大約 **2 個**(primary 與 default 的 rest)。
 **這就是 §3-bis 說的漂移入口,現在有數字了。**
 
-### 11.2 其餘元件尚未清點
+### 11.2 其餘六個元件(逐檔讀出,非 grep)
 
-Input / Select / StatusChip / FormSection / FieldGrid / Segmented —— **要逐檔讀 cva 表**,
-不能 grep。列入 M3。
+| 元件 | 變體 | 有的狀態 | 缺的 |
+|---|---|---|---|
+| **Input** | `icon?` | rest · focus-within | 🔴 **停用、錯誤都沒有** |
+| **Select** | — | rest · focus-within · `has-[select:disabled]` 60% | 錯誤 |
+| **Segmented** | — | active / inactive · hover(僅 inactive)| 停用 |
+| **StatusChip** | **12 色**(4 語意 + 8 類別)| 單一態(非互動)| — |
+| **FormSection** | — | 無狀態 | — |
+| **FieldGrid** | `required` `help` `mono` `note` `noLabelWrap` | 無互動態 | — |
+
+⚠️ **差點報三個假陽性,都是去看實際檔案才擋下來**:
+1. 「Segmented 沒有 focus ring」→ `globals.css:35` 有全域
+   `:where(a,button,input,…):focus-visible` 規則(`:where()` 零特異度,不會被蓋)。**有。**
+2. 「`aria-invalid` 沒有樣式吃它」→ date-input **有**可見錯誤提示,只是自己畫的。
+3. 「停用態只有幾處不一致」→ 第一次 grep 只掃 `packages/ui` 與 `components/`,
+   **真實是 37 處**,漏了 31 處在 `app/` 路由底下。
+
+---
+
+## 12. 落地紀錄 — M3 元件層(2026-08-08)
+
+### 12.1 v3 只管半個狀態空間(量出來的)
+
+| 狀態 | v3 畫了嗎 | 出處 |
+|---|---|---|
+| rest / hover / focus | ✅ hover **56 條**、focus **8 條** | v3 |
+| **disabled** | ❌ **0 次** | 🔴 **我方裁定** |
+| **invalid** | ❌ **0 次** | 🔴 **我方裁定** |
+
+**這是 M3 驗收條件(「每個狀態都指得出出處」)實際跑出來的第一個結論** ——
+v3 畫的是「可以做什麼」,沒畫「不能做什麼」。
+照稿對到底也補不齊,**缺的那一半必須自己裁**,而裁完要有名字、有檢查。
+
+### 12.2 已落地
+
+| 改動 | 內容 |
+|---|---|
+| `--opacity-disabled: 45%` | 六種值(30/40/45/50/60/無)→ 一個,**37 處**全改 |
+| `Input` 補兩態 | `has-[input:disabled]` + `has-[input[aria-invalid=true]]:border-er` |
+| CI 守衛 | `type-scale.test.ts` 禁 `disabled:opacity-<數字>` 回流 |
+
+**實測**(Playwright 讀 `document.styleSheets` + computed style):
+設計器三個真實停用元素 **0.45**(改前 0.40)· Input 正常框 `rgb(141,141,141)` /
+錯誤框 `rgb(179,38,30)` · M1 殼棘輪不退(0.8% / 20.7% / **19.6%**)。
+
+### 12.3 M3 未完
+
+Select 的錯誤態 · Segmented 的停用態 · StatusChip 12 色與 v3 對稿 ·
+FormSection / FieldGrid 的 v3 版式差異 —— **逐元件對稿仍待做**。
