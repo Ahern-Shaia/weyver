@@ -60,6 +60,28 @@ function scan(root: string): Offender[] {
   return bad
 }
 
+/* 🔴 2026-08-08|`text-*` 命名空間的撞名檢查。
+
+   Tailwind 的 `text-*` **同時服務顏色與字級** —— 若 `--text-X` 與 `--color-X` 同名,
+   顏色會贏,於是 `.text-X` 變成 `{ color: … }`:**字級沒生效、連顏色都被改掉,而且不報錯**。
+
+   這不是假想:本檔的標籤軌第一版取名 `--text-label`,而本庫已有 `--color-label`,
+   結果 8 個徽章同時掉了字級與顏色。**是去查產生的 CSS 規則才發現的** ——
+   `getComputedStyle` 探針因 Tailwind JIT 只掃原始碼而給了假陰性。 */
+describe("text-* 命名空間撞名", () => {
+  it("--text-X 不得與 --color-X 同名", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "../../packages/ui/src/styles/tokens.css"),
+      "utf-8",
+    )
+    const names = (prefix: string): Set<string> =>
+      new Set([...css.matchAll(new RegExp(`--${prefix}-([a-z0-9-]+):`, "g"))].map((m) => m[1] ?? ""))
+    const colors = names("color")
+    const clash = [...names("text")].filter((n) => colors.has(n))
+    expect(clash, `這些名字同時是顏色與字級 —— 顏色會贏,字級靜默失效`).toEqual([])
+  })
+})
+
 describe("字階白名單(docs/14 v5.0 §2.5)", () => {
   it("只允許 12 / 13 / 14 / 16 / 20 / 24px —— 地板 12px", () => {
     const offenders = [

@@ -166,6 +166,24 @@
   --font-sans: var(--font-inter), "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 
+  /* ── 字級|🔴 2026-08-08 標籤軌(OQ-V3-2=C)────────────────────────
+     散文的地板維持 **12px**(Carbon caption-01 / Fluent Caption1),不動。
+     但 v3 的 9–11px 帶**一半以上是 mono**,內容是型別代號 `REF`/`TEXT`/`DATE`、
+     「主表」徽章、「天」單位 —— **那是標籤,不是散文**。
+     把標籤與內文套同一條地板,是規則過度概化。
+
+     🔴 **給它一個名字,不是給白名單多加一個數字。**
+     `text-[11px]` 維持**禁用** —— magic number 下次一樣會漂;
+     要用標籤軌就寫 `text-tag`,而那個名字本身就說明了它只能用在標籤。
+
+     ⚠️ **不能叫 `--text-label`** —— Tailwind 的 `text-*` 命名空間**同時服務顏色與字級**,
+     而本庫已有 `--color-label`,於是 `.text-label` 會被解成
+     `{ color: var(--color-label) }` —— **字級沒生效,連顏色都被改掉**,而且**不報錯**。
+     第一版就是這樣,是查產生的 CSS 規則才發現的(`getComputedStyle` 探針因 JIT 只掃原始碼而給了假陰性)。
+     ⚠️ 9 / 9.5 / 10 / 10.5 **不採**:v3 有 19 種字級,而現行白名單存在的理由
+     逐字是「原本 16 種混用」—— 照搬會把已經解掉的問題放回去。 */
+  --text-tag: 11px; /* 徽章 / 型別代號 / 單位 / kicker —— **不得用於句子** */
+
   /* 🔴 大字負字距 —— 愈大愈緊。實測依據(Playwright 抓 computed style):
      Linear 48px→−1.056px(−2.2%)· Vercel 56px→−3.36px(−6%)· Attio 48px→−0.72px(−1.5%)。
      三家皆做,而本庫先前只有首頁一個標題有。≤14px 不加(小字加負字距會黏)。 */

@@ -114,7 +114,7 @@ function Group({
 }): ReactNode {
   return (
     <>
-      <div className="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-ink-4 uppercase">
+      <div className="px-2 pt-2 pb-1 text-tag font-semibold tracking-wide text-ink-4 uppercase">
         {title}
       </div>
       {items.map((t) => (
@@ -132,20 +132,20 @@ function Group({
             <span className="text-[13px] font-medium text-ink">{t.name}</span>
             {/* 產業 pack 標出來(OQ-TPL-8=C) */}
             {t.industry === undefined ? null : (
-              <span className="rounded-xs border border-line-2 px-1 text-[11px] text-ink-3">
+              <span className="rounded-xs border border-line-2 px-1 text-tag text-ink-3">
                 {t.industry}
               </span>
             )}
-            <span className="ml-auto shrink-0 text-[11px] text-ink-3">{t.formCount} 張表</span>
+            <span className="ml-auto shrink-0 text-[12px] text-ink-3">{t.formCount} 張表</span>
           </div>
           <div className="truncate text-[12px] text-ink-3">{t.description}</div>
           {/* 🔴「沒裝過」與「有新版」是不同的字,不合成一個布林 */}
           {t.updateAvailable ? (
-            <div className="mt-1 inline-flex rounded-xs border border-wn-line bg-wn-t px-1 text-[11px] font-medium text-wn">
+            <div className="mt-1 inline-flex rounded-xs border border-wn-line bg-wn-t px-1 text-tag font-medium text-wn">
               有新版 v{t.version}
             </div>
           ) : t.installedVersion !== null ? (
-            <div className="mt-1 inline-flex rounded-xs border border-nt-line bg-nt-t px-1 text-[11px] text-nt">
+            <div className="mt-1 inline-flex rounded-xs border border-nt-line bg-nt-t px-1 text-tag text-nt">
               已安裝 v{t.installedVersion}
             </div>
           ) : null}

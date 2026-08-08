@@ -134,7 +134,7 @@ export function TemplateDetailPane({
             這 {d.forms.length} 張表怎麼連
           </span>
           {/* 這句不是宣傳詞,是一個可稽核的性質:圖從 pack 定義推導 */}
-          <span className="ml-auto text-[11px] text-ink-3">由範本定義推導,與實際建出來的一致</span>
+          <span className="ml-auto text-[12px] text-ink-3">由範本定義推導,與實際建出來的一致</span>
         </div>
         <div className="px-3 py-3.5">
           <TemplateDiagram forms={d.forms} />
@@ -159,7 +159,7 @@ export function TemplateDetailPane({
             一併帶入示範資料
           </label>
         ) : null}
-        <span className="text-[11px] text-ink-3">套用後可從「資源回收桶」還原。</span>
+        <span className="text-[12px] text-ink-3">套用後可從「資源回收桶」還原。</span>
       </div>
     </div>
   )

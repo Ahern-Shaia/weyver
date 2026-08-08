@@ -39,14 +39,14 @@ function FieldRow({ field }: { readonly field: TemplateDetailField }): ReactNode
       <span
         className={
           isRelation
-            ? "shrink-0 rounded-xs border border-rel/30 bg-rel-bg px-1 text-[11px] text-rel"
-            : "shrink-0 rounded-xs border border-line-2 bg-sunken px-1 text-[11px] text-ink-3"
+            ? "shrink-0 rounded-xs border border-rel/30 bg-rel-bg px-1 text-tag text-rel"
+            : "shrink-0 rounded-xs border border-line-2 bg-sunken px-1 text-tag text-ink-3"
         }
       >
         {TYPE_LABEL[field.type] ?? field.type}
       </span>
       <span className="min-w-0 truncate text-ink-2">{field.name}</span>
-      {field.required ? <span className="shrink-0 text-[11px] text-er">必填</span> : null}
+      {field.required ? <span className="shrink-0 text-[12px] text-er">必填</span> : null}
     </div>
   )
 }
@@ -75,7 +75,7 @@ function FormNode({
         }
       >
         <span className="min-w-0 truncate text-[13px] font-semibold text-ink">{form.name}</span>
-        <span className="ml-auto shrink-0 rounded-xs border border-line-2 bg-card px-1 text-[11px] text-ink-3">
+        <span className="ml-auto shrink-0 rounded-xs border border-line-2 bg-card px-1 text-tag text-ink-3">
           {label}
         </span>
       </div>
@@ -84,7 +84,7 @@ function FormNode({
           <FieldRow key={f.name} field={f} />
         ))}
         {form.fields.length > 4 ? (
-          <div className="pt-0.5 text-[11px] text-ink-3">另有 {form.fields.length - 4} 個欄位</div>
+          <div className="pt-0.5 text-[12px] text-ink-3">另有 {form.fields.length - 4} 個欄位</div>
         ) : null}
       </div>
     </div>
@@ -122,7 +122,7 @@ export function TemplateDiagram({
                 <FormNode form={t} kind="lookup" />
                 {/* 連結 = 水平箭頭,方向是「主表指向主檔」 */}
                 <div className="flex h-[34px] flex-col items-center justify-center gap-0.5 pt-2">
-                  <span className="rounded-xs border border-rel/30 bg-rel-bg px-1 text-[11px] font-medium text-rel">
+                  <span className="rounded-xs border border-rel/30 bg-rel-bg px-1 text-tag font-medium text-rel">
                     連結
                   </span>
                   <MoveLeft size={14} strokeWidth={1.8} className="text-rel" />
