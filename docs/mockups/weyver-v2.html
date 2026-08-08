@@ -378,8 +378,28 @@ a:hover{text-decoration:underline;}
    顏色留給資料面的型別(網格表頭的分組色)。
    兩個地方都上色會讓「顏色代表什麼」失去單一答案 ——
    而 §3.3 記的 NocoDB 缺點正是「側欄選取灰 vs 藍」這種同一畫面兩套語言。 */
-.ctx{width:206px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
+/* 🔴 G6(docs/39 步驟 4)|側欄 **260px 單一寬度,不因畫面改變**。
+   `DESIGN-RULES.md` §2.3 明列 260px,§1 的理由是把 Ragic 疊的四層導覽
+   (頁籤列 → 群組選擇器 → 檢視清單 → 篩選樹,吃掉 118px 垂直 + 306px 水平)
+   壓成**單一側欄承載群組 / 樹 / 檢視**。206px 撐不住三層縮排。 */
+.ctx{width:260px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
   display:flex;flex-direction:column;}
+
+/* 🔴 G5|租戶切換器釘在側欄最上。
+   `DESIGN-RULES.md` §3.6:「頂:租戶切換器(**多租戶從第一天就有,Ragic 做對了**)」。
+   ⚠️ 這同時修掉一個既有的混淆:原本頂欄的 `whoami` 把**使用者**與**租戶**擠在一起
+   (陳品妤 / 鮮勇食品)—— 那是兩個不同的東西,切換的對象也不同。
+   改成:側欄頂 = 租戶(可切換)· 頂欄右 = 使用者帳號 · 側欄底 = 版本戳記。 */
+.ctx .tenant{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line-2);
+  cursor:pointer;}
+.ctx .tenant:hover{background:var(--paper-3);}
+.ctx .tenant .sq{width:26px;height:26px;border-radius:var(--r-ctl);background:var(--action);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.ctx .tenant .tx{min-width:0;line-height:1.3;}
+.ctx .tenant .tx b{display:block;font-size:13px;font-weight:600;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctx .tenant .tx em{display:block;font-style:normal;font-size:11px;color:var(--ink-4);}
+.ctx .tenant svg{width:13px;height:13px;color:var(--ink-4);margin-left:auto;flex-shrink:0;}
 .ctx .hd{display:flex;align-items:center;gap:6px;padding:10px 12px 6px;font-size:12px;
   font-weight:600;color:var(--ink-2);}
 .ctx .hd .n{margin-left:auto;font-size:11px;font-weight:400;color:var(--ink-4);}
@@ -1186,7 +1206,7 @@ a:hover{text-decoration:underline;}
       <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
     </div>
   </div>
   <div class="mainrow">
@@ -1321,11 +1341,17 @@ a:hover{text-decoration:underline;}
       <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
     </div>
   </div>
   <div class="mainrow">
       <div class="ctx">
+        <!-- G5:租戶切換器。多租戶從第一天就在場,不是設定頁裡的東西。 -->
+        <div class="tenant">
+          <div class="sq">鮮</div>
+          <div class="tx"><b>鮮勇食品</b><em>144 張表單 · 台灣廠</em></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+        </div>
         <div class="hd">採購<span class="n">10 張表</span></div>
         <div class="list">
           <div class="it on">採購單<span class="cv"><button title="更多"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></span></div>
@@ -1349,7 +1375,7 @@ a:hover{text-decoration:underline;}
           <div class="it">進貨檢驗<span class="n">174</span></div>
           <div class="it">不合格處理<span class="n">9</span></div>
         </div>
-        <div class="foot">陳品妤 · 採購主管<br>Weyver 1.0.0 · 自架</div>
+        <div class="foot">Weyver 1.0.0 · 自架<br>資料在 台灣 asia-east1</div>
       </div>
     <div class="mid">
       <div class="fw">
@@ -1670,7 +1696,7 @@ a:hover{text-decoration:underline;}
       <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
     </div>
   </div>
   <div class="mainrow">
@@ -1678,6 +1704,12 @@ a:hover{text-decoration:underline;}
     <!-- ② 分類軸 —— 現況完全沒有(Ragic 側欄至少 24 個分類)。
          我方的分類直接來自 pack 的 categoryName / industry,不另立一套詞彙。 -->
     <div class="ctx">
+      <!-- G5:租戶切換器。多租戶從第一天就在場,不是設定頁裡的東西。 -->
+      <div class="tenant">
+        <div class="sq">鮮</div>
+        <div class="tx"><b>鮮勇食品</b><em>144 張表單 · 台灣廠</em></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+      </div>
       <div class="hd">範本分類<span class="n">8 個</span></div>
       <div class="list">
         <div class="it on">全部<span class="n">8</span></div>
@@ -1851,7 +1883,7 @@ a:hover{text-decoration:underline;}
     <div class="rt">
       <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
     </div>
   </div>
   <div class="mainrow">
@@ -1926,17 +1958,23 @@ a:hover{text-decoration:underline;}
       <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
     </div>
   </div>
   <div class="mainrow">
     <div class="ctx">
+      <!-- G5:租戶切換器。多租戶從第一天就在場,不是設定頁裡的東西。 -->
+      <div class="tenant">
+        <div class="sq">鮮</div>
+        <div class="tx"><b>鮮勇食品</b><em>144 張表單 · 台灣廠</em></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>
+      </div>
       <div class="hd">採購<span class="n">1 張表</span></div>
       <div class="list">
         <!-- 0 筆時**不展開檢視** —— 還沒有資料可以分,展開一堆空檢視是噪音 -->
         <div class="it on">採購單<span class="n">0</span></div>
       </div>
-      <div class="foot">陳品妤 · 採購主管<br>Weyver 1.0.0 · 自架</div>
+      <div class="foot">Weyver 1.0.0 · 自架<br>資料在 台灣 asia-east1</div>
     </div>
     <div class="mid">
       <div class="fw">
@@ -2002,7 +2040,7 @@ a:hover{text-decoration:underline;}
       <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
       <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>鮮勇食品</em></div></div>
+      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
     </div>
   </div>
   <div class="mainrow" style="position:relative">
