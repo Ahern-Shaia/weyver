@@ -78,7 +78,7 @@
 | 「站在巨人的肩膀」**複查**(全 33 份) | — | ⭐⭐ 深且推翻過 | 13 | `27` `32` | [_audit/giants-shoulders-audit-C.md](_audit/giants-shoulders-audit-C.md) |
 | [F-8] 訂閱計費(**地基預留**,非實作) | ✅ | — | 0 | — | [foundation/subscription-billing.md](foundation/subscription-billing.md) |
 | [P0-1] 表單引擎動態 schema 核心 | ✅ | · 零星引用 | 5 | — | [R1/form-engine-core.md](R1/form-engine-core.md) |
-| [R1·UP-5] 前端視覺重構(落地 weyver-v3) | — | · 零星引用 | 7 | — | [R1/frontend-v3-refactor.md](R1/frontend-v3-refactor.md) |
+| [R1·UP-5] 前端視覺重構(落地 weyver-v3) | — | ⭐ 有一手依據 | 8 | — | [R1/frontend-v3-refactor.md](R1/frontend-v3-refactor.md) |
 | [R1·H-5] 介面語言與**租戶自助翻譯** | — | ⭐ 有一手依據 | 18 | `56` `84` | [R1/i18n.md](R1/i18n.md) |
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
 | [R2 命門] 語意計算綁定層(自由表單 ↔ 算) | — | · 零星引用 | 1 | — | [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
