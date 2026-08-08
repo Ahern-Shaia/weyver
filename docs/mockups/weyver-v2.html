@@ -6,7 +6,7 @@
 <title>Weyver · v2(重新設計現況前端)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════════════════════════════════
    Weyver 合併稿 v2 —— 重新設計現況前端
@@ -979,178 +979,209 @@ a:hover{text-decoration:underline;}
   border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink-2);}
 
 /* ══════════════════════════════════════════════════════════════════
-   畫面七|表單設計器
+   畫面七|表單設計器 —— 🔴 **決策方自己做的 v3**(2026-08-08),原樣移植。
+   來源:`~/Downloads/2D表單設計器UI提案/表單設計器 v3.dc.html`
+   (= `weyver-standalone-src.html`,位元組相同;x-dc 元件 + `_ds/` 設計系統)。
 
-   🔴 這一頁不是我發明的,`form-designer-wysiwyg.md` M0 逐字寫著
-   「**下一步|高保真 mockup 供 review,通過後才動 code**」。以下每個決定
-   都對得到一條已裁定的 OQ,對不到的不畫。
+   移植方式:**在瀏覽器把它跑起來,抽渲染後的 DOM**,不是手工重寫 ——
+   289 個 `{{ }}` 綁定手工重打一定會失真。抽出來是 340 個 inline style + 12 個 class,
+   自足,只需要把 33 個 CSS 變數帶過來。
 
-   ── 核心心智模型(form-designer-2d D1 逐字)──────────────────
-   「**2D 格線畫布 = 填單畫面本身**」。設計模式**不是**另一套抽象編輯器 ——
-   它就是你之後會看到的那張單,只是欄位裡填的是示例值。
-   OQ-FDW-2=A：**設計/填單完全共用渲染**(同一個 FormSection / FieldGrid)。
-
-   ── 三條量測型不變量(M2/M3 驗收條件,未出貨)──────────────
-   ① **輔助面板 ≤ 1 欄** —— 現況三個工具列開關 + 多面板,M2 要收成一個屬性抽屜
-   ② **header ≤ 1 帶** —— 現況三帶(task #154),M3 要收成一帶
-   ③ **主體 ≥ 60%** —— 畫布才是主角,面板是配角
-   這三條是**可以量的**,不是感覺。本 mockup 已用 Playwright 量過(見 commit)。
-
-   ⚠️ 字體維持 IBM Plex 與 v2 其餘五頁一致。決策方的登入頁用 Archivo + Noto Sans TC,
-      而 wysiwyg M0 的附帶裁定寫的是 Inter + Noto Sans TC —— **三方不一致,待統一**,
-      不在這一頁單獨解決(單頁換字體只會讓不一致從 1 處變 2 處)。
+   ⚠️ **它帶著一整套不同的設計系統**(`_ds/styles.css`):
+      Barlow + Barlow Condensed(標題)· accent `#5980a6` · 3.4px 間距基準。
+      而 weyver-v2 其餘六頁是 Inter + `#22568a` + 4px 基準。
+      → **全部規則已收斂到 `#s-design` 底下**(`:root` 改寫成 `#s-design`),
+        不外洩到其他畫面;但兩套系統並存這件事本身是**待處理的不一致**,不是解決了。
    ══════════════════════════════════════════════════════════════════ */
-.fd{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--paper);}
-
-/* ① header 收成一帶。現況是三帶(task #154)—— 三帶正是「後台四層水平帶」的近親。 */
-.fd-bar{height:46px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px;
-  border-bottom:1px solid var(--line);background:var(--paper-2);}
-.fd-bar .crumb{display:flex;align-items:center;gap:5px;font-size:13px;}
-.fd-bar .crumb a{color:var(--ink-3);}
-.fd-bar .crumb .sep{color:var(--ink-4);}
-.fd-bar .crumb b{font-weight:600;color:var(--ink);}
-.fd-bar .mode{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;font-size:10.5px;
-  font-weight:700;letter-spacing:.04em;color:var(--wn);background:var(--wn-t);border:1px solid var(--wn-l);
-  border-radius:var(--r-chip);}
-.fd-bar .mode svg{width:11px;height:11px;}
-.fd-bar .sp{flex:1;}
-/* B′ 補償之二:dirty 標記 —— 使用者必須看得出「有東西還沒套用」 */
-.fd-bar .dirty{font-size:11.5px;color:var(--wn);font-weight:600;}
-
-.fd-body{flex:1;display:flex;min-height:0;}
-
-/* 欄位面板 —— OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
-   不做搜尋不做最近使用:位置固定,肌肉記憶才建立得起來。 */
-.fd-pal{width:186px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper-2);
-  overflow-y:auto;padding:8px 8px 14px;}
-.fd-pal .grp{padding:9px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
-  color:var(--ink-4);text-transform:uppercase;}
-/* 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地,2026-08-04)——
-   同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 */
-.fd-row{display:flex;align-items:center;gap:8px;height:29px;padding:0 7px;border-radius:var(--r-ctl);
-  font-size:12.5px;color:var(--ink-2);cursor:grab;}
-.fd-row:hover{background:var(--paper-3);}
-/* 🔴 E 案(2026-08-08 裁定)= B 分組上色 + D 字符化。
-   有天然字符的用字符(T ¶ # $ @ ƒx,6/16),其餘用象形 ——
-   **但兩者都吃分組色、同尺寸**。
-   這一點是關鍵:D 單獨看是「兩套系統混用」(§3.3 的舊感來源),
-   而一旦共用同一組分組色與同一個字級,它就不是兩套系統,
-   **是同一套系統的兩種字身** —— 就像一份排版裡同時有數字與文字。
-   ⚠️ 去掉方框 chip:方框在 14px 下和字符打架(字符本來就有自己的字身)。
-   🔴 **字符化有前提條件,而且是實測出來的**:字體要有那個字符,**且小尺寸下可讀**。
-   `№`(自動編號)在 13.5px 的 IBM Plex Mono 下**糊成一塊不可讀** —— 放大截圖才看見,
-   已改回象形(`list-ordered`,語意上也更貼切:自動編號 = 有序序列)。
-   最終字符 6 個:T ¶ # $ @ ƒx。 */
-.fd-row .ic{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;
-  flex-shrink:0;border:0;background:none;}
-.fd-row .ic svg{width:14px;height:14px;}
-.fd-row .ic.gl{font-family:var(--font-mono);font-size:13.5px;font-weight:600;line-height:1;}
-.fd-row.def{color:var(--ink);font-weight:600;}
-.fd-pal .hint{margin-top:10px;padding:8px 7px;border-top:1px solid var(--line-2);
-  font-size:11px;line-height:1.7;color:var(--ink-4);}
-.fd-pal .hint kbd{font-size:10px;font-weight:600;background:var(--paper-3);border:1px solid var(--line);
-  border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink-2);}
-
-/* ── 2D 畫布 ── 🔴 它長得**就是填單畫面**,不是抽象編輯器。 ── */
-.fd-canvas{flex:1;min-width:0;overflow:auto;background:var(--paper-3);padding:18px 22px 40px;}
-.fd-paper{max-width:860px;margin:0 auto;background:var(--paper);border:1px solid var(--line);
-  box-shadow:0 1px 2px rgba(19,26,36,.05);}
-.fd-doc{padding:16px 18px 20px;}
-.fd-doc h2{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.02em;}
-.fd-doc .meta{margin-top:3px;font-size:12px;color:var(--ink-3);}
-
-/* 分段 = 列範圍(form-designer-2d OQ-4=A) */
-.fd-sec{display:flex;align-items:center;gap:7px;margin:16px 0 0;padding:6px 0;
-  border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700;color:var(--ink-2);}
-.fd-sec .hd{margin-left:auto;display:flex;gap:3px;opacity:0;}
-.fd-sec:hover .hd{opacity:1;}
-.fd-sec .hd button{width:20px;height:20px;border-radius:3px;color:var(--ink-4);display:flex;
-  align-items:center;justify-content:center;}
-.fd-sec .hd button:hover{background:var(--paper-3);color:var(--ink-2);}
-.fd-sec .hd svg{width:12px;height:12px;}
-
-/* 12 欄格線。欄位 = 灰標籤格 | 白值格,與填單完全同一套渲染 */
-.fd-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:0;margin-top:8px;
-  border:1px solid var(--line);border-bottom:none;}
-.fd-f{display:grid;grid-template-columns:92px 1fr;border-bottom:1px solid var(--line);
-  border-right:1px solid var(--line);position:relative;cursor:pointer;}
-.fd-f:last-child{border-right:none;}
-.fd-f .k{background:var(--paper-2);padding:7px 9px;font-size:12px;font-weight:500;color:var(--ink-3);text-align:right;
-  border-right:1px solid var(--line-2);display:flex;align-items:center;justify-content:flex-end;gap:3px;}
-.fd-f .k i{color:var(--er);font-style:normal;font-weight:700;}
-.fd-f .v{padding:7px 10px;font-size:14px;min-height:34px;display:flex;align-items:center;gap:6px;}
-/* 🔴 OQ-FDW-1=A:示例值**依型別生成**,不取真實記錄(設計者未必有讀資料權,
-   而且空表就沒東西可顯示)。ink-3 + 淡底標示為**非真值**。 */
-.fd-f .v .ex{color:var(--ink-4);background:var(--paper-2);padding:1px 5px;border-radius:2px;}
-.fd-f.on{outline:2px solid var(--brand);outline-offset:-2px;z-index:2;}
-.fd-f.on .k{background:var(--brand-t);color:var(--brand-h);}
-/* 拖曳把手只在 hover / 選中時出現 —— 常駐把手會讓畫布看起來不像填單畫面 */
-.fd-f .grip{position:absolute;left:-1px;top:50%;transform:translateY(-50%);width:5px;height:22px;
-  background:var(--brand);opacity:0;border-radius:0 2px 2px 0;}
-.fd-f:hover .grip,.fd-f.on .grip{opacity:1;}
-/* 空格子:直接打字就建欄(OQ-FDW-3=B′ Enter 即建欄) */
-.fd-empty{border-bottom:1px solid var(--line);border-right:1px solid var(--line);min-height:33px;
-  display:flex;align-items:center;padding:0 10px;font-size:12px;color:var(--ink-4);cursor:text;}
-.fd-empty:hover{background:var(--brand-t);color:var(--brand);}
-.fd-empty:last-child{border-right:none;}
-.fd-typing{border-bottom:1px solid var(--line);border-right:1px solid var(--line);
-  display:grid;grid-template-columns:92px 1fr;outline:2px solid var(--brand);outline-offset:-2px;}
-.fd-typing .k{background:var(--brand-t);padding:7px 9px;display:flex;align-items:center;
-  justify-content:flex-end;font-size:12.5px;color:var(--ink);}
-.fd-typing .k .cur{width:1px;height:15px;background:var(--ink);margin-left:1px;
-  animation:fd-bl 1.1s step-end infinite;}
-@keyframes fd-bl{50%{opacity:0}}
-.fd-typing .v{padding:7px 10px;font-size:11.5px;color:var(--ink-4);display:flex;align-items:center;gap:6px;}
-.fd-typing .v kbd{font-size:10px;font-weight:600;background:var(--paper);border:1px solid var(--line);
-  border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink-2);}
-
-/* 子表在畫布上就是子表(共識 R2:可編輯 → 完整格線 + 列號) */
-.fd-sub{margin-top:8px;border:1px solid var(--line);}
-.fd-sub table{width:100%;border-collapse:collapse;}
-.fd-sub th{background:var(--paper-2);font-size:11px;font-weight:600;color:var(--ink-3);padding:5px 8px;
-  text-align:left;border:1px solid var(--line-2);}
-/* 表頭裡的型別圖示要給尺寸 —— 全域 svg 規則沒設 width/height,
-   放進 <th> 就會撐成整格高(這次真的撐成一個巨大的 fx)。 */
-.fd-sub th svg{display:inline-block;width:11px;height:11px;vertical-align:-1px;}
-.fd-sub td{padding:5px 8px;font-size:12.3px;border:1px solid var(--line-2);color:var(--ink-4);}
-.fd-sub td.rn{width:24px;text-align:center;background:var(--paper-2);font-size:11px;}
-.fd-sub .addcol{width:32px;text-align:center;color:var(--ink-4);cursor:pointer;}
-
-/* ② 屬性抽屜 —— accordion 四段,**單欄**。
-   現況是三個工具列開關 + 多面板,M2 的驗收條件逐字是「輔助面板 ≤1 欄」。 */
-.fd-insp{width:268px;flex-shrink:0;border-left:1px solid var(--line);background:var(--paper);
-  display:flex;flex-direction:column;}
-.fd-insp .hd{padding:10px 13px;border-bottom:1px solid var(--line-2);}
-.fd-insp .hd .t{font-size:13px;font-weight:600;}
-.fd-insp .hd .s{margin-top:2px;font-size:11.5px;color:var(--ink-3);}
-.fd-insp .bd{flex:1;overflow-y:auto;}
-.fd-acc{border-bottom:1px solid var(--line-2);}
-.fd-acc > button{display:flex;align-items:center;gap:7px;width:100%;padding:9px 13px;text-align:left;
-  font-size:11.5px;font-weight:700;color:var(--ink-2);}
-.fd-acc > button:hover{background:var(--paper-2);}
-.fd-acc > button svg{width:12px;height:12px;color:var(--ink-4);transition:transform .14s;}
-.fd-acc > button .n{margin-left:auto;font-size:10.5px;font-weight:500;color:var(--ink-4);}
-.fd-acc.open > button svg{transform:rotate(180deg);}
-.fd-acc .in{padding:2px 13px 12px;}
-.fd-prop{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;padding:5px 0;
-  font-size:12.3px;}
-.fd-prop .pk{color:var(--ink-3);}
-.fd-prop .pv{color:var(--ink);}
-.fd-prop input[type=text]{width:100%;height:28px;padding:0 8px;border:1px solid var(--line);
-  border-radius:var(--r-ctl);font-size:12.3px;background:var(--paper);}
-.fd-prop .sel{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border:1px solid var(--line);
-  border-radius:var(--r-ctl);font-size:12.3px;color:var(--ink);}
-.fd-prop .sel svg{width:12px;height:12px;margin-left:auto;color:var(--ink-4);}
-.fd-sw{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:12.3px;color:var(--ink-2);}
-.fd-sw input{width:14px;height:14px;accent-color:var(--brand);}
-
-/* B′ 補償之一:可撤銷 toast。
-   「Enter 即建欄」是**立即 DDL**,所以必須給得回去 —— 沒有撤銷的即時 DDL 是陷阱。 */
-.fd-toast{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;
-  gap:11px;padding:9px 13px;background:var(--ink);color:#fff;border-radius:var(--r-box);
-  box-shadow:0 6px 20px rgba(19,26,36,.25);font-size:12.5px;z-index:20;}
-.fd-toast button{color:#8fd0e8;font-weight:600;font-size:12.5px;}
-.fd-toast button:hover{text-decoration:underline;}
+#s-design{height:100vh;overflow:hidden;}
+#s-design .sc-placeholder{ background: color-mix(in srgb, currentcolor 8%, transparent); border: 1px solid color-mix(in srgb, currentcolor, transparent); border-radius: 2px; box-sizing: border-box; overflow: hidden; }
+@keyframes sc-shine { 
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+#s-design html.sc-dc-streaming .sc-placeholder, #s-design html.sc-dc-streaming .sc-interp.sc-missing{ position: relative; background: color-mix(in srgb, currentcolor 5%, transparent); border-color: transparent; }
+#s-design html.sc-dc-streaming .sc-placeholder::before, #s-design html.sc-dc-streaming .sc-interp.sc-missing::before{ content: ""; position: absolute; inset: 0px; pointer-events: none; background: linear-gradient(90deg, rgba(217, 119, 87, 0) 25%, rgba(247, 225, 211, 0.95) 37%, rgba(217, 119, 87, 0) 63%) 0% 0% / 400% 100%; animation: 1.4s ease 0s infinite normal none running sc-shine; }
+#s-design html.sc-dc-streaming .sc-placeholder:nth-child(n+9 of .sc-placeholder)::before, #s-design html.sc-dc-streaming .sc-interp.sc-missing:nth-child(n+9 of .sc-interp.sc-missing)::before{ animation: auto ease 0s 1 normal none running none; background: color-mix(in srgb, currentcolor 8%, transparent); }
+#s-design .sc-placeholder-error{ padding: 4px 8px; font: 11px / 1.4 ui-monospace, monospace; color: color-mix(in srgb, currentcolor 70%, transparent); word-break: break-word; }
+#s-design .sc-interp.sc-missing{ display: inline-block; width: 2em; height: 1em; overflow: hidden; vertical-align: text-bottom; background: rgba(255, 255, 255, 0.3); border: 1px solid rgba(0, 0, 0, 0.5); border-radius: 2px; box-sizing: border-box; color: transparent; user-select: none; }
+#s-design .sc-interp.sc-unresolved{ font-family: ui-monospace, monospace; font-size: 0.85em; color: color-mix(in srgb, currentcolor, transparent); background: color-mix(in srgb, currentcolor 10%, transparent); border-radius: 3px; padding: 0px 3px; }
+#s-design .sc-host.sc-has-error{ position: relative; }
+#s-design .sc-logic-error{ position: absolute; top: 8px; left: 8px; z-index: 2147483647; max-width: 60ch; padding: 6px 10px; background: rgb(176, 0, 32); color: rgb(255, 255, 255); font: 12px / 1.4 ui-monospace, monospace; border-radius: 4px; white-space: pre-wrap; pointer-events: none; }
+@media print {
+  @page { margin: 0.5cm; }
+  figure, table { break-inside: avoid; }
+  #dc-root, #dc-root > .sc-host { height: auto; }
+  *, ::before, ::after { print-color-adjust: exact; backdrop-filter: none !important; animation-delay: -99s !important; animation-duration: 0.001s !important; animation-iteration-count: 1 !important; animation-fill-mode: both !important; animation-play-state: running !important; transition-duration: 0s !important; }
+}
+#s-design x-dc{ display: none !important; }
+#s-design .fx{ display: flex; }
+#s-design .col{ display: flex; flex-direction: column; }
+#s-design .grid{ display: grid; }
+#s-design .ac{ align-items: center; }
+#s-design .jc{ justify-content: center; }
+#s-design .jb{ justify-content: space-between; }
+#s-design .f1{ flex: 1 1 0%; }
+#s-design .noshrink{ flex-shrink: 0; }
+#s-design .wrap{ flex-wrap: wrap; }
+#s-design .fw5{ font-weight: 500; }
+#s-design .fw6{ font-weight: 600; }
+#s-design .fw7{ font-weight: 700; }
+#s-design .fw8{ font-weight: 800; }
+#s-design .fs11{ font-size: 11px; }
+#s-design .fs12{ font-size: 12px; }
+#s-design .fs13{ font-size: 13px; }
+#s-design .fs14{ font-size: 14px; }
+#s-design .fs15{ font-size: 15px; }
+#s-design .fs16{ font-size: 16px; }
+#s-design .fs20{ font-size: 20px; }
+#s-design .fs22{ font-size: 22px; }
+#s-design .upper{ text-transform: uppercase; }
+#s-design .tc{ text-align: center; }
+#s-design .nowrap{ white-space: nowrap; }
+#s-design .gap8{ gap: 8px; }
+#s-design .gap10{ gap: 10px; }
+#s-design .gap12{ gap: 12px; }
+#s-design .gap16{ gap: 16px; }
+#s-design .gap24{ gap: 24px; }
+#s-design .m0{ margin: 0px; }
+#s-design .mt8{ margin-top: 8px; }
+#s-design .mt12{ margin-top: 12px; }
+#s-design .mt16{ margin-top: 16px; }
+#s-design .mb8{ margin-bottom: 8px; }
+#s-design .mb12{ margin-bottom: 12px; }
+#s-design .mb16{ margin-bottom: 16px; }
+#s-design .posrel{ position: relative; }
+#s-design .posabs{ position: absolute; }
+#s-design .round{ border-radius: 50%; }
+#s-design .ohide{ overflow: hidden; }
+#s-design .bbox{ box-sizing: border-box; }
+#s-design .pointer{ cursor: pointer; }
+#s-design .w100{ width: 100%; }
+#s-design .b0{ border-width: medium; border-style: none; border-color: currentcolor; border-image: none; }
+#s-design .scp0:hover{ border-color: var(--color-neutral-800) !important; }
+#s-design .scp1:hover{ color: var(--color-bg) !important; }
+#s-design .scp2:hover{ color: var(--color-neutral-300) !important; }
+#s-design .scp3:hover{ border-color: var(--color-accent) !important; background: var(--color-accent-100) !important; }
+#s-design .scp4:hover{ border-color: var(--color-accent) !important; color: var(--color-accent-700) !important; }
+#s-design .scp5:hover{ background: var(--color-accent) !important; border-color: var(--color-accent) !important; }
+#s-design .scp6:hover{ border-color: rgb(180, 69, 58) !important; color: rgb(180, 69, 58) !important; }
+#s-design .scp7:hover{ border-color: var(--color-accent) !important; }
+#s-design .scp8:hover{ background: var(--color-accent-700) !important; }
+#s-design .scp9:hover{ background: var(--color-accent-100) !important; }
+#s-design .scpa:hover{ background: var(--color-accent) !important; }
+#s-design, #s-design{ height: 100%; margin: 0px; }
+#s-design #dc-root, #s-design #dc-root > .sc-host{ height: 100%; }
+#s-design{ --color-bg: #f2f2f3; --color-surface: #e9e9ea; --color-text: #1d1f20; --color-accent: #5980a6; --color-accent-2: #728fab; --color-divider: color-mix(in srgb, #1d1f20 16%, transparent); --color-neutral-100: #f5f5f8; --color-neutral-200: #e7e7ea; --color-neutral-300: #d4d4d7; --color-neutral-400: #b7b7ba; --color-neutral-500: #98989b; --color-neutral-600: #7a7a7d; --color-neutral-700: #5d5d60; --color-neutral-800: #424244; --color-neutral-900: #2b2b2d; --color-accent-100: #eef6ff; --color-accent-200: #d6ebff; --color-accent-300: #b5d9fd; --color-accent-400: #94bce3; --color-accent-500: #749dc4; --color-accent-600: #597ea3; --color-accent-700: #416180; --color-accent-800: #2c455d; --color-accent-900: #1d2d3d; --color-accent-2-100: #eef6ff; --color-accent-2-200: #d6ebff; --color-accent-2-300: #bdd8f2; --color-accent-2-400: #9ebbd8; --color-accent-2-500: #7e9cb8; --color-accent-2-600: #627d98; --color-accent-2-700: #486077; --color-accent-2-800: #314457; --color-accent-2-900: #1f2d3a; --font-heading: "Barlow Condensed", system-ui, sans-serif; --font-heading-weight: 600; --font-body: "Barlow", system-ui, sans-serif; --space-1: 3.4px; --space-2: 6.8px; --space-3: 10.2px; --space-4: 13.6px; --space-6: 20.4px; --space-8: 27.2px; --radius-sm: 2px; --radius-md: 4px; --radius-lg: 7px; --shadow-sm: 0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent); --shadow-md: 0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent); --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent); }
+#s-design{ background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+#s-design h1, #s-design h2, #s-design h3, #s-design h4{ font-family: var(--font-heading); font-weight: var(--font-heading-weight); }
+#s-design .blueprint{ position: relative; border: 1px solid var(--color-divider); border-radius: 0px; }
+#s-design .blueprint.halftone, #s-design .blueprint.plate, #s-design .blueprint.duotone{ overflow: visible; }
+#s-design .blueprint > .corner{ position: absolute; width: 11px; height: 11px; color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+#s-design .blueprint > .corner::before, #s-design .blueprint > .corner::after{ content: ""; position: absolute; background: currentcolor; }
+#s-design .blueprint > .corner::before{ left: 5px; top: 0px; width: 1px; height: 100%; }
+#s-design .blueprint > .corner::after{ top: 5px; left: 0px; width: 100%; height: 1px; }
+#s-design .blueprint > .corner.tl{ top: -6px; left: -6px; }
+#s-design .blueprint > .corner.tr{ top: -6px; right: -6px; }
+#s-design .blueprint > .corner.bl{ bottom: -6px; left: -6px; }
+#s-design .blueprint > .corner.br{ bottom: -6px; right: -6px; }
+#s-design .duotone{ position: relative; overflow: hidden; }
+#s-design .duotone::after{ content: ""; position: absolute; inset: 0px; pointer-events: none; background: var(--color-accent); mix-blend-mode: color; }
+#s-design *, #s-design ::before, #s-design ::after{ box-sizing: border-box; }
+#s-design{ margin: 0px; font-size: 15px; line-height: 1.55; font-weight: 400; }
+#s-design h1, #s-design h2, #s-design h3, #s-design h4, #s-design h5, #s-design h6{ font-family: var(--font-heading); font-weight: var(--font-heading-weight); line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 var(--space-2); }
+#s-design h1{ font-size: 42px; }
+#s-design h2{ font-size: 32px; }
+#s-design h3{ font-size: 25px; }
+#s-design h4{ font-size: 20px; }
+#s-design h5{ font-size: 16px; }
+#s-design h6{ font-size: 13px; }
+#s-design h6{ letter-spacing: 0.08em; text-transform: uppercase; }
+#s-design p{ margin: 0 0 var(--space-3); }
+#s-design a{ color: var(--color-accent); text-underline-offset: 3px; }
+#s-design img{ display: block; max-width: 100%; }
+#s-design figure{ margin: 0px; }
+#s-design figcaption{ font-size: 11px; margin-top: var(--space-1); color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+#s-design .text-muted{ color: color-mix(in srgb, var(--color-text) 55%, transparent); }
+#s-design :focus{ outline: none; }
+#s-design :focus-visible{ outline: 2px solid var(--color-accent); outline-offset: 2px; }
+#s-design ::selection{ background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+#s-design .hr{ height: 1px; border: 0px; margin: var(--space-4) 0; background: var(--color-divider); }
+#s-design .btn{ display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 14px; line-height: 1.2; color: var(--color-text); background: transparent; border: 1px solid transparent; padding: var(--space-2) calc(var(--space-3) * 1.2); border-radius: var(--radius-md); }
+#s-design .btn svg{ display: block; }
+#s-design .btn:disabled{ opacity: 0.45; cursor: not-allowed; }
+#s-design .btn-primary{ background: var(--color-accent); color: var(--color-bg); }
+#s-design .btn-primary:hover{ background: var(--color-accent-600); }
+#s-design .btn-primary:active{ background: var(--color-accent-700); }
+#s-design .btn-secondary{ border-color: var(--color-divider); }
+#s-design .btn-secondary:hover{ background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+#s-design .btn-secondary:active{ background: color-mix(in srgb, var(--color-text) 14%, transparent); }
+#s-design .btn-ghost{ color: var(--color-accent); padding-inline: var(--space-1); }
+#s-design .btn-ghost:hover{ background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+#s-design .btn-ghost:active{ background: color-mix(in srgb, var(--color-accent) 18%, transparent); }
+#s-design .btn-icon{ width: 36px; height: 36px; padding: 0px; }
+#s-design .btn-block{ width: 100%; margin-top: var(--space-2); }
+#s-design .field > label{ display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+#s-design .input{ width: 100%; min-height: 36px; padding: 6px 10px; font-style: inherit; font-variant: inherit; font-weight: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 14px; color: var(--color-text); caret-color: var(--color-accent); background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-md); }
+#s-design .input:hover{ border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+#s-design .input:focus-visible{ border-color: var(--color-accent); outline-offset: 0px; }
+#s-design textarea.input{ min-height: 90px; resize: vertical; }
+#s-design .radio{ display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+#s-design .radio input, #s-design .seg-opt input{ position: absolute; opacity: 0; width: 0px; height: 0px; pointer-events: none; }
+#s-design .radio .dot{ width: 16px; height: 16px; flex: 0 0 auto; border-radius: 50%; border: 1.5px solid var(--color-divider); }
+#s-design .radio:hover .dot{ border-color: var(--color-accent); }
+#s-design .radio input:checked + .dot{ border-color: var(--color-accent); background: var(--color-accent); box-shadow: inset 0 0 0 4px var(--color-bg); }
+#s-design .radio input:focus-visible + .dot{ outline: 2px solid var(--color-accent); outline-offset: 2px; }
+#s-design .seg{ display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); border-radius: var(--radius-md); }
+#s-design .seg-opt{ display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
+#s-design .seg-opt + .seg-opt{ border-left: 1px solid var(--color-divider); }
+#s-design .seg-opt:has(input:checked){ background: var(--color-accent); color: var(--color-bg); }
+#s-design .seg-opt:not(:has(input:checked)):hover{ background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+#s-design .seg-opt:has(input:focus-visible){ outline: 2px solid var(--color-accent); outline-offset: -2px; }
+#s-design .card{ display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-surface); }
+#s-design .card-kicker{ font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); }
+#s-design .card-title{ font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 17px; line-height: 1.2; }
+#s-design .card-body{ margin: 0px; font-size: 13px; opacity: 0.8; flex: 1 1 0%; }
+#s-design .card-meta{ display: flex; align-items: center; gap: 6px; font-size: 11px; color: color-mix(in srgb, var(--color-text) 50%, transparent); }
+#s-design .elev-sm{ box-shadow: var(--shadow-sm); }
+#s-design .elev-md{ box-shadow: var(--shadow-md); }
+#s-design .elev-lg{ box-shadow: var(--shadow-lg); }
+#s-design .tag{ display: inline-flex; align-items: center; font-size: 11px; letter-spacing: 0.02em; padding: 3px 10px; border-radius: calc(var(--radius-md) * 0.75); }
+#s-design .tag-accent{ background: var(--color-accent-100); color: var(--color-accent-800); }
+#s-design .tag-accent-2{ background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
+#s-design .tag-neutral{ background: var(--color-neutral-100); color: var(--color-neutral-800); }
+#s-design .tag-outline{ border: 1px solid var(--color-accent); color: var(--color-accent); }
+#s-design .nav{ display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom-width: medium; border-bottom-style: none; border-bottom-color: currentcolor; }
+#s-design .nav-brand{ font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 18px; margin-right: auto; }
+#s-design .nav a{ color: inherit; text-decoration: none; font-size: 14px; }
+#s-design .nav a:hover, #s-design .nav a[aria-current="page"]{ color: var(--color-accent); }
+#s-design .table{ width: 100%; border-collapse: collapse; font-size: 14px; }
+#s-design .table th{ text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 60%, transparent); padding: var(--space-2); border-bottom: 1px solid var(--color-divider); }
+#s-design .table td{ padding: var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+#s-design .table tbody tr:hover{ background: color-mix(in srgb, var(--color-text) 4%, transparent); }
+#s-design .dialog-backdrop{ position: fixed; inset: 0px; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent); }
+#s-design .dialog{ width: min(440px, 100%); display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-lg); }
+#s-design .dialog-title{ font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 20px; }
+#s-design .dialog-body{ font-size: 14px; opacity: 0.85; }
+#s-design .dialog-actions{ display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+#s-design .card, #s-design .btn, #s-design .input, #s-design .tag, #s-design .seg, #s-design .dialog{ border-radius: 0px; }
+#s-design .card, #s-design .dialog{ background: transparent; border: 1px solid var(--color-divider); }
+#s-design .btn{ border: 1px solid var(--color-divider); }
+#s-design .btn-primary{ border-color: var(--color-accent); }
+#s-design .btn-ghost{ border-color: transparent; }
+#s-design *{ box-sizing: border-box; }
+#s-design{ margin: 0px; background: rgb(255, 255, 255); font-family: Barlow, "Noto Sans TC", system-ui, sans-serif; color: var(--color-text); -webkit-font-smoothing: antialiased; }
+#s-design a{ color: var(--color-accent); text-decoration: none; }
+#s-design a:hover{ color: var(--color-accent-700); text-decoration: underline; }
+#s-design input, #s-design select, #s-design textarea, #s-design button{ font-family: inherit; font-size: inherit; color: inherit; }
+#s-design input:focus, #s-design select:focus, #s-design textarea:focus{ outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent); border-color: var(--color-accent) !important; }
+#s-design ::placeholder{ color: var(--color-neutral-500); }
+#s-design ::-webkit-scrollbar{ width: 10px; height: 10px; }
+#s-design ::-webkit-scrollbar-thumb{ background-image: ; background-position-x: ; background-position-y: ; background-size: ; background-repeat: ; background-attachment: ; background-origin: ; background-color: ; border: 3px solid transparent; background-clip: content-box; border-radius: 0px; }
+#s-design ::-webkit-scrollbar-track{ background: transparent; }
+@keyframes toastIn { 
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: none; }
+}
 
 /* ══ mockup 外框(不是產品的一部分) ══ */
 .switch{position:fixed;left:200px;bottom:6px;z-index:99;display:flex;gap:1px;padding:3px;
@@ -2040,164 +2071,826 @@ a:hover{text-decoration:underline;}
   </div>
 </div>
 
-<div class="app" id="s-design" hidden>
-  <div class="top">
-    <div class="mark"><div class="sq">W</div><div class="nm">Weyver</div></div>
-    <div class="cats">
-      <button class="on">採購<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button>生產排程</button><button>HACCP 紀錄</button>
-      <button>供應商稽核</button><button>客訴處理</button><button>財會</button>
-      <!-- `＋` 常駐於頁籤列 —— ragic-03 逐字對照。分類是租戶自建的,不是內建模組 -->
-      <button class="add" title="新增分類">＋</button>
-    </div>
-    <div class="rt">
-      <!-- ⑦ 現況沒有全域搜尋 -->
-      <button class="gsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>搜尋表單 · 記錄 · 欄位<kbd>⌘K</kbd></button>
-      <button class="tico"><svg viewBox="0 0 24 24"><path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg><span class="dot"></span></button>
-      <button class="tico"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <div class="whoami"><div class="av">陳</div><div class="tx">陳品妤<em>採購主管</em></div></div>
-    </div>
-  </div>
-  <div class="mainrow" style="position:relative">
-    <div class="fd">
-      <!-- ① header 收成**一帶**(M3 驗收條件:header ≤1)。
-           現況三帶(task #154),而三帶正是「後台四層水平帶」的近親。 -->
-      <div class="fd-bar">
-        <div class="crumb"><a>採購</a><span class="sep">/</span><b>採購單</b></div>
-        <span class="mode"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計中</span>
-        <span class="sp"></span>
-        <!-- B′ 補償之二:dirty 標記。使用者必須看得出「有東西還沒套用」 -->
-        <span class="dirty">3 項未套用</span>
-        <button class="tool"><svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>復原</button>
-        <button class="btn gho">取消</button>
-        <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>套用設計</button>
+<div id="s-design" hidden>
+<div class="sc-host" data-sc-name="表單設計器 v3"><svg data-dc-tpl="6" width="0" height="0" aria-hidden="true" style="position: absolute;"><defs data-dc-tpl="7">
+  <symbol data-dc-tpl="8" id="weyver-mark" viewBox="0 0 120 120">
+    <rect data-dc-tpl="9" x="10" y="20" width="42" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="10" x="68" y="20" width="42" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="11" x="10" y="52" width="10" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="12" x="36" y="52" width="48" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="13" x="100" y="52" width="10" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="14" x="10" y="84" width="42" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="15" x="68" y="84" width="42" height="16" fill="var(--color-neutral-900)"></rect>
+    <rect data-dc-tpl="16" x="20" y="10" width="16" height="10" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="17" x="20" y="36" width="16" height="48" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="18" x="20" y="100" width="16" height="10" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="19" x="52" y="10" width="16" height="42" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="20" x="52" y="68" width="16" height="42" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="21" x="84" y="10" width="16" height="10" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="22" x="84" y="36" width="16" height="48" fill="var(--color-accent)"></rect>
+    <rect data-dc-tpl="23" x="84" y="100" width="16" height="10" fill="var(--color-accent)"></rect>
+  </symbol>
+  <symbol data-dc-tpl="24" id="weyver-mark-mono" viewBox="0 0 120 120">
+    <rect data-dc-tpl="25" x="10" y="20" width="42" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="26" x="68" y="20" width="42" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="27" x="10" y="52" width="10" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="28" x="36" y="52" width="48" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="29" x="100" y="52" width="10" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="30" x="10" y="84" width="42" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="31" x="68" y="84" width="42" height="16" fill="currentColor"></rect>
+    <rect data-dc-tpl="32" x="20" y="10" width="16" height="10" fill="currentColor"></rect>
+    <rect data-dc-tpl="33" x="20" y="36" width="16" height="48" fill="currentColor"></rect>
+    <rect data-dc-tpl="34" x="20" y="100" width="16" height="10" fill="currentColor"></rect>
+    <rect data-dc-tpl="35" x="52" y="10" width="16" height="42" fill="currentColor"></rect>
+    <rect data-dc-tpl="36" x="52" y="68" width="16" height="42" fill="currentColor"></rect>
+    <rect data-dc-tpl="37" x="84" y="10" width="16" height="10" fill="currentColor"></rect>
+    <rect data-dc-tpl="38" x="84" y="36" width="16" height="48" fill="currentColor"></rect>
+    <rect data-dc-tpl="39" x="84" y="100" width="16" height="10" fill="currentColor"></rect>
+  </symbol></defs></svg><div data-dc-tpl="40" style="height: 100vh; overflow: auto;"><div data-dc-tpl="41" style="min-width: 1560px; min-height: 640px; height: 100%; display: flex; flex-direction: column; overflow: hidden; background: rgb(255, 255, 255);">
+
+  <div data-dc-tpl="42" style="flex: 1 1 0%; display: flex; min-height: 0px;">
+
+    <div data-dc-tpl="43" style="width: 244px; flex: 0 0 auto; background: var(--color-text); display: flex; flex-direction: column; padding: 26px 0px 20px;">
+      <div data-dc-tpl="44" style="display: flex; align-items: center; gap: 12px; padding: 0px 24px; justify-content: flex-start;">
+        <svg data-dc-tpl="45" viewBox="0 0 120 120" width="26" height="26" style="color: var(--color-bg); flex: 0 0 auto;"><use data-dc-tpl="46" href="#weyver-mark-mono"></use></svg>
+        <span data-dc-tpl="47" style="display: block;">
+          <span data-dc-tpl="48" style="display: block; font-family: Barlow, sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.025em; color: var(--color-bg);">Weyver</span>
+          <span data-dc-tpl="49" style="display: block; font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.3em; color: var(--color-neutral-500); margin-top: 3px;">織雲</span>
+        </span>
       </div>
 
-      <div class="fd-body">
-        <!-- OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
-             不做搜尋、不做「最近使用」—— 位置固定,肌肉記憶才建立得起來。 -->
-        <div class="fd-pal">
-          <div class="grp">基本</div>
-          <div class="fd-row def"><span class="ic gl" style="color:var(--c1)">T</span>單行文字</div>
-          <div class="fd-row"><span class="ic gl" style="color:var(--c1)">¶</span>多行文字</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span>日期</div>
-          <div class="grp">數值</div>
-          <div class="fd-row"><span class="ic gl" style="color:var(--c5)">#</span>數字</div>
-          <div class="fd-row"><span class="ic gl" style="color:var(--c5)">$</span>金額</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></span>自動編號</div>
-          <div class="grp">選擇</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span>單選</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>多選</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg></span>核取</div>
-          <div class="grp">聯絡</div>
-          <div class="fd-row"><span class="ic gl" style="color:var(--c6)">@</span>Email</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>電話</div>
-          <div class="grp">關聯與計算</div>
-          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>連結其他表單</div>
-          <div class="fd-row"><span class="ic gl" style="color:var(--c4)">ƒx</span>公式</div>
-          <!-- 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地 2026-08-04)——
-               同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 -->
-          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span>子表(明細)</div>
-          <div class="hint">
-            拖到畫布,或直接在空格子上打字。<br>
-            打完按 <kbd>Enter</kbd> 就建欄。
+      <button data-dc-tpl="50" style="display: flex; align-items: center; gap: 10px; margin: 26px 16px 0px; padding: 10px 12px; justify-content: space-between; background: var(--color-neutral-900); border-width: medium; border-style: none; border-color: currentcolor; border-image: none; border-radius: 0px; cursor: pointer; text-align: left;">
+        <span data-dc-tpl="51" style="display: block;">
+          <span data-dc-tpl="52" style="display: block; font-size: 9.5px; font-weight: 600; letter-spacing: 0.14em; color: var(--color-neutral-500);">租戶</span>
+          <span data-dc-tpl="53" style="display: block; font-size: 13.5px; font-weight: 600; color: var(--color-neutral-200); margin-top: 3px;">宏遠工業</span>
+        </span>
+        <span data-dc-tpl="54" style="display: inline-block; font-family: Barlow, sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 0.12em; color: var(--color-accent-300); border: 1px solid var(--color-neutral-800); padding: 2px 5px; border-radius: 0px;">CLOUD</span>
+      </button>
+
+      <button data-dc-tpl="55" class="scp0" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 22px 16px 0px; padding: 9px 12px; background: transparent; border: 1px solid var(--color-neutral-800); border-radius: 0px; color: var(--color-neutral-500); font-size: 12.5px; cursor: pointer; text-align: left;">
+        <span data-dc-tpl="56" style="display: block;">搜尋單據或表單 App</span>
+        <span data-dc-tpl="57" style="font-family: Barlow, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--color-neutral-500); border: 1px solid var(--color-neutral-800); border-radius: 0px; padding: 2px 5px;">⌘K</span>
+      </button>
+
+      <div data-dc-tpl="58" style="display: flex; flex-direction: column; margin-top: 14px;">
+        
+          <button data-dc-tpl="60" title="首頁" class="scp1" style="display: flex; align-items: center; gap: 13px; width: 100%; height: 50px; padding: 0px 24px 0px 21px; justify-content: flex-start; background: transparent; border-width: medium medium medium 3px; border-style: none none none solid; border-color: currentcolor currentcolor currentcolor transparent; border-image: none; color: var(--color-neutral-400); cursor: pointer; text-align: left;">
+            <span data-dc-tpl="61" style="width: 7px; height: 7px; flex: 0 0 auto; background: var(--color-neutral-800);"></span>
+            <span data-dc-tpl="62" style="display: block; flex: 1 1 0%; min-width: 0px;">
+              <span data-dc-tpl="63" style="display: block; font-size: 14px; font-weight: 500; letter-spacing: -0.005em; white-space: nowrap;"><span class="sc-interp">首頁</span></span>
+              <span data-dc-tpl="64" style="display: block; font-size: 10.5px; color: var(--color-neutral-600); margin-top: 3px; white-space: nowrap;"><span class="sc-interp">總覽與待辦</span></span>
+            </span>
+          </button>
+        
+          <button data-dc-tpl="60" title="表單 App" class="scp1" style="display: flex; align-items: center; gap: 13px; width: 100%; height: 50px; padding: 0px 24px 0px 21px; justify-content: flex-start; background: transparent; border-width: medium medium medium 3px; border-style: none none none solid; border-color: currentcolor currentcolor currentcolor transparent; border-image: none; color: var(--color-neutral-400); cursor: pointer; text-align: left;">
+            <span data-dc-tpl="61" style="width: 7px; height: 7px; flex: 0 0 auto; background: var(--color-neutral-800);"></span>
+            <span data-dc-tpl="62" style="display: block; flex: 1 1 0%; min-width: 0px;">
+              <span data-dc-tpl="63" style="display: block; font-size: 14px; font-weight: 500; letter-spacing: -0.005em; white-space: nowrap;"><span class="sc-interp">表單 App</span></span>
+              <span data-dc-tpl="64" style="display: block; font-size: 10.5px; color: var(--color-neutral-600); margin-top: 3px; white-space: nowrap;"><span class="sc-interp">引擎上的表單</span></span>
+            </span>
+          </button>
+        
+          <button data-dc-tpl="60" title="設計器" class="scp1" style="display: flex; align-items: center; gap: 13px; width: 100%; height: 50px; padding: 0px 24px 0px 21px; justify-content: flex-start; background: transparent; border-top-width: medium; border-right-width: medium; border-bottom-width: medium; border-left: 3px solid var(--color-accent); border-top-style: none; border-right-style: none; border-bottom-style: none; border-top-color: currentcolor; border-right-color: currentcolor; border-bottom-color: currentcolor; border-image: none; color: var(--color-bg); cursor: pointer; text-align: left;">
+            <span data-dc-tpl="61" style="width: 7px; height: 7px; flex: 0 0 auto; background: var(--color-accent);"></span>
+            <span data-dc-tpl="62" style="display: block; flex: 1 1 0%; min-width: 0px;">
+              <span data-dc-tpl="63" style="display: block; font-size: 14px; font-weight: 600; letter-spacing: -0.005em; white-space: nowrap;"><span class="sc-interp">設計器</span></span>
+              <span data-dc-tpl="64" style="display: block; font-size: 10.5px; color: var(--color-neutral-400); margin-top: 3px; white-space: nowrap;"><span class="sc-interp">欄位與版面</span></span>
+            </span>
+          </button>
+        
+          <button data-dc-tpl="60" title="填單" class="scp1" style="display: flex; align-items: center; gap: 13px; width: 100%; height: 50px; padding: 0px 24px 0px 21px; justify-content: flex-start; background: transparent; border-width: medium medium medium 3px; border-style: none none none solid; border-color: currentcolor currentcolor currentcolor transparent; border-image: none; color: var(--color-neutral-400); cursor: pointer; text-align: left;">
+            <span data-dc-tpl="61" style="width: 7px; height: 7px; flex: 0 0 auto; background: var(--color-neutral-800);"></span>
+            <span data-dc-tpl="62" style="display: block; flex: 1 1 0%; min-width: 0px;">
+              <span data-dc-tpl="63" style="display: block; font-size: 14px; font-weight: 500; letter-spacing: -0.005em; white-space: nowrap;"><span class="sc-interp">填單</span></span>
+              <span data-dc-tpl="64" style="display: block; font-size: 10.5px; color: var(--color-neutral-600); margin-top: 3px; white-space: nowrap;"><span class="sc-interp">使用者視角</span></span>
+            </span>
+          </button>
+        
+          <button data-dc-tpl="60" title="資料與過帳" class="scp1" style="display: flex; align-items: center; gap: 13px; width: 100%; height: 50px; padding: 0px 24px 0px 21px; justify-content: flex-start; background: transparent; border-width: medium medium medium 3px; border-style: none none none solid; border-color: currentcolor currentcolor currentcolor transparent; border-image: none; color: var(--color-neutral-400); cursor: pointer; text-align: left;">
+            <span data-dc-tpl="61" style="width: 7px; height: 7px; flex: 0 0 auto; background: var(--color-neutral-800);"></span>
+            <span data-dc-tpl="62" style="display: block; flex: 1 1 0%; min-width: 0px;">
+              <span data-dc-tpl="63" style="display: block; font-size: 14px; font-weight: 500; letter-spacing: -0.005em; white-space: nowrap;"><span class="sc-interp">資料與過帳</span></span>
+              <span data-dc-tpl="64" style="display: block; font-size: 10.5px; color: var(--color-neutral-600); margin-top: 3px; white-space: nowrap;"><span class="sc-interp">單據與計算層</span></span>
+            </span>
+          </button>
+        
+      </div>
+
+      <div data-dc-tpl="65" style="flex: 1 1 0%;"></div>
+
+      <div data-dc-tpl="66" style="padding: 18px 20px 0px; border-top: 1px solid var(--color-neutral-900); margin-top: 18px;">
+        <div data-dc-tpl="67" style="display: flex; align-items: center; gap: 10px;">
+          <div data-dc-tpl="68" style="width: 28px; height: 28px; flex: 0 0 auto; border-radius: 0px; background: var(--color-neutral-800); display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 600; color: var(--color-neutral-300);">李</div>
+          <span data-dc-tpl="69" style="display: block;">
+            <span data-dc-tpl="70" style="display: block; font-size: 12.5px; font-weight: 500; color: var(--color-neutral-200);">李哲宇</span>
+            <span data-dc-tpl="71" style="display: block; font-size: 10.5px; color: var(--color-neutral-600); margin-top: 2px;">生產部 · 請購權限</span>
+          </span>
+        </div>
+        <div data-dc-tpl="72" style="display: block;">
+          <div data-dc-tpl="73" style="display: flex; align-items: center; gap: 7px; margin-top: 14px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 10px; color: var(--color-neutral-500);">
+            <span data-dc-tpl="74" style="width: 5px; height: 5px; flex: 0 0 auto; background: var(--color-accent-300);"></span><span class="sc-interp">EDGE GATEWAY 已連線 · 12ms</span>
+          </div>
+          <div data-dc-tpl="75" style="display: flex; gap: 14px; margin-top: 12px;">
+            <a data-dc-tpl="76" href="#" style="font-size: 11.5px; color: var(--color-neutral-400);">登出</a>
+            <a data-dc-tpl="77" href="#" style="font-size: 11.5px; color: var(--color-neutral-400);">說明</a>
           </div>
         </div>
+        <button data-dc-tpl="78" class="scp2" style="margin-top: 16px; height: 26px; background: transparent; border: 1px solid var(--color-neutral-800); color: var(--color-neutral-600); font-size: 11px; border-radius: 0px; cursor: pointer; width: 100%;"><span class="sc-interp">‹ 收合</span></button>
+      </div>
+    </div>
 
-        <!-- 🔴 畫布長得**就是填單畫面** —— form-designer-2d D1 逐字:
-             「2D 格線畫布 = 填單畫面本身」。設計模式不是另一套抽象編輯器。 -->
-        <div class="fd-canvas">
-          <div class="fd-paper">
-            <div class="fd-doc">
-              <h2>採購單</h2>
-              <div class="meta">向供應商下訂原物料。核准後自動過帳至存貨與應付帳款。</div>
+    
+      <div data-dc-tpl="80" style="flex: 1 1 0%; display: flex; min-height: 0px; min-width: 0px;">
 
-              <div class="fd-sec">基本資料
-                <span class="hd">
-                  <button title="上移"><svg viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
-                  <button title="設定"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
-                </span>
-              </div>
-              <div class="fd-grid">
-                <!-- 示例值依型別生成(OQ-FDW-1=A),ink-3 + 淡底標示為非真值 —— 不取真實記錄:
-                     設計者未必有讀資料權,而且空表根本沒東西可顯示。 -->
-                <div class="fd-f on" style="grid-column:span 6"><span class="grip"></span>
-                  <div class="k"><i>*</i>供應商</div><div class="v"><span class="ex">裕豐農產行</span></div></div>
-                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
-                  <div class="k">聯絡人</div><div class="v"><span class="ex">範例文字</span></div></div>
-                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
-                  <div class="k"><i>*</i>預定交期</div><div class="v"><span class="ex">2026-08-08</span></div></div>
-                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
-                  <div class="k">付款條件</div><div class="v"><span class="ex">月結 30 天</span></div></div>
-                <div class="fd-f" style="grid-column:span 12"><span class="grip"></span>
-                  <div class="k">備註</div><div class="v"><span class="ex">範例文字</span></div></div>
-                <!-- OQ-FDW-3=B′「Enter 即建欄」:空格子直接打字 -->
-                <div class="fd-typing" style="grid-column:span 6">
-                  <div class="k">交貨地點<span class="cur"></span></div>
-                  <div class="v">單行文字 · <kbd>Enter</kbd> 建立 · <kbd>Tab</kbd> 換型別</div>
+        <div data-dc-tpl="81" style="width: 246px; flex: 0 0 auto; background: rgb(255, 255, 255); border-right: 1px solid var(--color-neutral-200); display: flex; flex-direction: column; min-height: 0px;">
+          <div data-dc-tpl="82" style="padding: 10px 12px; border-bottom: 1px solid var(--color-neutral-200);">
+            <div data-dc-tpl="83" style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--color-neutral-600); margin-bottom: 8px;">元件庫</div>
+            <input data-dc-tpl="84" placeholder="搜尋元件…" value="" style="width: 100%; height: 28px; padding: 0px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; font-size: 12px;">
+          </div>
+          <div data-dc-tpl="85" style="flex: 1 1 0%; overflow-y: auto; padding: 6px 0px 20px;">
+            
+              <div data-dc-tpl="87" style="padding: 8px 12px 4px;">
+                <div data-dc-tpl="88" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9.5px; letter-spacing: 0.1em; color: var(--color-neutral-500); margin-bottom: 6px;"><span class="sc-interp">基本欄位</span></div>
+                <div data-dc-tpl="89" style="display: flex; flex-direction: column; gap: 3px;">
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">Ab</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">單行文字</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">TEXT</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">¶</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">多行文字</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">TEXTAR</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">12</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">數字</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">NUMBER</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">▤</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">日期</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">DATE</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">▾</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">下拉選單</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">SELECT</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">◉</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">單選</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">RADIO</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">☑</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">複選</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">CHECKB</span></span>
+                    </div>
+                  
                 </div>
-                <div class="fd-empty" style="grid-column:span 6">＋ 點這裡新增欄位</div>
               </div>
+            
+              <div data-dc-tpl="87" style="padding: 8px 12px 4px;">
+                <div data-dc-tpl="88" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9.5px; letter-spacing: 0.1em; color: var(--color-neutral-500); margin-bottom: 6px;"><span class="sc-interp">進階欄位</span></div>
+                <div data-dc-tpl="89" style="display: flex; flex-direction: column; gap: 3px;">
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">⇧</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">檔案上傳</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">FILE</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">✎</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">簽名</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">SIGN</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">▦</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">子表單表格</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">TABLE</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">⌕</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">關聯查詢</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">LOOKUP</span></span>
+                    </div>
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">ƒx</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">計算欄位</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">COMPUT</span></span>
+                    </div>
+                  
+                </div>
+              </div>
+            
+              <div data-dc-tpl="87" style="padding: 8px 12px 4px;">
+                <div data-dc-tpl="88" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9.5px; letter-spacing: 0.1em; color: var(--color-neutral-500); margin-bottom: 6px;"><span class="sc-interp">版面</span></div>
+                <div data-dc-tpl="89" style="display: flex; flex-direction: column; gap: 3px;">
+                  
+                    <div data-dc-tpl="91" draggable="true" class="scp3" style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; cursor: grab; user-select: none;">
+                      <div data-dc-tpl="92" style="width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid var(--color-neutral-300); background: var(--color-bg); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">—</span></div>
+                      <span data-dc-tpl="93" style="font-size: 12.5px; flex: 1 1 0%;"><span class="sc-interp">分段標題</span></span>
+                      <span data-dc-tpl="94" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);"><span class="sc-interp">SECTIO</span></span>
+                    </div>
+                  
+                </div>
+              </div>
+            
+          </div>
+          <div data-dc-tpl="95" style="padding: 8px 12px; border-top: 1px solid var(--color-neutral-200); font-size: 10.5px; color: var(--color-neutral-600); line-height: 1.5;">拖曳至畫布，或雙擊直接新增。</div>
+        </div>
 
-              <div class="fd-sec">品項明細</div>
-              <div class="fd-sub">
-                <table>
-                  <thead><tr><th class="rn">#</th><th>品項</th><th>料號</th><th>數量</th><th>單價</th>
-                    <th>金額 <svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></th><th class="addcol">＋</th></tr></thead>
-                  <tbody>
-                    <tr><td class="rn">1</td><td>去骨雞腿肉(冷藏)</td><td>K-1042</td><td>340.5</td>
-                      <td>168.00</td><td>57,204</td><td></td></tr>
-                    <tr><td class="rn">2</td><td>範例文字</td><td>範例文字</td><td>0</td>
-                      <td>0.00</td><td>0</td><td></td></tr>
-                  </tbody>
-                </table>
+        <div data-dc-tpl="96" style="flex: 1 1 0%; display: flex; flex-direction: column; min-width: 0px; background: rgb(255, 255, 255);">
+          <div data-dc-tpl="97" style="height: 44px; flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0px 18px; background: rgb(255, 255, 255); border-bottom: 1px solid var(--color-neutral-200);">
+            <div data-dc-tpl="98" style="display: flex; border: 1px solid var(--color-neutral-200); border-radius: 0px; overflow: hidden;">
+              <button data-dc-tpl="99" style="height: 26px; padding: 0px 11px; background: var(--color-accent); border-top-width: medium; border-right: 1px solid var(--color-neutral-200); border-bottom-width: medium; border-left-width: medium; border-top-style: none; border-bottom-style: none; border-left-style: none; border-top-color: currentcolor; border-bottom-color: currentcolor; border-left-color: currentcolor; border-image: none; color: rgb(255, 255, 255); font-size: 11.5px; cursor: pointer;">網格</button>
+              <button data-dc-tpl="100" style="height: 26px; padding: 0px 11px; background: rgb(255, 255, 255); border-width: medium; border-style: none; border-color: currentcolor; border-image: none; color: var(--color-neutral-700); font-size: 11.5px; cursor: pointer;">自由定位</button>
+            </div>
+            <div data-dc-tpl="101" style="width: 1px; height: 20px; background: var(--color-neutral-200);"></div>
+            <div data-dc-tpl="102" style="display: flex; gap: 2px;">
+              
+                <button data-dc-tpl="104" style="height: 24px; padding: 0px 10px; background: rgb(255, 255, 255); border-top-color: ; border-top-style: ; border-top-width: ; border-right-color: ; border-right-style: ; border-right-width: ; border-bottom: 1px solid rgb(255, 255, 255); border-left-color: ; border-left-style: ; border-left-width: ; border-image-source: ; border-image-slice: ; border-image-width: ; border-image-outset: ; border-image-repeat: ; color: var(--color-text); font-size: 11.5px; border-radius: 0px; cursor: pointer; font-weight: 500;"><span class="sc-interp">第 1 頁</span></button>
+              
+                <button data-dc-tpl="104" style="height: 24px; padding: 0px 10px; background: transparent; border: 1px solid transparent; color: var(--color-neutral-600); font-size: 11.5px; border-radius: 0px; cursor: pointer; font-weight: 400;"><span class="sc-interp">第 2 頁</span></button>
+              
+              <button data-dc-tpl="105" style="height: 24px; padding: 0px 8px; background: transparent; border: 1px dashed var(--color-neutral-300); font-size: 11.5px; color: var(--color-neutral-600); border-radius: 0px; cursor: pointer;">＋ 分頁</button>
+            </div>
+            <div data-dc-tpl="106" style="flex: 1 1 0%;"></div>
+            <label data-dc-tpl="107" style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--color-neutral-700); cursor: pointer;">
+              <input data-dc-tpl="108" type="checkbox" checked="" style="accent-color: var(--color-accent); width: 13px; height: 13px;">對齊格線
+            </label>
+            <span data-dc-tpl="109" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--color-neutral-600);"><span class="sc-interp">100%</span></span>
+            <div data-dc-tpl="110" style="width: 1px; height: 20px; background: var(--color-neutral-200);"></div>
+            <span data-dc-tpl="111" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--color-neutral-500);"><span class="sc-interp">已儲存 10:12</span></span>
+            <button data-dc-tpl="112" class="scp4" style="height: 26px; padding: 0px 11px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); font-size: 12px; border-radius: 0px; cursor: pointer;">預覽填單</button>
+            <button data-dc-tpl="113" class="scp5" style="height: 26px; padding: 0px 12px; background: var(--color-text); border: 1px solid var(--color-text); color: rgb(255, 255, 255); font-size: 12px; font-weight: 600; border-radius: 0px; cursor: pointer;">發布</button>
+          </div>
+
+          
+          <div data-dc-tpl="115" style="height: 16px; flex: 0 0 auto; display: flex; align-items: flex-end; background: rgb(255, 255, 255); border-bottom: 1px solid var(--color-neutral-100); padding-left: 44px; overflow: hidden;">
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">0</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">50</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">100</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">150</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">200</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">250</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">300</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">350</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">400</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">450</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">500</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">550</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">600</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">650</span></span>
+              </div>
+            
+              <div data-dc-tpl="117" style="width: 56px; flex: 0 0 auto; border-left: 1px solid var(--color-neutral-300); height: 7px; position: relative;">
+                <span data-dc-tpl="118" style="position: absolute; left: 3px; top: -9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 8.5px; color: var(--color-neutral-500);"><span class="sc-interp">700</span></span>
+              </div>
+            
+          </div>
+          
+
+          <div data-dc-tpl="119" style="flex: 1 1 0%; overflow: auto; padding: 34px 44px 90px; background: var(--color-bg);">
+            <div data-dc-tpl="120" class="blueprint" style="position: relative; width: 100%; max-width: 920px; min-height: 620px; margin: 0px auto; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; box-shadow: var(--shadow-md);">
+              <i data-dc-tpl="121" class="corner tl"></i><i data-dc-tpl="122" class="corner tr"></i><i data-dc-tpl="123" class="corner bl"></i><i data-dc-tpl="124" class="corner br"></i>
+              <div data-dc-tpl="125" style="padding: 20px 26px 14px; border-bottom: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255);">
+                <div data-dc-tpl="126" style="font-family: &quot;Barlow Condensed&quot;, &quot;Noto Sans TC&quot;, sans-serif; font-size: 22px; font-weight: 600; letter-spacing: 0.01em;"><span class="sc-interp">採購單（原物料）</span></div>
+                <div data-dc-tpl="127" style="font-size: 12px; color: var(--color-neutral-600); margin-top: 4px;"><span class="sc-interp">引擎表單 APP-PUR-001 · 送出後由計算層執行 MRP 展開與 GL 過帳。</span></div>
+              </div>
+              <div data-dc-tpl="128" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px 16px; padding: 26px 30px 48px; min-height: 460px; background-image: repeating-linear-gradient(90deg,color-mix(in srgb, var(--color-accent) 6%, transparent) 0 1px,transparent 1px 8.333%);">
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 12; position: relative; padding: 2px 4px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                      <div data-dc-tpl="132" style="display: flex; align-items: center; gap: 10px; padding: 4px 0px 6px;">
+                        <span data-dc-tpl="133" style="font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--color-text);"><span class="sc-interp">單頭資訊</span></span>
+                        <div data-dc-tpl="134" style="flex: 1 1 0%; height: 1px; background: var(--color-neutral-200);"></div>
+                        <span data-dc-tpl="135" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);">SECTION</span>
+                      </div>
+                    
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 3; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">採購單號</span></span>
+                          
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">DOC_NO</span></span>
+                        </div>
+                        
+                          <div data-dc-tpl="147" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span class="sc-interp">系統自動編號</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="174" style="font-size: 10.5px; color: var(--color-neutral-500); margin-top: 4px;"><span class="sc-interp">依編碼規則 PO-YYMM-####</span></div>
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 4; position: relative; padding: 8px 10px; background: var(--color-accent-100); border: 1px solid var(--color-accent); outline: 1px solid var(--color-accent); border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">供應商</span></span>
+                          <span data-dc-tpl="141" style="color: rgb(180, 69, 58); font-size: 12px;">*</span>
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">VENDOR</span></span>
+                        </div>
+                        
+                          <div data-dc-tpl="147" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span class="sc-interp">輸入供應商代號或名稱</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="174" style="font-size: 10.5px; color: var(--color-neutral-500); margin-top: 4px;"><span class="sc-interp">帶入付款條件與交易幣別</span></div>
+                        
+                      </div>
+                    
+                    
+                      <div data-dc-tpl="176" style="position: absolute; top: -9px; left: -1px; height: 17px; display: flex; align-items: center; gap: 6px; padding: 0px 6px; background: var(--color-accent); color: rgb(255, 255, 255); font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; letter-spacing: 0.04em;"><span class="sc-interp">VENDOR  span 4</span></div>
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 3; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">付款條件</span></span>
+                          
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">PAY_TERM</span></span>
+                        </div>
+                        
+                          <div data-dc-tpl="147" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span class="sc-interp">由供應商帶入</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 2; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">幣別</span></span>
+                          <span data-dc-tpl="141" style="color: rgb(180, 69, 58); font-size: 12px;">*</span>
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp"></span></span>
+                        </div>
+                        
+                        
+                          <div data-dc-tpl="149" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; justify-content: space-between; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span data-dc-tpl="150"><span class="sc-interp">請選擇…</span></span><span data-dc-tpl="151" style="color: var(--color-neutral-600);">▾</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 3; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">單據日期</span></span>
+                          <span data-dc-tpl="141" style="color: rgb(180, 69, 58); font-size: 12px;">*</span>
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">DOC_DATE</span></span>
+                        </div>
+                        
+                          <div data-dc-tpl="147" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span class="sc-interp">yyyy/mm/dd</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 3; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">需求交期</span></span>
+                          <span data-dc-tpl="141" style="color: rgb(180, 69, 58); font-size: 12px;">*</span>
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">NEED_DATE</span></span>
+                        </div>
+                        
+                          <div data-dc-tpl="147" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span class="sc-interp">yyyy/mm/dd</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 3; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">需求部門</span></span>
+                          <span data-dc-tpl="141" style="color: rgb(180, 69, 58); font-size: 12px;">*</span>
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">DEPT</span></span>
+                        </div>
+                        
+                        
+                          <div data-dc-tpl="149" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; justify-content: space-between; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span data-dc-tpl="150"><span class="sc-interp">請選擇…</span></span><span data-dc-tpl="151" style="color: var(--color-neutral-600);">▾</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 3; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">來源工單</span></span>
+                          
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">WO_NO</span></span>
+                        </div>
+                        
+                          <div data-dc-tpl="147" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; padding: 0px 9px; font-size: 12px; color: var(--color-neutral-500);"><span class="sc-interp">MRP 建議帶入</span></div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="174" style="font-size: 10.5px; color: var(--color-neutral-500); margin-top: 4px;"><span class="sc-interp">連結至工單 App 的需求來源</span></div>
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 12; position: relative; padding: 2px 4px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                      <div data-dc-tpl="132" style="display: flex; align-items: center; gap: 10px; padding: 4px 0px 6px;">
+                        <span data-dc-tpl="133" style="font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--color-text);"><span class="sc-interp">採購明細</span></span>
+                        <div data-dc-tpl="134" style="flex: 1 1 0%; height: 1px; background: var(--color-neutral-200);"></div>
+                        <span data-dc-tpl="135" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-400);">SECTION</span>
+                      </div>
+                    
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 12; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">品項</span></span>
+                          <span data-dc-tpl="141" style="color: rgb(180, 69, 58); font-size: 12px;">*</span>
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">ITEMS</span></span>
+                        </div>
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="160" style="border: 1px solid var(--color-neutral-200); border-radius: 0px; overflow: hidden;">
+                            <div data-dc-tpl="161" style="display: flex; background: var(--color-bg); border-bottom: 1px solid var(--color-neutral-200);">
+                              
+                                <div data-dc-tpl="163" style="flex: 1 1 0%; padding: 5px 8px; font-size: 11px; font-weight: 500; color: var(--color-neutral-700); border-right: 1px solid var(--color-neutral-200);"><span class="sc-interp">料號</span></div>
+                              
+                                <div data-dc-tpl="163" style="flex: 1 1 0%; padding: 5px 8px; font-size: 11px; font-weight: 500; color: var(--color-neutral-700); border-right: 1px solid var(--color-neutral-200);"><span class="sc-interp">品名規格</span></div>
+                              
+                                <div data-dc-tpl="163" style="flex: 1 1 0%; padding: 5px 8px; font-size: 11px; font-weight: 500; color: var(--color-neutral-700); border-right: 1px solid var(--color-neutral-200);"><span class="sc-interp">數量</span></div>
+                              
+                                <div data-dc-tpl="163" style="flex: 1 1 0%; padding: 5px 8px; font-size: 11px; font-weight: 500; color: var(--color-neutral-700); border-right: 1px solid var(--color-neutral-200);"><span class="sc-interp">單價</span></div>
+                              
+                                <div data-dc-tpl="163" style="flex: 1 1 0%; padding: 5px 8px; font-size: 11px; font-weight: 500; color: var(--color-neutral-700); border-right: 1px solid var(--color-neutral-200);"><span class="sc-interp">小計</span></div>
+                              
+                            </div>
+                            <div data-dc-tpl="164" style="display: flex;">
+                              
+                                <div data-dc-tpl="166" style="flex: 1 1 0%; padding: 7px 8px; border-right: 1px solid var(--color-neutral-100);"><div data-dc-tpl="167" style="height: 8px; background: var(--color-neutral-200);"></div></div>
+                              
+                                <div data-dc-tpl="166" style="flex: 1 1 0%; padding: 7px 8px; border-right: 1px solid var(--color-neutral-100);"><div data-dc-tpl="167" style="height: 8px; background: var(--color-neutral-200);"></div></div>
+                              
+                                <div data-dc-tpl="166" style="flex: 1 1 0%; padding: 7px 8px; border-right: 1px solid var(--color-neutral-100);"><div data-dc-tpl="167" style="height: 8px; background: var(--color-neutral-200);"></div></div>
+                              
+                                <div data-dc-tpl="166" style="flex: 1 1 0%; padding: 7px 8px; border-right: 1px solid var(--color-neutral-100);"><div data-dc-tpl="167" style="height: 8px; background: var(--color-neutral-200);"></div></div>
+                              
+                                <div data-dc-tpl="166" style="flex: 1 1 0%; padding: 7px 8px; border-right: 1px solid var(--color-neutral-100);"><div data-dc-tpl="167" style="height: 8px; background: var(--color-neutral-200);"></div></div>
+                              
+                            </div>
+                            <div data-dc-tpl="168" style="padding: 4px 8px; font-size: 10.5px; color: var(--color-accent); border-top: 1px solid var(--color-neutral-100);">＋ 新增一列</div>
+                          </div>
+                        
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 4; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">未稅金額</span></span>
+                          
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">AMOUNT</span></span>
+                        </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="170" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; justify-content: space-between; padding: 0px 9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-accent);"><span data-dc-tpl="171"><span class="sc-interp">SUM(ITEMS.小計)</span></span><span data-dc-tpl="172" style="color: var(--color-neutral-500); font-size: 9px;">ƒx</span></div>
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 4; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">稅額（5%）</span></span>
+                          
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">TAX</span></span>
+                        </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="170" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; justify-content: space-between; padding: 0px 9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-accent);"><span data-dc-tpl="171"><span class="sc-interp">ROUND(AMOUNT * 0.05)</span></span><span data-dc-tpl="172" style="color: var(--color-neutral-500); font-size: 9px;">ƒx</span></div>
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                  <div data-dc-tpl="130" draggable="true" style="grid-column: span 4; position: relative; padding: 8px 10px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); outline: none; border-radius: 0px; cursor: grab;">
+                    
+                    
+                      <div data-dc-tpl="137">
+                        <div data-dc-tpl="138" style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 5px;">
+                          <span data-dc-tpl="139" style="font-size: 12px; font-weight: 500; color: var(--color-neutral-800);"><span class="sc-interp">含稅總計</span></span>
+                          
+                          
+                          <div data-dc-tpl="144" style="flex: 1 1 0%;"></div>
+                          <span data-dc-tpl="145" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-300);"><span class="sc-interp">TOTAL</span></span>
+                        </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                          <div data-dc-tpl="170" style="height: 32px; border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; display: flex; align-items: center; justify-content: space-between; padding: 0px 9px; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--color-accent);"><span data-dc-tpl="171"><span class="sc-interp">AMOUNT + TAX</span></span><span data-dc-tpl="172" style="color: var(--color-neutral-500); font-size: 9px;">ƒx</span></div>
+                        
+                        
+                      </div>
+                    
+                    
+                  </div>
+                
+                
               </div>
             </div>
           </div>
         </div>
 
-        <!-- ② 屬性抽屜:accordion 四段,**單欄**。
-             M2 驗收條件逐字「輔助面板 ≤1 欄」—— 現況是三個工具列開關 + 多面板。 -->
-        <div class="fd-insp">
-          <div class="hd">
-            <div class="t">供應商</div>
-            <div class="s">連結其他表單 · 第 1 列</div>
-          </div>
-          <div class="bd">
-            <div class="fd-acc open">
-              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>基本</button>
-              <div class="in">
-                <div class="fd-prop"><span class="pk">欄位名稱</span><input type="text" value="供應商"></div>
-                <div class="fd-prop"><span class="pk">型別</span><span class="sel">連結其他表單<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
-                <div class="fd-prop"><span class="pk">連到</span><span class="sel">供應商主檔<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
-                <div class="fd-prop"><span class="pk">寬度</span><span class="sel">6 / 12 欄<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+        <div data-dc-tpl="179" style="width: 308px; flex: 0 0 auto; background: rgb(255, 255, 255); border-left: 1px solid var(--color-neutral-200); display: flex; flex-direction: column; min-height: 0px;">
+          
+            <div data-dc-tpl="181" style="display: flex; flex-direction: column; min-height: 0px; flex: 1 1 0%;">
+              <div data-dc-tpl="182" style="padding: 11px 12px 9px; border-bottom: 1px solid var(--color-neutral-200);">
+                <div data-dc-tpl="183" style="display: flex; align-items: center; gap: 8px;">
+                  <div data-dc-tpl="184" style="width: 20px; height: 20px; border: 1px solid var(--color-neutral-300); background: rgb(255, 255, 255); display: flex; align-items: center; justify-content: center; font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9px; color: var(--color-neutral-700);"><span class="sc-interp">⌕</span></div>
+                  <div data-dc-tpl="185" style="flex: 1 1 0%; min-width: 0px;">
+                    <div data-dc-tpl="186" style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span class="sc-interp">供應商</span></div>
+                    <div data-dc-tpl="187" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 9.5px; color: var(--color-neutral-500);"><span class="sc-interp">VENDOR · 關聯查詢</span></div>
+                  </div>
+                  <button data-dc-tpl="188" title="刪除欄位" class="scp6" style="width: 24px; height: 24px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); color: var(--color-neutral-600); border-radius: 0px; cursor: pointer; font-size: 12px;">✕</button>
+                </div>
+              </div>
+              <div data-dc-tpl="189" style="display: flex; border-bottom: 1px solid var(--color-neutral-200); background: var(--color-bg);">
+                
+                  <button data-dc-tpl="191" style="flex: 1 1 0%; height: 30px; background: var(--color-neutral-100); border-top-width: medium; border-right-width: medium; border-bottom: 2px solid var(--color-accent); border-left-width: medium; border-top-style: none; border-right-style: none; border-left-style: none; border-top-color: currentcolor; border-right-color: currentcolor; border-left-color: currentcolor; border-image: none; color: var(--color-text); font-size: 12px; font-weight: 600; cursor: pointer;"><span class="sc-interp">基本</span></button>
+                
+                  <button data-dc-tpl="191" style="flex: 1 1 0%; height: 30px; background: transparent; border-width: medium medium 2px; border-style: none none solid; border-color: currentcolor currentcolor transparent; border-image: none; color: var(--color-neutral-600); font-size: 12px; font-weight: 400; cursor: pointer;"><span class="sc-interp">驗證</span></button>
+                
+                  <button data-dc-tpl="191" style="flex: 1 1 0%; height: 30px; background: transparent; border-width: medium medium 2px; border-style: none none solid; border-color: currentcolor currentcolor transparent; border-image: none; color: var(--color-neutral-600); font-size: 12px; font-weight: 400; cursor: pointer;"><span class="sc-interp">邏輯</span></button>
+                
+              </div>
+              <div data-dc-tpl="192" style="flex: 1 1 0%; overflow-y: auto; padding: 12px 12px 30px;">
+
+                
+                  <div data-dc-tpl="194" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div data-dc-tpl="195">
+                      <div data-dc-tpl="196" style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; color: var(--color-neutral-600); margin-bottom: 4px;">欄位標題</div>
+                      <input data-dc-tpl="197" value="供應商" style="width: 100%; height: 30px; padding: 0px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; font-size: 12.5px;">
+                    </div>
+                    <div data-dc-tpl="198">
+                      <div data-dc-tpl="199" style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; color: var(--color-neutral-600); margin-bottom: 4px;">提示文字</div>
+                      <input data-dc-tpl="200" value="輸入供應商代號或名稱" style="width: 100%; height: 30px; padding: 0px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; font-size: 12.5px;">
+                    </div>
+                    <div data-dc-tpl="201">
+                      <div data-dc-tpl="202" style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; color: var(--color-neutral-600); margin-bottom: 4px;">說明</div>
+                      <input data-dc-tpl="203" placeholder="顯示於欄位下方" value="帶入付款條件與交易幣別" style="width: 100%; height: 30px; padding: 0px 8px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); border-radius: 0px; font-size: 12.5px;">
+                    </div>
+                    <div data-dc-tpl="204">
+                      <div data-dc-tpl="205" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+                        <span data-dc-tpl="206" style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; color: var(--color-neutral-600);">寬度（12 欄網格）</span>
+                        <span data-dc-tpl="207" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--color-accent);"><span class="sc-interp">4/12</span></span>
+                      </div>
+                      <div data-dc-tpl="208" style="display: flex; gap: 3px;">
+                        
+                          <button data-dc-tpl="210" style="flex: 1 1 0%; height: 26px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); color: var(--color-neutral-700); font-size: 11.5px; border-radius: 0px; cursor: pointer;"><span class="sc-interp">3/12</span></button>
+                        
+                          <button data-dc-tpl="210" style="flex: 1 1 0%; height: 26px; background: var(--color-accent); border: 1px solid var(--color-accent); color: rgb(255, 255, 255); font-size: 11.5px; border-radius: 0px; cursor: pointer;"><span class="sc-interp">4/12</span></button>
+                        
+                          <button data-dc-tpl="210" style="flex: 1 1 0%; height: 26px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); color: var(--color-neutral-700); font-size: 11.5px; border-radius: 0px; cursor: pointer;"><span class="sc-interp">6/12</span></button>
+                        
+                          <button data-dc-tpl="210" style="flex: 1 1 0%; height: 26px; background: rgb(255, 255, 255); border: 1px solid var(--color-neutral-200); color: var(--color-neutral-700); font-size: 11.5px; border-radius: 0px; cursor: pointer;"><span class="sc-interp">滿版</span></button>
+                        
+                      </div>
+                    </div>
+                    
+                    
+                    
+                      <div data-dc-tpl="227" style="border: 1px solid var(--color-neutral-200); background: rgb(255, 255, 255); border-radius: 0px; padding: 9px;">
+                        <div data-dc-tpl="228" style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; color: var(--color-neutral-600); margin-bottom: 6px;">關聯資料來源</div>
+                        <div data-dc-tpl="229" style="display: flex; flex-direction: column; gap: 5px; font-size: 12px;">
+                          
+                            <div data-dc-tpl="231" style="display: flex; justify-content: space-between; gap: 10px;"><span data-dc-tpl="232" style="color: var(--color-neutral-600); flex: 0 0 auto;"><span class="sc-interp">資料表</span></span><span data-dc-tpl="233" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 11px; text-align: right;"><span class="sc-interp">mst.vendor</span></span></div>
+                          
+                            <div data-dc-tpl="231" style="display: flex; justify-content: space-between; gap: 10px;"><span data-dc-tpl="232" style="color: var(--color-neutral-600); flex: 0 0 auto;"><span class="sc-interp">查詢鍵</span></span><span data-dc-tpl="233" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 11px; text-align: right;"><span class="sc-interp">vendor_no</span></span></div>
+                          
+                            <div data-dc-tpl="231" style="display: flex; justify-content: space-between; gap: 10px;"><span data-dc-tpl="232" style="color: var(--color-neutral-600); flex: 0 0 auto;"><span class="sc-interp">帶入欄位</span></span><span data-dc-tpl="233" style="font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 11px; text-align: right;"><span class="sc-interp">pay_term, currency</span></span></div>
+                          
+                        </div>
+                      </div>
+                    
+                  </div>
+                
+
+                
+
+                
+
               </div>
             </div>
-            <div class="fd-acc open">
-              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>驗證<span class="n">1 條</span></button>
-              <div class="in">
-                <label class="fd-sw"><input type="checkbox" checked>必填</label>
-                <label class="fd-sw"><input type="checkbox">不可重複</label>
-                <div class="fd-prop"><span class="pk">預設值</span><input type="text" value=""></div>
-              </div>
-            </div>
-            <div class="fd-acc">
-              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>顯示</button>
-            </div>
-            <div class="fd-acc">
-              <button><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>進階</button>
-            </div>
-          </div>
+          
+          
         </div>
       </div>
-    </div>
+    
 
-    <!-- B′ 補償之一:可撤銷 toast。「Enter 即建欄」是**立即 DDL** ——
-         沒有撤銷的即時 DDL 是陷阱,所以三項補償缺一不可。 -->
-    <div class="fd-toast">
-      <span>已新增欄位「單號」</span>
-      <button>復原</button>
-    </div>
+    
+
+    
+
+    
+
+    
+
   </div>
+
+  
+  <div data-dc-tpl="601" style="height: 24px; flex: 0 0 auto; display: flex; align-items: center; gap: 14px; padding: 0px 12px; background: var(--color-text); color: var(--color-neutral-500); font-family: Barlow, &quot;Noto Sans TC&quot;, sans-serif; font-variant-numeric: tabular-nums; font-size: 10px; letter-spacing: 0.03em;">
+    <span data-dc-tpl="602" style="color: var(--color-accent-300);"><span class="sc-interp">MODE GRID·12COL</span></span>
+    <span data-dc-tpl="603"><span class="sc-interp">SNAP 8PX</span></span>
+    <span data-dc-tpl="604"><span class="sc-interp">SEL VENDOR SPAN 4</span></span>
+    <div data-dc-tpl="605" style="flex: 1 1 0%;"></div>
+    <span data-dc-tpl="606"><span class="sc-interp">ENGINE SUBSTRATE · FIELDS 21 · CALC HOOKS 2/4 · LOGIC 1</span></span>
+    <span data-dc-tpl="607">v3.2.0-beta</span>
+  </div>
+  
+
+  
+
+  
+
+  </div></div></div>
 </div>
 
 <div class="switch">
