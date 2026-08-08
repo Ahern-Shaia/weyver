@@ -1353,6 +1353,72 @@ a:hover{text-decoration:underline;}
 #s-builder input,#s-builder select{font-family: inherit;}
 #s-builder input::placeholder{color: oklch(72% .008 260);}
 #s-builder input:focus,#s-builder select:focus{outline: none; border-color: oklch(58% .15 240) !important; box-shadow: 0 0 0 3px oklch(58% .15 240 / .16);}
+
+/* ══════════════════════════════════════════════════════════════════
+   🔴 2026-08-08|v3 互動層 —— 補回 inline style **語法上寫不出來**的狀態
+
+   為什麼需要這一層|v3 的 8 個頁面是 x-dc 輸出的 DOM,實測 860 個元素中
+   **506 個帶 inline style、0 個帶設計 class**(原稿 `class=` 出現 0 次)。
+   本檔 `<style>` 的 93 個類別**與 weyver-v2 完全相同、v3 獨有 0 個** ——
+   它是 v2 的樣式表,只服務保留下來的 `.top` 外殼,對 v3 頁面沒有作用面。
+
+   inline style 能表達靜態外觀,但 **`:hover` / `:focus-visible` 沒有 inline 語法**。
+   所以這些頁面在瀏覽器裡是「看起來對、但滑過去沒有任何回饋」。
+   ⚠️ `transition` 反而部分還在 —— 原稿有些元素 inline 寫了 `transition: background 0.14s`
+   (實測可點擊元素中 50 個帶 background 相關宣告),所以微動畫不是全滅,是**只剩一半**。
+
+   掛法|唯一穩定的鉤子是 inline 文字本身。實測 88 個元素的 inline 含
+   `cursor: pointer`(有空格,照原文比對)。
+   ⚠️ `[style*="background:"]` 只會命中真正的底色宣告 ——
+   `transition: background 0.14s` 沒有冒號緊接,不會誤中。這是刻意選的寫法。
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 沒有 inline 底色的可點擊元素 → 淡底 hover。不需 !important,因為沒有同屬性的 inline 宣告在競爭 */
+.v3page [style*="cursor: pointer"]:not([style*="background:"]):hover{
+  background: oklch(58% .15 240 / .07);
+}
+/* ⚠️ 明確寫了底色、但其實是透明的,會被上面的 :not() 排除掉 —— 它們該有 hover。
+   CSS 的 `[attr*=]` 只能比字串,分不出「有底色」與「明確寫了沒有底色」,只能明列回來。
+   逐頁量出來的漏網形態就這幾種(不是猜的):transparent / none / 卡片底 / 淡底。 */
+.v3page [style*="cursor: pointer"]:is([style*="background: none"],[style*="background: transparent"]):hover{
+  background: oklch(58% .15 240 / .07) !important;
+}
+/* 卡片底的列(清單、範本卡)→ 往下一階表面,不是加藍 ——
+   整列變藍會讓「hover」看起來像「已選取」,那是兩種狀態 */
+.v3page [style*="cursor: pointer"][style*="background: oklch(0.99 0.002 260)"]:hover{
+  background: oklch(96% .004 260) !important;
+}
+/* 已經是淡底的(選取中 / 標記)→ 加深同一個色,不換色相。
+   ⚠️ 用**前綴**比對 `240 /` 一次收掉所有 alpha 變體 —— 實測稿裡有
+   .05 / .07 / .08 / .09 四種淡度,逐個列會變成打地鼠,而且下次改稿又漏。 */
+.v3page [style*="cursor: pointer"][style*="background: oklch(0.58 0.15 240 /"]:hover{
+  background: oklch(58% .15 240 / .15) !important;
+}
+/* 中階表面(分隔塊 / 次級卡)→ 再深一階 */
+.v3page [style*="cursor: pointer"][style*="background: oklch(0.92 0.006 260)"]:hover{
+  background: oklch(88% .006 260) !important;
+}
+/* 危險動作的實心紅 —— 與其他實心同向加深,不因為是紅色就例外 */
+.v3page [style*="cursor: pointer"][style*="background: oklch(0.53 0.18 25)"]:hover{
+  background: oklch(46% .18 25) !important;
+}
+/* 有 inline 實心底的,只能覆蓋 —— inline 同屬性永遠贏過樣式表,除非 !important */
+.v3page [style*="background: oklch(0.58 0.15 240)"]:hover{background: oklch(52% .15 240) !important;}
+/* ⚠️ 兩者都往**暗**走,不是一個變暗一個變亮 —— 對齊 brand-pilot 的狀態矩陣
+   (Primary .52→.45 / Secondary .95→.92 / Ghost 透明→.95,一致地加深)。
+   第一版把 Ink 實心寫成 .24→.32(變亮),方向與其他變體相反,使用者要學兩套。 */
+.v3page [style*="background: oklch(0.24 0.02 260)"]:hover{background: oklch(18% .02 260) !important;}
+
+/* focus:inline 從不設 outline,所以這條乾淨生效。
+   鍵盤可達性不能靠 hover —— 沒有這條,用 Tab 走這 8 頁完全看不出焦點在哪 */
+.v3page :is(button,a,input,select,textarea,[tabindex],[style*="cursor: pointer"]):focus-visible{
+  outline: 2px solid oklch(52% .15 240); outline-offset: 1px;
+}
+
+/* 補齊原稿沒寫 transition 的那一半,讓 hover 不是硬切 */
+.v3page [style*="cursor: pointer"]:not([style*="transition"]){
+  transition: background-color .14s ease, color .14s ease, border-color .14s ease;
+}
 </style>
 </head>
 <body>
