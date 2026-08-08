@@ -438,7 +438,11 @@ a:hover{text-decoration:underline;}
       4040px 是可掃描性問題不是 IA 問題,所以修的是密度與摺疊,不是拆掉目錄。
    ══════════════════════════════════════════════════════════════════ */
 .home{flex:1;overflow-y:auto;background:var(--paper);}
-.home .wrap{max-width:1180px;margin:0 auto;padding:18px 24px 48px;}
+/* 🔴 G11(docs/39 步驟 5)|`DESIGN-RULES.md` §2.3:
+   「表單／記錄檢視上限 **1120px**,文件正文上限 **740px**」,
+   理由是「Ragic 完全不設上限,370px 的表單漂在 900px 灰色裡看起來像壞掉」。
+   ⚠️ 但同一節也說「**表格全出血**」—— 所以上限只給**頁面型**內容,不給資料網格。 */
+.home .wrap{max-width:1120px;margin:0 auto;padding:18px 24px 48px;}
 
 /* 一列標題 + 主要動作 —— 不做「大淺標題 → 留白」的兩層帶(C 版失敗處),
    也不放行銷標語:那是 sales deck 的東西,不是產品 chrome。 */
@@ -875,7 +879,8 @@ a:hover{text-decoration:underline;}
       唯一有依據的是「三條路 + 範本最前」,那是站①。
    ══════════════════════════════════════════════════════════════════ */
 .blank{flex:1;overflow-y:auto;background:var(--paper);}
-.blank .wrap{max-width:840px;margin:0 auto;padding:56px 24px 60px;}
+/* 首屏是**散文 + 三條路的清單**,不是表單 → 吃 740 那條(文件正文上限) */
+.blank .wrap{max-width:740px;margin:0 auto;padding:56px 24px 60px;}
 .blank h1{font-size:20px;font-weight:600;letter-spacing:-.3px;}
 .blank .lead{margin-top:8px;font-size:13.5px;line-height:1.8;color:var(--ink-3);}
 .blank .lead b{color:var(--ink-2);font-weight:600;}
@@ -922,30 +927,28 @@ a:hover{text-decoration:underline;}
   display:flex;align-items:center;justify-content:center;margin-top:1px;}
 .next li em{font-style:normal;color:var(--ink-3);}
 
-/* ── 畫面六:表單建好了,但一筆資料都沒有 ────────────────────
-   這是第二個空狀態,而且比第一個更常見(每建一張新表就出現一次)。
-   🔴 現況問題⑥「表格右側一大片無主空白欄」在這裡會最明顯 ——
-      沒有資料時,一排空格線看起來就像壞掉。 */
-.norows{flex:1;display:flex;align-items:flex-start;justify-content:center;
-  background:var(--paper-2);padding:52px 24px;}
-.norows .card{max-width:520px;text-align:center;}
-.norows .ic{width:38px;height:38px;border-radius:var(--r-box);background:var(--paper-3);
-  color:var(--ink-4);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
-.norows .ic svg{width:19px;height:19px;}
-.norows h3{font-size:15px;font-weight:600;}
-.norows p{margin-top:7px;font-size:12.8px;line-height:1.8;color:var(--ink-3);}
-.norows .acts{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-/* 🔴 貼上的提示放在這裡,不是放在說明文件裡 —— 使用者剛建完表,
-   下一個動作十之八九是「把 Excel 裡那份搬進來」。
-   而 OQ-GP-5「貼上前標紅」是我方相對競品的向上點,值得在此明講。 */
-.norows .tip{margin-top:18px;border:1px solid var(--line-2);border-radius:var(--r-box);
-  background:var(--paper);padding:11px 13px;text-align:left;display:flex;gap:9px;}
-.norows .tip svg{width:14px;height:14px;color:var(--ink-4);flex-shrink:0;margin-top:2px;}
-.norows .tip div{font-size:12.3px;line-height:1.75;color:var(--ink-3);}
-.norows .tip b{color:var(--ink-2);font-weight:600;}
-.norows kbd{font-size:11px;font-weight:600;background:var(--paper-3);border:1px solid var(--line);
-  border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink-2);}
+/* ── 畫面六:表單建好了,但一筆資料都沒有 ──────────────────────
+   🔴 G9(docs/39 步驟 5)|**改成整寬淺色帶 + 行內連結**,不是置中卡片 + 三顆按鈕。
+   `DESIGN-RULES.md` §3.8 逐字:
+     「Ragic 的作法最好:**整寬淺色帶**,內含**接下來的兩個動作**當行內連結 ——
+       『還沒建立任何資料 — 建立一筆資料 或 前往表單頁』。**沒有插圖,可操作。**
+       **不要**畫沒有 CTA 的裝飾性空狀態(Metabase 的問題)。」
 
+   我原本那版(置中卡片 + 圖示磚 + 三顆按鈕 + 提示框)踩了兩件事:
+   ① 圖示磚是**沒有出處的裝飾** ② 三顆按鈕把「接下來做什麼」攤成一個選單,
+   而空狀態的價值正在於**替使用者決定下一步**。
+
+   ⚠️ **⌘V 貼上那條留著,但降成帶內的第二行** —— 它是我方相對競品的向上點
+   (OQ-GP-5「貼上前標紅」查無任何一家),不是裝飾;
+   而且使用者剛建完表,下一個動作十之八九就是把 Excel 那份搬進來。 */
+.norows{flex:1;background:var(--paper);padding:0;}
+.emptyband{margin:0;padding:14px 16px;background:var(--paper-2);border-bottom:1px solid var(--line);
+  font-size:13px;line-height:1.9;color:var(--ink-2);}
+.emptyband b{font-weight:600;color:var(--ink);}
+.emptyband a{font-weight:500;}
+.emptyband .tip2{display:block;margin-top:2px;font-size:12.3px;color:var(--ink-3);}
+.emptyband kbd{font-size:11px;font-weight:600;background:var(--paper);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--ink-2);}
 
 /* ══════════════════════════════════════════════════════════════════
    畫面七|表單設計器
@@ -1999,24 +2002,14 @@ a:hover{text-decoration:underline;}
              現況問題⑥「表格右側一大片無主空白欄」在 0 筆時最明顯 ——
              一排畫滿格線的空列看起來就像壞掉,而不是「還沒填」。
              表頭也不畫:欄位設計可以從「設計表單」看,這裡不必重複一次。 -->
+        <!-- 整寬淺色帶 + 行內連結。沒有插圖,可操作。 -->
         <div class="norows">
-          <div class="card">
-            <div class="ic"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg></div>
-            <h3>「採購單」還沒有資料</h3>
-            <p>這張表已經建好了(8 個欄位、1 個子表)。<br>接下來把資料放進來 —— 三種方式都行。</p>
-            <div class="acts">
-              <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>建立第一筆</button>
-              <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="m9 13 6 6M15 13l-6 6"/></svg>匯入 Excel</button>
-              <button class="btn gho">用範例資料試填一筆</button>
-            </div>
-            <div class="tip">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
-              <div>
-                也可以直接從 Excel 複製一塊貼進來 —— 選好範圍按 <kbd>⌘C</kbd>,
-                回到這裡按 <kbd>⌘V</kbd>。<br>
-                <b>型別對不上的格會先標紅並整批不送出</b>,不會靜默把資料寫壞或變成空白。
-              </div>
-            </div>
+          <div class="emptyband">
+            「採購單」<b>還沒有資料</b> —— <a href="#">建立第一筆</a> 或 <a href="#">匯入 Excel</a>。
+            <span class="tip2">
+              也可以直接從 Excel 複製一塊,回到這裡按 <kbd>⌘V</kbd> 貼上 ——
+              型別對不上的格會先標紅並整批不送出,不會靜默把資料寫壞。
+            </span>
           </div>
         </div>
 
