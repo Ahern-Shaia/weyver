@@ -4051,7 +4051,7 @@ a:hover{text-decoration:underline;}
       </div>
     </div>
 
-    <div data-dc-tpl="109" style="display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-left: 1px solid oklch(0.24 0.02 260 / 0.14);">
+    <div id="v3-field" data-dc-tpl="109" style="display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-left: 1px solid oklch(0.24 0.02 260 / 0.14);">
       <div data-dc-tpl="110" style="flex: 0 0 auto; padding: 14px 18px 12px; border-bottom: 1px solid oklch(0.24 0.02 260 / 0.12);">
         <div data-dc-tpl="111" style="display: flex; align-items: center; gap: 8px;">
           <span data-dc-tpl="112" style="font-size: 15px; font-weight: 700;"><span class="sc-interp">供應商</span></span>
@@ -4233,7 +4233,63 @@ a:hover{text-decoration:underline;}
           </div>
         
       </div>
-    </div>
+    </div><div id="v3-static" hidden style="flex: 0 0 320px; display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-left: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="flex: 0 0 auto; padding: 14px 18px 12px; border-bottom: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700">文字元素</span></div><div style="font-size:11.5px;color:oklch(0.58 0.01 260);margin-top:4px">由工具列「文字」加入,不是 field_def</div></div><div style="flex: 1 1 0%; overflow-y: auto; padding: 16px 18px;">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260); margin-bottom: 12px;">內容</div>
+<label style="font-size: 12.5px; color: oklch(0.45 0.015 260);">文字內容</label>
+<textarea style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);height:62px;padding:7px 9px;resize:vertical;display:block;margin-top:5px">核准後系統自動過帳至存貨與應付帳款。</textarea>
+<label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size: 12.5px; color: oklch(0.45 0.015 260);"><input type="checkbox">Markdown</label>
+<label style="font-size: 12.5px; color: oklch(0.45 0.015 260);;display:block;margin-top:12px">超連結(https / 相對)</label>
+<input style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);margin-top:5px" placeholder="https://…">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260); margin-bottom: 12px;;margin-top:18px">版面</div>
+<label style="font-size: 12.5px; color: oklch(0.45 0.015 260);">跨欄數</label>
+<input style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);width:88px;margin-top:5px" value="12">
+<label style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size: 12.5px; color: oklch(0.45 0.015 260);"><input type="checkbox" checked>僅設計模式可見</label>
+<div style="font-size: 11.5px; line-height: 1.65; color: oklch(0.5 0.015 260); margin-top: 8px;">靜態元素不產生資料 —— 它只存在版面裡,不會出現在匯出與 API。</div></div></div><div id="v3-act" hidden style="flex: 0 0 320px; display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-left: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="flex: 0 0 auto; padding: 14px 18px 12px; border-bottom: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700">動作 · 簽核</span></div><div style="font-size:11.5px;color:oklch(0.58 0.01 260);margin-top:4px">整張表一份,不是欄位級</div></div><div style="flex: 1 1 0%; overflow-y: auto; padding: 16px 18px;">
+<div style="display:flex;gap:16px;margin:-4px 0 14px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)">
+  <span style="padding:9px 0;font-size:12px;font-weight:700;color:oklch(0.45 0.13 240);box-shadow: inset 0 -2px 0 oklch(0.58 0.15 240);">自訂按鈕</span><span style="padding:9px 0;font-size:12px;font-weight:400;color:oklch(0.5 0.015 260);">自動觸發</span><span style="padding:9px 0;font-size:12px;font-weight:400;color:oklch(0.5 0.015 260);">簽核流程</span><span style="padding:9px 0;font-size:12px;font-weight:400;color:oklch(0.5 0.015 260);">標籤</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12);font-size:12.5px">
+  <span style="font-weight:600">送簽</span>
+  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.6 0.01 260)">更新本表欄位</span>
+  <span style="margin-left:auto;display:flex;gap:9px"><b style="color:oklch(0.45 0.13 240);font-weight:600;cursor:pointer">編輯</b><span style="color:oklch(0.6 0.01 260);cursor:pointer">✕</span></span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12);font-size:12.5px">
+  <span style="font-weight:600">轉進貨單</span>
+  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.6 0.01 260)">拋轉 · 2 欄</span>
+  <span style="margin-left:auto;display:flex;gap:9px"><b style="color:oklch(0.45 0.13 240);font-weight:600;cursor:pointer">編輯</b><span style="color:oklch(0.6 0.01 260);cursor:pointer">✕</span></span></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260); margin-bottom: 12px;;margin-top:18px">新增按鈕</div>
+<input style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);" placeholder="按鈕名稱">
+<label style="font-size: 12.5px; color: oklch(0.45 0.015 260);;display:block;margin-top:10px">動作</label>
+<div style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);display:flex;align-items:center;margin-top:5px">拋轉到其他表單<span style="margin-left:auto;color:oklch(0.6 0.01 260)">⌄</span></div>
+<label style="font-size: 12.5px; color: oklch(0.45 0.015 260);;display:block;margin-top:10px">目標表單</label>
+<div style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);display:flex;align-items:center;margin-top:5px">進貨單<span style="margin-left:auto;color:oklch(0.6 0.01 260)">⌄</span></div>
+<div style="margin-top:12px;padding:9px 10px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(0.97 0.004 260)">
+  <div style="font-size:11.5px;color:oklch(0.5 0.015 260);margin-bottom:7px">要把哪些欄帶過去</div>
+  <div style="display:grid;grid-template-columns:1fr 12px 1fr;gap:5px;align-items:center;font-size:11.5px">
+    <span style="background:oklch(1 0 0);border:1px solid oklch(0.24 0.02 260 / 0.12);padding:3px 6px">供應商</span><span style="text-align:center;color:oklch(0.6 0.01 260)">→</span><span style="background:oklch(1 0 0);border:1px solid oklch(0.24 0.02 260 / 0.12);padding:3px 6px">供應商</span></div>
+  <div style="display:grid;grid-template-columns:1fr 12px 1fr;gap:5px;align-items:center;font-size:11.5px;margin-top:4px">
+    <span style="background:oklch(1 0 0);border:1px solid oklch(0.24 0.02 260 / 0.12);padding:3px 6px">單號</span><span style="text-align:center;color:oklch(0.6 0.01 260)">→</span><span style="background:oklch(1 0 0);border:1px solid oklch(0.24 0.02 260 / 0.12);padding:3px 6px">來源單號</span></div>
+  <div style="margin-top:7px;font-size:11.5px;color:oklch(0.45 0.13 240);cursor:pointer">＋ 再加一組</div></div>
+<div style="font-size: 11.5px; line-height: 1.65; color: oklch(0.5 0.015 260); margin-top: 8px;">🔴 提案:現況一個按鈕<b>只能對映一個欄位</b>、且<b>只有新增沒有編輯</b>、目標欄名要手打(task #61)。</div></div></div><div id="v3-fmt" hidden style="flex: 0 0 320px; display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-left: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="flex: 0 0 auto; padding: 14px 18px 12px; border-bottom: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700">條件式格式</span></div><div style="font-size:11.5px;color:oklch(0.58 0.01 260);margin-top:4px">記錄頁 / 列表頁 兩面各自一份</div></div><div style="flex: 1 1 0%; overflow-y: auto; padding: 16px 18px;">
+<div style="display:flex;gap:14px;margin:-4px 0 14px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)">
+  <span style="padding:9px 0;font-size:12px;font-weight:700;color:oklch(0.45 0.13 240);box-shadow: inset 0 -2px 0 oklch(0.58 0.15 240);">記錄頁</span><span style="padding:9px 0;font-size:12px;font-weight:400;color:oklch(0.5 0.015 260);">列表頁</span></div>
+<div style="border:1px solid oklch(0.24 0.02 260 / 0.12);padding:9px 10px;background:oklch(1 0 0)">
+  <div style="font-size:12px;color:oklch(0.35 0.015 260)">金額 大於 10000 且 狀態 等於 待審</div>
+  <div style="margin-top:6px;display:flex;align-items:center;gap:7px">
+    <span style="padding:1px 7px;border:1px solid oklch(0.85 0.07 80);background:oklch(0.97 0.03 85);color:oklch(0.48 0.12 75);font-size:11px">待辦</span>
+    <span style="font-size:11px;color:oklch(0.55 0.015 260)">→ 金額、狀態</span></div></div>
+<div style="font-size: 11.5px; line-height: 1.65; color: oklch(0.5 0.015 260); margin-top: 8px;">排越後面越優先 —— 同一欄位命中多條時,以最下面那條為準。</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260); margin-bottom: 12px;;margin-top:18px">效果(可複選)</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px"><span style="padding:2px 8px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(1 0 0);color:oklch(0.4 0.015 260);font-size:11.5px">隱藏欄位</span><span style="padding:2px 8px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(1 0 0);color:oklch(0.4 0.015 260);font-size:11.5px">設為唯讀</span><span style="padding:2px 8px;border:1px solid oklch(0.58 0.15 240);background:oklch(0.96 0.02 240);color:oklch(0.42 0.13 240);font-size:11.5px">設為必填</span></div>
+<div style="font-size: 11.5px; line-height: 1.65; color: oklch(0.5 0.015 260); margin-top: 8px;">隱藏與唯讀是<b>版面層</b>效果,擋不住 API;欄位級保護要用權限。<b>必填由伺服器強制。</b></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260); margin-bottom: 12px;;margin-top:18px">條件成立時顯示訊息</div>
+<input style="width: 100%; height: 30px; padding: 0 9px; border: 1px solid oklch(0.24 0.02 260 / 0.18); background: oklch(1 0 0); font-family: inherit; font-size: 12.5px; color: oklch(0.24 0.02 260);" placeholder="例:{fieldValue:狀態} 需經主管核可">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260); margin-bottom: 12px;;margin-top:18px">顏色(12 色受控色盤)</div>
+<div style="display:flex;flex-wrap:wrap;gap:5px"><span style="padding:2px 8px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(1 0 0);color:oklch(0.4 0.015 260);font-size:11.5px">完成</span><span style="padding:2px 8px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(1 0 0);color:oklch(0.4 0.015 260);font-size:11.5px">待辦</span><span style="padding:2px 8px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(1 0 0);color:oklch(0.4 0.015 260);font-size:11.5px">異常</span><span style="padding:2px 8px;border:1px solid oklch(0.24 0.02 260 / 0.12);background:oklch(1 0 0);color:oklch(0.4 0.015 260);font-size:11.5px">中性</span></div>
+<div style="margin-top:14px;font-size:12px;color:oklch(0.45 0.13 240);cursor:pointer">＋ 新增規則</div></div></div><div id="v3-prt" hidden style="flex: 0 0 320px; display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-left: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="flex: 0 0 auto; padding: 14px 18px 12px; border-bottom: 1px solid oklch(0.24 0.02 260 / 0.12);"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:700">列印設定</span></div><div style="font-size:11.5px;color:oklch(0.58 0.01 260);margin-top:4px">紙張 / 邊界 / 直橫向交給瀏覽器對話框</div></div><div style="flex: 1 1 0%; overflow-y: auto; padding: 16px 18px;">
+<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:9px;font-size:10.5px;
+  font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;color:oklch(0.6 0.01 260);padding-bottom:5px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)">
+  <span>列</span><span>頁首</span><span>頁尾</span><span>換頁</span></div>
+<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:9px;align-items:center;padding:6px 0;font-size:12px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)"><span>供應商、聯絡人</span><input type="checkbox" checked><input type="checkbox" ><input type="checkbox" ></div><div style="display:grid;grid-template-columns:1fr auto auto auto;gap:9px;align-items:center;padding:6px 0;font-size:12px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)"><span>預定交期、付款條件</span><input type="checkbox" ><input type="checkbox" ><input type="checkbox" ></div><div style="display:grid;grid-template-columns:1fr auto auto auto;gap:9px;align-items:center;padding:6px 0;font-size:12px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)"><span>備註、交貨地點</span><input type="checkbox" ><input type="checkbox" ><input type="checkbox" ></div><div style="display:grid;grid-template-columns:1fr auto auto auto;gap:9px;align-items:center;padding:6px 0;font-size:12px;border-bottom:1px solid oklch(0.24 0.02 260 / 0.12)"><span>品項明細</span><input type="checkbox" ><input type="checkbox" ><input type="checkbox" checked></div>
+<div style="font-size: 11.5px; line-height: 1.65; color: oklch(0.5 0.015 260); margin-top: 8px;">列印以<b>列範圍</b>為單位(承 Ragic doc/149),不是自由拖版 —— 版面已經在畫布上了,不需要第二套。</div></div></div>
   </div>
 <div data-dc-tpl="176" style="position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(12px); display: flex; align-items: center; gap: 14px; padding: 11px 16px; background: oklch(0.2 0.015 260); color: oklch(0.99 0.002 260); box-shadow: oklch(0.24 0.02 260 / 0.5) 0px 12px 28px -10px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;">
     <span data-dc-tpl="177" style="font-size: 13px;"><span class="sc-interp">已新增欄位「單號」</span></span>
@@ -4620,6 +4676,7 @@ a:hover{text-decoration:underline;}
   </div>
 </div>
 
+<div class="switch" id="v3-tbar" hidden style="bottom:56px"><span style="align-self:center;padding:0 8px;font-size:10.5px;color:var(--ink-4)">暫時態</span><button data-v3-tbtn="" class="on">無</button><button data-v3-tbtn="addcard">加欄卡</button><button data-v3-tbtn="failed">建置失敗</button><button data-v3-tbtn="taken">位置被佔用</button></div>
 <div class="switch">
   <button id="b1">登入</button>
   <button id="b2" class="on">工作區首頁</button>
@@ -4634,7 +4691,8 @@ a:hover{text-decoration:underline;}
 <script>
 const S={login:document.getElementById('s-login'),home:document.getElementById('s-home'),form:document.getElementById('s-form'),tpl:document.getElementById('s-tpl'),blank:document.getElementById('s-blank'),norows:document.getElementById('s-norows'),design:document.getElementById('s-design'),builder:document.getElementById('s-builder')};
 const B={login:document.getElementById('b1'),home:document.getElementById('b2'),form:document.getElementById('b3'),tpl:document.getElementById('b4'),blank:document.getElementById('b5'),norows:document.getElementById('b6'),design:document.getElementById('b7'),builder:document.getElementById('b8')};
-function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}}
+function go(k){for(const n in S){S[n].hidden=n!==k;B[n].classList.toggle('on',n===k);}
+  const tb=document.getElementById('v3-tbar'); if(tb)tb.hidden=(k!=='design');}
 
 /* 設計器右欄三選一。這不是為了 mockup 好看 —— 產品裡它們本來就互斥
    (canvas.tsx 的 toggleAux),再點一次收合回欄位設定。 */
@@ -4715,6 +4773,59 @@ document.querySelectorAll('[data-wv]').forEach(el=>{
 })
 if(wvMarks.length)requestAnimationFrame(wvTick)
 
+/* ══ v3 設計器:右欄五態 + 暫時態 ═══════════════════════════════════
+   照產品的行為做,不是為了 mockup 好看:右欄**恆為一欄**,
+   canvas.tsx 逐字記著理由 ——「三個都開時工具列由 862px 被壓到 286px,
+   『條件式格式』鈕變成五個中文字直排」。 */
+const V3P={field:'v3-field',static:'v3-static',act:'v3-act',fmt:'v3-fmt',prt:'v3-prt'}
+function v3Show(k){
+  for(const n in V3P){const el=document.getElementById(V3P[n]); if(el)el.hidden=(n!==k)}
+  document.querySelectorAll('[data-v3-btn]').forEach(b=>
+    b.style.background=b.dataset.v3Btn===k?'oklch(0.94 0.01 240)':'')
+}
+/* 工具列那三顆在他們的稿裡是 <span>,外層 div 才可點 —— 綁外層 */
+document.querySelectorAll('#s-design .v3page span').forEach(sp=>{
+  const t=sp.textContent.trim(), map={'動作 · 簽核':'act','條件式格式':'fmt','列印':'prt'}
+  if(!(t in map))return
+  const box=sp.closest('div'); if(!box)return
+  box.dataset.v3Btn=map[t]; box.style.cursor='pointer'
+  box.addEventListener('click',()=>v3Show(document.getElementById(V3P[map[t]]).hidden?map[t]:'field'))
+})
+/* 暫時態:mockup 專用開關,放在底部切換列旁 —— 不進產品外框
+   (產品畫面不放 dev-phase 標註,見 feedback_no_dev_phase_in_product_ui) */
+const V3T={
+  addcard:['加欄卡','點元件庫型別後從畫布上方出現。**必填在這裡,不在右欄。**'],
+  failed:['建置失敗','此表單建置失敗,無法編輯(見 API ddl_audit)。'],
+  taken:['位置被佔用','那個位置已被其他欄位佔用。'],
+}
+function v3Transient(k){
+  document.querySelectorAll('[data-v3-t]').forEach(e=>e.remove())
+  document.querySelectorAll('[data-v3-tbtn]').forEach(b=>
+    b.classList.toggle('on',b.dataset.v3Tbtn===k))
+  if(!k)return
+  const page=document.querySelector('#s-design .v3page'); if(!page)return
+  const grid=page.children[1]
+  if(k==='addcard'){
+    const d=document.createElement('div'); d.dataset.v3T='1'
+    d.style.cssText='flex:0 0 auto;margin:12px 18px 0;padding:12px 14px;border:1px solid oklch(0.58 0.15 240 / .45);background:oklch(0.97 0.02 240);'
+    d.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">'
+      +'<b style="font-size:12.5px;color:oklch(0.42 0.13 240)">加入自動編號欄位</b>'
+      +'<span style="margin-left:auto;display:flex;gap:7px">'
+      +'<button style="height:27px;padding:0 11px;border:1px solid oklch(0.24 0.02 260 /.18);background:#fff;font-family:inherit;font-size:12px">取消</button>'
+      +'<button style="height:27px;padding:0 11px;border:0;background:oklch(0.24 0.02 260);color:#fff;font-family:inherit;font-size:12px;font-weight:600">加入</button></span></div>'
+      +'<input placeholder="欄位名稱" style="width:100%;height:29px;padding:0 9px;border:1px solid oklch(0.24 0.02 260 /.18);background:#fff;font-family:inherit;font-size:12.5px">'
+      +'<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:oklch(0.45 0.015 260)"><input type="checkbox">必填</label>'
+    page.insertBefore(d,grid)
+  }else{
+    const [t,msg]=V3T[k]
+    const d=document.createElement('div'); d.dataset.v3T='1'
+    const er=k==='failed'
+    d.style.cssText=`flex:0 0 auto;padding:9px 18px;font-size:12.5px;border-bottom:1px solid ${er?'oklch(0.84 0.07 25)':'oklch(0.24 0.02 260 /.12)'};background:${er?'oklch(0.965 0.028 25)':'oklch(0.96 0.004 260)'};color:${er?'oklch(0.48 0.17 25)':'oklch(0.4 0.015 260)'}`
+    d.textContent=msg.replace(/\*\*/g,'')
+    page.insertBefore(d,grid)
+  }
+}
+document.querySelectorAll('[data-v3-tbtn]').forEach(b=>b.onclick=()=>v3Transient(b.dataset.v3Tbtn));
 for(const n in B)B[n].onclick=()=>go(n);
 go('home');
 // 分類目錄可收合 —— 現況 144 張平鋪成 4040px,而使用者一次只想找一張
