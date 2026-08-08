@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW"><head><meta charset="UTF-8">
+<title>Weyver · 顏色歸屬三案對照</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   顏色歸屬三案對照(2026-08-08)—— 解 docs/39 §3 的衝突
+
+   🔴 **軸不是「圖示灰不灰」,是顏色的預算要花在哪一層。**
+
+   | 層 | 顏色回答什麼 | 誰決定 |
+   |---|---|---|
+   | 型別層 | 這欄是什麼**型別** | 設計師 |
+   | 資料層 | 這一格的**值**是什麼 | **建表的使用者** |
+   | 導覽層 | 這是哪種**檢視** | 設計師 |
+
+   `DESIGN-RULES.md` 的配置是 **資料層 + 導覽層**,型別層留灰
+   (`.ft{ color:#8E8E96 }`),並明列「**資料擁有顏色,不是 UI 擁有顏色**」。
+   我方 E 案(2026-08-08 裁定)把預算**全押在型別層**。
+
+   三層不能都上 —— 那就是規則 §5 反面教材裡的「三個互相競爭的強調色」。
+   所以第三案「全上」是**故意畫出來讓失敗看得見的**,不是候選。
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --paper:#fff;--paper-2:#f7f9fb;--paper-3:#eef2f6;--line:#d7dee7;--line-2:#e6ebf1;--line-3:#eef4f5;
+  --ink:#131a24;--ink-2:#3f4b5b;--ink-3:#68778a;--ink-4:#93a1b2;
+  --brand:#22568a;--brand-t:#eaf1f8;--readonly:#e6ebee;--fx:#0d6357;
+  /* 型別分組色(E 案) */
+  --c1:#1f5f9e;--c3:#6b46a8;--c4:#8f3a76;--c5:#0f6b6b;--c6:#1a6a86;
+  /* 檢視型別色(規則:表格藍 / 看板琥珀 / 日曆紫) */
+  --v1:#2563eb;--v2:#b4690e;--v3:#6b46a8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans','IBM Plex Sans TC',system-ui,sans-serif;font-size:13px;color:var(--ink);
+  background:var(--paper-2);padding:24px;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:18px;font-weight:600;letter-spacing:-.2px}
+.lead{margin-top:8px;font-size:12.8px;line-height:1.8;color:var(--ink-3)}
+.lead b{color:var(--ink-2);font-weight:600}
+.axis{margin-top:16px;border:1px solid var(--line);background:var(--paper)}
+.axis table{width:100%;border-collapse:collapse}
+.axis th,.axis td{padding:7px 11px;font-size:12.3px;text-align:left;border-bottom:1px solid var(--line-2)}
+.axis th{background:var(--paper-2);font-weight:600;color:var(--ink-2);font-size:11.5px}
+.axis tr:last-child td{border-bottom:none}
+.axis .y{color:#1a6b3c;font-weight:600} .axis .n{color:var(--ink-4)}
+
+.cases{margin-top:22px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.case > .ch{display:flex;align-items:baseline;gap:7px;padding-bottom:7px}
+.case > .ch .t{font-size:13px;font-weight:600}
+.case > .ch .s{font-size:11.5px;color:var(--ink-4)}
+.case.pick > .ch .t{color:var(--brand)}
+.case.bad > .ch .t{color:#a5241d}
+.pane{border:1px solid var(--line);background:var(--paper);overflow:hidden}
+.sb{background:var(--paper-2);border-bottom:1px solid var(--line);padding:4px 0}
+.sbh{padding:5px 10px;font-size:11px;font-weight:600;color:var(--ink-2)}
+.vw{display:flex;align-items:center;gap:7px;height:25px;padding:0 10px 0 16px;font-size:12px;color:var(--ink-3)}
+.vw.on{color:var(--ink);font-weight:600;background:#dfe6ea}
+.vi{width:14px;height:14px;display:inline-flex;color:var(--ink-4)}
+.vi svg{width:13px;height:13px}
+.gg{width:100%;border-collapse:separate;border-spacing:0;font-size:12.3px}
+.gg th,.gg td{border-right:1px solid var(--line-3);border-bottom:1px solid var(--line-3);
+  height:32px;padding:0 8px;white-space:nowrap}
+.gg th{background:var(--paper-2);font-size:11px;font-weight:600;color:var(--ink-3);text-align:left}
+.gg .hh{display:flex;align-items:center;gap:5px}
+.gg .rn{width:24px;text-align:center;color:var(--ink-4);font-size:11px;background:var(--paper-2)}
+.gg td.r{text-align:right}
+.gg td.ro{background:var(--readonly);color:var(--fx)}
+.gg tbody .id{font-weight:600}
+.gg .id a{color:var(--brand);text-decoration:none}
+.ty{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;color:var(--ink-4)}
+.ty svg{width:12px;height:12px}
+.ty.gl{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600}
+/* 選項色 —— **由建表者定義**,不是設計師。淺底深字(規則:2023 年的飽和底白字對比度不合格) */
+.opt{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:1px solid var(--line);
+  background:var(--paper-2);border-radius:3px;font-size:11px;color:var(--ink-2)}
+.opt.o1{background:#e9f1fa;border-color:#c4d6ee;color:#1f5f9e}
+.opt.o2{background:#f0f3e4;border-color:#d5dcb8;color:#5e6b1f}
+.opt.o3{background:#f7ecf3;border-color:#e3c8dc;color:#8f3a76}
+.opt.o4{background:#e8f4f4;border-color:#bcdcdc;color:#0f6b6b}
+.note{margin-top:22px;padding:13px 15px;border:1px solid var(--line);background:var(--paper);
+  font-size:12.3px;line-height:1.9;color:var(--ink-2)}
+.note b{font-weight:600} .note .w{color:#8a5410;font-weight:600} .note .r{color:#a5241d;font-weight:600}
+</style></head><body><div class="wrap">
+<h1>顏色歸屬 · 三案對照</h1>
+<div class="lead">
+  軸不是「圖示灰不灰」,是<b>顏色的預算要花在哪一層</b>。三層都上就是紅綠燈沙拉 ——
+  所以第三案是<b>故意畫出來讓失敗看得見的</b>,不是候選。<br>
+  全部在真實尺寸渲染;圖示路徑由 <b>node_modules 的 lucide-react 抽出</b>。
+</div>
+
+<div class="axis"><table>
+  <thead><tr><th>層</th><th>顏色回答什麼</th><th>誰決定顏色</th><th>案 1 規則</th><th>案 2 E(現況)</th><th>案 3 全上</th></tr></thead>
+  <tbody>
+    <tr><td><b>型別層</b></td><td>這欄是什麼<b>型別</b></td><td>設計師</td><td class="n">灰</td><td class="y">分組色</td><td class="y">分組色</td></tr>
+    <tr><td><b>資料層</b></td><td>這一格的<b>值</b>是什麼</td><td><b>建表的使用者</b></td><td class="y">選項色</td><td class="n">灰</td><td class="y">選項色</td></tr>
+    <tr><td><b>導覽層</b></td><td>這是哪種<b>檢視</b></td><td>設計師</td><td class="y">檢視型別色</td><td class="n">灰</td><td class="y">檢視型別色</td></tr>
+  </tbody>
+</table></div>
+
+<div class="cases">
+  <div class="case pick"><div class="ch"><span class="t">案 1 · 依規則</span><span class="s">資料層 + 導覽層</span></div><div class="pane">
+  <div class="sb">
+    <div class="sbh">採購單</div>
+    <div class="vw on"><span class="vi" style="color:var(--v1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>列表(全部)</div>
+    <div class="vw"><span class="vi" style="color:var(--v2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg></span>依狀態看板</div>
+    <div class="vw"><span class="vi" style="color:var(--v3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>依交期</div>
+  </div>
+  <table class="gg">
+    <thead><tr><th class="rn"></th>
+      <th><div class="hh"><span class="ty gl">T</span>單號</div></th>
+      <th><div class="hh"><span class="ty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>供應商</div></th>
+      <th><div class="hh"><span class="ty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span>儲位</div></th>
+      <th><div class="hh"><span class="ty gl">#</span>數量</div></th>
+      <th><div class="hh"><span class="ty gl">ƒx</span>金額</div></th>
+    </tr></thead>
+    <tbody><tr><td class="rn">1</td><td class="id"><a>PO-2026-0847</a></td><td>裕豐農產行</td>
+      <td><span class="opt o1">冷藏 A</span></td><td class="r">340.5</td><td class="r ro">57,204</td></tr><tr><td class="rn">2</td><td class="id"><a>PO-2026-0846</a></td><td>絕鮮實業</td>
+      <td><span class="opt o2">常溫 B</span></td><td class="r">236</td><td class="r ro">14,915</td></tr><tr><td class="rn">3</td><td class="id"><a>PO-2026-0845</a></td><td>正大食材</td>
+      <td><span class="opt o3">耗材倉</span></td><td class="r">12,400</td><td class="r ro">50,840</td></tr><tr><td class="rn">4</td><td class="id"><a>PO-2026-0844</a></td><td>永豐冷鏈</td>
+      <td><span class="opt o4">冷凍 B</span></td><td class="r">90</td><td class="r ro">100,800</td></tr></tbody>
+  </table>
+</div></div>
+  <div class="case"><div class="ch"><span class="t">案 2 · E(現況)</span><span class="s">型別層</span></div><div class="pane">
+  <div class="sb">
+    <div class="sbh">採購單</div>
+    <div class="vw on"><span class="vi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>列表(全部)</div>
+    <div class="vw"><span class="vi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg></span>依狀態看板</div>
+    <div class="vw"><span class="vi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>依交期</div>
+  </div>
+  <table class="gg">
+    <thead><tr><th class="rn"></th>
+      <th><div class="hh"><span class="ty gl" style="color:var(--c1)">T</span>單號</div></th>
+      <th><div class="hh"><span class="ty" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>供應商</div></th>
+      <th><div class="hh"><span class="ty" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span>儲位</div></th>
+      <th><div class="hh"><span class="ty gl" style="color:var(--c5)">#</span>數量</div></th>
+      <th><div class="hh"><span class="ty gl" style="color:var(--c4)">ƒx</span>金額</div></th>
+    </tr></thead>
+    <tbody><tr><td class="rn">1</td><td class="id"><a>PO-2026-0847</a></td><td>裕豐農產行</td>
+      <td><span class="opt">冷藏 A</span></td><td class="r">340.5</td><td class="r ro">57,204</td></tr><tr><td class="rn">2</td><td class="id"><a>PO-2026-0846</a></td><td>絕鮮實業</td>
+      <td><span class="opt">常溫 B</span></td><td class="r">236</td><td class="r ro">14,915</td></tr><tr><td class="rn">3</td><td class="id"><a>PO-2026-0845</a></td><td>正大食材</td>
+      <td><span class="opt">耗材倉</span></td><td class="r">12,400</td><td class="r ro">50,840</td></tr><tr><td class="rn">4</td><td class="id"><a>PO-2026-0844</a></td><td>永豐冷鏈</td>
+      <td><span class="opt">冷凍 B</span></td><td class="r">90</td><td class="r ro">100,800</td></tr></tbody>
+  </table>
+</div></div>
+  <div class="case bad"><div class="ch"><span class="t">案 3 · 全上</span><span class="s">故意的失敗案例</span></div><div class="pane">
+  <div class="sb">
+    <div class="sbh">採購單</div>
+    <div class="vw on"><span class="vi" style="color:var(--v1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>列表(全部)</div>
+    <div class="vw"><span class="vi" style="color:var(--v2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg></span>依狀態看板</div>
+    <div class="vw"><span class="vi" style="color:var(--v3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>依交期</div>
+  </div>
+  <table class="gg">
+    <thead><tr><th class="rn"></th>
+      <th><div class="hh"><span class="ty gl" style="color:var(--c1)">T</span>單號</div></th>
+      <th><div class="hh"><span class="ty" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></span>供應商</div></th>
+      <th><div class="hh"><span class="ty" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg></span>儲位</div></th>
+      <th><div class="hh"><span class="ty gl" style="color:var(--c5)">#</span>數量</div></th>
+      <th><div class="hh"><span class="ty gl" style="color:var(--c4)">ƒx</span>金額</div></th>
+    </tr></thead>
+    <tbody><tr><td class="rn">1</td><td class="id"><a>PO-2026-0847</a></td><td>裕豐農產行</td>
+      <td><span class="opt o1">冷藏 A</span></td><td class="r">340.5</td><td class="r ro">57,204</td></tr><tr><td class="rn">2</td><td class="id"><a>PO-2026-0846</a></td><td>絕鮮實業</td>
+      <td><span class="opt o2">常溫 B</span></td><td class="r">236</td><td class="r ro">14,915</td></tr><tr><td class="rn">3</td><td class="id"><a>PO-2026-0845</a></td><td>正大食材</td>
+      <td><span class="opt o3">耗材倉</span></td><td class="r">12,400</td><td class="r ro">50,840</td></tr><tr><td class="rn">4</td><td class="id"><a>PO-2026-0844</a></td><td>永豐冷鏈</td>
+      <td><span class="opt o4">冷凍 B</span></td><td class="r">90</td><td class="r ro">100,800</td></tr></tbody>
+  </table>
+</div></div>
+</div>
+
+<div class="note">
+  <b>看的時候問三個問題,不要看哪個比較漂亮:</b><br>
+  ① <b>「冷藏 A」和「常溫 B」是不是不同的東西?</b> 案 1 / 3 一眼看得出,案 2 看不出 ——
+     而那是<b>使用者自己建的選項</b>,他心裡本來就把它們當不同的東西。<br>
+  ② <b>「金額」是算出來的嗎?</b> 三案都看得出(唯讀灰填色 + fx 色),
+     <b>所以型別層的顏色其實沒有多回答什麼</b> —— 型別的區辨本來就有別的載體。<br>
+  ③ <b>案 3 你的眼睛先看哪裡?</b> 沒有答案 —— 那就是「三個互相競爭的強調色」
+     (規則 §5 反面教材,isoTracker 的病)。<br>
+  <br>
+  🔴 <b>本來我要在這裡寫「案 1 的選項色要等 option-colors 模組做出來」—— 那是錯的。</b><br>
+  <code>docs/modules/R1/option-colors.md</code> <b>已 SHIPPED v1.0(2026-07-28)</b>:
+  <code>choices-editor.tsx</code> 讓<b>建表者逐選項挑顏色</b>,存成 <code>{id, name, color}</code>,
+  另有 <code>option-tone.ts</code> 做安全對映(含 CSS 注入測試)。
+  而當時的裁定 OQ-OC-1 = B 逐字記著決策方明示:
+  「<b>推翻 docs/14 §0.1 也沒關係,我要的是完整的解決方案</b>」。<br>
+  <b>→ 所以案 1 的資料層顏色不是示意圖,是已經出貨的真功能;</b>
+  而案 2 的型別分組色是我 2026-08-08 才自己定的,沒有任何使用者輸入。
+  <b>「資料擁有顏色」在這個 repo 裡已經有實作,只是網格還沒把它畫出來。</b><br>
+  <span class="w">⚠️ 仍待確認</span>:選項色<b>流到看板色條與群組標頭</b>那一段,
+  option-colors §122 當時記「尚無看板視圖與圖表模組」,而看板後來出貨了 —— <b>未複查是否已接上</b>。
+</div>
+</div></body></html>
