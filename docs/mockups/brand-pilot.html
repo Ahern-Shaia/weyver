@@ -1730,6 +1730,51 @@ field-settings.tsx</span> 以及與記錄頁共用的渲染。<br>
 建議先做 <b>①+④</b>(畫布改真欄位表 + 屬性收進單一抽屜)—— 解掉最大的兩個心智斷點,且不動新增流程;
 ②③ 作為第二批。<br>
 若要一次做完,我會<b>先出 M0 design doc + OQ 再動</b>(新 non-trivial 模組的既有紀律)。</div>
+
+<div class="grp-t">🔴 2026-08-08 已裁定|畫布欄位格的三態(v3 落地,數值為實測)</div>
+<div class="q"><b>兩態必須用不同的語彙,不能只是深淺差一階。</b>
+hover 講「我正指著」、選取講「我選了它」——
+若兩者都是淡藍底就分不出來,而那正是加互動層時差點造成的。</div>
+<table class="ds-tbl">
+  <tr><th style="width:96px">狀態</th><th style="width:150px">框</th><th style="width:170px">底</th><th>其他</th></tr>
+  <tr><td><b>rest</b></td><td class="k">1px oklch(.24 .02 260 /.16)</td><td class="k">透明</td>
+      <td>標籤格 <span class="mono">oklch(.96 .004 260)</span> · 型別章常駐</td></tr>
+  <tr><td><b>hover</b></td><td class="k">同 rest</td><td class="k"><b>維持透明</b></td>
+      <td>左緣 <b>grip 5×22px 垂直置中</b>(<span class="mono">left:-1px</span> · 右側 2px 圓角 ·
+      <span class="mono">oklch(52% .15 240)</span>)。<b>整格不塗底</b> —— 這是兩態分得開的關鍵</td></tr>
+  <tr><td><b>選取</b></td><td class="k">2px oklch(.58 .15 240)</td><td class="k">oklch(.58 .15 240 / .05)</td>
+      <td>標籤 <b>600</b> · 值格 transparent 讓底透出 · grip 同 hover ·
+      右上型別章(9px IBM Plex Mono,白底藍框,<span class="mono">top -9px / right 8px</span>)</td></tr>
+</table>
+<div class="q"><b>grip 只在 hover / 選取時出現,不常駐。</b>
+理由逐字沿用 v2:「常駐把手會讓畫布看起來不像填單畫面」——
+而「畫布長得就是填單畫面」正是 D1 的核心,不能被裝飾破壞。</div>
+
+<div class="grp-t">🔴 2026-08-08 已裁定|暫時態:三種東西 → 三種既有承載器</div>
+<div class="q"><b>硬規則:暫時態一律不佔文件流。</b>
+改版前三者都是插進 DOM 流的區塊,實測<b>整頁 50 個元素被往下推</b>
+(加欄卡 129px、另兩個各 37px);而且左緣 18/0/0、框 1px/無/無、
+內距 12·14 / 9·18、字級 13 / 12.5 —— 錯落、不一致、會位移。<br>
+<b>不要為每一種暫時態新增一條帶</b>,要對映到畫面已經在用的承載器。改版後位移 <b>50 → 0</b>。</div>
+<table class="ds-tbl">
+  <tr><th style="width:120px">暫時態</th><th style="width:96px">它是什麼</th><th style="width:120px">承載器</th><th>為什麼</th></tr>
+  <tr><td><b>加欄卡</b></td><td>要互動的表單</td><td><b>浮層</b>(錨畫布上緣)</td>
+      <td>要打字、要按鈕 → 需要停留。overlay 是本專案唯一容許陰影處</td></tr>
+  <tr><td><b>建置失敗</b></td><td>阻斷型持續狀態</td><td><b>遮罩 + 置中說明</b></td>
+      <td>它不是一則訊息,是「這張表不能編」——<b>遮罩本身就把那件事說完了</b>。
+      蓋整個工作列(含元件庫與右欄):加欄與改欄都做不了,只蓋畫布會讓另外兩欄看起來還能用。頂列不蓋,使用者要能離開</td></tr>
+  <tr><td><b>位置被佔用</b></td><td>短暫拒絕</td><td>⚠️ <b>見下方衝突</b></td>
+      <td>v3 目前做成紅色 Toast,<b>與 §19 硬規則相衝</b></td></tr>
+</table>
+<div class="q" style="border-color:var(--er-line);background:var(--er-t)">
+<b style="color:var(--er)">⚠️ 未裁定的衝突|「位置被佔用」的承載器</b><br>
+§19 兩條硬規則:「<b>錯誤一律用 Alert,不用 Toast</b> —— Toast 會在讀完前消失」、
+「Toast <b>只放成功/中性</b>;必須<b>附 Undo</b> 才值得存在」。
+而 v3 現行做法是<b>紅色 Toast 且沒有 Undo</b>,兩條都違反。<br>
+<b>兩個方向</b>|(a) 改成錨在目標格附近的 <b>Alert</b> —— 守規則,而且訊息出現在問題發生的位置,
+比底部 toast 更好找;(b) 為「動作被拒絕、狀態沒變」開一條 §19 例外 ——
+理由是失敗本身自明(欄位沒移過去),訊息只是解釋原因,消失不影響理解。<br>
+<b>本輪不擅自改任何一邊</b> —— 這是與既有鐵則相衝的裁定,依紀律要獨立決定。</div>
 </div></div>
 
 <!-- 決策狀態 -->
