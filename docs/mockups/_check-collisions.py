@@ -21,7 +21,8 @@ RISK_PROPS = ('display', 'width', 'height', 'position', 'flex-direction', 'grid-
 # ⚠️ 加進來之前先問:它真的是同一個元件嗎?`.views` 一度看起來也像。
 # `expr` = 公式 / 彙總徽章,用在子表表頭與欄位值格兩處(後代規則只調 margin)。
 # `fd-sw` = 勾選列,用在驗證區與帶入框兩處(後代規則只調間距字級)。
-SHARED_BASE = {'btn', 'cbx', 'ty', 'chip', 'ic', 'expr', 'fd-sw'}
+# `insp` = 右側面板,主畫面與面板陳列區是同一個元件(後代規則只改尺寸)。
+SHARED_BASE = {'btn', 'cbx', 'ty', 'chip', 'ic', 'expr', 'fd-sw', 'insp'}
 
 def check(path: str) -> int:
     src = open(path, encoding='utf-8').read()
@@ -34,12 +35,17 @@ def check(path: str) -> int:
             one = one.strip()
             if not one or one.startswith('@') or one.startswith('from') or one.startswith('to'):
                 continue
-            last = one.split()[-1]
+            parts = one.split()
+            last = parts[-1]
             m = re.match(r'^\.([a-zA-Z][\w-]*)', last)
             if not m:
                 continue
             name = m.group(1)
-            (bare if len(one.split()) == 1 else nested)[name].append((one, body))
+            # 祖先帶偽類(`.prow:hover .pic`)= 同一元件的**狀態變體**,不是兩個東西撞名。
+            # 撞名幾乎不會長成「某個祖先 hover 時才發生」,所以這類直接跳過,免得產生假陽性。
+            if len(parts) > 1 and any(':' in p for p in parts[:-1]):
+                continue
+            (bare if len(parts) == 1 else nested)[name].append((one, body))
 
     bad = []
     for name in (set(bare) & set(nested)) - SHARED_BASE:

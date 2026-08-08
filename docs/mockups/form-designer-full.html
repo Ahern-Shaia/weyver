@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>表單設計 · 完整功能面(同步產品現況)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   表單設計 · 完整功能面
+   目的:把**產品目前已出貨**的設計器功能一次呈現完整,不是提案。
+   來源全部對碼(2026-08-08):
+     edit-form.tsx(外殼 / 加欄卡)· canvas.tsx(工具列 / 畫布 / 欄位卡)
+     palette.tsx(元件庫)· field-settings.tsx · actions.tsx · triggers-panel.tsx
+     conditional-format.tsx · output/print-settings.tsx
+   ⚠️ 與 weyver-v2.html 的差別:那份是**提案**(語意分組 / 公式上畫布 / 帶入對映),
+      這份是**現況**。元件庫分組刻意用產品的「常用 / 其他 / 進階 / 結構」。
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --paper:#fff;--paper-2:#f7f8fa;--paper-3:#f1f3f6;--head:#eef1f5;
+  --ink:#131a24;--ink-2:#3c4655;--ink-3:#68778a;--ink-4:#98a1ae;
+  --line:#dfe3e9;--line-2:#eceff3;
+  --brand:#22568a;--brand-h:#1a4471;--brand-t:#eef3f9;
+  --ok:#1f7a5c;--ok-t:#eff7f3;--wn:#9a6212;--wn-t:#fdf6e9;--er:#a3312c;--er-t:#fbf0ef;--er-line:#eecfcd;
+  --font:Inter,"Noto Sans TC",-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r-ctl:3px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);color:var(--ink);background:var(--paper-3);font-size:13px;line-height:1.6;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left;}
+input{font:inherit;color:inherit;}
+/* 🔴 給 svg 全域預設尺寸。沒有預設值時,只要某條規則沒涵蓋到,
+   SVG 就會撐成容器高 —— 本檔與 weyver-v2 已各踩過一次(<th> 裡的 fx、右欄的下拉箭頭)。 */
+svg{display:block;width:14px;height:14px;flex-shrink:0;}
+
+/* ── 導讀外框(mockup 專用,不是產品的一部分)── */
+.doc{max-width:1500px;margin:0 auto;padding:26px 20px 70px;}
+.doc h1{font-size:19px;font-weight:700;letter-spacing:-.02em;}
+.doc .lede{margin-top:5px;max-width:78ch;font-size:12.5px;color:var(--ink-3);}
+.doc h2{margin:30px 0 4px;font-size:14px;font-weight:700;}
+.doc .sub{margin-bottom:9px;font-size:12px;color:var(--ink-3);max-width:78ch;}
+.doc code{font-family:var(--font-mono);font-size:11.5px;background:var(--paper);
+  border:1px solid var(--line-2);border-radius:2px;padding:0 4px;}
+.frame{background:var(--paper);border:1px solid var(--line);}
+
+/* ── 設計器外殼 ── */
+.fd{display:flex;height:660px;overflow:hidden;}
+
+/* 元件庫(palette.tsx:w-[178px] p-2.5) */
+.pal{width:178px;flex-shrink:0;border-right:1px solid var(--line);background:var(--paper);
+  overflow-y:auto;padding:10px;}
+.pal .ptitle{padding:0 6px 8px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-3);}
+.pfind{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;margin-bottom:8px;
+  border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--paper);}
+.pfind svg{width:12px;height:12px;color:var(--ink-4);flex-shrink:0;}
+.pfind input{flex:1;min-width:0;border:0;background:none;font-size:11.5px;}
+.pfind input::placeholder{color:var(--ink-4);}
+.pgrp{padding:11px 6px 5px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-3);}
+.pgrp:first-of-type{padding-top:2px;}
+/* 一列 = 一個「加進這張表」的動作。產品是**點擊加入**,不是拖曳建欄 —— palette.tsx 為 button+onClick */
+.prow{display:flex;align-items:center;gap:9px;padding:5px 7px;border-radius:5px;
+  font-size:12.5px;color:var(--ink-2);cursor:pointer;}
+.prow:hover{background:var(--brand-t);color:var(--brand);}
+.pic{width:22px;height:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:5px;background:var(--head);color:var(--ink-3);}
+.pic svg{width:13px;height:13px;}
+.prow:hover .pic{background:var(--brand);color:#fff;}
+
+/* 主欄 */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper-2);}
+/* 表單標頭(edit-form.tsx) */
+.fhead{display:flex;align-items:center;gap:10px;flex-shrink:0;padding:10px 16px;
+  border-bottom:1px solid var(--line);background:var(--paper);}
+.fhead h1{font-size:16px;font-weight:600;letter-spacing:-.01em;}
+.fhead .meta{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--ink-3);}
+.chip{display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:2px;
+  font-size:11px;font-weight:500;border:1px solid;}
+.chip.ok{color:var(--ok);background:var(--ok-t);border-color:#c5e2d6;}
+.chip.wn{color:var(--wn);background:var(--wn-t);border-color:#ecd9ae;}
+.chip.er{color:var(--er);background:var(--er-t);border-color:var(--er-line);}
+
+/* 版面工具列(canvas.tsx h-10) */
+.tbar{display:flex;align-items:center;gap:8px;height:40px;flex-shrink:0;padding:0 16px;
+  border-bottom:1px solid var(--line);background:var(--paper);font-size:12px;}
+.tbar .tlabel{font-weight:600;color:var(--ink-2);flex-shrink:0;}
+.tb{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:var(--r-ctl);
+  color:var(--ink-2);flex-shrink:0;}
+.tb:hover{background:var(--head);}
+.tb.on{background:var(--brand-t);color:var(--brand);}
+.tb svg{width:13px;height:13px;}
+.tsep{margin-left:2px;display:flex;gap:2px;flex-shrink:0;}
+.tsep button{padding:4px;border-radius:2px;color:var(--ink-4);}
+.tsep button:hover{background:var(--head);color:var(--brand);}
+.tsep button[disabled]{opacity:.3;}
+.tsep svg{width:13px;height:13px;}
+.dirty{margin-left:auto;flex-shrink:0;font-size:12px;color:var(--wn);}
+.tsave{flex-shrink:0;padding:4px 12px;border-radius:2px;background:var(--brand);color:#fff;
+  font-size:12px;font-weight:500;}
+.tsave[disabled]{opacity:.4;}
+
+/* 訊息帶 */
+.msg{flex-shrink:0;padding:6px 16px;border-bottom:1px solid var(--line);
+  background:var(--head);font-size:12px;color:var(--ink-2);}
+.msg.er{background:var(--er-t);border-color:var(--er-line);color:var(--er);}
+
+/* 畫布 */
+.cv{flex:1;min-height:0;overflow:auto;padding:24px;}
+.secs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.sec{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border:1px solid var(--line);
+  border-radius:2px;background:var(--head);font-size:12px;color:var(--ink-2);}
+.sec svg{width:10px;height:10px;color:var(--ink-3);}
+/* 12 欄格線。空格子露出來 —— Ragic 設計模式同樣露出試算表的空格 */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));border:1px solid var(--line);
+  border-bottom:none;background:var(--paper);}
+.cell{border-bottom:1px solid var(--line);border-right:1px solid var(--line);min-height:33px;}
+.fc{position:relative;display:grid;grid-template-columns:96px 1fr;border-bottom:1px solid var(--line);
+  border-right:1px solid var(--line);cursor:pointer;}
+.fc .k{display:flex;align-items:center;justify-content:flex-end;gap:3px;padding:7px 9px;
+  background:var(--paper-2);border-right:1px solid var(--line-2);font-size:12px;color:var(--ink-3);}
+.fc .k i{font-style:normal;font-weight:700;color:var(--er);}
+.fc .k .q{width:11px;height:11px;color:var(--ink-4);}
+.fc .v{display:flex;align-items:center;gap:6px;padding:7px 10px;min-height:33px;font-size:13px;
+  color:var(--ink-3);min-width:0;}
+.fc .v svg{width:12px;height:12px;flex-shrink:0;}
+.fc .v .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fc .v .s.mono{font-family:var(--font-mono);}
+.fc .note{margin-left:auto;flex-shrink:0;padding:0 5px;border:1px solid var(--line);border-radius:2px;
+  background:var(--paper-2);font-size:10.5px;color:var(--ink-4);}
+.fc.on{outline:1px solid var(--brand);outline-offset:-1px;z-index:2;}
+/* 把手與下架鈕只在 hover / 選中時出現 */
+.fc .grip{position:absolute;left:0;top:0;height:100%;width:16px;display:flex;align-items:center;
+  justify-content:center;background:var(--head);color:var(--ink-3);opacity:0;}
+.fc .del{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center;border-radius:2px;background:var(--paper);
+  color:var(--ink-3);opacity:0;}
+.fc:hover .grip,.fc.on .grip,.fc:hover .del,.fc.on .del{opacity:1;}
+.fc .grip svg,.fc .del svg{width:11px;height:11px;}
+/* 靜態元素(文字 / 圖片)—— 不是 field_def,是 layout 元素 */
+.st{position:relative;display:flex;align-items:center;gap:7px;padding:7px 10px;
+  border-bottom:1px solid var(--line);border-right:1px solid var(--line);font-size:12.5px;
+  color:var(--ink-2);cursor:pointer;}
+.st svg{width:12px;height:12px;color:var(--ink-4);flex-shrink:0;}
+.st .tag{margin-left:auto;padding:0 5px;border:1px dashed var(--line);border-radius:2px;
+  font-size:10.5px;color:var(--ink-4);}
+.st.ph{color:var(--ink-4);}
+
+/* ── 右欄(產品:恆為 0 或 1 欄,四個面板互斥)── */
+.insp{width:256px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--line);
+  background:var(--paper);}
+.insp .ih{display:flex;align-items:center;gap:8px;height:40px;flex-shrink:0;padding:0 12px;
+  border-bottom:1px solid var(--line);}
+.insp .ih .t{font-size:12px;font-weight:600;}
+.insp .ih .x{margin-left:auto;color:var(--ink-3);}
+.insp .ih .x svg{width:14px;height:14px;}
+.insp .ib{flex:1;overflow-y:auto;padding:12px;font-size:12px;}
+/* 產品是 `flex flex-col gap-1`:**標籤在上、控制項在下**。256px 寬放不下兩欄 */
+.prop{display:flex;flex-direction:column;gap:4px;padding:4px 0;}
+.hrow{display:grid;gap:6px;align-items:center;padding:3px 0;}
+.prop .pk{color:var(--ink-3);}
+/* `.sel` 是獨立元件,不掛在 `.prop` 底下 —— 它也用在 .hrow 與面板直接子層 */
+.prop input[type=text],.sel{display:flex;align-items:center;width:100%;height:27px;padding:0 8px;
+  border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--paper);font-size:12px;}
+.sel svg{width:12px;height:12px;margin-left:auto;color:var(--ink-4);}
+.sw{display:flex;align-items:center;gap:7px;padding:4px 0;color:var(--ink-2);}
+.sw input{width:14px;height:14px;accent-color:var(--brand);}
+.sw em{font-style:normal;color:var(--ink-4);}
+.iseg{margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--line-2);
+  font-size:11.5px;font-weight:700;color:var(--ink-2);}
+.iseg:first-child{margin-top:0;padding-top:0;border-top:0;}
+.ihint{margin-bottom:8px;font-size:11.5px;color:var(--ink-3);line-height:1.55;}
+
+/* 面板陳列 */
+.gal{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
+.gal > figure{border:1px solid var(--line);background:var(--paper);}
+.gal figcaption{padding:6px 10px;border-bottom:1px solid var(--line-2);background:var(--paper-2);
+  font-size:11.5px;font-weight:600;color:var(--ink-2);}
+.gal figcaption span{font-weight:400;color:var(--ink-3);}
+.gal .insp{width:256px;height:460px;border-left:0;}
+</style>
+</head>
+<body>
+<div class="doc">
+
+<h1>表單設計 · 完整功能面</h1>
+<p class="lede">
+  這份是<b>產品目前已出貨的設計器</b>的完整呈現(2026-08-08 逐檔對碼),<b>不是提案</b>。
+  與 <code>weyver-v2.html</code> 第七頁的差別:那份帶了三項提案(公式上畫布 / 語意分組 / 帶入對映),
+  這份忠實照現況畫 —— 包含元件庫用產品的「常用 / 其他 / 進階 / 結構」分組,
+  以及 <code>field-icons.ts</code> 目前的撞圖(<code>Hash</code> 同時給 Markdown / 數值 / 自動編號)。
+</p>
+
+<h2>1 · 主畫面</h2>
+<p class="sub">
+  三欄:元件庫 178px|畫布|右欄 256px。<b>右欄恆為 0 或 1 欄</b> ——
+  欄位設定 / 靜態元素 / 動作·簽核 / 條件式格式 / 列印<b>互斥</b>(canvas.tsx 逐字:
+  「原本是三個獨立布林……工具列由 862px 被壓到 286px,五個中文字直排」)。
+</p>
+
+<div class="frame">
+  <div class="fd">
+
+    <!-- 元件庫:產品是「點擊加入」,標題逐字如此 -->
+    <div class="pal">
+      <div class="ptitle">點擊加入</div>
+      <div class="pfind">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="搜尋型別…">
+      </div>
+          <div class="pgrp">常用</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span>單行文字</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6.1H3"/><path d="M21 12.1H3"/><path d="M15.1 18H3"/></svg></span>多行文字</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></span>數值</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>金額</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></span>日期</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m16 10-4 4-4-4"/></svg></span>單選</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>多選</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.5"/><path d="m9 11 3 3L22 4"/></svg></span>勾選</div>
+          <div class="pgrp">其他</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></span>Markdown</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg></span>文字遮罩</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg></span>Email</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>網址</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>電話</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>百分比</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span>日期時間</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>評分</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></span>自動編號</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.234 20.252 21 12.3"/><path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"/></svg></span>附件</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>圖片</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></span>簽名</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span>公式</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg></span>條碼</div>
+          <div class="pgrp">進階 · 計算/關聯/指派</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg></span>關聯</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg></span>人員</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>群組</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span>建立時間</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg></span>建立者</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span>更新時間</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg></span>更新者</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>帶入</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span>彙總</div>
+          <div class="pgrp">結構</div>
+          <div class="prow"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span>子表(明細)</div>
+    </div>
+
+    <div class="main">
+      <div class="fhead">
+        <h1>採購單</h1>
+        <span class="chip ok">ready</span>
+        <span class="meta">v3 · 21 欄</span>
+      </div>
+
+      <div class="tbar">
+        <span class="tlabel">版面設計</span>
+        <button class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>文字</button>
+        <button class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>圖片</button>
+        <button class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>分段</button>
+        <button class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>動作/簽核</button>
+        <button class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3h12v6"/><rect width="12" height="8" x="6" y="14"/></svg>列印</button>
+        <button class="tb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></svg>條件式格式</button>
+        <div class="tsep">
+          <button title="復原 (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg></button>
+          <button title="取消復原 (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></svg></button>
+        </div>
+        <span class="dirty">● 未儲存</span>
+        <button class="tsave">儲存版面</button>
+      </div>
+
+      <div class="cv">
+        <div class="secs">
+          <span class="sec">基本資料<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+          <span class="sec">品項明細<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></span>
+        </div>
+
+        <div class="grid">
+          <div class="fc on" style="grid-column:span 6">
+            <span class="grip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></span>
+            <div class="k"><i>*</i>供應商</div>
+            <div class="v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg><span class="s">裕豐農產行</span></div>
+            <button class="del" title="下架欄位（即時,不可復原）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+          <div class="fc" style="grid-column:span 6">
+            <div class="k">單號</div>
+            <div class="v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg><span class="s mono">PO-2608-0001</span></div>
+          </div>
+          <div class="fc" style="grid-column:span 6">
+            <div class="k"><i>*</i>預定交期<svg class="q" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></div>
+            <div class="v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><span class="s mono">2026-08-15</span></div>
+          </div>
+          <div class="fc" style="grid-column:span 6">
+            <div class="k">內部備註</div>
+            <div class="v"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6.1H3"/><path d="M21 12.1H3"/><path d="M15.1 18H3"/></svg><span class="s">範例文字</span><span class="note">隱藏</span></div>
+          </div>
+          <div class="st" style="grid-column:span 12">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>
+            核准後系統自動過帳至存貨與應付帳款,送出前請確認交期。
+            <span class="tag">設計限定</span>
+          </div>
+          <div class="st ph" style="grid-column:span 4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            圖片(未設)
+          </div>
+          <div class="cell" style="grid-column:span 8"></div>
+          <div class="cell" style="grid-column:span 12"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右欄 = 欄位設定(選中「供應商」,關聯型別)。
+         🔴 面板**沒有分頁也沒有摺疊區** —— 是一條單欄捲動面板,
+         區段用細線切開,且大部分區段依型別自動出現/消失,不是使用者展開的。 -->
+    <div class="insp">
+      <div class="ih"><span class="t">供應商</span><span style="color:var(--ink-3);font-size:11.5px">設定</span>
+        <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      <div class="ib">
+        <div class="prop"><span class="pk">提示文字(placeholder)</span><input type="text" value=""></div>
+        <div class="prop"><span class="pk">欄位說明（? 圖示)</span><input type="text" value=""></div>
+        <div class="prop"><span class="pk">位置(第 1 列、第 1 欄)</span>
+          <span style="display:flex;gap:3px">
+            <button class="sel" style="width:26px;justify-content:center;opacity:.35">←</button>
+            <button class="sel" style="width:26px;justify-content:center;opacity:.35">↑</button>
+            <button class="sel" style="width:26px;justify-content:center">↓</button>
+            <button class="sel" style="width:26px;justify-content:center">→</button>
+          </span></div>
+        <div class="prop"><span class="pk">跨欄數(colSpan)</span><input type="text" value="6" style="width:80px"></div>
+        <label class="sw"><input type="checkbox">唯讀(排版層,非權限)</label>
+        <label class="sw"><input type="checkbox">隱藏（排版層,非權限)</label>
+        <div class="iseg">預設值</div>
+        <span class="sel">無<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+
+        <div class="iseg">變更欄位型別</div>
+        <span class="sel">選擇型別…<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+
+        <div class="iseg">選這筆記錄時要帶入哪些欄</div>
+        <div class="hrow" style="grid-template-columns:1fr 12px 1fr">
+          <span class="sel">付款條件<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          <span style="text-align:center;color:var(--ink-4)">→</span>
+          <span class="sel">付款條件<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <button style="font-size:11.5px;color:var(--brand)">＋ 一組</button>
+          <button style="font-size:11.5px;color:var(--brand)">儲存對映</button>
+        </div>
+        <!-- ⚠️ 這行在產品裡是純文字節點,`**` 不會 render,畫面上真的會看到星號。照現況畫。 -->
+        <p class="ihint" style="margin-top:8px">帶入的是**選取當下**的值,存檔後不會跟著來源異動。要即時反映請改用帶入欄(lookup)。</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<h2>2 · 右欄五態(產品:一次只出現一個)</h2>
+<p class="sub">
+  依實際寬度畫:欄位設定 / 靜態元素 <b>256px</b>,動作·簽核 / 條件式格式 <b>320px</b>,列印 <b>256px</b>。
+</p>
+
+<div class="gal">
+
+  <figure>
+    <figcaption>欄位設定 · 單選欄 <span>— 選項段在捲動區之外,選項一多會把上面壓扁</span></figcaption>
+    <div class="insp">
+      <div class="ih"><span class="t">狀態</span><span style="color:var(--ink-3);font-size:11.5px">設定</span>
+        <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      <div class="ib">
+        <div class="iseg">選項(狀態)</div>
+        <div class="hrow" style="grid-template-columns:1fr 76px 20px"><input type="text" value="待審">
+          <span class="sel">待辦<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          <span style="color:var(--ink-4);text-align:center">✕</span></div>
+        <div class="hrow" style="grid-template-columns:1fr 76px 20px"><input type="text" value="已核准">
+          <span class="sel">完成<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          <span style="color:var(--ink-4);text-align:center">✕</span></div>
+        <div class="hrow" style="grid-template-columns:1fr 76px 20px"><input type="text" value="退回">
+          <span class="sel">異常<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          <span style="color:var(--ink-4);text-align:center">✕</span></div>
+        <div style="display:flex;gap:10px;margin-top:6px">
+          <button style="font-size:11.5px;color:var(--brand)">加選項</button>
+          <button style="font-size:11.5px;color:var(--brand)">儲存選項</button>
+          <span style="margin-left:auto;font-size:11px;color:var(--ink-4)">12 筆</span>
+        </div>
+        <div class="iseg">連動於</div>
+        <span class="sel">不連動<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        <div class="iseg">變更欄位型別</div>
+        <span class="sel">選擇型別…<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        <button style="margin-top:8px;font-size:11.5px;color:var(--brand)">預覽</button>
+      </div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>靜態元素 · 文字 <span>— 由工具列「文字」加入,不是 field_def</span></figcaption>
+    <div class="insp">
+      <div class="ih"><span class="t">文字元素</span>
+        <button class="x" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+        <button class="x" style="margin-left:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      <div class="ib">
+        <div class="iseg">文字內容</div>
+        <textarea style="width:100%;height:64px;padding:6px 8px;border:1px solid var(--line);border-radius:3px;font:inherit;font-size:12px;resize:vertical">核准後系統自動過帳至存貨與應付帳款。</textarea>
+        <label class="sw"><input type="checkbox">Markdown</label>
+        <div class="iseg">超連結（https/相對)</div>
+        <input type="text" placeholder="https://…" style="width:100%;height:27px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:12px">
+        <div class="iseg">跨欄數(colSpan)</div>
+        <input type="text" value="12" style="width:80px;height:27px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:12px">
+        <label class="sw" style="margin-top:6px"><input type="checkbox" checked>僅設計模式可見</label>
+      </div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>動作 / 簽核 <span>— 四個頁籤,320px</span></figcaption>
+    <div class="insp" style="width:320px">
+      <div class="ih" style="gap:0;padding:0">
+        <button class="tb on" style="height:40px;border-radius:0">自訂按鈕</button>
+        <button class="tb" style="height:40px;border-radius:0">自動觸發</button>
+        <button class="tb" style="height:40px;border-radius:0">簽核流程</button>
+        <button class="tb" style="height:40px;border-radius:0">標籤</button>
+        <button class="x" style="padding-right:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
+      <div class="ib">
+        <!-- 🔴 清單直接顯示後端內部值,同一面板其他地方全是中文 -->
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-2)">
+          <span>送簽</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-3)">updateSelf</span>
+          <span style="margin-left:auto;color:var(--ink-3)">🗑</span></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-2)">
+          <span>轉進貨單</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-3)">pushTo</span>
+          <span style="margin-left:auto;color:var(--ink-3)">🗑</span></div>
+        <div class="iseg">新增按鈕</div>
+        <input type="text" placeholder="按鈕名稱" style="width:100%;height:27px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;margin-bottom:6px">
+        <span class="sel">更新本表欄位<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+        <div style="margin-top:6px"><span class="sel">選欄位<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+        <input type="text" placeholder="設定值" style="width:100%;height:27px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;margin-top:6px">
+        <button style="margin-top:8px;font-size:11.5px;color:var(--brand)">新增按鈕</button>
+      </div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>條件式格式 <span>— 記錄頁 / 列表頁兩面各自一份</span></figcaption>
+    <div class="insp" style="width:320px">
+      <div class="ih"><span class="t">條件式格式</span>
+        <span style="margin-left:8px;font-size:11.5px"><b style="color:var(--brand)">記錄頁</b> <span style="color:var(--ink-4)">|</span> <span style="color:var(--ink-3)">列表頁</span></span>
+        <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      <div class="ib">
+        <div style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;margin-bottom:6px">
+          <div style="font-size:11.5px;color:var(--ink-2)">金額 大於 10000 且 狀態 等於 待審</div>
+          <div style="margin-top:4px"><span class="chip wn">待辦</span>
+            <span style="margin-left:6px;font-size:11px;color:var(--ink-3)">→ 金額、狀態</span></div>
+        </div>
+        <p class="ihint">排越後面越優先 —— 同一欄位命中多條規則時,以最下面那條為準。</p>
+        <div class="iseg">效果(可複選)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          <span class="chip">隱藏欄位</span><span class="chip">設為唯讀</span><span class="chip ok">設為必填</span>
+        </div>
+        <p class="ihint" style="margin-top:6px">隱藏與唯讀為版面層效果,擋不住 API;欄位級保護請用權限設定。必填由伺服器強制。</p>
+        <div class="iseg">條件成立時顯示訊息</div>
+        <input type="text" placeholder="例:{{fieldValue:狀態}} 需經主管核可" style="width:100%;height:27px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:11.5px">
+        <div class="iseg">顏色(12 色受控色盤)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <span class="chip ok">完成</span><span class="chip wn">待辦</span><span class="chip er">異常</span><span class="chip">中性</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button style="font-size:11.5px;color:var(--brand)">複製到列表頁</button>
+          <button style="font-size:11.5px;color:var(--brand)">新增規則</button>
+        </div>
+      </div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>列印設定 <span>— 紙張/邊界交給瀏覽器對話框</span></figcaption>
+    <div class="insp">
+      <div class="ih"><span class="t">列印設定</span>
+        <button class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      <div class="ib">
+        <p class="ihint">紙張大小 / 邊界 / 直橫向由瀏覽器列印對話框設定。</p>
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;font-size:11px;color:var(--ink-3);padding-bottom:4px;border-bottom:1px solid var(--line-2)">
+          <span>列</span><span>頁首</span><span>頁尾</span><span>換頁</span></div>
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center;padding:5px 0;font-size:11.5px">
+          <span>供應商、單號</span><input type="checkbox" checked><input type="checkbox"><input type="checkbox"></div>
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:6px;align-items:center;padding:5px 0;font-size:11.5px">
+          <span>預定交期、內部備註</span><input type="checkbox"><input type="checkbox"><input type="checkbox" checked></div>
+      </div>
+    </div>
+  </figure>
+
+</div>
+
+<h2>3 · 暫時態</h2>
+<p class="sub">點元件庫的型別之後,<b>加欄卡從畫布上方出現</b>(不是右欄)—— 必填在這裡,不在欄位設定面板。</p>
+<div class="frame" style="padding:14px 16px">
+  <div style="border:1px solid rgba(34,86,138,.5);background:var(--brand-t);border-radius:5px;padding:13px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+      <span style="font-size:12px;font-weight:600;color:var(--brand)">加入自動編號欄位</span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        <button style="padding:3px 10px;border:1px solid var(--line);border-radius:3px;background:var(--paper);font-size:12px">取消</button>
+        <button style="padding:3px 10px;border-radius:3px;background:var(--brand);color:#fff;font-size:12px">加入</button>
+      </span>
+    </div>
+    <input type="text" placeholder="欄位名稱" style="width:100%;height:28px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;background:var(--paper)">
+    <label class="sw"><input type="checkbox">必填</label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+      <input type="text" value="PO-" style="width:110px;height:27px;padding:0 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;background:var(--paper)">
+      <span class="sel" style="width:130px;background:var(--paper)">yyyyMM<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      <span class="sel" style="width:130px;background:var(--paper)">每月重設<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+    </div>
+  </div>
+</div>
+
+<h2>4 · 畫這份稿的時候發現的(全部是現況的問題,不是提案)</h2>
+<div class="frame" style="padding:14px 16px">
+<ol style="margin:0 0 0 18px;font-size:12.5px;line-height:1.75">
+  <li>🔴 <b>三種存檔心智混在同一欄面板,而畫面上沒有任何記號區分。</b>
+      基本設定 8 項是<b>草稿</b>(跟畫布一起按「儲存版面」)· 選項與帶入對映<b>各自有儲存鈕</b> ·
+      日期格式 / 條碼 / 文字遮罩 / 連動選項<b>改了就立刻送出</b>。
+      程式碼註解說明了理由(選項會改寫既有記錄),但使用者看不到這個分界。</li>
+  <li>🔴 <b>「不可重複」後端做完了,前端沒有任何入口 —— 這是第一約束違規。</b><br>
+      後端齊全:<code>field_def.is_unique</code>(migration 0000)· <code>form-specs.ts:24</code> 收得到 ·
+      API 回傳 · <code>record.service</code> 連「違反後加約束」都處理了。<br>
+      前端:<code>schemas.ts:86</code> 有型別,<b>其餘只出現在測試 fixture</b> —— 零 writer、零 reader。
+      <b>使用者想設唯一值,唯一路徑是打 API。</b>與 task #51「文字遮罩的設計器 UI 缺席」同一形狀。</li>
+  <li>🔴 <b>「必填」建立之後改不了。</b> 加欄卡可以勾,但欄位的 PATCH 端點只有
+      <code>type</code> / <code>options</code> / <code>load-map</code> / <code>display</code> /
+      <code>position</code> —— <b>沒有改 required 的路徑</b>。忘了勾就只能刪掉重建。
+      (條件式格式的「設為必填」是<b>條件式</b>效果,不是改這個欄位的基本屬性。)</li>
+  <li>⚠️ 所以 <code>weyver-v2.html</code> 屬性面板上的「必填 / 不可重複」<b>不是畫錯,是提案</b> ——
+      它畫的正好是這兩個該補的入口。本稿(現況)刻意不畫,<b>兩份的差別就是缺口本身</b>。</li>
+  <li><b>只有新增沒有編輯</b>,三處同型:自訂按鈕(只有 🗑)· 簽核流程(<b>連刪除與啟停都沒有</b>)· 標籤。</li>
+  <li><b>漏翻譯</b>:按鈕清單直接顯示 <code>updateSelf</code> / <code>pushTo</code> / <code>openUrl</code>,同一面板其他地方全中文。</li>
+  <li><b>兩處 Markdown 星號沒 render</b>,畫面上會看到裸露的 <code>**</code>
+      (帶入對映說明、格式遮罩說明)。本稿照現況畫,沒有幫它修掉。</li>
+  <li><b>全形 / 半形括號不一致</b>:「提示文字<b>(</b>placeholder)」半形 vs
+      「欄位說明<b>（</b>? 圖示)」「隱藏<b>（</b>排版層,非權限)」「公式<b>（</b>P1,暫不套)」全形。同一個面板內混用。</li>
+  <li><b>預設值的「公式」可以選但不會生效</b> —— 選項字面就是「公式（P1,暫不套)」。</li>
+</ol>
+</div>
+
+</div>
+</body>
+</html>
