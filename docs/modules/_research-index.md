@@ -83,6 +83,7 @@
 | [R1·A-2] 白牌:自訂網域 + 品牌客製 | — | ⭐ 有一手依據 | 14 | `56` | [R1/white-label.md](R1/white-label.md) |
 | [R2 命門] 語意計算綁定層(自由表單 ↔ 算) | — | · 零星引用 | 1 | — | [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
 | [R2·P0-6] 總帳 GL(複式簿記) | — | ⭐ 有一手依據 | 22 | — | [R2/gl.md](R2/gl.md) |
+| [R2·P0-7] K 進銷存與庫存估值 | — | ⭐ 有一手依據 | 13 | — | [R2/inventory.md](R2/inventory.md) |
 
 ## D. 明示豁免外部研究的模組(**逐條列出供稽核**)
 
