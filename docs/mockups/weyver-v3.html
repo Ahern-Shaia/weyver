@@ -1374,6 +1374,59 @@ a:hover{text-decoration:underline;}
   width: auto;
 }
 
+/* ── 🔴 2026-08-08 裁定|**v3 的版式 + v2 的圖示** ─────────────────────
+   保留 v2 的外框(標題列 / 搜尋框 / 底部提示)與**全部圖示**(T / ¶ / @ / # / $ / ƒx
+   等字符,以及既有線條圖示),只把「列的長相」換成 v3 的:
+   36px 列高、24px 帶框圖示容器、分組標題吸頂。
+
+   ⚠️ **一行標記都不用改** —— `.fd-row` / `.ic` / `.grp` 都是 v2 的類別,
+   而 v3 完整繼承 v2 的樣式表,所以這件事純粹是覆寫。
+   換標記反而會把圖示一起換掉,而那正是要避免的。
+
+   值全部照抄決策方給的 inline style,不自己編。 */
+#s-design .fd-pal .grp{
+  padding: 10px 6px 6px; gap: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  color: oklch(45% .015 260);
+  /* 分組標題吸頂 —— 31 種型別捲動時「現在在哪一組」會看不出來 */
+  position: sticky; top: 0; z-index: 1;
+  background: oklch(99% .002 260);
+}
+#s-design .fd-pal .grp .gh{ font-size: 10.5px; color: oklch(68% .01 260); }
+
+#s-design .fd-row{
+  /* ⚠️ `display` / `align-items` 明寫,不靠裸 `.fd-row` 漏過來 ——
+     `_check-collisions.py` 會擋(exit 1),而它擋得有道理:
+     一旦有人改了裸規則的 display,這裡會跟著壞而且看不出關聯。 */
+  display: flex; align-items: center;
+  gap: 10px; height: 36px; padding: 0 9px 0 6px; margin-bottom: 2px;
+  font-size: 12.5px;
+  /* v3 是方角 —— `.fd-row` 原本吃 `--r-ctl`(4px),那是 v2 的值 */
+  border-radius: 0;
+  border: 1px solid transparent;
+  transition: border-color .14s, background .14s;
+}
+/* 只換圖示的**容器**,裡面的圖示原封不動 */
+#s-design .fd-row .ic{
+  flex: 0 0 24px; width: 24px; height: 24px;
+  background: oklch(58% .15 240 / .09);
+  border: 1px solid oklch(58% .15 240 / .28);
+  color: oklch(48% .13 240);
+}
+#s-design .fd-row .ic svg{ width: 15px; height: 15px; }
+/* 版面 / 系統列的圖示不帶品牌色 —— 它們不是欄位,不該跟型別搶同一個視覺權重 */
+#s-design .fd-row.sys .ic{
+  background: oklch(94% .005 260);
+  border-color: oklch(24% .02 260 / .12);
+  color: oklch(52% .015 260);
+}
+/* hover 用**框線**回應(v3 的 transition 就是為 border-color 寫的),
+   底色只給極淡一層 —— 36px 高度下整列變色太重 */
+#s-design .fd-row:hover{
+  background: oklch(58% .15 240 / .06);
+  border-color: oklch(58% .15 240 / .35);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    🔴 2026-08-08|v3 互動層 —— 補回 inline style **語法上寫不出來**的狀態
 
