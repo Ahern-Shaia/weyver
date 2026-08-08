@@ -94,7 +94,7 @@
 | 模組 | Sprint | 狀態 | 文件 |
 |---|---|---|---|
 | **⭐ 語意計算綁定層(自由表單 ↔ 算,自助化)** | P0-6(命門地基）| ✅ **M0 APPROVED — OQ-CBL-1..8 全採建議**(R2 design-ahead;M1–M7 待 R2 計算層啟動;與 J/K/L/N 共用「接法」)。**⊕ 2026-08-08 §10-bis:OQ-CBL-9/10/11 待裁**(由決策方品牌重設計提出)—— ① **入口形狀**:原案假設「對既有欄位標語意角色」,但從未論證它比「從元件庫拖」好,而**可發現性是第一約束的一部分**;② 🔴 稿子的「營運」四項其實是**三類東西**(過帳科目=值 / 庫存估值=行為 / 庫存估值影響=後果投影),把**行為**放進欄位元件庫是類別錯誤;③ 🔴 **本檔真正缺的是「後果預覽」**(全文 grep「預覽/後果/試算」零命中)—— 自助化解決「我能不能自己綁」,後果預覽解決「**我綁對了嗎**」,而帳務綁錯是**過帳後才發現、且不可變**(鐵則 4)。R1 已有三個同型先例可沿用(convert-type 預覽卡 / relookup 試算差異 / 觸發器試跑)| [R2/calc-binding-layer.md](R2/calc-binding-layer.md) |
-| 財會 GL / AP / AR core | P0-6 | ⬜(**docs/35 §6 輪次 1:J.gl design-ahead M0 為下一份**)| 待建 |
+| **⭐ 總帳 GL(複式簿記)** | P0-6 | ✅ **M0 APPROVED(2026-08-08,design-ahead)— OQ-GL-1..8 全數裁定**(1/2/3/4/7/8 研究錨定自動核准、5/6 徵詢採建議)|三站研究:**OFBiz 原始碼**(LICENSE 複驗 Apache-2.0;`AcctgTrans/AcctgTransEntry` 雙金額 + `isPosted` 生命週期 + 沖轉 D↔C 互換 + 期結 `PERIOD_CLOSING` 傳票;**包袱=不可變靠 SECA service 層守,繞過直寫 DB 無防護 → 我方下沉 DB trigger**;±0.01 容差寫死 → 我方容差 0)· **ERPNext 只讀官方文件**(Immutable Ledger:cancel=反向分錄不刪 · 期間硬鎖 · PCV)· **Odoo 本地文檔**(三層鎖(軟/稅/硬)· **年結不產傳票=動態本年度損益科目** · SHA-256 hash 鏈 · `l10n_tw` 台灣 CoA 存在證明)。落定:五表(gl_account/entry/line/period/balance)· 七不變量(**posted 不可變下沉 DB trigger** / 借貸平衡 deferred trigger / 期間兩層鎖 closed+hard_locked / 冪等 key / 對帳 job)· **傳票=表單 + 過帳鏡射 Tier-1 ledger**(OQ-GL-1,「一切皆表單」與 DB 級不可變兩全)· 年結混合案(平時動態損益 + 年結結轉傳票草稿人核准)· 多型 source 參照修 OFBiz nullable-FK 包袱。**遺留待驗證**:台灣結轉傳票慣例(M1 前問鮮勇配合會計師)· hash 鏈法規(併 O 模組);M1 第一件事=pg numeric 應用層表示對碼。M1–M6 待 R2 啟動 | [R2/gl.md](R2/gl.md) |
 | 進銷 K + 生產 L basics | P0-7 | ⬜(輪次 2–3)| 待建 |
 | 台灣電子發票 + 批號追蹤 | P0-8 | ⬜(輪次 4)| 待建 |
 | 計算層(過帳期結 / 成本 / 估值 / MRP / FX;docs/18)| P0-6~ | ⬜ | 待建 |
