@@ -56,7 +56,7 @@ function MoveButtons({
           onClick={() => move(-1, 0)}
           disabled={atLeft}
           aria-label="左移一欄"
-          className="flex size-7 items-center justify-center rounded-xs text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
+          className="flex size-7 items-center justify-center rounded-xs text-ink-3 hover:text-primary disabled:opacity-disabled hover:bg-hover"
         >
           <ChevronLeft size={13} />
         </button>
@@ -65,7 +65,7 @@ function MoveButtons({
           onClick={() => move(0, -1)}
           disabled={atTop}
           aria-label="上移一列"
-          className="flex size-7 items-center justify-center rounded-xs text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
+          className="flex size-7 items-center justify-center rounded-xs text-ink-3 hover:text-primary disabled:opacity-disabled hover:bg-hover"
         >
           <ChevronUp size={13} />
         </button>
@@ -82,7 +82,7 @@ function MoveButtons({
           onClick={() => move(1, 0)}
           disabled={atRight}
           aria-label="右移一欄"
-          className="flex size-7 items-center justify-center rounded-xs text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
+          className="flex size-7 items-center justify-center rounded-xs text-ink-3 hover:text-primary disabled:opacity-disabled hover:bg-hover"
         >
           <ChevronRight size={13} />
         </button>

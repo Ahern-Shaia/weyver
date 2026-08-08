@@ -132,7 +132,7 @@ export function ConditionRows({
                 onClick={() => onChange(conditions.filter((_, i) => i !== ci))}
                 disabled={conditions.length <= min}
                 aria-label={`移除條件 ${String(ci + 1)}`}
-                className="text-ink-disabled hover:text-er disabled:opacity-30"
+                className="text-ink-disabled hover:text-er disabled:opacity-disabled"
               >
                 <X size={12} />
               </button>
@@ -144,7 +144,7 @@ export function ConditionRows({
         type="button"
         onClick={() => onChange([...conditions, { field: fieldNames[0] ?? "", op: "isNotEmpty" }])}
         disabled={conditions.length >= max}
-        className="text-[12px] text-primary hover:underline disabled:opacity-40"
+        className="text-[12px] text-primary hover:underline disabled:opacity-disabled"
       >
         ＋ 新增條件
       </button>

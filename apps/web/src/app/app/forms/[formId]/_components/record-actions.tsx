@@ -114,7 +114,7 @@ export function RecordActions({
               type="button"
               onClick={() => onRun(b)}
               disabled={runButton.isPending || lockedByApproval || blocked}
-              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
+              className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-disabled hover:bg-hover"
               title={
                 blocked
                   ? /* 官方逐字:上鎖動作按鈕「還可以客製提醒訊息」 */
@@ -157,7 +157,7 @@ export function RecordActions({
                 onError: (e) => setMsg(describeEngineError(e)),
               })
             }
-            className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40 hover:bg-hover"
+            className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-disabled hover:bg-hover"
           >
             <Send size={13} />
             送簽

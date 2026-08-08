@@ -351,7 +351,7 @@ export function TriggersPanel({
             type="button"
             onClick={submit}
             disabled={create.isPending}
-            className="h-7 flex-1 border border-primary bg-primary text-white disabled:opacity-50"
+            className="h-7 flex-1 border border-primary bg-primary text-white disabled:opacity-disabled"
           >
             新增
           </button>
@@ -369,7 +369,7 @@ export function TriggersPanel({
                 onError: (e: unknown) => setMsg(describeEngineError(e)),
               })
             }}
-            className="flex h-7 items-center gap-1 border border-line px-2 text-ink-2 hover:bg-head disabled:opacity-50"
+            className="flex h-7 items-center gap-1 border border-line px-2 text-ink-2 hover:bg-head disabled:opacity-disabled"
           >
             <Play size={11} />
             試跑

@@ -54,7 +54,7 @@ export function RecordNav({
         aria-label="上一筆"
         onClick={onPrev}
         disabled={index <= 1}
-        className="flex h-full w-[26px] items-center justify-center border-r border-line text-ink-3 hover:bg-head disabled:opacity-40"
+        className="flex h-full w-[26px] items-center justify-center border-r border-line text-ink-3 hover:bg-head disabled:opacity-disabled"
       >
         ‹
       </button>
@@ -66,7 +66,7 @@ export function RecordNav({
         aria-label="下一筆"
         onClick={onNext}
         disabled={index >= total}
-        className="flex h-full w-[26px] items-center justify-center text-ink-3 hover:bg-head disabled:opacity-40"
+        className="flex h-full w-[26px] items-center justify-center text-ink-3 hover:bg-head disabled:opacity-disabled"
       >
         ›
       </button>

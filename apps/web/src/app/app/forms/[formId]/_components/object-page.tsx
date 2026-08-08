@@ -706,7 +706,7 @@ function ActBtn({
          —— 圖示按鈕沒有可及名稱等於螢幕閱讀器使用者按不到。 */
       title={label}
       aria-label={label}
-      className={`flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[12px] whitespace-nowrap transition-colors duration-fast-01 ease-productive-exit disabled:opacity-50 ${
+      className={`flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[12px] whitespace-nowrap transition-colors duration-fast-01 ease-productive-exit disabled:opacity-disabled ${
         danger
           ? "border-er-line text-er hover:bg-er-t"
           : "border-line bg-card text-ink-2 hover:bg-head"

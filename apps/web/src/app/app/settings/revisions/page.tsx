@@ -199,7 +199,7 @@ export default function RevisionsPage(): ReactNode {
                     {b.undoable ? (
                       <button
                         type="button"
-                        className="text-primary hover:underline disabled:opacity-50"
+                        className="text-primary hover:underline disabled:opacity-disabled"
                         disabled={undo.isPending}
                         onClick={() => {
                           /* 官方限制 2 逐字:「此動作一旦被執行便無法復原。」

@@ -47,7 +47,7 @@ export function MaskedValue({
           disabled={busy}
           title="顯示完整內容(會留下稽核紀錄)"
           aria-label={`${field} 顯示完整內容`}
-          className="text-ink-3 hover:text-ink disabled:opacity-50"
+          className="text-ink-3 hover:text-ink disabled:opacity-disabled"
           onClick={() => {
             setBusy(true)
             setError(null)

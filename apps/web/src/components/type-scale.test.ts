@@ -117,3 +117,34 @@ describe("字階白名單(docs/14 v5.0 §2.5)", () => {
     expect(bad, `以下同時使用最小字級與停用色:\n${bad.join("\n")}`).toEqual([])
   })
 })
+
+/* 🔴 2026-08-08 M3|**停用態單一值**。
+
+   收斂前實測:同一個「不能用」在畫面上有 **六種**深淺 ——
+   30% / 40% / 45% / 50% / 60% / **完全沒有**(共用 `Input`),散在 37 處。
+   使用者無從學會「這個灰代表不能點」。
+
+   ⚠️ **v3 不是這條的出處** —— 全檔 `disabled` 出現 0 次、invalid 0 次
+   (hover 有 56 條、focus 8 條)。v3 畫的是「可以做什麼」,沒畫「不能做什麼」,
+   所以這是我方裁定,值收在 `--opacity-disabled`。
+
+   ⚠️ 第一次 sweep 只掃 `packages/ui` 與 `apps/web/src/components`,
+   漏掉 31 處在 `app/` 路由底下的呼叫端 —— **cross-cutting 要整片掃**。 */
+describe("停用態不得硬寫透明度", () => {
+  it("一律用 opacity-disabled,禁 disabled:opacity-<數字>", () => {
+    const bad: string[] = []
+    for (const file of [
+      ...walk(resolve(process.cwd(), "src")),
+      ...walk(resolve(process.cwd(), "../../packages/ui/src")),
+    ]) {
+      readFileSync(file, "utf-8")
+        .split("\n")
+        .forEach((ln, i) => {
+          if (/disabled\]?:opacity-\d/.test(ln)) {
+            bad.push(`${file.replace(process.cwd(), "")}:${String(i + 1)}`)
+          }
+        })
+    }
+    expect(bad, `改用 opacity-disabled:\n${bad.join("\n")}`).toEqual([])
+  })
+})

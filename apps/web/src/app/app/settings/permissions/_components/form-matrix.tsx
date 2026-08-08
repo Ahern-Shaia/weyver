@@ -244,7 +244,7 @@ function CategoryGroup({
                     type="button"
                     disabled={busy}
                     onClick={() => onRevert(form.id)}
-                    className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[12px] text-ink-3 hover:text-primary disabled:opacity-50"
+                    className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[12px] text-ink-3 hover:text-primary disabled:opacity-disabled"
                   >
                     <RotateCcw size={11} strokeWidth={1.9} />
                     還原繼承
@@ -312,7 +312,7 @@ function CheckBox({
   readonly onClick: () => void
 }): ReactNode {
   const base =
-    "inline-flex size-5 items-center justify-center rounded-sm border transition-colors disabled:opacity-50"
+    "inline-flex size-5 items-center justify-center rounded-sm border transition-colors disabled:opacity-disabled"
   const onCls =
     variant === "grant"
       ? "border-primary bg-primary text-white"

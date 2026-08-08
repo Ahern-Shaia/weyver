@@ -15,7 +15,7 @@ export function Select({ className, children, ...props }: SelectProps): ReactEle
     <div
       className={cn(
         "relative inline-flex min-h-[27px] items-center rounded-xs border border-line-input bg-card",
-        "focus-within:border-primary has-[select:disabled]:opacity-60",
+        "focus-within:border-primary has-[select:disabled]:opacity-disabled",
         className,
       )}
     >

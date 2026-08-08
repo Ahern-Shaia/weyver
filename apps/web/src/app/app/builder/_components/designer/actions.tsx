@@ -272,7 +272,7 @@ function ButtonsPanel({
           type="button"
           onClick={submit}
           disabled={label.trim() === "" || createButton.isPending}
-          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
+          className="flex items-center justify-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-disabled"
         >
           <Plus size={13} />
           新增按鈕

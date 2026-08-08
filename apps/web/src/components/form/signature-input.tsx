@@ -190,7 +190,7 @@ export function SignatureInput({
           type="button"
           onClick={save}
           disabled={busy}
-          className="flex items-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-40"
+          className="flex items-center gap-1 rounded-xs bg-primary px-2 py-1 text-[12px] font-medium text-white hover:bg-primary-d disabled:opacity-disabled"
         >
           <PenLine size={12} strokeWidth={1.9} />
           {busy ? "儲存中…" : "確認簽名"}

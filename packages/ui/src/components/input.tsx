@@ -13,6 +13,10 @@ export function Input({ className, icon, type = "text", ...props }: InputProps):
         /* min-h 而非 h —— WCAG 1.4.12:使用者加大行高/字距時版面不得裁切 */
         "flex min-h-[27px] items-center gap-1.5 rounded-xs border border-line-input bg-card px-2 text-[13px]",
         "focus-within:border-primary",
+        /* 🔴 2026-08-08 M3:原本只有 rest 與 focus 兩態,停用與錯誤都沒有。
+           後果不是「少了樣式」而是**呼叫端各自發明** —— date-input 自己造了一套
+           錯誤框,其他呼叫端則什麼都沒有。元件不給的狀態,漂移就從那裡進來。 */
+        "has-[input:disabled]:opacity-disabled has-[input[aria-invalid=true]]:border-er",
         className,
       )}
     >

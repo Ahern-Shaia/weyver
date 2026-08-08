@@ -363,7 +363,7 @@ export function DesignCanvas({
                 disabled={!dirty}
                 title="復原 (Ctrl+Z)"
                 aria-label="復原"
-                className="rounded-xs p-1 text-ink-disabled hover:text-primary disabled:opacity-30 hover:bg-hover"
+                className="rounded-xs p-1 text-ink-disabled hover:text-primary disabled:opacity-disabled hover:bg-hover"
               >
                 <Undo2 size={13} />
               </button>
@@ -373,7 +373,7 @@ export function DesignCanvas({
                 disabled={!canRedo}
                 title="取消復原 (Ctrl+Shift+Z)"
                 aria-label="取消復原"
-                className="rounded-xs p-1 text-ink-disabled hover:text-primary disabled:opacity-30 hover:bg-hover"
+                className="rounded-xs p-1 text-ink-disabled hover:text-primary disabled:opacity-disabled hover:bg-hover"
               >
                 <Redo2 size={13} />
               </button>
@@ -384,7 +384,7 @@ export function DesignCanvas({
             type="button"
             onClick={save}
             disabled={!dirty || putLayout.isPending}
-            className="shrink-0 rounded-xs bg-primary px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-primary-d disabled:opacity-40"
+            className="shrink-0 rounded-xs bg-primary px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-primary-d disabled:opacity-disabled"
           >
             {putLayout.isPending ? "儲存中…" : "儲存版面"}
           </button>

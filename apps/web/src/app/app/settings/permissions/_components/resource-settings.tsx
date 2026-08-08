@@ -173,7 +173,7 @@ function DefaultProfile(): ReactNode {
             className={
               current.has(a)
                 ? "rounded-sm border border-primary bg-primary px-2 py-1 text-[12px] font-medium text-white"
-                : "rounded-sm border border-line bg-card px-2 py-1 text-[12px] text-ink-3 hover:border-primary disabled:opacity-50"
+                : "rounded-sm border border-line bg-card px-2 py-1 text-[12px] text-ink-3 hover:border-primary disabled:opacity-disabled"
             }
           >
             {ACTION_LABEL[a]}

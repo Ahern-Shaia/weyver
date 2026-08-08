@@ -164,7 +164,7 @@ export function ConditionalFormatPanel({
               onChange({ ...current, [face === "record" ? "list" : "record"]: [...rules] })
             }
             disabled={rules.length === 0}
-            className="flex items-center gap-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 text-[12px] text-ink-3 hover:text-primary disabled:opacity-disabled"
           >
             <Copy size={11} />
             複製到{face === "record" ? "列表頁" : "記錄頁"}
@@ -177,7 +177,7 @@ export function ConditionalFormatPanel({
             setSelected(rules.length)
           }}
           disabled={rules.length >= 20 || fieldNames.length === 0}
-          className="mt-2 flex items-center gap-1 text-[12px] text-primary hover:underline disabled:opacity-40"
+          className="mt-2 flex items-center gap-1 text-[12px] text-primary hover:underline disabled:opacity-disabled"
         >
           <Plus size={12} />
           新增規則

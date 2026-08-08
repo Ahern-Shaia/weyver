@@ -384,7 +384,7 @@ export function CollectionView({
           type="button"
           onClick={() => void onExport()}
           disabled={records.length === 0 || exporting}
-          className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-50"
+          className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-disabled"
         >
           {exporting ? "準備中…" : "匯出 Excel"}
         </button>
@@ -394,7 +394,7 @@ export function CollectionView({
               type="button"
               onClick={() => void recordsQuery.fetchNextPage()}
               disabled={recordsQuery.isFetchingNextPage}
-              className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-50"
+              className="rounded-xs px-2 py-0.5 hover:bg-hover disabled:opacity-disabled"
             >
               {recordsQuery.isFetchingNextPage ? "載入中…" : "載更多"}
             </button>

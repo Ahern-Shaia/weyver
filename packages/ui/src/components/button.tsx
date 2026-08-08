@@ -4,7 +4,7 @@ import { cn } from "../lib/utils"
 
 /* 精緻資料工具按鈕(tokens v3.0):柔角、平滑 hover、主色克制;subtle 供 row 微動作降噪 */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm border font-medium transition-colors duration-fast-01 ease-productive-exit disabled:pointer-events-none disabled:opacity-45 [&_svg]:shrink-0 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm border font-medium transition-colors duration-fast-01 ease-productive-exit disabled:pointer-events-none disabled:opacity-disabled [&_svg]:shrink-0 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary",
   {
     variants: {
       variant: {

@@ -65,7 +65,7 @@ export function TriggerList({
                       type="button"
                       disabled={busy}
                       onClick={() => onPublish(t.id)}
-                      className="border border-primary px-1.5 text-primary hover:bg-primary hover:text-white disabled:opacity-50"
+                      className="border border-primary px-1.5 text-primary hover:bg-primary hover:text-white disabled:opacity-disabled"
                     >
                       發布
                     </button>

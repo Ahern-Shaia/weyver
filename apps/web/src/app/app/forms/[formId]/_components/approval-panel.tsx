@@ -155,7 +155,7 @@ export function ApprovalPanel({
             },
           )
         }
-        className="flex items-center gap-1 rounded-xs border border-ok-line px-2 py-1 text-[12px] text-ok hover:bg-ok-t disabled:opacity-40"
+        className="flex items-center gap-1 rounded-xs border border-ok-line px-2 py-1 text-[12px] text-ok hover:bg-ok-t disabled:opacity-disabled"
       >
         <CheckCircle2 size={13} />
         核准
@@ -165,7 +165,7 @@ export function ApprovalPanel({
         type="button"
         disabled={busy}
         onClick={() => setPrompt({ kind: "reject" })}
-        className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t disabled:opacity-40"
+        className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-er hover:border-er hover:bg-er-t disabled:opacity-disabled"
       >
         <CircleSlash size={13} />
         駁回
@@ -176,7 +176,7 @@ export function ApprovalPanel({
           type="button"
           disabled={busy}
           onClick={() => setPrompt({ kind: "return", targetStep: returnTargets[0] })}
-          className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-40"
+          className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-disabled"
         >
           <Undo2 size={13} />
           退回
@@ -187,7 +187,7 @@ export function ApprovalPanel({
         type="button"
         disabled={busy}
         onClick={() => setPrompt({ kind: "addApprover" })}
-        className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-40"
+        className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-disabled"
       >
         <UserPlus size={13} />
         加簽
@@ -198,7 +198,7 @@ export function ApprovalPanel({
           type="button"
           disabled={busy}
           onClick={() => setPrompt({ kind: "unlock" })}
-          className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-40"
+          className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-disabled"
         >
           <LockOpen size={13} />
           強制解鎖
@@ -214,7 +214,7 @@ export function ApprovalPanel({
             onError: fail,
           })
         }
-        className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-40"
+        className="flex items-center gap-1 rounded-xs px-2 py-1 text-[12px] text-ink-3 hover:text-primary hover:bg-hover disabled:opacity-disabled"
       >
         <Undo2 size={13} />
         撤回
@@ -253,7 +253,7 @@ export function ApprovalPanel({
           <button
             type="submit"
             disabled={busy}
-            className="rounded-xs border border-line px-2 py-1 text-[12px] text-ink hover:bg-hover disabled:opacity-40"
+            className="rounded-xs border border-line px-2 py-1 text-[12px] text-ink hover:bg-hover disabled:opacity-disabled"
           >
             確定
           </button>
