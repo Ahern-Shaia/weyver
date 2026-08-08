@@ -15,7 +15,12 @@ export function Select({ className, children, ...props }: SelectProps): ReactEle
     <div
       className={cn(
         "relative inline-flex min-h-[27px] items-center rounded-xs border border-line-input bg-card",
-        "focus-within:border-primary has-[select:disabled]:opacity-disabled",
+        /* 🔴 2026-08-08|與 Input 同一套(brand-pilot 輸入矩陣):
+           focus = outline 2px 主色(不換框色)· 停用 = 壓固定灰(不降透明度)。
+           兩者常並排在同一張表單上,狀態語彙不一致會被當成 bug。
+           ⚠️ 框線同樣維持 prod 的 `line-input` 不照稿 —— 稿的 `Ink /.14` 實測僅 1.32:1。 */
+        "focus-within:outline-2 focus-within:outline-offset-0 focus-within:outline-primary",
+        "has-[select:disabled]:bg-head has-[select:disabled]:text-ink-disabled",
         className,
       )}
     >
