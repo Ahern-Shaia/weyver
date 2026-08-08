@@ -1433,28 +1433,35 @@ a:hover{text-decoration:underline;}
    · 選取   = 整格淡藍 + 2px 框 + 粗體標籤 + 右上型別章 —— 整體訊號
    一個講「我正指著」,一個講「我選了它」。若兩者都是淡藍底就分不出來,
    而那正是加互動層時差點造成的(通用 hover 規則已排除畫布格)。 */
-#s-design [style*="grid-column: span"][style*="min-height: 40px"]:hover::before{
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+/* 🔴 照抄 v2 的 `.grip`(weyver-v2.html:1157)—— **5×22px 垂直置中**,不是整條到底。
+   v2 那條註解講了為什麼只在 hover / 選中出現:
+   「常駐把手會讓畫布看起來不像填單畫面」。畫布長得就是填單畫面是 D1 的核心。
+   ⚠️ 我第一版做成 `top:0; bottom:0` 的 4px 整條 —— 那是我自己編的,不是 v2 的樣子。 */
+#s-design [style*="grid-column: span"][style*="min-height: 40px"][style*="cursor: pointer"]:hover::before,
+#s-design [style*="min-height: 40px"][style*="cursor: pointer"][style*="border: 1px solid oklch(0.58 0.15 240)"]::before{
+  content: ""; position: absolute; left: -1px; top: 50%; transform: translateY(-50%);
+  width: 5px; height: 22px;
   background: oklch(52% .15 240);
-}
-/* 值的淡底貼合文字,不是整條 —— 值格有個 <span> 包著文字,剛好掛得上去。
-   負 margin 讓 chip 往外長,文字不會因為多了內距而位移。 */
-#s-design [style*="grid-column: span"][style*="min-height: 40px"]:hover > :nth-child(2) > span{
-  background: oklch(94% .005 260);
-  padding: 2px 6px; margin: 0 -6px;
+  border-radius: 0 2px 2px 0;
 }
 
 /* 選取態:v3 原本是 1px 框 + 光暈,標籤沒加粗、值格仍是白的。
    對照決策方的圖補三處 —— 框加粗、整格淡藍、標籤加粗。
-   inline 同屬性要 `!important` 才蓋得過。 */
-#s-design [style*="min-height: 40px"][style*="border: 1px solid oklch(0.58 0.15 240)"]{
+   inline 同屬性要 `!important` 才蓋得過。
+
+   🔴 **必須帶 `cursor: pointer`** —— `border: 1px solid 織藍` 這個鉤子
+   **被兩個狀態共用**:選取態,以及「打字建欄」的暫時態輸入格。
+   第一版沒帶,於是把暫時態也掃進來:它自己的白底被 `/.05` 蓋掉、
+   輸入區被 `:nth-child(2){background:transparent}` 洗成透明,看起來就是壞的。
+   `cursor: pointer` 是語意判準(選取格可點、輸入格不是),不是巧合的字串差異。 */
+#s-design [style*="min-height: 40px"][style*="cursor: pointer"][style*="border: 1px solid oklch(0.58 0.15 240)"]{
   border-width: 2px !important;
   background: oklch(58% .15 240 / .05) !important;
 }
-#s-design [style*="min-height: 40px"][style*="border: 1px solid oklch(0.58 0.15 240)"] > :nth-child(2){
+#s-design [style*="min-height: 40px"][style*="cursor: pointer"][style*="border: 1px solid oklch(0.58 0.15 240)"] > :nth-child(2){
   background: transparent !important;
 }
-#s-design [style*="min-height: 40px"][style*="border: 1px solid oklch(0.58 0.15 240)"] > :first-child{
+#s-design [style*="min-height: 40px"][style*="cursor: pointer"][style*="border: 1px solid oklch(0.58 0.15 240)"] > :first-child{
   font-weight: 600;
 }
 
