@@ -4654,10 +4654,23 @@ for(const bid in AUX){
   })
 }
 
-/* 🔴 v2 的織紋標誌動畫在 v3 已移除。
-   決策方的新登入頁**自帶標誌**(x-dc 的 markLogo,已隨渲染後 DOM 一起抽出),
-   舊腳本找的 #loom / #mkLive / #mkStatic 都不存在了 —— 留著只會在 console 丟
-   `Cannot set properties of null`。**替換頁面就要把只服務舊頁面的腳本一起帶走。** */
+/* 🔴 v2 的織紋標誌動畫在 v3 已移除 —— 決策方的新登入頁**自帶標誌**
+   (x-dc 的 markLogo 已隨渲染後 DOM 抽出),舊腳本找的 #loom / #mkLive / #mkStatic
+   都不存在了,留著只會丟 `Cannot set properties of null`。
+
+   ⚠️ **但我第一次刪過頭,把畫面切換一起砍了 —— 整份稿變全白。**
+   那段死碼一路延伸到 script 標籤結尾,我用「從註解開頭刪到標籤結尾」的方式移除,
+   於是連 `for(const n in B)B[n].onclick=…` 與 `go(...)` 一起帶走。
+   **刪一段程式碼要看它的結尾在哪,不能用「刪到區塊尾」當邊界。**
+   🔴 而修這個 bug 時我又踩第二個:註解裡寫了**字面的結束標籤** ——
+   HTML 解析器不管它在不在 JS 註解裡,看到就把 script 收掉,
+   於是區塊註解沒收尾、整段語法錯誤,畫面還是全白。**註解不是安全區。**
+   而且我當時只驗了「console 沒有錯誤」—— 沒有錯誤不等於畫面還在。 */
+
+for(const n in B)B[n].onclick=()=>go(n);
+go('home');
+// 分類目錄可收合 —— 現況 144 張平鋪成 4040px,而使用者一次只想找一張
+document.querySelectorAll('.ch').forEach(h=>{h.onclick=()=>{const b=h.nextElementSibling;b.hidden=!b.hidden;h.classList.toggle('open',!b.hidden);};});
 </script>
 </body>
 </html>
