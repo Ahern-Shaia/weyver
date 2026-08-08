@@ -148,3 +148,23 @@ describe("停用態不得硬寫透明度", () => {
     expect(bad, `改用 opacity-disabled:\n${bad.join("\n")}`).toEqual([])
   })
 })
+
+/* 🔴 2026-08-08|`text-tag` 必須真的活過 `cn()`。
+
+   它曾經**整個被刪掉而沒有任何錯誤**:tailwind-merge 把 `text-*` 預設歸為顏色群,
+   不認得的自訂名稱也歸那裡,於是 `cn("text-tag", "text-ok")` 判定衝突、只留後者。
+   CSS 完全正常(規則有產生、變數解析成 11px、單獨用也對)——
+   壞在**字串合併階段**,查 styleSheets 查不出來,要看元素最終的 className 才發現。
+
+   ⚠️ 同一個命名空間今天咬過兩次:先是 `--text-label` 撞 `--color-label`(CSS 變數層),
+   改名 `text-tag` 之後又撞 tailwind-merge 分群(合併層)。**改名只解掉第一層。**
+   修法是在 `cn()` 註冊 font-size 群組;這條測試釘住它。 */
+describe("text-tag 要活過 cn()", () => {
+  it("與 text-<顏色> 併用時不得被 tailwind-merge 吃掉", async () => {
+    const { cn } = await import("@weyver/ui/lib/utils")
+    expect(cn("text-tag", "text-ok")).toContain("text-tag")
+    expect(cn("text-tag font-medium", "text-er")).toContain("text-tag")
+    /* 反向:真正的字級衝突仍要收斂成一個 */
+    expect(cn("text-tag", "text-[14px]")).not.toContain("text-tag")
+  })
+})

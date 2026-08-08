@@ -77,7 +77,14 @@ export function StatusChip({
   return (
     <span
       className={cn(
-        "inline-flex h-[17px] items-center gap-1 rounded-xs border px-[5px] text-[12px] font-medium",
+        /* 🔴 2026-08-08|尺寸對 brand-pilot 的狀態章(實測 19px / 11px / 0 7px)。
+           17px 高配 12px 字實際只剩 5px 行距,中文字在裡面是擠著的;
+           19px + 11px 反而更清楚 —— **變大的是盒子,變小的是字**。
+           11px 走 `text-tag` 標籤軌(它就是為型別代號 / 徽章這類非散文設的),
+           不是 magic number。
+           ⚠️ 稿的圓角 2px **不採** —— 全方角是已裁定且有量測依據的(v3 本體零個非零圓角),
+           不因為單一元件的稿是 2px 就翻。色值本身 M2 已驗過與 prod 只差幾個單位,不動。 */
+        "inline-flex h-[19px] items-center gap-1 rounded-xs border px-[7px] text-tag font-medium",
         chipToneClass(tone),
         className,
       )}
