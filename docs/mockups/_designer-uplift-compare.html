@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>設計器對照 · 從 v3 提案吸收 ①②③</title>
+<style>
+:root{--ink:#131a24;--ink-2:#3c4655;--ink-3:#6b7686;--ink-4:#98a1ae;
+  --line:#dfe3e9;--line-2:#eceff3;--paper:#fff;--paper-2:#f7f8fa;--brand:#22568a;--ok:#1f7a5c;--wn:#9a6212;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:Inter,"Noto Sans TC",-apple-system,"PingFang TC",sans-serif;color:var(--ink);
+  background:var(--paper-2);font-size:13.5px;line-height:1.65;padding:28px 24px 60px;}
+.wrap{max-width:1220px;margin:0 auto;}
+h1{font-size:19px;font-weight:700;letter-spacing:-.02em;}
+.lede{margin-top:5px;color:var(--ink-3);font-size:12.5px;max-width:74ch;}
+h2{margin:26px 0 8px;font-size:14px;font-weight:700;padding-bottom:5px;border-bottom:1px solid var(--line);}
+.card{background:var(--paper);border:1px solid var(--line);}
+.shot{display:block;width:100%;}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;font-size:11px;font-weight:600;
+  border:1px solid var(--line);border-radius:2px;background:var(--paper-2);color:var(--ink-2);}
+.tag.a{color:var(--ink-3);}
+.tag.b{color:var(--ok);border-color:#bfe0d2;background:#f0f8f5;}
+.hd{display:flex;align-items:center;gap:9px;padding:7px 10px;border-bottom:1px solid var(--line-2);}
+.hd .n{font-size:12px;color:var(--ink-3);}
+table{width:100%;border-collapse:collapse;margin-top:10px;background:var(--paper);}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top;font-size:12.5px;}
+th{background:var(--paper-2);font-weight:600;font-size:11.5px;color:var(--ink-2);}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;background:var(--paper-2);
+  border:1px solid var(--line-2);border-radius:2px;padding:0 4px;}
+.why{margin-top:9px;padding:9px 11px;background:var(--paper);border:1px solid var(--line);
+  border-left:3px solid var(--brand);font-size:12.5px;}
+.why b{font-weight:600;}
+.warn{border-left-color:var(--wn);}
+ul{margin:5px 0 0 17px;}
+li{margin-top:3px;font-size:12.5px;}
+.foot{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-4);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>設計器對照 —— 從 v3 提案吸收 ①②③</h1>
+<p class="lede">
+  來源:決策方的「2D 表單設計器 v3」提案。<b>整包移植已退回</b>(它連殼一起帶進來,見
+  <code>docs/39 §5</code>);本頁只處理<b>值得吸收的三條</b>,做進 weyver-v2 既有的設計器。
+  範式不動 —— 打字建欄、左名右值、兩速儲存三條有 Ragic 官方逐字支撐,不跟著 v3 反過來。
+</p>
+
+<h2>改前</h2>
+<div class="card">
+  <div class="hd"><span class="tag a">現況</span><span class="n">weyver-v2 · 表單設計(404f770 退回後)</span></div>
+  <img class="shot" src="../research/ui-extract-2026-08-06/designer-before.png" alt="設計器改前">
+</div>
+
+<h2>改後</h2>
+<div class="card">
+  <div class="hd"><span class="tag b">加入 ①②③</span><span class="n">元件庫搜尋 · 公式上畫布 · 帶入對映</span></div>
+  <img class="shot" src="../research/ui-extract-2026-08-06/designer-after.png" alt="設計器改後">
+</div>
+
+<h2>三條各自改了什麼</h2>
+<table>
+  <thead><tr><th style="width:16%">項目</th><th style="width:26%">改前</th><th style="width:30%">改後</th><th style="width:28%">為什麼</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>① 公式上畫布</b></td>
+      <td>子表表頭只有一個 <code>ƒx</code> 記號;沒有合計區</td>
+      <td>表頭 <code>ƒx {數量} * {單價}</code>;合計三欄靠右堆疊,各自顯示式子</td>
+      <td>只放記號等於要使用者記住算式。<b>式子用我方語法 <code>{欄名}</code></b> —— 畫布上長什麼樣,公式編輯器裡就打什麼</td>
+    </tr>
+    <tr>
+      <td><b>② 元件庫搜尋</b></td>
+      <td>平鋪 13 列,無搜尋</td>
+      <td>頂部搜尋框,placeholder 標明「31 種型別」</td>
+      <td>型別實數 31(<code>field-type-registry</code>)。13 種還能掃,31 種要捲;分組本身不會告訴你總量</td>
+    </tr>
+    <tr>
+      <td><b>③ 帶入對映</b></td>
+      <td>只有「連到 供應商主檔」</td>
+      <td>「選這筆記錄時要帶入哪些欄」+ 來源→目標兩組 + 保留當時內容</td>
+      <td>選了一筆之後畫面多出兩個值,不講的話使用者不知道哪來的</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="why">
+  <b>① 刻意用兩種標記,沒有抹平成一行公式</b><br>
+  <code>Σ 品項明細 · 金額 · 加總</code> 與 <code>ƒx ROUND({未稅金額} * 0.05)</code> 長得不一樣,是因為
+  <b>在我方引擎裡它們本來就是兩種型別</b> —— <code>rollup</code> 是設定(選子表 + 選欄 + 選加總),
+  <code>formula</code> 才是運算式。v3 把兩者都寫成 <code>SUM(ITEMS.小計)</code>,
+  那會<b>把一個不用寫程式的功能偽裝成要寫程式的</b>,正好踩到第一約束。
+</div>
+
+<div class="why">
+  <b>① 計算欄不給示例值</b><br>
+  其他型別的示例值是「依型別生成的假值」(<code>OQ-FDW-1=A</code>);計算欄的值來自
+  <b>設計期還不存在的資料</b>,填一個 <code>57,204</code> 是雙重的假。<b>式子才是這格真正的定義。</b>
+</div>
+
+<div class="why warn">
+  <b>合計為什麼靠右堆疊,而不是一列三欄</b><br>
+  量出來的:span-4 的值格只有 <b>160px</b>,連 <code>ROUND({未稅金額} * 0.05)</code>(169px)都放不下。
+  挑一條剛好塞得下的式子等於<b>讓 mockup 說謊</b> —— 真實公式比範例長。
+  改成單據本來的做法後值格 <b>298px</b>,順便對上了台灣單據的版面。
+</div>
+
+<div class="why warn">
+  <b>③ 不顯示實體識別字</b><br>
+  v3 的關聯面板列的是 <code>mst_vendor</code> / <code>vendor_no</code> / <code>pay_term</code>。
+  給不寫程式的人看資料庫名稱是第一約束違規,所以這裡只出現<b>表單名與欄位名</b>。<br>
+  文案也不是新寫的,沿用已出貨的字:<code>field-settings.tsx:557</code>「選這筆記錄時要帶入哪些欄」、
+  <code>advanced-options.tsx:135</code>「保留填單當時的內容(建議)」——
+  <b>設計器文案不出現 live / snapshot / syncMode</b>(<code>field-types-parity v1.1</code> 逐字)。
+</div>
+
+<h2>沒有跟著 v3 改的(有 Ragic 官方逐字)</h2>
+<ul>
+  <li><b>建欄範式</b>|「在空的儲存格上直接打字就能新增欄位」(<code>ragic doc/37</code>)、
+      「建立欄位時,預設會是自由輸入型式」(<code>doc/27</code>)→ <b>先命名後定型</b>,不是先拖型別</li>
+  <li><b>欄位形狀</b>|「一個欄位會佔兩格儲存格的空間,左邊是欄位名稱,右邊是欄位值」(<code>doc/37</code>)
+      → 維持左名右值的框線格,不改成上名下值卡片</li>
+  <li><b>儲存模型</b>|我方是兩速(<code>OQ-FD2-2</code>:layout 走草稿、結構性 DDL 即時)。
+      v3 的「已儲存 10:12」對一半的操作是假的 → 維持「<b>3 項未套用</b>」</li>
+  <li><b>屬性面板</b>|維持單欄 accordion(M0 ④),不改 tabs —— tabs 會讓你編欄位名稱時看不到必填</li>
+</ul>
+
+<p class="foot">
+  對照用,決策後即失效。權威稿 <code>weyver-v2.html</code>;完整分析見 <code>docs/39 §5</code>。
+  截圖為 <code>#s-design .fd-body</code>,device scale。
+</p>
+
+</div>
+</body>
+</html>

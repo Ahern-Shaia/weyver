@@ -1025,6 +1025,14 @@ a:hover{text-decoration:underline;}
   overflow-y:auto;padding:8px 8px 14px;}
 .fd-pal .grp{padding:9px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
   color:var(--ink-4);text-transform:uppercase;}
+/* ② 元件庫搜尋。**不是為了好看,是因為型別有 31 種** ——
+   平鋪清單在 13 種時還能掃,31 種就得捲動找。placeholder 直接把數字講出來,
+   讓人知道往下還有東西(分組本身不會告訴你總量)。 */
+.fd-find{display:flex;align-items:center;gap:6px;height:27px;padding:0 8px;margin:1px 1px 2px;
+  border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--paper);}
+.fd-find svg{width:12px;height:12px;color:var(--ink-4);flex-shrink:0;}
+.fd-find input{flex:1;min-width:0;border:0;background:none;font-size:11.5px;color:var(--ink);}
+.fd-find input::placeholder{color:var(--ink-4);}
 /* 🔴 子表與欄位型別**共用同一個 PaletteRow**(M3 已落地,2026-08-04)——
    同一層級的東西要長同一個樣子,不是靠兩份 class 字串碰巧一致。 */
 .fd-row{display:flex;align-items:center;gap:8px;height:29px;padding:0 7px;border-radius:var(--r-ctl);
@@ -1116,6 +1124,27 @@ a:hover{text-decoration:underline;}
 .fd-sub td.rn{width:24px;text-align:center;background:var(--paper-2);font-size:11px;}
 .fd-sub .addcol{width:32px;text-align:center;color:var(--ink-4);cursor:pointer;}
 
+/* ① 計算欄要在畫布上看得見「它算什麼」。只放一個 fx 記號等於要使用者記住。
+   🔴 **刻意用兩種標記,不抹平成一行公式文字** —— 我方引擎裡這是兩種型別:
+   `rollup` 是**設定**(子表 + 欄 + 加總/計數/平均),`formula` 才是**運算式**。
+   設定式的那個根本不用寫式子,那正是第一約束要守的地方;
+   寫成 `SUM(ITEMS.小計)` 會把一個不用寫程式的功能偽裝成要寫程式的。
+   運算式一律用**我方語法 `{欄名}`**(formula-and-linkload §142)——
+   畫布上長什麼樣,公式編輯器裡就打什麼,不讓人學兩套。 */
+.expr{display:inline-flex;align-items:center;gap:4px;min-width:0;padding:1px 5px;
+  border:1px solid var(--line-2);border-radius:2px;background:var(--paper-2);
+  font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.expr i{font-style:normal;font-weight:700;color:var(--c4);flex-shrink:0;}
+.fd-sub th .expr{margin-left:4px;font-weight:400;text-transform:none;}
+/* 🔴 `1fr` 的軌道下限是 auto,不是 0 —— 內容比軌道寬時**撐破格線**而不是收縮。
+   本檔今天已因此壞過一次(卡片 468/150/150)。量到 docOverflow=true 才發現,
+   半尺寸截圖看不出來 —— **版面問題要用量的,不能只看圖**。 */
+.fd-grid > *{min-width:0;}
+.fd-f .v{min-width:0;}
+/* 合計靠右時左半邊的空白格 —— 要有格線,否則表格右半邊會看起來是浮的 */
+.fd-gap{border-bottom:1px solid var(--line);border-right:1px solid var(--line);}
+
 /* ② 屬性抽屜 —— accordion 四段,**單欄**。
    現況是三個工具列開關 + 多面板,M2 的驗收條件逐字是「輔助面板 ≤1 欄」。 */
 .fd-insp{width:268px;flex-shrink:0;border-left:1px solid var(--line);background:var(--paper);
@@ -1143,6 +1172,25 @@ a:hover{text-decoration:underline;}
 .fd-prop .sel svg{width:12px;height:12px;margin-left:auto;color:var(--ink-4);}
 .fd-sw{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:12.3px;color:var(--ink-2);}
 .fd-sw input{width:14px;height:14px;accent-color:var(--brand);}
+.fd-sw em{font-style:normal;color:var(--ink-4);}
+
+/* ③ 連結欄要看得見「會帶進來哪幾欄」。只寫「連到 供應商主檔」的話,
+   選了一筆之後畫面上多出兩個值,使用者不知道是哪來的。
+   文案沿用已出貨的字(field-settings.tsx:557「選這筆記錄時要帶入哪些欄」/
+   advanced-options.tsx:135「保留填單當時的內容(建議)」)——
+   ⚠️ **設計器文案不出現 live / snapshot / syncMode 這類術語**(field-types-parity v1.1 逐字)。
+   🔴 也不顯示實體識別字(mst_vendor / vendor_no):給不寫程式的人看資料庫名稱是第一約束違規。 */
+.fd-load{margin:3px 0 4px;padding:7px 8px;border:1px solid var(--line-2);border-radius:var(--r-ctl);
+  background:var(--paper-2);}
+.fd-load .lcap{margin-bottom:5px;font-size:11px;color:var(--ink-3);}
+.fd-load .lmap{display:grid;grid-template-columns:1fr 11px 1fr;gap:5px;align-items:center;padding:2px 0;}
+.fd-load .lmap b{font-weight:400;font-size:11.5px;color:var(--ink-2);background:var(--paper);
+  border:1px solid var(--line);border-radius:2px;padding:2px 5px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.fd-load .lmap svg{width:11px;height:11px;color:var(--ink-4);}
+.fd-load .ladd{margin-top:6px;font-size:11px;color:var(--brand);}
+.fd-load .ladd:hover{text-decoration:underline;}
+.fd-load .fd-sw{margin-top:5px;padding-top:6px;border-top:1px solid var(--line-2);font-size:11.5px;}
 
 /* B′ 補償之一:可撤銷 toast。
    「Enter 即建欄」是**立即 DDL**,所以必須給得回去 —— 沒有撤銷的即時 DDL 是陷阱。 */
@@ -2076,6 +2124,11 @@ a:hover{text-decoration:underline;}
         <!-- OQ-FDW-4=C:型別**固定分組、固定順序**,預設單行文字。
              不做搜尋、不做「最近使用」—— 位置固定,肌肉記憶才建立得起來。 -->
         <div class="fd-pal">
+          <!-- ② 型別有 31 種(field-type-registry 實數),平鋪掃不完 -->
+          <div class="fd-find">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" placeholder="搜尋 31 種型別">
+          </div>
           <div class="grp">基本</div>
           <div class="fd-row def"><span class="ic gl" style="color:var(--c1)">T</span>單行文字</div>
           <div class="fd-row"><span class="ic gl" style="color:var(--c1)">¶</span>多行文字</div>
@@ -2142,7 +2195,7 @@ a:hover{text-decoration:underline;}
               <div class="fd-sub">
                 <table>
                   <thead><tr><th class="rn">#</th><th>品項</th><th>料號</th><th>數量</th><th>單價</th>
-                    <th>金額 <svg viewBox="0 0 24 24"><path d="M4 20c2 0 2.3-1.5 2.6-3L8.6 5C8.9 3.5 9.6 3 11 3"/><path d="M5 10h6M13 9l6 8M19 9l-6 8"/></svg></th><th class="addcol">＋</th></tr></thead>
+                    <th>金額 <span class="expr"><i>ƒx</i>{數量} * {單價}</span></th><th class="addcol">＋</th></tr></thead>
                   <tbody>
                     <tr><td class="rn">1</td><td>去骨雞腿肉(冷藏)</td><td>K-1042</td><td>340.5</td>
                       <td>168.00</td><td>57,204</td><td></td></tr>
@@ -2150,6 +2203,31 @@ a:hover{text-decoration:underline;}
                       <td>0.00</td><td>0</td><td></td></tr>
                   </tbody>
                 </table>
+              </div>
+
+              <!-- ① 合計區:三個計算欄。
+                   🔴 **計算欄不給示例值,直接顯示式子** —— 其他型別的示例值是「依型別生成的假值」,
+                   但計算欄的值來自還不存在的資料,填一個 57,204 是雙重的假;
+                   而**式子才是這格真正的定義**。這也順便讓它一行放得下。
+                   兩種標記刻意不同:Σ 是設定出來的彙總(選子表 + 選欄 + 選加總),
+                   ƒx 才是自己寫的運算式。長一樣的話,使用者會以為彙總也要寫程式。 -->
+              <!-- 🔴 靠右堆疊,不是一列三欄。量出來的:span-4 的值格只有 160px,
+                   連 `ROUND({未稅金額} * 0.05)` 都放不下(169px)。挑一條剛好塞得下的式子
+                   等於讓 mockup 說謊 —— **真實公式比範例長**。改成單據本來的做法(合計靠右堆疊)
+                   後值格 298px,長式子也放得下,順便就對了台灣單據的版面。 -->
+              <div class="fd-grid">
+                <div class="fd-gap" style="grid-column:span 6"></div>
+                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k">未稅金額</div>
+                  <div class="v"><span class="expr"><i>Σ</i>品項明細 · 金額 · 加總</span></div></div>
+                <div class="fd-gap" style="grid-column:span 6"></div>
+                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k">稅額</div>
+                  <div class="v"><span class="expr"><i>ƒx</i>ROUND({未稅金額} * 0.05)</span></div></div>
+                <div class="fd-gap" style="grid-column:span 6"></div>
+                <div class="fd-f" style="grid-column:span 6"><span class="grip"></span>
+                  <div class="k">含稅總計</div>
+                  <div class="v"><span class="expr"><i>ƒx</i>{未稅金額} + {稅額}</span></div></div>
               </div>
             </div>
           </div>
@@ -2169,6 +2247,19 @@ a:hover{text-decoration:underline;}
                 <div class="fd-prop"><span class="pk">欄位名稱</span><input type="text" value="供應商"></div>
                 <div class="fd-prop"><span class="pk">型別</span><span class="sel">連結其他表單<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
                 <div class="fd-prop"><span class="pk">連到</span><span class="sel">供應商主檔<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
+                <!-- ③ 帶入對映。顯示的是**表單名與欄位名**,不是實體表名 —— 見上方 CSS 註解 -->
+                <div class="fd-load">
+                  <div class="lcap">選這筆記錄時要帶入哪些欄</div>
+                  <div class="lmap"><b>付款條件</b>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <b>付款條件</b></div>
+                  <div class="lmap"><b>交易幣別</b>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <b>幣別</b></div>
+                  <button class="ladd">＋ 再加一組</button>
+                  <!-- 這個勾選是「帶入的值」的性質,不是整個欄位的 —— 放框外會被讀成後者 -->
+                  <label class="fd-sw"><input type="checkbox" checked>保留填單當時的內容<em>(建議)</em></label>
+                </div>
                 <div class="fd-prop"><span class="pk">寬度</span><span class="sel">6 / 12 欄<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></div>
               </div>
             </div>

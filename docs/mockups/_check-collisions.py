@@ -19,7 +19,9 @@ RISK_PROPS = ('display', 'width', 'height', 'position', 'flex-direction', 'grid-
 # 🔴 刻意共用的**基底元件類** —— 後代規則是在覆寫它,不是撞名。
 # 這份白名單就是「我宣告這些是共用基底」的地方;不在名單上的同名 = 兩個東西撞在一起。
 # ⚠️ 加進來之前先問:它真的是同一個元件嗎?`.views` 一度看起來也像。
-SHARED_BASE = {'btn', 'cbx', 'ty', 'chip', 'ic'}
+# `expr` = 公式 / 彙總徽章,用在子表表頭與欄位值格兩處(後代規則只調 margin)。
+# `fd-sw` = 勾選列,用在驗證區與帶入框兩處(後代規則只調間距字級)。
+SHARED_BASE = {'btn', 'cbx', 'ty', 'chip', 'ic', 'expr', 'fd-sw'}
 
 def check(path: str) -> int:
     src = open(path, encoding='utf-8').read()
