@@ -1427,6 +1427,37 @@ a:hover{text-decoration:underline;}
   border-color: oklch(58% .15 240 / .35);
 }
 
+/* ── 🔴 2026-08-08|畫布欄位格的 hover 與選取(決策方給圖) ──────────────
+   兩態必須**用不同的語彙**,不能只是深淺差一階:
+   · hover  = **左緣一條藍** + 值的淡底 chip —— 邊緣訊號,不塗整格
+   · 選取   = 整格淡藍 + 2px 框 + 粗體標籤 + 右上型別章 —— 整體訊號
+   一個講「我正指著」,一個講「我選了它」。若兩者都是淡藍底就分不出來,
+   而那正是加互動層時差點造成的(通用 hover 規則已排除畫布格)。 */
+#s-design [style*="grid-column: span"][style*="min-height: 40px"]:hover::before{
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: oklch(52% .15 240);
+}
+/* 值的淡底貼合文字,不是整條 —— 值格有個 <span> 包著文字,剛好掛得上去。
+   負 margin 讓 chip 往外長,文字不會因為多了內距而位移。 */
+#s-design [style*="grid-column: span"][style*="min-height: 40px"]:hover > :nth-child(2) > span{
+  background: oklch(94% .005 260);
+  padding: 2px 6px; margin: 0 -6px;
+}
+
+/* 選取態:v3 原本是 1px 框 + 光暈,標籤沒加粗、值格仍是白的。
+   對照決策方的圖補三處 —— 框加粗、整格淡藍、標籤加粗。
+   inline 同屬性要 `!important` 才蓋得過。 */
+#s-design [style*="min-height: 40px"][style*="border: 1px solid oklch(0.58 0.15 240)"]{
+  border-width: 2px !important;
+  background: oklch(58% .15 240 / .05) !important;
+}
+#s-design [style*="min-height: 40px"][style*="border: 1px solid oklch(0.58 0.15 240)"] > :nth-child(2){
+  background: transparent !important;
+}
+#s-design [style*="min-height: 40px"][style*="border: 1px solid oklch(0.58 0.15 240)"] > :first-child{
+  font-weight: 600;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    🔴 2026-08-08|v3 互動層 —— 補回 inline style **語法上寫不出來**的狀態
 
@@ -1446,8 +1477,11 @@ a:hover{text-decoration:underline;}
    `transition: background 0.14s` 沒有冒號緊接,不會誤中。這是刻意選的寫法。
    ══════════════════════════════════════════════════════════════════ */
 
-/* 沒有 inline 底色的可點擊元素 → 淡底 hover。不需 !important,因為沒有同屬性的 inline 宣告在競爭 */
-.v3page [style*="cursor: pointer"]:not([style*="background:"]):hover{
+/* 沒有 inline 底色的可點擊元素 → 淡底 hover。不需 !important,因為沒有同屬性的 inline 宣告在競爭。
+   ⚠️ **排除畫布欄位格** —— 它的「選取」就是淡藍底,若 hover 也塗淡藍,
+   兩個狀態在畫面上幾乎一樣,使用者分不出「我正指著」與「我選了」。
+   畫布格的兩態另外定義在下面。 */
+.v3page [style*="cursor: pointer"]:not([style*="background:"]):not([style*="grid-column: span"]):hover{
   background: oklch(58% .15 240 / .07);
 }
 /* ⚠️ 明確寫了底色、但其實是透明的,會被上面的 :not() 排除掉 —— 它們該有 hover。
