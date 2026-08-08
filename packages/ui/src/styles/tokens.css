@@ -142,11 +142,19 @@
   --color-c8-line: #e2cbbd;
   --color-c8-t: #f7eee8;
 
-  /* ── 形狀(容器/控件 4–6px 柔角:非線框、非 pill;狀態章 3px)──── */
-  --radius-xs: 3px; /* 狀態章 / inline */
-  --radius-sm: 4px; /* 控件 / 按鈕 / 輸入 */
-  --radius-md: 6px; /* 容器 / 卡片 / 面板(上限)*/
-  --radius-lg: 8px; /* 少見大面板 */
+  /* ── 形狀|🔴 2026-08-08 全方角(docs/14 §0.6)────────────────────
+     前值 xs 3 / sm 4 / md 6 / lg 8px(「4–6px 柔角:非線框、非 pill」)。
+     依據是**量測不是偏好**:`docs/mockups/weyver-v3.html` 三個畫面掃過
+     **零個非零圓角** —— 決策方的品牌重設計是全方角,而 v3 已裁定為視覺權威。
+
+     ⚠️ **名稱保留**(xs/sm/md/lg),元件的 `rounded-xs/sm/md` 一行都不必改 ——
+     要退回柔角只改這四個值。**值可以退,結構不要跟著動。**
+     ⚠️ `rounded-full` 未動 —— 那 14 處全是**真圓**(狀態點 / 通知點 / 頭像 / 步驟圓),
+     不是 pill,與本次無關。 */
+  --radius-xs: 0px; /* 狀態章 / inline */
+  --radius-sm: 0px; /* 控件 / 按鈕 / 輸入 */
+  --radius-md: 0px; /* 容器 / 卡片 / 面板 */
+  --radius-lg: 0px; /* 少見大面板 */
 
   /* ── 層次:僅供 OVERLAY 分層(下拉/popover/modal/選單)——
      resting 卡片/表格一律「框線深度」不上陰影(docs/14 v3 有據鬆綁)。──── */
