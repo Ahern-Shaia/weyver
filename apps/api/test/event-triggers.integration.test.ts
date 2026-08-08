@@ -1084,7 +1084,21 @@ describe("事件觸發器 · 漏跑偵測", () => {
 
     await ageOut(id, 10)
     const r = await app.get(TriggerScheduleService).run()
-    expect(r.missed, "應偵測到漏跑").toBeGreaterThanOrEqual(1)
+    /* 🔴 帶現場。這條 2026-08-08 偶發紅過,而 `expected 0 to be >= 1` 分不出
+       「到期判斷用了不同的時間基準」還是「漏跑邏輯真的壞了」。
+       ⚠️ 排程這一組的判準跨越兩個時鐘:測試用 PG 的
+       `EXTRACT(dow FROM now() AT TIME ZONE tz)` 挑日子,服務端自己另外算一次。
+       兩邊只要差一天(或跨過租戶時區的午夜),這條就會翻。 */
+    const { rows: nowRows } = await pool.query<{ dow: number; at: string }>(
+      "SELECT EXTRACT(dow FROM now() AT TIME ZONE t.timezone)::int AS dow, " +
+        "(now() AT TIME ZONE t.timezone)::text AS at FROM tenants t WHERE t.id = $1",
+      [tenantA],
+    )
+    expect(
+      r.missed,
+      `應偵測到漏跑。租戶當地時間=${String(nowRows[0]?.at)} dow=${String(nowRows[0]?.dow)} ` +
+        `觸發器設定的 day=${String(((rows[0]?.dow ?? 0) + 3) % 7)} run 回傳=${JSON.stringify(r)}`,
+    ).toBeGreaterThanOrEqual(1)
     expect(await runsFor(formId, id)).toContain("missed")
   })
 

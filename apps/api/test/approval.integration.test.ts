@@ -638,8 +638,19 @@ describe("🔴 簽核代理人 API(自助設定)", () => {
       url: "/api/approval-delegates",
       headers: AS(beta),
     })
+    /* 🔴 失敗訊息要帶現場。這條 2026-08-08 偶發紅過三次,而訊息只有
+       `expected undefined to be 6` —— 那分不出「列根本沒建」「actor 解析成別人」
+       「`received` 的時間濾網把它濾掉了」三種完全不同的原因。
+       ⚠️ 最後一種是有根據的懷疑:`listByPrincipal`(granted)**沒有**時間濾網,
+       而 `listByDelegate`(received)有 `starts_at <= now()` —— 兩個方向判準不同。 */
+    const body = theirs.json() as {
+      actorId: number
+      received: { principalActorId: number; startsAt: string }[]
+    }
     expect(
-      (theirs.json() as { received: { principalActorId: number }[] }).received[0]?.principalActorId,
+      body.received[0]?.principalActorId,
+      `alpha=${String(alpha)} beta=${String(beta)} 解析到的 actorId=${String(body.actorId)}\n` +
+        `建立回應=${JSON.stringify(res.json())}\nreceived=${JSON.stringify(body.received)}`,
     ).toBe(alpha)
   })
 
