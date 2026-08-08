@@ -1354,6 +1354,26 @@ a:hover{text-decoration:underline;}
 #s-builder input::placeholder{color: oklch(72% .008 260);}
 #s-builder input:focus,#s-builder select:focus{outline: none; border-color: oklch(58% .15 240) !important; box-shadow: 0 0 0 3px oklch(58% .15 240 / .16);}
 
+/* 🔴 2026-08-08|表單設計的左側元件庫換回 v2 那一份,**只保留 v3 的底色**。
+
+   為什麼換|兩者內容其實幾乎相同(v2 242 字 / v3 252 字,同樣 31 種型別、同樣順序),
+   差別在密度:v2 一列約 29px,v3 每列是**帶框圖示** 38px。
+   同一個視窗高度下 v2 看得到約 20 種,v3 只到「勾選」。
+   元件庫是要反覆掃視的東西,那個差距是實質的、不是口味。
+
+   ⚠️ `.fd-pal` 是 v2 的類別,而 v3 保留了 v2 整份樣式表(93 個類別全同)——
+   所以貼進來直接生效,不必搬 CSS。但它自帶 `background:var(--paper-2)` 會蓋掉
+   v3 的紙白,故在此覆寫。框線一併對齊 v3 的 Ink alpha ——
+   否則左欄用 v2 的線、右邊用 v3 的線,同一個畫面兩套線。 */
+#s-design .fd-pal{
+  background: oklch(99% .002 260);
+  border-right: 1px solid oklch(24% .02 260 / .14);
+  /* ⚠️ `.fd-pal` 硬寫 `width:260px`,而 v3 的格線軌是 268px —— 差那 8px 會露出
+     父層底色,像一條沒對齊的細縫。改回 auto 讓它撐滿軌道,
+     **寬度的唯一來源留在格線**,不要兩邊各寫一個數字。 */
+  width: auto;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    🔴 2026-08-08|v3 互動層 —— 補回 inline style **語法上寫不出來**的狀態
 
@@ -3678,301 +3698,73 @@ a:hover{text-decoration:underline;}
   </div>
 <div data-dc-tpl="26" style="flex: 1 1 0%; display: grid; grid-template-columns: 268px minmax(640px, 1fr) 320px; min-height: 0px; overflow-x: auto;">
 
-    <div data-dc-tpl="27" style="display: flex; flex-direction: column; min-height: 0px; background: oklch(0.99 0.002 260); border-right: 1px solid oklch(0.24 0.02 260 / 0.14);">
-      <div data-dc-tpl="28" style="padding: 14px 16px 10px;">
-        <div data-dc-tpl="29" style="display: flex; align-items: baseline; gap: 8px;">
-          <span data-dc-tpl="30" style="font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 10.5px; letter-spacing: 0.14em; color: oklch(0.6 0.01 260);">加入到這張表</span>
-          <span data-dc-tpl="31" style="font-size: 11.5px; font-weight: 600; color: oklch(0.45 0.015 260);">採購單</span>
+    <div class="fd-pal">
+          <!-- 這條軌剛剛還是表單樹,現在是元件庫 —— 換了就要講,否則使用者會以為東西不見了 -->
+          <div class="palhd">加入到這張表<span>採購單</span></div>
+          <!-- ② 型別有 31 種(field-type-registry 實數),平鋪掃不完 -->
+          <div class="fd-find">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" placeholder="搜尋 31 種型別">
+          </div>
+          <!-- 🔴 全部 31 種型別(field-type-registry 實數,2026-08-08 對碼)。
+               標籤一律用產品的字(field-types.ts META)—— 舊 mockup 寫「數字 / 核取 / 連結其他表單」,
+               產品實際是「數值 / 勾選 / 關聯」,三處都不一致。mockup 說錯字比少畫東西更糟。
+               ⚠️ 分組與產品目前不同:產品是「常用 / 其他 / 進階 / 結構」(palette.tsx),
+               這裡是語意分組 —— 因為 E 案的分組色需要語意群才有意義,「其他」上色沒有指涉。
+               哪一種對,見 docs/39 §5.2。 -->
+          <div class="grp">文字</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c1)">T</span>單行文字</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c1)">¶</span>多行文字</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"/><path d="M6 20V4"/><path d="M18 20V4"/></svg></span>Markdown</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg></span>文字遮罩</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c1)">@</span>Email</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>網址</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>電話</div>
+          <div class="grp">數值</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c5)">#</span>數值</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c5)">$</span>金額</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>百分比</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg></span>評分</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c5)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></span>自動編號</div>
+          <div class="grp">日期</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></span>日期</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c6)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg></span>日期時間</div>
+          <div class="grp">選擇</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m16 10-4 4-4-4"/></svg></span>單選</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>多選</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.5"/><path d="m9 11 3 3L22 4"/></svg></span>勾選</div>
+          <div class="grp">關聯 · 計算 · 指派<span class="gh">需指定來源</span></div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg></span>關聯</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>帶入</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/></svg></span>彙總</div>
+          <div class="fd-row"><span class="ic gl" style="color:var(--c4)">ƒx</span>公式</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg></span>人員</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>群組</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span>子表(明細)</div>
+          <div class="grp">檔案與媒體</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.234 20.252 21 12.3"/><path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"/></svg></span>附件</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>圖片</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></span>簽名</div>
+          <div class="fd-row"><span class="ic" style="color:var(--c2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg></span>條碼</div>
+          <!-- 🔴 版面元素從工具列移進元件庫。兩個依據疊在一起:
+               ① task #154 的原則逐字「加欄位與加子表都是**往這張表加東西**,
+                  所以該在同一個地方、長同一個樣子」—— 分段/說明文字/圖片是同一個動作類別。
+               ② docs/29 S5「水平 header 帶 ≤ 1 條」:產品現在有 3 條,不能為了它們再加一條。
+               不吃分組色 —— 它們不是欄位型別,沒有「值的形狀」可指。 -->
+          <div class="grp">版面<span class="gh">非欄位</span></div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg></span>分段</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg></span>說明文字</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>圖片</div>
+          <div class="grp">系統<span class="gh">唯讀</span></div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/></svg></span>建立時間</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></span>建立者</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span>更新時間</div>
+          <div class="fd-row sys"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 15H7a4 4 0 0 0-4 4v2"/><path d="M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><circle cx="10" cy="7" r="4"/></svg></span>更新者</div>
+          <div class="hint">
+            拖到畫布,或直接在空格子上打字。<br>
+            打完按 <kbd>Enter</kbd> 就建欄。
+          </div>
         </div>
-        <div data-dc-tpl="32" style="display: flex; align-items: center; gap: 8px; height: 32px; margin-top: 10px; padding: 0px 10px; border: 1px solid oklch(0.24 0.02 260 / 0.2);">
-          <svg data-dc-tpl="33" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="color: oklch(0.66 0.01 260);"><circle data-dc-tpl="34" cx="11" cy="11" r="7"></circle><path data-dc-tpl="35" d="m20 20-3.5-3.5"></path></svg>
-          <input data-dc-tpl="36" placeholder="搜尋 31 種型別" value="" style="flex: 1 1 0%; height: 100%; border: 0px; background: transparent; font-size: 12.5px; color: oklch(0.24 0.02 260);">
-          <span data-dc-tpl="37" style="font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 10.5px; color: oklch(0.7 0.01 260);"><span class="sc-interp">31</span></span>
-        </div>
-      </div>
-
-      <div data-dc-tpl="38" style="flex: 1 1 0%; min-height: 0px; overflow-y: auto; padding: 4px 10px 12px;">
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">文字</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp"></span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16"></path><path d="M4 14h10"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">單行文字</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h9"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">多行文字</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6v12"></path><path d="M3 6l4 5 4-5v12"></path><path d="M16 6v9"></path><path d="M13 12l3 3 3-3"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">Markdown</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h3"></path><path d="M10 12h3"></path><path d="M16 12h4"></path><path d="M12 4v2"></path><path d="M12 18v2"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">文字遮罩</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v12H3z"></path><path d="m3 7 9 6 9-6"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">Email</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15a4 4 0 0 1 0-6l2-2a4 4 0 1 1 6 6l-1 1"></path><path d="M15 9a4 4 0 0 1 0 6l-2 2a4 4 0 1 1-6-6l1-1"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">網址</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">電話</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">數值</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp"></span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 4 20"></path><path d="M14 4l-2 16"></path><path d="M3 9h16"></path><path d="M2 15h16"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">數值</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"></path><path d="M16.5 7.5A3.5 3.5 0 0 0 13 5h-2a3 3 0 0 0 0 6h2a3 3 0 0 1 0 6h-2a3.5 3.5 0 0 1-3.5-2.5"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">金額</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5 5 19"></path><path d="M7.5 5.5a2 2 0 1 1-.1 0"></path><path d="M16.5 16.5a2 2 0 1 1-.1 0"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">百分比</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 2.4 5 5.6.7-4 3.8 1 5.5-5-2.8-5 2.8 1-5.5-4-3.8 5.6-.7Z"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">評分</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h4v12H4z"></path><path d="M12 9h8"></path><path d="M12 13h8"></path><path d="M12 17h5"></path><path d="M6 6v12"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">自動編號</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">日期</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp"></span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v14H4z"></path><path d="M4 10h16"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">日期</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v14H4z"></path><path d="M4 10h16"></path><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M12 13v3l2 1"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">日期時間</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">選擇</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp"></span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"></path><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">單選</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h4v4H4z"></path><path d="M4 15h4v4H4z"></path><path d="M11 9h9"></path><path d="M11 17h9"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">多選</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"></path><path d="m8 12 3 3 5-6"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">勾選</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">關聯 · 計算 · 指派</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp">需指定來源</span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a3 3 0 0 0 0 6h3"></path><path d="M18 8a3 3 0 0 1 0 6h-3"></path><path d="M9 11h6"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">關聯</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h7v12H4z"></path><path d="M14 12h7"></path><path d="m18 9 3 3-3 3"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">帶入</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5h12l-7 7 7 7H6"></path><path d="M6 5v14"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">彙總</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5h-3a3 3 0 0 0-3 3v11"></path><path d="M6 12h7"></path><path d="M15 11l5 8"></path><path d="M20 11l-5 8"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">公式</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"></path><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">人員</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"></path><path d="M2 20a7 7 0 0 1 14 0"></path><path d="M17 7a3 3 0 0 1 0 6"></path><path d="M18 20a6 6 0 0 0-3-5.2"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">群組</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3z"></path><path d="M3 10h18"></path><path d="M3 15h18"></path><path d="M9 5v14"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">子表(明細)</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">檔案與媒體</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp"></span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5 12.5 19a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">附件</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"></path><path d="M9 10a1.4 1.4 0 1 0 0-.1"></path><path d="m5 17 5-5 4 4 2-2 3 3"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">圖片</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17c3 0 3-9 6-9s3 7 5 7 2-3 5-3"></path><path d="M4 21h16"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">簽名</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.58 0.15 240 / 0.09); border: 1px solid oklch(0.58 0.15 240 / 0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(48% .13 240)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14"></path><path d="M7 5v14"></path><path d="M10 5v10"></path><path d="M13 5v14"></path><path d="M16 5v10"></path><path d="M20 5v14"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">條碼</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp"></span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">版面</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp">非欄位</span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"></path><path d="M4 11h16"></path><path d="M4 19h10"></path><path d="M4 15h16"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">分段</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">版面</span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"></path><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">說明文字</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">版面</span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"></path><path d="M9 10a1.4 1.4 0 1 0 0-.1"></path><path d="m5 17 5-5 4 4 2-2 3 3"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">圖片</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">版面</span></span>
-              </div>
-            
-          </div>
-        
-          <div data-dc-tpl="40" style="margin-bottom: 4px;">
-            <div data-dc-tpl="41" style="display: flex; align-items: baseline; gap: 8px; padding: 10px 6px 6px; position: sticky; top: 0px; background: oklch(0.99 0.002 260); z-index: 1;">
-              <span data-dc-tpl="42" style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: oklch(0.45 0.015 260);"><span class="sc-interp">系統</span></span>
-              <span data-dc-tpl="43" style="margin-left: auto; font-size: 10.5px; color: oklch(0.68 0.01 260);"><span class="sc-interp">唯讀</span></span>
-            </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"></path><path d="M12 8v4.5l3 1.8"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">建立時間</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">唯讀</span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"></path><path d="M5 21a7 7 0 0 1 11-5.7"></path><path d="M17 17h5"></path><path d="M19.5 14.5v5"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">建立者</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">唯讀</span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v5h5"></path><path d="M3.5 12a8.5 8.5 0 1 1 2.4 6"></path><path d="M12 8v4.5l3 1.6"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">更新時間</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">唯讀</span></span>
-              </div>
-            
-              <div data-dc-tpl="45" draggable="true" class="scp2" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0px 9px 0px 6px; margin-bottom: 2px; cursor: grab; border: 1px solid transparent; transition: border-color 0.14s, background 0.14s;">
-                <span data-dc-tpl="46" style="flex: 0 0 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: oklch(0.94 0.005 260); border: 1px solid oklch(0.24 0.02 260 / 0.12);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="oklch(52% .015 260)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"></path><path d="M4 21a8 8 0 0 1 12-6.9"></path><path d="m15 20 5-5"></path><path d="M20 15v4h-4"></path></svg></span>
-                <span data-dc-tpl="47" style="font-size: 12.5px;"><span class="sc-interp">更新者</span></span>
-                <span data-dc-tpl="48" style="margin-left: auto; font-size: 10px; color: oklch(0.7 0.01 260);"><span class="sc-interp">唯讀</span></span>
-              </div>
-            
-          </div>
-        
-      </div>
-
-      <div data-dc-tpl="49" style="flex: 0 0 auto; padding: 12px 16px; border-top: 1px solid oklch(0.24 0.02 260 / 0.12); font-size: 11.5px; line-height: 1.75; color: oklch(0.58 0.01 260);">
-        拖到畫布，或直接在空格子上打字。<br data-dc-tpl="50">打完按 <span data-dc-tpl="51" style="font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 10.5px; border: 1px solid oklch(0.24 0.02 260 / 0.25); padding: 1px 5px;">Enter</span> 就建欄。
-      </div>
-    </div>
 
     <div data-dc-tpl="52" style="min-height: 0px; overflow-y: auto; padding: 26px 32px 40px;">
       <div data-dc-tpl="53" style="max-width: 940px; margin: 0px auto;">
