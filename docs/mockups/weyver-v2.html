@@ -598,7 +598,16 @@ a:hover{text-decoration:underline;}
 /* 網格 —— 共識 R2 的另一半:可編輯 → 完整格線 + 列號欄。
    [M] 格線比外框淺(NocoDB),但 W3 要看得見(不學它的 7/255)。 */
 .gscroll{flex:1;overflow:auto;min-height:0;background:var(--paper-2);}
-.g{border-collapse:separate;border-spacing:0;font-size:12.4px;width:100%;}
+/* 🔴 G12(2026-08-08)|資料儲存格 **14px**。`DESIGN-RULES.md` §2.2:
+   「**CJK 在同樣 px 下視覺比 Latin 小約 1px,所以資料儲存格用 14px 而非 13px**」。
+   我方原本 12.4px —— 比規則小 1.6px,換 Noto Sans TC 後更明顯。
+
+   ⚠️ **規則內部有矛盾,我用作者自己的 mockup 當裁判**:
+   §2.2 token 表寫「label 12/500|欄位標籤、**表頭**」,
+   但同節內文寫「**表頭與儲存格同尺寸**,只差字重與顏色」。
+   `mockup.html:74-77` 逐字 `td{font-size:14px}` / `th{font-size:12px;font-weight:500}`
+   → **產出物跟 token 表走,那句內文被作者自己的實作推翻了。** */
+.g{border-collapse:separate;border-spacing:0;font-size:14px;width:100%;}
 /* 🔴 G7(docs/39 步驟 2)|列高 36px、內距 10px。
    `DESIGN-RULES.md` §2.3:「三家獨立量測收斂:32–36px 列高、8–12px 儲存格內距」,
    並明列「**列高不要膨脹到 52px**」(Qualio 的 56–70px 讓 QA 主管一頁只看到 10 筆)。
@@ -606,7 +615,7 @@ a:hover{text-decoration:underline;}
 .g th,.g td{border-right:1px solid var(--line-3);border-bottom:1px solid var(--line-3);
   height:36px;padding:0 10px;white-space:nowrap;background:var(--paper);}
 .g thead th{position:sticky;top:0;z-index:3;background:var(--paper-2);
-  border-bottom:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--ink-3);text-align:left;}
+  border-bottom:1px solid var(--line);font-size:12px;font-weight:500;color:var(--ink-3);text-align:left;}
 .g thead .hh{display:flex;align-items:center;gap:5px;}
 .g thead .hh .gr{margin-left:auto;color:var(--ink-4);display:flex;}
 .g thead .hh .gr svg{width:11px;height:11px;}
@@ -674,7 +683,11 @@ a:hover{text-decoration:underline;}
 .sbar b{color:var(--ink-2);font-weight:600;}
 
 /* 記錄面板 —— [D] 的單據語言,分段用灰標題帶不用實心色條(§3.1) */
-.rec{width:430px;flex-shrink:0;border-left:1px solid var(--line);background:var(--paper);
+/* 🔴 §2.3 明列「右側面板 **400px(檢閱器)/ 560px(記錄抽屜)**」。
+   我方這個面板承載標題 + 階段列 + 欄位 + 子表 + 過帳 + 稽核尾註 + 動作列 ——
+   那是**記錄抽屜**不是檢閱器,430px 從一開始就偏窄。
+   G12 把儲存格加到 14px 之後它藏不住了(子表開始換行)。 */
+.rec{width:560px;flex-shrink:0;border-left:1px solid var(--line);background:var(--paper);
   display:flex;flex-direction:column;}
 .rec .hd{padding:10px 14px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:9px;}
 .rec .hd .no{font-size:13.5px;font-weight:600;}
@@ -718,17 +731,17 @@ a:hover{text-decoration:underline;}
   border:1px solid var(--rel-l);border-radius:var(--r-chip);padding:1px 6px;}
 .f{display:grid;grid-template-columns:100px 1fr;border-bottom:1px solid var(--line-3);}
 .f:last-child{border-bottom:none;}
-.f .k{background:var(--paper-2);padding:7px 10px;font-size:11.5px;color:var(--ink-3);text-align:right;
+.f .k{background:var(--paper-2);padding:7px 10px;font-size:12px;font-weight:500;color:var(--ink-3);text-align:right;
   border-right:1px solid var(--line-3);display:flex;align-items:center;justify-content:flex-end;gap:3px;line-height:1.35;}
 .f .k i{color:var(--er);font-style:normal;font-weight:700;}
-.f .v{padding:7px 11px;font-size:12.8px;min-height:32px;display:flex;align-items:center;gap:6px;}
+.f .v{padding:7px 11px;font-size:14px;min-height:34px;display:flex;align-items:center;gap:6px;}
 .f .v.ro{background:var(--readonly);color:var(--ink-2);}
 .f.tall .v{align-items:flex-start;min-height:52px;padding-top:8px;line-height:1.6;}
 .sub{width:100%;border-collapse:collapse;}
-.sub th{background:var(--paper-2);font-size:11px;font-weight:600;color:var(--ink-3);padding:5px 8px;
+.sub th{background:var(--paper-2);font-size:12px;font-weight:500;color:var(--ink-3);padding:6px 9px;
   text-align:left;border:1px solid var(--line-2);}
 .sub th.r{text-align:right;}
-.sub td{padding:5px 8px;font-size:12.3px;border:1px solid var(--line-2);}
+.sub td{padding:6px 9px;font-size:14px;border:1px solid var(--line-2);}
 .sub td.r{text-align:right;}
 .sub td.rn{width:24px;text-align:center;color:var(--ink-4);font-size:11px;background:var(--paper-2);}
 .sub td.id{white-space:nowrap;}
@@ -1062,10 +1075,10 @@ a:hover{text-decoration:underline;}
 .fd-f{display:grid;grid-template-columns:92px 1fr;border-bottom:1px solid var(--line);
   border-right:1px solid var(--line);position:relative;cursor:pointer;}
 .fd-f:last-child{border-right:none;}
-.fd-f .k{background:var(--paper-2);padding:7px 9px;font-size:11.5px;color:var(--ink-3);text-align:right;
+.fd-f .k{background:var(--paper-2);padding:7px 9px;font-size:12px;font-weight:500;color:var(--ink-3);text-align:right;
   border-right:1px solid var(--line-2);display:flex;align-items:center;justify-content:flex-end;gap:3px;}
 .fd-f .k i{color:var(--er);font-style:normal;font-weight:700;}
-.fd-f .v{padding:7px 10px;font-size:12.8px;min-height:32px;display:flex;align-items:center;gap:6px;}
+.fd-f .v{padding:7px 10px;font-size:14px;min-height:34px;display:flex;align-items:center;gap:6px;}
 /* 🔴 OQ-FDW-1=A:示例值**依型別生成**,不取真實記錄(設計者未必有讀資料權,
    而且空表就沒東西可顯示)。ink-3 + 淡底標示為**非真值**。 */
 .fd-f .v .ex{color:var(--ink-4);background:var(--paper-2);padding:1px 5px;border-radius:2px;}
@@ -1406,13 +1419,11 @@ a:hover{text-decoration:underline;}
           <span class="cnt">248 筆</span>
           <span class="cap"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>已接過帳 · 存貨 / 應付</span>
           <span class="sp"></span>
-          <div class="views">
-            <button class="on"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>列表</button>
-            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg>看板</button>
-            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>行事曆</button>
-            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>樞紐</button>
-            <button><svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 14 4-4 4 4 5-5"/></svg>圖表</button>
-          </div>
+          <!-- 🔴 檢視頁籤已移除(2026-08-08,G12 的空間壓力暴露出來的結構問題)。
+               `DESIGN-RULES.md` §1 逐字:「**檢視是物件,不是模式**(NocoDB)。
+               **不要做『把這張表切成看板』的開關**,而是『建立一個看板檢視』。」
+               → 這排頁籤正是規則點名的那個開關,而**具名檢視上一步已經放進側欄了** ——
+                 留著就是同一件事兩套 UI,而且其中一套是反面作法。 -->
           <button class="tool"><svg viewBox="0 0 24 24"><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.1-.1a2 2 0 0 0-2.7.7l-.3.5a2 2 0 0 0 .7 2.8l.2.1a2 2 0 0 1 1 1.7v.4a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.8l.3.5a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.3.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.1.1a2 2 0 0 0 2.7-.7l.3-.5a2 2 0 0 0-.7-2.8l-.2-.1a2 2 0 0 1-1-1.7v-.4a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.8l-.3-.5a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.3-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>工具</button>
           <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計表單</button>
           <button class="btn pri"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>建立記錄</button>
@@ -2000,11 +2011,6 @@ a:hover{text-decoration:underline;}
           <div class="crumb"><a>採購</a><span class="sep">/</span><b>採購單</b></div>
           <span class="cnt">0 筆</span>
           <span class="sp"></span>
-          <div class="views">
-            <button class="on"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18"/></svg>列表</button>
-            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></svg>看板</button>
-            <button><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>行事曆</button>
-          </div>
           <button class="btn sec"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計表單</button>
           <!-- 🔴 0 筆時工具列這顆降為次要 —— 它和空狀態的「建立第一筆」是**同一個動作**。
                同一個畫面同一個動作出現兩顆實心,「哪個是主動作」就沒有答案了。
