@@ -499,7 +499,18 @@ a:hover{text-decoration:underline;}
 
 .work{height:42px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px;
   border-bottom:1px solid var(--line-2);background:var(--paper);}
-.work h1{font-size:15px;font-weight:600;letter-spacing:-.2px;}
+/* 🔴 G2(docs/39 步驟 3)|麵包屑 **取代**大標題,不是加在它上面。
+   `DESIGN-RULES.md` §1:「Ragic 只有 ← 返回鍵,三次點擊後你只知道自己在哪個頁籤。
+   麵包屑放頂列:頁籤 / 分類 / 表單 / 記錄編號。」
+   而參考的 grid.png 就是 `訂單管理 / 銷售訂單 / 全部訂單` —— **最後一段就是當前檢視名,
+   沒有另外的 H1**。這也順了 §2.2「階層靠字重與顏色,不靠尺寸」:
+   末段 600 + 前段 400 灰,一行就把層級講完,而且比 15px 標題更省一條視覺軸。
+   ⚠️ 清單檢視用麵包屑、記錄檢視才用大標題(24/600)—— 兩者不衝突,是不同物件。 */
+.work .crumb{display:flex;align-items:center;gap:5px;font-size:13px;min-width:0;}
+.work .crumb a{color:var(--ink-3);white-space:nowrap;}
+.work .crumb a:hover{color:var(--ink-2);}
+.work .crumb .sep{color:var(--ink-4);}
+.work .crumb b{font-weight:600;color:var(--ink);white-space:nowrap;}
 .work .cnt{font-size:12px;color:var(--ink-4);}
 .cap{display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;font-size:10.5px;font-weight:600;
   color:var(--fx);background:var(--fx-t);border:1px solid var(--fx-l);border-radius:var(--r-chip);}
@@ -629,7 +640,18 @@ a:hover{text-decoration:underline;}
 .rec .hd{padding:10px 14px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:9px;}
 .rec .hd .no{font-size:13.5px;font-weight:600;}
 .rec .hd .ver{font-size:11px;color:var(--ink-4);}
-.rec .hd .x{margin-left:auto;width:25px;height:25px;border-radius:var(--r-ctl);color:var(--ink-4);
+/* 🔴 G3|記錄分頁器。`DESIGN-RULES.md` §3.3 逐字:
+   「記錄分頁器放頂列(`4 / 24` 配 `‹ ›`)。可以走訪篩選結果集而不用回列表。
+   **企業工具常常忘記這個。**」
+   ⚠️ 我方放在**記錄面板的標題列**而非全域頂列 —— 因為記錄在這裡是右側面板,
+   分頁器屬於「這個面板正在看第幾筆」,放全域頂列會和「表單有幾筆」混淆。 */
+.rec .hd .pager{display:flex;align-items:center;gap:1px;margin-left:auto;}
+.rec .hd .pager .n{font-size:11.5px;color:var(--ink-3);padding:0 5px;white-space:nowrap;}
+.rec .hd .pager button{width:22px;height:22px;border-radius:var(--r-ctl);color:var(--ink-3);
+  display:flex;align-items:center;justify-content:center;}
+.rec .hd .pager button:hover{background:var(--paper-3);color:var(--ink);}
+.rec .hd .pager svg{width:13px;height:13px;}
+.rec .hd .x{width:25px;height:25px;border-radius:var(--r-ctl);color:var(--ink-4);
   display:flex;align-items:center;justify-content:center;}
 .rec .hd .x:hover{background:var(--paper-3);color:var(--ink-2);}
 .rec .hd .x svg{width:14px;height:14px;}
@@ -932,7 +954,10 @@ a:hover{text-decoration:underline;}
 /* ① header 收成一帶。現況是三帶(task #154)—— 三帶正是「後台四層水平帶」的近親。 */
 .fd-bar{height:46px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 14px;
   border-bottom:1px solid var(--line);background:var(--paper-2);}
-.fd-bar .nm{font-size:15px;font-weight:600;}
+.fd-bar .crumb{display:flex;align-items:center;gap:5px;font-size:13px;}
+.fd-bar .crumb a{color:var(--ink-3);}
+.fd-bar .crumb .sep{color:var(--ink-4);}
+.fd-bar .crumb b{font-weight:600;color:var(--ink);}
 .fd-bar .mode{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;font-size:10.5px;
   font-weight:700;letter-spacing:.04em;color:var(--wn);background:var(--wn-t);border:1px solid var(--wn-l);
   border-radius:var(--r-chip);}
@@ -1333,7 +1358,7 @@ a:hover{text-decoration:underline;}
              壓成兩層:第一層放身分與去處,第二層放這個檢視怎麼看。
              「＋ 小圖表」收進「工具」—— 一顆按鈕不值一整條 40px。 -->
         <div class="work">
-          <h1>採購單</h1>
+          <div class="crumb"><a>採購</a><span class="sep">/</span><a>採購單</a><span class="sep">/</span><b>列表(全部)</b></div>
           <span class="cnt">248 筆</span>
           <span class="cap"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>已接過帳 · 存貨 / 應付</span>
           <span class="sp"></span>
@@ -1566,6 +1591,12 @@ a:hover{text-decoration:underline;}
           <span class="no">PO-2026-0847</span>
           <span class="chip wn">待覆核</span>
           <span class="ver">v3 · 稽核 14 筆</span>
+          <!-- G3:走訪篩選結果集,不用回列表 -->
+          <span class="pager">
+            <button title="上一筆"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+            <span class="n">1 / 248</span>
+            <button title="下一筆"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+          </span>
           <button class="x"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <div class="bd">
@@ -1910,7 +1941,7 @@ a:hover{text-decoration:underline;}
     <div class="mid">
       <div class="fw">
         <div class="work">
-          <h1>採購單</h1>
+          <div class="crumb"><a>採購</a><span class="sep">/</span><b>採購單</b></div>
           <span class="cnt">0 筆</span>
           <span class="sp"></span>
           <div class="views">
@@ -1979,7 +2010,7 @@ a:hover{text-decoration:underline;}
       <!-- ① header 收成**一帶**(M3 驗收條件:header ≤1)。
            現況三帶(task #154),而三帶正是「後台四層水平帶」的近親。 -->
       <div class="fd-bar">
-        <span class="nm">採購單</span>
+        <div class="crumb"><a>採購</a><span class="sep">/</span><b>採購單</b></div>
         <span class="mode"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>設計中</span>
         <span class="sp"></span>
         <!-- B′ 補償之二:dirty 標記。使用者必須看得出「有東西還沒套用」 -->
