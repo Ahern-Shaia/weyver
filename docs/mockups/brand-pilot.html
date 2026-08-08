@@ -61,6 +61,9 @@
   --er:#b02a26;--er-line:#eecac8;--er-t:#fbebea;
   --nt:#4a5560;--nt-line:#d6dbe0;--nt-t:#eef0f2;
 }
+/* 🔴 2026-08-08 裁定|**織藍是第四個主題,同時是系統的品牌主色(:root 預設)。**
+   其餘三色降為可切換的替代主題,不再是「預設 / 對外建議」。 */
+[data-theme="thread"]{--base-brand:oklch(52% .15 240);}
 [data-theme="navy"]{--base-brand:#22568a;}
 [data-theme="teal"]{--base-brand:#0c5f73;}
 [data-theme="graphite"]{--base-brand:#333739;}
@@ -520,7 +523,8 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
     <!-- 色塊以 data-theme + var(--primary) 上色,不寫死 hex ——
          產品端的 theme-switcher 曾寫死舊值,結果「點下去的顏色和切出來的主題不同」。 -->
     <div class="themes"><span>主題</span>
-      <button class="on" data-t="" data-theme="navy" style="background:var(--primary)" title="深藍"></button>
+      <button class="on" data-t="" data-theme="thread" style="background:var(--primary)" title="織藍(品牌主色)"></button>
+      <button data-t="navy" data-theme="navy" style="background:var(--primary)" title="深藍"></button>
       <button data-t="teal" data-theme="teal" style="background:var(--primary)" title="深海青"></button>
       <button data-t="graphite" data-theme="graphite" style="background:var(--primary)" title="石墨"></button>
     </div>
@@ -608,17 +612,23 @@ a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
 · <b>織藍 Thread Blue</b> <span class="mono">oklch(58% .15 240)</span> —— <b>標誌色</b>。
   只出現在符號、登入、列印抬頭、對外物料。它是<b>圖形</b>,門檻 3:1(實測 4.05,通過)。<br>
-· <b>深藍 navy</b> <span class="mono">#22568a</span> —— <b>介面主色</b>(預設主題)。
-  承載按鈕白字、連結、選取、focus,門檻 4.5(實測 <b>7.59 / 7.45</b>,遠超)。<br>
-這不是妥協,是<b>正確的架構</b>:品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」——
-產品介面本來就不該把標誌色當主色刷滿。深藍是 ERP 品類的母語,傳達企業可信;
-織藍是品牌在<b>對外露出</b>時的識別。</div>
+· <b>織藍 52%</b> <span class="mono">oklch(52% .15 240) / #0070b5</span> —— <b>介面主色</b>(預設主題)。
+  承載按鈕白字、連結、選取、focus,門檻 4.5(實測 <b>5.27 / 5.13</b>,通過)。<br>
+<b>🔴 2026-08-08 裁定變更</b>|<b>織藍列為第四個主題,同時是系統的品牌主色</b>;
+深藍 / 深海青 / 石墨降為替代主題。此前本段主張「產品介面不該把標誌色當主色刷滿、
+深藍才是介面主色」—— <b>該主張已被推翻</b>。<br>
+但它提出的疑慮沒有被無視,而是被<b>兩個明度階</b>解掉:同一個色相,
+<b>標誌用 58%</b>(圖形門檻 3:1)、<b>介面用 52%</b>(文字門檻 4.5)。
+所以「織藍白字只有 4.13 不能承載文字」仍然成立 —— 那講的是 58%,而介面不用 58%。<br>
+⚠️ 順帶更正一個量測:v3 產品稿的實心動作底用的是 <span class="mono">58%</span>,
+近白字實測 <b style="color:var(--er)">4.02 &lt; 4.5</b> —— <b>v3 自己這一項不合格</b>,
+故介面採 52% 而非照抄 v3。</div>
 <table class="ds-tbl">
   <tr><th style="width:130px">色</th><th style="width:150px">值</th><th style="width:150px">用途</th><th>對比門檻與實測</th></tr>
   <tr><td><b>織藍(標誌)</b></td><td class="k">oklch(58% .15 240)<br>#0083c9</td><td>符號 · 登入 · 列印抬頭 · 對外物料</td>
       <td>圖形 3:1 → <b style="color:var(--ok)">4.05 ✓</b>。<b style="color:var(--er)">不得承載文字</b>(白字僅 4.13)</td></tr>
-  <tr><td><b>primary</b></td><td class="k">#22568a(navy 預設)</td><td>主按鈕 · 連結 · 選取 · focus ring</td>
-      <td>白字 <b style="color:var(--ok)">7.59 ✓</b> · 於內容面 <b style="color:var(--ok)">7.45 ✓</b></td></tr>
+  <tr><td><b>primary</b></td><td class="k">oklch(52% .15 240)<br>#0070b5(織藍 預設)</td><td>主按鈕 · 連結 · 選取 · focus ring</td>
+      <td>白字 <b style="color:var(--ok)">5.27 ✓</b> · 於內容面 <b style="color:var(--ok)">5.13 ✓</b></td></tr>
   <tr><td><b>primary-d</b></td><td class="k">#1b456e(black 20% 推導)</td><td>hover / 按下</td><td>白字 <b style="color:var(--ok)">9.89 ✓</b></td></tr>
   <tr><td><b>primary-t</b></td><td class="k">#ebf0f4(white 91% 推導)</td><td>選取列 · 極淡底</td><td>承載 primary 文字 <b style="color:var(--ok)">6.62 ✓</b></td></tr>
 </table>
@@ -667,7 +677,10 @@ Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
 
 <div class="grp-t" style="margin-top:20px">三配色主題(只換 BASE,深階與淡底由 <span class="mono">color-mix</span> 推導)</div>
 <div class="themes-row">
-  <div class="theme-card"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設 / 對外建議</span></div>
+  <div class="theme-card"><div class="th" style="background:var(--primary)">織藍 thread<span class="df">品牌主色 / 預設</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">#005b9f ← #0070b5 → #e4f1f8</b> · 品牌四色之一,標誌同源</div></div>
+  <div class="theme-card" data-theme="navy"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">替代主題</span></div>
     <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
     <div class="meta"><b class="mono">#1b456e ← #22568a → #ebf0f4</b> · 品類母語、企業可信</div></div>
   <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">織雲故事色</span></div>
@@ -679,6 +692,7 @@ Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
 </div>
 <table class="ds-tbl">
   <tr><th style="width:110px">主題</th><th style="width:96px">BASE</th><th>白字 / base</th><th>base / 內容面</th><th>白字 / 深階</th><th>base / 淡底</th></tr>
+  <tr><td><b>織藍 thread</b>(預設)</td><td class="k">#0070b5</td><td class="k">5.27 ✓</td><td class="k">5.13 ✓</td><td class="k">7.01 ✓</td><td class="k">4.58 ✓</td></tr>
   <tr><td>深藍 navy</td><td class="k">#22568a</td><td class="k">7.59 ✓</td><td class="k">7.45 ✓</td><td class="k">9.89 ✓</td><td class="k">6.62 ✓</td></tr>
   <tr><td>深海青 teal</td><td class="k">#0c5f73</td><td class="k">7.24 ✓</td><td class="k">7.11 ✓</td><td class="k">9.54 ✓</td><td class="k">6.32 ✓</td></tr>
   <tr><td>石墨 graphite</td><td class="k">#333739</td><td class="k">12.03 ✓</td><td class="k">11.81 ✓</td><td class="k">14.06 ✓</td><td class="k">10.27 ✓</td></tr>
