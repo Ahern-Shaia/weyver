@@ -549,8 +549,12 @@ a:hover{text-decoration:underline;}
    [M] 格線比外框淺(NocoDB),但 W3 要看得見(不學它的 7/255)。 */
 .gscroll{flex:1;overflow:auto;min-height:0;background:var(--paper-2);}
 .g{border-collapse:separate;border-spacing:0;font-size:12.4px;width:100%;}
+/* 🔴 G7(docs/39 步驟 2)|列高 36px、內距 10px。
+   `DESIGN-RULES.md` §2.3:「三家獨立量測收斂:32–36px 列高、8–12px 儲存格內距」,
+   並明列「**列高不要膨脹到 52px**」(Qualio 的 56–70px 讓 QA 主管一頁只看到 10 筆)。
+   我原本 31px 是**偏低**的那一邊 —— 密度不是越高越好,36px 是三家收斂出來的位置。 */
 .g th,.g td{border-right:1px solid var(--line-3);border-bottom:1px solid var(--line-3);
-  height:31px;padding:0 8px;white-space:nowrap;background:var(--paper);}
+  height:36px;padding:0 10px;white-space:nowrap;background:var(--paper);}
 .g thead th{position:sticky;top:0;z-index:3;background:var(--paper-2);
   border-bottom:1px solid var(--line);font-size:11.5px;font-weight:600;color:var(--ink-3);text-align:left;}
 .g thead .hh{display:flex;align-items:center;gap:5px;}
@@ -564,14 +568,22 @@ a:hover{text-decoration:underline;}
 .g .gut .cbx{display:none;}
 .g tbody tr:hover .gut .ord{display:none;}
 .g tbody tr:hover .gut .cbx{display:inline-flex;}
+/* 🔴 G4|**每列只有一欄粗體** —— 識別欄 600、其餘 400。
+   `DESIGN-RULES.md` §2.2 逐字:「13/600 的識別欄 + 其餘 13/400,
+   在 40px 列高下就是整個表格可掃描的全部祕訣,而且不花任何成本。」(ERPNext)
+   識別欄同時是 accent 連結(點擊開記錄),兩件事疊在同一欄。 */
 .g .frz{position:sticky;left:34px;z-index:2;background:var(--paper);border-right:1px solid var(--line);}
+.g tbody .frz{font-weight:600;}
 .g thead .frz{z-index:4;background:var(--paper-2);}
 .g tbody tr:hover td{background:var(--paper-2);}
 .g tbody tr:hover .frz,.g tbody tr:hover .gut{background:var(--paper-3);}
 .g tbody tr.sel td{background:var(--brand-t);}
 .g tbody tr.sel .frz{background:#e2ebf6;}
 /* 共識 R6 唯讀 = 更深一階灰填色。同時是 OQ-GP-4 的預先告知:貼之前就看得出寫不進去 */
-.g td.ro{background:var(--readonly);color:var(--fx);font-weight:600;}
+/* ⚠️ 計算欄**取消粗體**。原本 600 讓每列有兩個粗體,而規則是一列只有一個 ——
+   且那一個應該是**識別欄**(你用它找記錄),不是算出來的值。
+   計算欄的區辨已經由「唯讀灰填色 + fx 色」承擔,不需要再加字重。 */
+.g td.ro{background:var(--readonly);color:var(--fx);}
 .g tbody tr:hover td.ro{background:#e2e7ec;}
 .g td.rg{background:var(--brand-t);}
 .g td.rg.ro{background:#dde5ee;}
