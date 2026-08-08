@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -75,10 +75,12 @@ describe("text-* 命名空間撞名", () => {
       "utf-8",
     )
     const names = (prefix: string): Set<string> =>
-      new Set([...css.matchAll(new RegExp(`--${prefix}-([a-z0-9-]+):`, "g"))].map((m) => m[1] ?? ""))
+      new Set(
+        [...css.matchAll(new RegExp(`--${prefix}-([a-z0-9-]+):`, "g"))].map((m) => m[1] ?? ""),
+      )
     const colors = names("color")
     const clash = [...names("text")].filter((n) => colors.has(n))
-    expect(clash, `這些名字同時是顏色與字級 —— 顏色會贏,字級靜默失效`).toEqual([])
+    expect(clash, "這些名字同時是顏色與字級 —— 顏色會贏,字級靜默失效").toEqual([])
   })
 })
 
