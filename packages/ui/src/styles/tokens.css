@@ -76,7 +76,15 @@
      原本三個主題各自手寫三個值,每加一個白牌就要人工配三次。
      ⚠️ 元件一律用 `--color-*`,不得直接用 `--base-*`。
      ⚠️ 推導值由 `contrast.test.ts` 實算把關(它看得懂 color-mix)。 */
-  --base-brand: #22568a;
+  /* 🔴 2026-08-08 裁定|**織藍 = 品牌主色 = 預設主題**(brand-pilot §03)。
+     深藍 / 深海青 / 石墨降為替代主題,見檔尾 `[data-theme]`。
+
+     ⚠️ 取 **L=52% 而非標誌的 58%** —— 同一色相分兩階:
+     標誌 58%(圖形門檻 3:1)、介面 52%(文字門檻 4.5)。
+     實測(canvas 取像素,黑白自我驗證 = 21):58% 配白字僅 **4.02 < 4.5**,
+     52% 為 **5.27 ✓**。#0070b5 是 52% 的 sRGB 值。
+     v3 產品稿的實心動作底用的是 58% —— **那一項稿自己不合格**,故不照抄。 */
+  --base-brand: #0070b5;
   --color-primary: var(--base-brand);
   --color-primary-d: color-mix(in srgb, var(--base-brand), black 20%);
   --color-primary-t: color-mix(in srgb, var(--base-brand), white 91%); /* 選取列 / 主色極淡底 */
@@ -228,6 +236,10 @@
 
 /* ── 三配色主題(主色家族;結構/狀態/功能色跨主題共用)──── */
 /* 🔴 每個主題只換 BASE。navy 亦明文列出 —— 見下方 `[data-theme]` 規則的理由。 */
+/* `thread` 為預設(不掛 data-theme),但仍明文列出 —— 主題色塊要靠它上色。 */
+[data-theme="thread"] {
+  --base-brand: #0070b5;
+}
 [data-theme="navy"] {
   --base-brand: #22568a;
 }

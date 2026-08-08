@@ -92,7 +92,7 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
      容易被當成「就長這樣」,但成因與通知面板完全相同。 */
   const [anchor, setAnchor] = useState<{ left: number; bottom: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [theme, setTheme] = useState<ThemeId>("navy")
+  const [theme, setTheme] = useState<ThemeId>("thread")
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
@@ -143,7 +143,7 @@ function ThemeMenu({ collapsed }: { readonly collapsed: boolean }): ReactNode {
               >
                 {/* 色塊吃該主題的 var(--color-primary),不存 hex(見 theme-switcher 檔頭) */}
                 <span
-                  {...(item.id === "navy" ? {} : { "data-theme": item.id })}
+                  {...(item.id === "thread" ? {} : { "data-theme": item.id })}
                   className="size-3.5 rounded-full border border-line bg-primary"
                 />
                 {item.label}

@@ -118,7 +118,7 @@ export default function DesignSystemPage() {
                   原本這裡印死的 hex 與 tokens.css 已經不同步,設計系統頁反而在騙人。 */}
               <span
                 className="size-5 rounded-xs border border-line bg-primary"
-                {...(t.id === "navy" ? {} : { "data-theme": t.id })}
+                {...(t.id === "thread" ? {} : { "data-theme": t.id })}
               />
               <div>
                 <div className="text-[12px] font-semibold">{t.label}</div>

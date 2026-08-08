@@ -25,18 +25,23 @@ const SWATCH = '[role="radiogroup"][aria-label="配色"] button'
 const swatchColors = async (page: import("@playwright/test").Page): Promise<string[]> =>
   page.$$eval(SWATCH, (els) => els.map((e) => getComputedStyle(e).backgroundColor))
 
-test("主題色塊:三色互異,且不隨當前主題漂移", async ({ page }) => {
+test("主題色塊:每色互異,且不隨當前主題漂移", async ({ page }) => {
   await page.goto("/design-system")
   await page.waitForSelector(SWATCH)
 
-  const atNavy = await swatchColors(page)
-  expect(atNavy).toHaveLength(3)
-  expect(new Set(atNavy).size, `三顆色塊應為三種顏色,實得 ${atNavy.join(" / ")}`).toBe(3)
+  /* ⚠️ **不寫死顆數** —— 原本斷言 `toHaveLength(3)`,2026-08-08 織藍列為第四個主題就假紅。
+     這條要守的是「每顆互異、且不隨當前主題漂移」,**不是「剛好三個主題」**;
+     主題數是產品決策,寫進測試只會在改決策時擋路,而且擋的方式看起來像產品壞了。 */
+  const initial = await swatchColors(page)
+  expect(initial.length, "至少要有兩個主題才談得上互異").toBeGreaterThan(1)
+  expect(new Set(initial).size, `每顆色塊應為不同顏色,實得 ${initial.join(" / ")}`).toBe(
+    initial.length,
+  )
 
-  /* 切到另外兩個主題後,色塊**必須完全不變** —— 它們是各主題的預覽,不是當前主題的回音。 */
+  /* 切到其他主題後,色塊**必須完全不變** —— 它們是各主題的預覽,不是當前主題的回音。 */
   for (const label of ["深海青", "石墨"]) {
     await page.click(`${SWATCH}[title="${label}"]`)
-    await expect.poll(async () => (await swatchColors(page)).join(",")).toBe(atNavy.join(","))
+    await expect.poll(async () => (await swatchColors(page)).join(",")).toBe(initial.join(","))
   }
 })
 

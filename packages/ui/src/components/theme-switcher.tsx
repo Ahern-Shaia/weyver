@@ -13,7 +13,10 @@ import { cn } from "../lib/utils"
 
    改法:色塊自己掛 `data-theme`,背景吃 `var(--color-primary)` ——
    它就是那個主題的真實主色,不可能對不上。 */
+/* 🔴 2026-08-08 裁定|**織藍是第四個主題,同時是系統的品牌主色**(預設)。
+   其餘三色降為替代主題。預設 = 不掛 `data-theme`,值由 `:root` 的 `--base-brand` 決定。 */
 export const THEMES = [
+  { id: "thread", label: "織藍" },
   { id: "navy", label: "深藍" },
   { id: "teal", label: "深海青" },
   { id: "graphite", label: "石墨" },
@@ -22,12 +25,12 @@ export const THEMES = [
 export type ThemeId = (typeof THEMES)[number]["id"]
 
 export function applyTheme(theme: ThemeId): void {
-  if (theme === "navy") document.documentElement.removeAttribute("data-theme")
+  if (theme === "thread") document.documentElement.removeAttribute("data-theme")
   else document.documentElement.setAttribute("data-theme", theme)
 }
 
 export function ThemeSwitcher({ className }: { readonly className?: string }): ReactElement {
-  const [theme, setTheme] = useState<ThemeId>("navy")
+  const [theme, setTheme] = useState<ThemeId>("thread")
 
   useEffect(() => {
     applyTheme(theme)
@@ -44,10 +47,10 @@ export function ThemeSwitcher({ className }: { readonly className?: string }): R
           aria-checked={theme === item.id}
           title={item.label}
           onClick={() => setTheme(item.id)}
-          /* 🔴 每顆色塊都要掛 data-theme —— 包含 navy。
-             navy 曾被當成「預設主題,不必掛」,結果切到深海青時**三顆色塊全變深海青**
+          /* 🔴 每顆色塊都要掛 data-theme —— **包含當前的預設主題**。
+             曾把預設(當時是 navy)當成「不必掛」,結果切到深海青時**色塊全變深海青**
              (它們吃 `bg-primary`,沒有自己的主題範圍就跟著 root 走)。
-             tokens.css 因此明文列出 `[data-theme="navy"]`。 */
+             tokens.css 因此把每個主題都明文列出,包含現在的預設 `thread`。 */
           data-theme={item.id}
           className={cn(
             "size-4 rounded-xs border border-line bg-primary",
