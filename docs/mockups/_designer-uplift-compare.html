@@ -68,10 +68,11 @@ li{margin-top:3px;font-size:12.5px;}
       <td>只放記號等於要使用者記住算式。<b>式子用我方語法 <code>{欄名}</code></b> —— 畫布上長什麼樣,公式編輯器裡就打什麼</td>
     </tr>
     <tr>
-      <td><b>② 元件庫搜尋</b></td>
-      <td>平鋪 13 列,無搜尋</td>
-      <td>頂部搜尋框,placeholder 標明「31 種型別」</td>
-      <td>型別實數 31(<code>field-type-registry</code>)。13 種還能掃,31 種要捲;分組本身不會告訴你總量</td>
+      <td><b>② 元件庫補齊</b></td>
+      <td>只畫了 13 種,無搜尋</td>
+      <td><b>全部 31 種</b> + 搜尋框 + 語意七分組(文字/數值/日期/選擇/關聯計算指派/檔案與媒體/系統)</td>
+      <td>型別實數 31(<code>field-type-registry</code>)。舊 mockup 只畫一半,且
+          「數字 / 核取 / 連結其他表單」三個標籤與產品的「數值 / 勾選 / 關聯」不一致</td>
     </tr>
     <tr>
       <td><b>③ 帶入對映</b></td>
@@ -110,6 +111,32 @@ li{margin-top:3px;font-size:12.5px;}
   文案也不是新寫的,沿用已出貨的字:<code>field-settings.tsx:557</code>「選這筆記錄時要帶入哪些欄」、
   <code>advanced-options.tsx:135</code>「保留填單當時的內容(建議)」——
   <b>設計器文案不出現 live / snapshot / syncMode</b>(<code>field-types-parity v1.1</code> 逐字)。
+</div>
+
+<div class="why warn">
+  <b>② 31 種型別排完之後,兩個問題浮出來(待裁定)</b><br>
+  <b>(a) 分組方式與產品不同。</b> 產品 <code>palette.tsx</code> 是「常用 8 / 其他 14 / 進階 9 / 結構」,
+  理由逐字寫在檔頭:<i>「28 種型別平鋪會觸 Hick's law」</i>(該註解的 28 也已過期,實數 31)。
+  這裡改成<b>語意七分組</b>,因為 <b>E 案的分組色需要語意群才有指涉</b> ——「其他」上色沒有意義。<br>
+  ✅ <b>量過了</b>:8 個常用型別全部落在折線之上(第 1/2/8/9/13/15/16/17 列),
+  被推到折線下的是最少用的 7 個(圖片 / 簽名 / 條碼 + 系統四欄)。**語意分組沒有藏起常用的東西。**
+  代價是掃描距離變長(常用從「連續 8 列」變成「散在四群」),不是捲動。<br>
+  <b>(b) 分組色撐到第 6 色已經很勉強。</b> 受「避開綠 / 琥珀 / 紅」限制只能用冷色,
+  而 <code>--c1 210°</code> 與 <code>--c6 196°</code> <b>只差 14 度</b>;第 6 色 <code>--c2</code> 靛
+  夾在 c1 藍與 c3 紫之間。<b>目前靠「群本來就有標題與間距」撐著</b> —— 色只是強化,不是唯一線索。
+  再多一群就該考慮改回單色 + 只靠字符/象形區分。
+</div>
+
+<div class="why">
+  <b>圖示:修掉產品現有的三組撞圖</b><br>
+  <code>field-icons.ts</code> 目前 <code>Hash</code> 同時給 markdown / 數值 / 自動編號,
+  <code>CalendarClock</code> 給日期時間 / 建立時間 / 更新時間,
+  <code>CircleUser</code> 給人員 / 建立者 / 更新者 —— <b>9 個型別共用 3 個圖示</b>。
+  在 13 種的清單裡不明顯,31 種全排出來就變成掃描障礙(系統四欄會相鄰且兩兩同圖)。
+  本稿改為:Markdown <code>heading</code> · 數值保留字符 <code>#</code> · 自動編號 <code>list-ordered</code> ·
+  建立時間 <code>calendar-plus</code> · 建立者 <code>user-plus</code> ·
+  更新時間 <code>history</code> · 更新者 <code>user-pen</code>。
+  圖示 path <b>由 <code>node_modules</code> 程式化抽出</b>,不是手寫(手寫 path 會靜默畫錯)。
 </div>
 
 <h2>沒有跟著 v3 改的(有 Ragic 官方逐字)</h2>
