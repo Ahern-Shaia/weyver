@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { ApprovalTable } from "./approval-table"
+import { Button } from "./button"
 import { FieldGrid } from "./field-grid"
 import { FormSection } from "./form-section"
 import { GlTable } from "./gl-table"
 import { StatusBar, StatusBarDot } from "./status-bar"
 import { SubTable, type SubTableColumn } from "./sub-table"
 import { RecordNav, Toolbar } from "./toolbar"
-import { Button } from "./button"
 
 /* docs/14 v2 §3.2–3.9|表單記錄構件組合(主畫面) */
 const meta = {

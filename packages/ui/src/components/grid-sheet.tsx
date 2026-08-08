@@ -2,8 +2,8 @@
 
 import {
   DataEditor,
-  type EditableGridCell,
   type EditListItem,
+  type EditableGridCell,
   type GridCell,
   type GridColumn,
   type GridSelection,

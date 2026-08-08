@@ -1,8 +1,8 @@
 "use client"
 
 import type { ReactElement, ReactNode } from "react"
-import { StatusChip, type StatusTone } from "./status-chip"
 import { cn } from "../lib/utils"
+import { StatusChip, type StatusTone } from "./status-chip"
 
 /* docs/14 v2 §3.1|左欄記錄清單 228px:密、hairline、selected=主色 tint + 左 3px inset */
 export interface RecordRailItem {
