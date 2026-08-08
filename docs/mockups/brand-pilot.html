@@ -3,570 +3,1780 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weyver 織雲 · 品牌識別</title>
+<title>Weyver 織雲 · 品牌識別視覺稿</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ══ 2026-08-08|本檔改為決策方品牌板的落地版 ═════════════════════════
-   來源 `~/Downloads/Weyver/WeyverBrandBoard.dc.html`(53,032 bytes,較 0808 版新)。
+/* 2026-08-01 同步 shipped `packages/ui/src/styles/tokens.css` v3.0。
+   本稿原本停在 v2.1 austere 的值(surface #E8EAED、line #C9CFD6、primary #1E4E79),
+   與產品實際已不同 —— 而這正是同日由 CI 抓出的同一類問題(文件說一套、程式跑另一套)。 */
+:root{
+  /* 🔴 2026-08-01|品牌板(Weyver-Brand-Board)為色彩權威,OKLCH 為原值。
+     此前的 #22568a 系與 v2.1 中性色皆 SUPERSEDED。 */
+  --brand-ink:oklch(24% .02 260);      /* Ink 墨      #1a2029 */
+  --thread:oklch(58% .15 240);         /* Thread Blue 織藍 #0083c9 —— 標誌用 */
+  --brand-neutral:oklch(60% .01 260);  /* Neutral 中灰 #7d8086 */
+  --paper:oklch(97% .004 260);         /* Paper 底色  #f3f5f8 */
+  /* 動作色:由織藍推導。織藍白字僅 4.13 < AA 4.5(見 §03),故介面動作用 52%。 */
+  --base-brand:#22568a;
+  --primary:var(--base-brand);
+  --primary-d:color-mix(in srgb,#22568a,black 20%);
+  --primary-t:color-mix(in srgb,#22568a,white 91%);
 
-   **被取代的**(舊稿已有、品牌板版本更完整):
-   Loading 狀態 · Alert / Toast / Dialog / Drawer / Context Menu / Popover / Tooltip · z 軸順序。
-   **新增的**(舊稿沒有):符號構成(安全淨空 / 最小尺寸)· 組合方式六式 · 設計說明。
-   **SUPERSEDED**:舊稿的**三配色主題**(navy / teal / graphite)——
-   品牌已定四色(Ink / Thread Blue / Neutral / Paper),三主題探索到此為止。
+  /* 介面 12 階冷中性(hue 260,與品牌板同調;Radix 語意)*/
+  --bg:#f6f8fa; --card:#fcfdfe; --head:#eef1f5; --label:#eef1f5;
+  --s4:#e4e9ef; --s5:#d8dfe8;
+  --ink:#0f1720; --ink2:#3a4553; --ink3:#5c6876; --ink4:#9aa6b4;
+  --line:#e6eaf0; --line2:#eef1f5; --cell:#dfe4ea;
+  --hover:#eef1f5; --active:#e4e9ef;
+  --link:#0070b5;--fx:#0b6b5d;--fx-bg:#e8f4f1;--rel:#5b3fa8;
+  --ok:#0f7a4a;--ok-line:#bde3cd;--ok-t:#e8f5ee;
+  --wn:#8a5a09;--wn-line:#ecd7ac;--wn-t:#fbf2e3;
+  --er:#b02a26;--er-line:#eecac8;--er-t:#fbebea;
+  --nt:#4a5560;--nt-line:#d6dbe0;--nt-t:#eef0f2;
+}
+[data-theme="navy"]{--base-brand:#22568a;}
+[data-theme="teal"]{--base-brand:#0c5f73;}
+[data-theme="graphite"]{--base-brand:#333739;}
+/* 🔴 推導必須在掛 data-theme 的元素上「再宣告一次」。
+   `--primary:var(--base-brand)` 寫在 :root,於 :root 就代換完畢,子元素只繼承算好的顏色 ——
+   在子元素改 BASE 不會重算。少了這條,下面三張主題卡會全部顯示成當前主題的顏色
+   (產品端同一個 bug 已由 e2e `theme-tokens.spec.ts` 釘住)。 */
+[data-theme]{
+  --primary:var(--base-brand);
+  --primary-d:color-mix(in srgb, var(--base-brand), black 22%);
+  --primary-t:color-mix(in srgb, var(--base-brand), white 92%);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Inter,'Noto Sans TC',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;padding-bottom:60px;}
+.mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum" 1;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+a{color:var(--link);text-decoration:underline;text-underline-offset:2px;}
 
-   🔴 **動畫是移植的,不是快照。** 品牌板的標誌由 rAF 驅動,
-   抽渲染後 DOM 只會得到**凍結的一格**;下方 script 逐字照抄它的 piece 表與時序。 */
-  body{margin:0;background:oklch(97% .004 260);}
-  *{box-sizing:border-box;}
+/* topbar */
+.top{position:sticky;top:0;z-index:10;height:46px;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--card);border-bottom:2px solid var(--primary);}
+.mk{width:24px;height:24px;border-radius:3px;background:var(--primary);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.top .t{font-size:13.5px;font-weight:600;} .top .t small{font-weight:400;color:var(--ink3);margin-left:4px;font-size:11px;}
+.top .v{margin-left:6px;font-size:10.5px;color:var(--ink4);border:1px solid var(--line);border-radius:3px;padding:1px 6px;}
+.themes{margin-left:auto;display:flex;align-items:center;gap:5px;}
+.themes span{font-size:10.5px;color:var(--ink3);}
+.themes button{width:18px;height:18px;border-radius:3px;border:1px solid var(--line);}
+.themes button.on{outline:2px solid var(--primary);outline-offset:1px;}
+
+.wrap{max-width:1080px;margin:22px auto;padding:0 20px;}
+.lead{margin-bottom:22px;}
+.lead h1{font-size:22px;font-weight:700;letter-spacing:-.3px;}
+.lead p{color:var(--ink2);font-size:13px;margin-top:6px;max-width:680px;}
+
+/* section */
+.sec{border:1px solid var(--line);background:var(--card);margin-bottom:16px;}
+.sec-h{background:var(--primary);color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;padding:7px 14px;display:flex;align-items:center;}
+.sec-h .n{font-family:'IBM Plex Mono';opacity:.75;margin-right:8px;font-size:11px;}
+.sec-h .r{margin-left:auto;font-weight:400;opacity:.8;font-size:10.5px;}
+.sec-b{padding:16px;}
+.desc{font-size:12px;color:var(--ink3);margin-bottom:14px;max-width:720px;line-height:1.6;}
+
+/* story */
+.story{border-left:3px solid var(--primary);background:var(--primary-t);padding:14px 16px;font-size:14px;line-height:1.7;color:var(--ink);}
+.story b{font-weight:600;}
+
+/* logo showcase */
+.logos{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.logobox{border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:130px;padding:18px;background:var(--card);}
+.logobox.dark{background:var(--primary);} .logobox.ink{background:var(--ink);}
+.logobox .cap{font-size:10.5px;color:var(--ink4);}
+.logobox.dark .cap,.logobox.ink .cap{color:rgba(255,255,255,.55);}
+.mark-lg{width:52px;height:52px;border-radius:6px;background:var(--primary);color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.mark-lg.rev{background:#fff;color:var(--primary);}
+.mark-lg.mono-mk{background:var(--ink);color:#fff;}
+.wordmark{display:flex;align-items:center;gap:9px;}
+.wordmark .m{width:26px;height:26px;border-radius:3px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.wordmark .txt{font-size:19px;font-weight:600;letter-spacing:-.2px;}
+.wordmark .txt small{font-size:12px;color:var(--ink3);font-weight:400;margin-left:4px;font-family:'IBM Plex Sans TC';}
+.dark .wordmark .txt,.ink .wordmark .txt{color:#fff;} .dark .wordmark .txt small,.ink .wordmark .txt small{color:rgba(255,255,255,.6);}
+.dark .wordmark .m,.ink .wordmark .m{background:#fff;color:var(--primary);}
+.mk-scale{display:flex;align-items:flex-end;gap:14px;}
+.mk-scale div{border-radius:3px;background:var(--primary);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;}
+
+/* color */
+.grp-t{font-size:11px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px;}
+.themes-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.theme-card{border:1px solid var(--line);}
+.theme-card .th{padding:8px 12px;font-size:12px;font-weight:600;color:#fff;display:flex;align-items:center;justify-content:space-between;}
+.theme-card .th .df{font-size:9.5px;font-weight:500;opacity:.8;border:1px solid rgba(255,255,255,.4);border-radius:2px;padding:0 4px;}
+.theme-card .steps{display:flex;}
+.theme-card .steps i{flex:1;height:34px;}
+.theme-card .meta{padding:7px 12px;font-size:10.5px;color:var(--ink3);border-top:1px solid var(--line);}
+.theme-card .meta b{color:var(--ink2);font-weight:500;}
+.sw-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+.sw{border:1px solid var(--line);}
+.sw .c{height:40px;border-bottom:1px solid var(--line);}
+.sw .m{padding:5px 7px;}
+.sw .m .nm{font-size:10.5px;font-weight:600;}
+.sw .m .hx{font-family:'IBM Plex Mono';font-size:9.5px;color:var(--ink3);}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 7px;border:1px solid;border-radius:2px;font-size:11px;font-weight:500;}
+.chip.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-t);}
+.chip.wn{color:var(--wn);border-color:var(--wn-line);background:var(--wn-t);}
+.chip.er{color:var(--er);border-color:var(--er-line);background:var(--er-t);}
+.chip.nt{color:var(--nt);border-color:var(--nt-line);background:var(--nt-t);}
+.fn-row{display:flex;gap:22px;font-size:12px;margin-top:6px;}
+.fn-row b{font-family:'IBM Plex Mono';}
+
+/* type */
+.type-specimen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.spec{border:1px solid var(--line);padding:14px 16px;}
+.spec .big{font-size:30px;line-height:1.1;margin-bottom:10px;}
+.spec .nm{font-size:12px;font-weight:600;} .spec .rl{font-size:10.5px;color:var(--ink3);margin-top:2px;}
+.scale{border:1px solid var(--line);}
+.scale .r{display:flex;align-items:baseline;gap:16px;padding:8px 14px;border-bottom:1px solid var(--line2);}
+.scale .r:last-child{border-bottom:none;}
+.scale .sp{width:120px;flex-shrink:0;font-family:'IBM Plex Mono';font-size:10.5px;color:var(--ink3);}
+
+/* signature = framed grid */
+.fg{display:grid;grid-template-columns:112px 1fr 112px 1fr;border:1px solid var(--cell);max-width:560px;}
+.fg .k{background:var(--label);text-align:right;padding:6px 10px;font-size:11.5px;color:var(--ink2);border-right:1px solid var(--cell);border-bottom:1px solid var(--cell);}
+.fg .v{padding:6px 10px;font-size:12px;border-bottom:1px solid var(--cell);}
+.fg .v.mono{font-family:'IBM Plex Mono';}
+.fg .v:nth-child(4n){border-right:0;} .fg .k{}
+.fg .v.fx{background:var(--fx-bg);color:var(--fx);font-weight:600;font-family:'IBM Plex Mono';}
+
+/* do/don't */
+.dd{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.dd .col{border:1px solid var(--line);}
+.dd .col h4{font-size:12px;font-weight:600;padding:7px 12px;color:#fff;}
+.dd .do h4{background:var(--ok);} .dd .dont h4{background:var(--er);}
+.dd ul{list-style:none;padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+.dd li{font-size:11.5px;line-height:1.5;padding-left:16px;position:relative;color:var(--ink2);}
+.dd .do li::before{content:'✓';position:absolute;left:0;color:var(--ok);font-weight:700;}
+.dd .dont li::before{content:'✕';position:absolute;left:0;color:var(--er);font-weight:700;}
+
+/* voice table */
+.voice{border:1px solid var(--line);width:100%;border-collapse:collapse;}
+.voice th{background:var(--head);text-align:left;font-size:10.5px;font-weight:600;color:var(--ink2);padding:6px 12px;border:1px solid var(--cell);}
+.voice td{font-size:11.5px;padding:6px 12px;border:1px solid var(--cell);vertical-align:top;}
+.voice td.ok{color:var(--ok);} .voice td.no{color:var(--er);}
+
+/* ── §06 元件庫 ── */
+.comp{margin-bottom:14px;}
+.clabel{font-size:11.5px;font-weight:600;color:var(--ink2);margin:2px 0 7px;display:flex;align-items:baseline;gap:8px;}
+.clabel .ref{font-family:'IBM Plex Mono';font-size:9.5px;color:var(--ink4);font-weight:400;}
+.comp-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cbtn{display:inline-flex;align-items:center;gap:5px;height:27px;padding:0 11px;border:1px solid var(--line);border-radius:2px;background:var(--card);font-size:12px;color:var(--ink2);}
+.cbtn.pri{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+.cbtn.dgr{color:var(--er);border-color:var(--er-line);}
+.cinput{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 9px;border:1px solid var(--line);border-radius:2px;background:var(--card);font-size:12px;color:var(--ink4);width:230px;}
+.cinput svg{width:12px;height:12px;}
+.cinput.focus{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-t);color:var(--ink);}
+.cseg{display:inline-flex;border:1px solid var(--line);border-radius:2px;overflow:hidden;}
+.cseg span{padding:3px 11px;font-size:11px;color:var(--ink3);border-right:1px solid var(--line);}
+.cseg span:last-child{border-right:none;} .cseg .on{background:var(--primary);color:#fff;font-weight:600;}
+.ctopbar{display:flex;align-items:stretch;height:34px;border:1px solid var(--line);border-bottom:2px solid var(--primary);background:var(--card);}
+.ctopbar span{display:flex;align-items:center;padding:0 13px;font-size:12px;color:var(--ink2);}
+.ctopbar span.on{background:var(--primary);color:#fff;font-weight:600;}
+.ctool{display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border:1px solid var(--line);background:var(--card);}
+.ctool .crumb2{font-size:11px;color:var(--ink3);margin-right:6px;} .ctool .sp{flex:1;}
+.crecnav{display:inline-flex;align-items:center;height:27px;border:1px solid var(--line);border-radius:2px;overflow:hidden;}
+.crecnav b,.crecnav .pos{border-right:1px solid var(--line);}
+.crecnav b{width:24px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-weight:400;}
+.crecnav .pos{padding:0 9px;font-family:'IBM Plex Mono';font-size:11px;color:var(--ink2);}
+.crecnav :last-child{border-right:none;}
+.crail{width:236px;border:1px solid var(--line);}
+.crail .item{padding:7px 10px;border-bottom:1px solid var(--line2);} .crail .item:last-child{border-bottom:none;}
+.crail .item.on{background:var(--primary-t);box-shadow:inset 3px 0 0 var(--primary);}
+.crail .r1{display:flex;justify-content:space-between;}
+.crail .code{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink3);} .crail .item.on .code{color:var(--primary);font-weight:600;}
+.crail .amt{font-family:'IBM Plex Mono';font-size:11.5px;font-weight:600;}
+.crail .r2{display:flex;justify-content:space-between;align-items:center;margin-top:3px;font-size:11.5px;}
+.csbar{display:flex;align-items:center;gap:18px;height:26px;padding:0 12px;border:1px solid var(--line);background:var(--head);font-size:10.5px;color:var(--ink3);}
+.csbar b{font-family:'IBM Plex Mono';color:var(--ink2);font-weight:500;} .csbar .sp{flex:1;} .csbar .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:5px;}
+.ctable{width:100%;border-collapse:collapse;border:1px solid var(--cell);}
+.ctable th{background:var(--head);font-size:10.5px;font-weight:600;color:var(--ink2);text-align:left;padding:5px 9px;border:1px solid var(--cell);}
+.ctable th.r{text-align:right;}
+.ctable td{font-size:12px;padding:5px 9px;border:1px solid var(--cell);}
+.ctable td.no{width:30px;text-align:center;font-family:'IBM Plex Mono';font-size:10.5px;color:var(--ink4);background:var(--head);}
+.ctable td.mono{font-family:'IBM Plex Mono';font-size:11px;} .ctable td.r{text-align:right;font-family:'IBM Plex Mono';}
+.ctable tr.sum td{background:var(--fx-bg);color:var(--fx);font-weight:600;border-top:2px solid var(--fx);}
+.ctable tr.bal td{background:var(--head);font-weight:600;border-top:2px solid var(--line);}
+.clist{border:1px solid var(--line);}
+.clist table{width:100%;border-collapse:collapse;}
+.clist th{background:var(--head);font-size:10.5px;font-weight:600;color:var(--ink2);text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);}
+.clist th.r{text-align:right;}
+.clist td{font-size:12px;padding:5px 10px;border-bottom:1px solid var(--line2);} .clist tr:last-child td{border-bottom:none;}
+.clist td.r{text-align:right;font-family:'IBM Plex Mono';} .clist td.code{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink2);}
+.clist tr.sel td{background:var(--primary-t);box-shadow:inset 3px 0 0 var(--primary);}
+.lib{width:100%;border-collapse:collapse;border:1px solid var(--cell);}
+.lib th{background:var(--head);text-align:left;font-size:10.5px;font-weight:600;color:var(--ink2);padding:5px 10px;border:1px solid var(--cell);}
+.lib td{font-size:11px;padding:5px 10px;border:1px solid var(--cell);} .lib td.mono{font-family:'IBM Plex Mono';color:var(--ink2);}
+
+/* ── §09+ 技術棧 / 視覺規範 ── */
+.spec-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.radius-demo{display:flex;gap:16px;align-items:flex-end;}
+.radius-demo .r{text-align:center;}
+.radius-demo .r i{display:block;width:48px;height:32px;background:var(--primary-t);border:1px solid var(--primary);}
+.radius-demo .r span{font-family:'IBM Plex Mono';font-size:10px;color:var(--ink3);margin-top:5px;display:block;}
+.radius-demo .r.no i{border-style:dashed;border-color:var(--er);background:var(--er-t);border-radius:9999px!important;}
+.shadow-demo{display:flex;gap:20px;align-items:center;}
+.shadow-demo .box{width:70px;height:44px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--ink3);}
+.shadow-demo .box.yes{border:1px solid var(--line);}
+.shadow-demo .box.no{box-shadow:0 4px 14px rgba(0,0,0,.28);position:relative;}
+.shadow-demo .box.no::after{content:'✕';position:absolute;top:-8px;right:-8px;color:var(--er);font-weight:700;}
+.spacing-demo{display:flex;gap:14px;align-items:flex-end;}
+.spacing-demo .s{text-align:center;} .spacing-demo .s i{display:block;background:var(--primary);margin:0 auto;} .spacing-demo .s span{font-family:'IBM Plex Mono';font-size:10px;color:var(--ink3);margin-top:4px;display:block;}
+.density{border:1px solid var(--line);}
+.density .row{display:flex;align-items:center;border-bottom:1px solid var(--line2);padding:0 12px;font-size:11.5px;color:var(--ink2);}
+.density .row:last-child{border-bottom:none;}
+.density .row b{font-family:'IBM Plex Mono';margin-left:auto;color:var(--ink3);font-weight:500;font-size:11px;}
+.a11y-pairs{display:flex;gap:8px;flex-wrap:wrap;}
+.a11y-pairs .p{width:88px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:11px;}
+.a11y-pairs .p small{font-family:'IBM Plex Mono';font-size:9.5px;opacity:.85;}
+.focus-demo{display:inline-flex;align-items:center;height:27px;padding:0 10px;border:1px solid var(--primary);border-radius:2px;background:var(--card);font-size:12px;color:var(--ink);outline:2px solid var(--primary);outline-offset:1px;}
+.state-box{border:1px solid var(--line);background:var(--card);padding:20px;text-align:center;color:var(--ink3);font-size:12px;}
+.state-box b{display:block;color:var(--ink2);font-size:13px;font-weight:600;margin-bottom:4px;}
+.skel{border:1px solid var(--line);background:var(--card);padding:12px;}
+.skel i{display:block;height:11px;background:var(--head);border:1px solid var(--line2);margin-bottom:7px;}
+.err-box{border:1px solid var(--er-line);background:var(--er-t);padding:10px 12px;font-size:12px;color:var(--er);}
+.err-box b{font-weight:600;} .err-box a{color:var(--er);}
+.iconrow{display:flex;gap:8px;flex-wrap:wrap;}
+.iconrow span{width:30px;height:30px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink2);}
+.iconrow svg{width:16px;height:16px;}
+.mini-h{font-size:11px;font-weight:600;color:var(--ink2);margin:0 0 6px;}
+.why{font-size:11px;line-height:1.55;color:var(--ink3);border-left:2px solid var(--primary);background:var(--primary-t);padding:6px 11px;margin:0 0 13px;}
+.why b{color:var(--ink2);font-weight:600;margin-right:5px;}
+
+/* 視圖套件樣本 §16 */
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.view-panel{border:1px solid var(--line);background:var(--card);}
+.view-panel.full{grid-column:1/-1;}
+.view-panel-h{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);background:var(--label);padding:6px 10px;font-size:11px;color:var(--ink2);}
+.view-panel-h b{font-weight:600;color:var(--ink);}
+.view-panel-h .ref{margin-left:auto;font-family:'IBM Plex Mono';font-size:10px;color:var(--ink3);}
+.view-panel-b{padding:10px;}
+/* chart */
+.chart{width:100%;height:150px;display:block;font-family:'IBM Plex Mono';}
+.chart .axis{stroke:var(--line);stroke-width:1;}
+.chart .grid{stroke:var(--cell);stroke-width:1;}
+.chart .bar{fill:var(--primary);}
+.chart .trend{fill:none;stroke:var(--wn);stroke-width:1.5;}
+.chart .tick{fill:var(--ink4);font-size:8px;}
+.chart .value{fill:var(--ink2);font-size:8px;}
+/* calendar */
+.calendar{width:100%;border-collapse:collapse;table-layout:fixed;}
+.calendar th{background:var(--head);border:1px solid var(--cell);font-size:10px;font-weight:600;color:var(--ink3);padding:3px 0;}
+.calendar td{border:1px solid var(--cell);height:44px;vertical-align:top;padding:2px 3px;font-family:'IBM Plex Mono';font-size:9px;color:var(--ink4);}
+.calendar td.off{background:var(--label);color:var(--ink4);opacity:.55;}
+.calendar .event{display:block;margin-top:2px;border:1px solid var(--primary);border-left-width:2px;background:var(--primary-t);color:var(--primary);font-family:'IBM Plex Sans TC';font-size:8.5px;padding:1px 3px;border-radius:1px;line-height:1.3;}
+.calendar .event.warn{border-color:var(--wn);background:var(--wn-t);color:var(--wn);}
+/* board(dnd-kit 看板)*/
+.board{display:flex;gap:8px;}
+.board-col{flex:1;background:var(--bg);border:1px solid var(--line);}
+.board-col h5{margin:0;font-size:10px;font-weight:600;color:var(--ink3);background:var(--head);border-bottom:1px solid var(--line);padding:4px 7px;display:flex;justify-content:space-between;}
+.board-col h5 span{font-family:'IBM Plex Mono';color:var(--ink4);}
+.board-b{padding:6px;display:flex;flex-direction:column;gap:6px;min-height:88px;}
+.board-card{border:1px solid var(--line);background:var(--card);border-left:2px solid var(--primary);padding:5px 6px 5px 7px;font-size:10.5px;color:var(--ink2);position:relative;}
+.board-card .meta{font-family:'IBM Plex Mono';font-size:9px;color:var(--ink4);display:block;margin-top:2px;}
+.board-card .grip{position:absolute;right:5px;top:5px;color:var(--ink4);letter-spacing:1px;font-size:8px;line-height:1;}
+.board-card.dragging{border-color:var(--primary);outline:2px solid var(--primary);outline-offset:-1px;}
+/* map */
+.map{position:relative;height:170px;background:var(--bg);border:1px solid var(--cell);overflow:hidden;}
+.map svg{width:100%;height:100%;display:block;}
+.map .land{fill:var(--label);stroke:var(--cell);stroke-width:1;}
+.map .road{stroke:var(--cell);stroke-width:1;fill:none;}
+.map .pin{fill:var(--primary);}
+.map .pin.warn{fill:var(--wn);}
+.map .badge{position:absolute;left:8px;bottom:8px;background:var(--card);border:1px solid var(--line);font-size:9.5px;color:var(--ink3);padding:2px 6px;font-family:'IBM Plex Mono';}
+/* editor(TipTap 富文本)*/
+.editor{border:1px solid var(--line);}
+.editor-bar{display:flex;gap:2px;border-bottom:1px solid var(--line);background:var(--head);padding:3px 4px;flex-wrap:wrap;}
+.editor-bar button{width:24px;height:22px;border:1px solid transparent;background:transparent;color:var(--ink2);font-size:11px;display:inline-flex;align-items:center;justify-content:center;border-radius:2px;cursor:default;}
+.editor-bar button.on{background:var(--primary-t);border-color:var(--primary);color:var(--primary);}
+.editor-bar .divider{width:1px;background:var(--line);margin:2px 3px;}
+.editor-doc{padding:9px 11px;font-size:11.5px;color:var(--ink2);line-height:1.55;background:var(--card);}
+.editor-doc h4{margin:0 0 5px;font-size:13px;font-weight:600;color:var(--ink);}
+.editor-doc p{margin:0 0 6px;}
+.editor-doc ul{margin:0;padding-left:16px;} .editor-doc li{margin:1px 0;}
+.editor-doc .doc-meta{font-family:'IBM Plex Mono';font-size:9.5px;color:var(--ink4);border-top:1px solid var(--cell);margin-top:8px;padding-top:5px;}
+
+.cap-note{position:fixed;left:14px;bottom:10px;font-size:11px;color:var(--ink4);background:rgba(255,255,255,.9);border:1px solid var(--line);padding:4px 9px;border-radius:3px;}
+
+/* ── 設計系統補充(2026-08-01)──────────────────────── */
+.ds-grid{display:grid;gap:8px}
+.ds-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ds-lbl{font-size:11px;color:var(--ink3);width:78px;flex:0 0 78px;font-family:'IBM Plex Mono',monospace}
+.ds-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.ds-tbl th,.ds-tbl td{border:1px solid var(--cell);padding:6px 9px;text-align:left;vertical-align:middle}
+.ds-tbl th{background:var(--head);font-weight:500;font-size:11.5px;color:var(--ink2)}
+.ds-tbl td.k{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.ds-sw{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.ds-sw .b{border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.ds-sw .b .c{height:40px}
+.ds-sw .b .t{padding:5px 6px;background:var(--card);font-size:10.5px;line-height:1.4;
+  font-family:'IBM Plex Mono',monospace;color:var(--ink3)}
+.ds-sw .b .t b{display:block;color:var(--ink);font-weight:600;font-family:Inter}
+/* Button */
+.b2{height:30px;padding:0 13px;border:0;border-radius:4px;font:inherit;font-size:13px;font-weight:500;
+  display:inline-flex;align-items:center;gap:6px;cursor:default;
+  transition:background 120ms cubic-bezier(0,0,.38,.9),box-shadow 120ms cubic-bezier(0,0,.38,.9)}
+.b2.pri{background:var(--primary);color:#fff} .b2.pri.hv{background:var(--primary-d)}
+.b2.pri.fo{outline:2px solid var(--primary);outline-offset:2px}
+.b2.sec{background:var(--head);color:var(--ink)} .b2.sec.hv{background:var(--active)}
+.b2.gho{background:transparent;color:var(--ink2);font-weight:450} .b2.gho.hv{background:var(--hover)}
+.b2.dng{background:transparent;color:var(--er);font-weight:450} .b2.dng.hv{background:var(--er-t)}
+.b2.dis{background:var(--head);color:var(--ink4)}
+.b2.sm{height:26px;padding:0 10px;font-size:12px} .b2.lg{height:36px;padding:0 17px;font-size:14px}
+/* Select —— 高度吃控件階(30px,與 Button 同)、間距鎖 4/8、圖示用 Lucide 非自繪 */
+.sel{height:30px;padding:0 8px;border:1px solid var(--cell);border-radius:4px;
+  background:var(--card);font:inherit;font-size:13px;color:var(--ink);display:inline-flex;
+  align-items:center;gap:8px;justify-content:space-between}
+.sel .cv{flex:0 0 16px;color:var(--ink3)}
+.sel.fo{border-color:transparent;outline:2px solid var(--primary);outline-offset:-1px}
+.sel.dis{background:var(--head);color:var(--ink4)}
+.sel.dis .cv{color:var(--ink4)}
+.selm{border-radius:6px;background:var(--card);padding:4px;
+  box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.05)}
+.selm i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:30px;
+  padding:0 8px;border-radius:4px}
+.selm i.on{background:var(--active);font-weight:500}
+.selm i:hover{background:var(--hover)}
+.selm i .ck{margin-left:auto;color:var(--primary);flex:0 0 14px}
+/* Loading —— 🔴 只動 opacity 與 transform(§12);禁 background-position / margin 等會觸發 layout 者 */
+.skl{background:var(--head);border-radius:3px;animation:sk 1.6s ease-in-out infinite}
+@keyframes sk{0%,100%{opacity:1}50%{opacity:.55}}
+.spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--primary);
+  border-radius:50%;animation:sp 1s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.prog{height:2px;background:var(--line2);border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;width:38%;background:var(--primary);
+  animation:pg 1.6s cubic-bezier(.2,0,.38,.9) infinite}
+@keyframes pg{0%{transform:translateX(-100%)}100%{transform:translateX(363%)}}
+/* 🔴 §12 的硬規則要**實作**,不能只寫在散文裡 —— 這個檔案先前就只有規則沒有實作。 */
+@media (prefers-reduced-motion: reduce){
+  .skl,.spin,.prog i,.lamp .d.pulse{animation:none!important}
+  .skl{opacity:.8}
+  .spin{border-top-color:var(--primary);opacity:.9}
+  .prog i{width:100%;opacity:.5}
+}
+/* 燈號 / Pill / 狀態章 */
+.lamp{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
+.lamp .d{width:7px;height:7px;border-radius:50%;flex:0 0 7px}
+.lamp .d.ok{background:var(--ok)} .lamp .d.wn{background:var(--wn)}
+.lamp .d.er{background:var(--er)} .lamp .d.nt{background:var(--ink4)}
+.lamp .d.pulse{animation:pl 1.6s ease-in-out infinite}
+@keyframes pl{0%,100%{opacity:1}50%{opacity:.35}}
+.pill2{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;
+  font-size:11.5px;font-weight:500;background:var(--head);color:var(--ink2)}
+.pill2.num{font-family:'IBM Plex Mono',monospace;padding:1px 7px}
+.pill2.rm::after{content:"×";color:var(--ink4);font-weight:400}
+.chip3{display:inline-block;border-radius:3px;border:1px solid;padding:1px 7px;font-size:12px;font-weight:500}
+.chip3.ok{color:var(--ok);background:var(--ok-t);border-color:var(--ok-line)}
+.chip3.wn{color:var(--wn);background:var(--wn-t);border-color:var(--wn-line)}
+.chip3.er{color:var(--er);background:var(--er-t);border-color:var(--er-line)}
+.chip3.nt{color:var(--nt);background:var(--nt-t);border-color:var(--nt-line)}
+.mo{height:34px;border-radius:4px;background:var(--head);position:relative;overflow:hidden}
+.mo i{position:absolute;left:0;top:0;bottom:0;width:34px;background:var(--primary);border-radius:4px}
+
+/* ── 訊息與浮層 ────────────────────────────────── */
+/* Alert —— 每個值都有來源,見 §19 的「值的出處」表。
+   語意色一律**三值出現**(字 / 框 / 底),與狀態章同一套語言。
+   🔴 不用 opacity 造次級文字 —— 那會讓對比隨底色浮動(docs/28 A3 已否決此做法)。 */
+.al{display:flex;gap:8px;padding:12px;border-radius:6px;border:1px solid;align-items:flex-start}
+.al .ic{flex:0 0 16px;margin-top:2px}
+.al .bd{min-width:0;flex:1}
+.al .bd b{display:block;font-size:13px;font-weight:600;line-height:18px}
+.al .bd p{font-size:13px;font-weight:400;line-height:18px;color:var(--ink2);margin-top:4px}
+.al .act{display:flex;gap:4px;margin-top:8px}
+.al .lk{font-size:13px;font-weight:500;line-height:18px;background:none;border:0;padding:0;
+  cursor:default;text-decoration:underline;text-underline-offset:2px;color:inherit;font-family:inherit}
+.al .x{flex:0 0 24px;height:24px;margin:-3px -4px 0 0;border:0;background:none;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:default}
+/* hover 底由該 Alert 的語意色推導 —— 不用 raw rgba,也不用固定中性色
+     (固定中性在四種語意底上深淺不一致)。 */
+.al .x:hover{background:color-mix(in srgb, currentColor, transparent 90%)}
+.al.info{background:var(--primary-t);border-color:var(--primary-t);color:var(--primary-d)}
+.al.ok{background:var(--ok-t);border-color:var(--ok-line);color:var(--ok)}
+.al.wn{background:var(--wn-t);border-color:var(--wn-line);color:var(--wn)}
+.al.er{background:var(--er-t);border-color:var(--er-line);color:var(--er)}
+/* 全域橫幅:方角、貼齊視窗、只留下緣一條 token 線(不用 raw rgba) */
+.al.bar{border-radius:0;border-left:0;border-right:0;border-top:0;
+  border-bottom:1px solid var(--line);padding:10px 16px}
+.toast{display:flex;gap:9px;align-items:center;padding:9px 12px;border-radius:6px;
+  background:var(--ink);color:var(--card);font-size:13px;
+  box-shadow:0 12px 28px -10px rgba(15,23,32,.34),0 2px 6px rgba(15,23,32,.12)}
+.toast .u{margin-left:8px;color:#8fb6e0;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.dlg{width:420px;border-radius:9px;background:var(--card);overflow:hidden;
+  box-shadow:0 0 0 1px var(--line),0 24px 48px -16px rgba(15,23,32,.28),0 4px 10px rgba(15,23,32,.08)}
+.dlg .h{padding:16px 18px 0}
+.dlg .h b{font-size:15px;font-weight:600;letter-spacing:-.012em;display:block}
+.dlg .h p{font-size:13px;color:var(--ink3);margin-top:6px;line-height:1.6}
+.dlg .ft{display:flex;gap:8px;justify-content:flex-end;padding:16px 18px}
+.dlg .obj{margin:12px 18px 0;padding:8px 10px;border-radius:4px;background:var(--head);
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+.drw{width:300px;border-radius:9px 0 0 9px;background:var(--card);padding:16px;
+  box-shadow:0 0 0 1px var(--line),-14px 0 32px -14px rgba(15,23,32,.22)}
+.pop{width:216px;border-radius:6px;background:var(--card);padding:6px;
+  box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18)}
+.pop i{display:flex;align-items:center;gap:8px;font-style:normal;font-size:13px;height:30px;
+  padding:0 8px;border-radius:4px}
+.pop i:hover{background:var(--hover)}
+.pop i.dg{color:var(--er)} .pop i.dg:hover{background:var(--er-t)}
+.tip{display:inline-block;background:var(--ink);color:var(--card);font-size:12px;
+  padding:4px 8px;border-radius:4px}
+.layers{display:grid;grid-template-columns:88px 1fr;font-size:12.5px}
+.layers dt{padding:6px 0;font-family:'IBM Plex Mono',monospace;color:var(--ink3);box-shadow:inset 0 1px 0 var(--s6)}
+.layers dd{padding:6px 0;box-shadow:inset 0 1px 0 var(--s6)}
+
+/* ── §18 多租戶身分 ─────────────────────────── */
+.who{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.who th,.who td{border:1px solid var(--cell);padding:6px 9px;text-align:left;vertical-align:top}
+.who th{background:var(--head);font-weight:500;font-size:11.5px;color:var(--ink2)}
+.who td.t{color:var(--primary);font-weight:600;white-space:nowrap}
+.who td.w{color:var(--ink2);font-weight:600;white-space:nowrap}
+.who td.n2{color:var(--ink3);font-weight:500;white-space:nowrap}
+.tlogo{width:30px;height:30px;border-radius:5px;background:var(--primary);color:#fff;display:flex;
+  align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:0 0 30px}
+
+/* ── §21 設計器重構 ─────────────────────────── */
+.cmp2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cmp2 > div > .lbl{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  margin-bottom:8px;color:var(--ink3)}
+.cmp2 .bad .lbl{color:var(--er)} .cmp2 .good .lbl{color:var(--ok)}
+.mini{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg);
+  height:290px;display:flex;font-size:9.5px;line-height:1.5}
+.mini .r{width:18px;background:var(--head);flex:0 0 18px}
+.mini .c{border-right:1px solid var(--line);background:var(--card);padding:5px 4px;overflow:hidden;flex:0 0 auto}
+.mini .cv{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+.mini .bd{background:var(--card);border-bottom:1px solid var(--line);padding:4px 6px;
+  display:flex;align-items:center;gap:4px;flex:0 0 auto}
+.mini .bd.warn{background:var(--wn-t);color:var(--wn);display:block}
+.mini .sheet{flex:1;padding:8px;overflow:hidden}
+.mini .card2{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:4px 5px;margin-bottom:4px}
+.mini table{width:100%;border-collapse:collapse;font-size:9px;background:var(--card)}
+.mini td,.mini th{border:1px solid var(--cell);padding:3px 4px;text-align:left}
+.mini th{background:var(--head);width:34%;font-weight:500;color:var(--ink2)}
+.mini .ghost{border:1px dashed var(--s8);border-radius:3px;padding:4px;text-align:center;
+  color:var(--ink3);margin-top:4px;background:var(--card)}
+.mini .drw2{width:74px;flex:0 0 74px;background:var(--card);border-left:1px solid var(--line);padding:5px 4px}
+.mm{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.mm th,.mm td{border:1px solid var(--cell);padding:7px 9px;text-align:left;vertical-align:top}
+.mm th{background:var(--head);font-size:11.5px;font-weight:500;color:var(--ink2)}
 </style>
 </head>
 <body>
-<svg data-dc-tpl="4" width="0" height="0" style="position: absolute;">
-  <defs data-dc-tpl="5">
-    <symbol data-dc-tpl="6" id="weyver-mark" viewBox="0 0 120 120">
-      <rect data-dc-tpl="7" x="10" y="20" width="42" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="8" x="68" y="20" width="42" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="9" x="10" y="52" width="10" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="10" x="36" y="52" width="48" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="11" x="100" y="52" width="10" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="12" x="10" y="84" width="42" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="13" x="68" y="84" width="42" height="16" fill="oklch(24% 0.02 260)"></rect>
-      <rect data-dc-tpl="14" x="20" y="10" width="16" height="10" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="15" x="20" y="36" width="16" height="48" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="16" x="20" y="100" width="16" height="10" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="17" x="52" y="10" width="16" height="42" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="18" x="52" y="68" width="16" height="42" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="19" x="84" y="10" width="16" height="10" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="20" x="84" y="36" width="16" height="48" fill="oklch(58% 0.15 240)"></rect>
-      <rect data-dc-tpl="21" x="84" y="100" width="16" height="10" fill="oklch(58% 0.15 240)"></rect>
-    </symbol>
-    <symbol data-dc-tpl="22" id="weyver-mark-mono" viewBox="0 0 120 120">
-      <rect data-dc-tpl="23" x="10" y="20" width="42" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="24" x="68" y="20" width="42" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="25" x="10" y="52" width="10" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="26" x="36" y="52" width="48" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="27" x="100" y="52" width="10" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="28" x="10" y="84" width="42" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="29" x="68" y="84" width="42" height="16" fill="currentColor"></rect>
-      <rect data-dc-tpl="30" x="20" y="10" width="16" height="10" fill="currentColor"></rect>
-      <rect data-dc-tpl="31" x="20" y="36" width="16" height="48" fill="currentColor"></rect>
-      <rect data-dc-tpl="32" x="20" y="100" width="16" height="10" fill="currentColor"></rect>
-      <rect data-dc-tpl="33" x="52" y="10" width="16" height="42" fill="currentColor"></rect>
-      <rect data-dc-tpl="34" x="52" y="68" width="16" height="42" fill="currentColor"></rect>
-      <rect data-dc-tpl="35" x="84" y="10" width="16" height="10" fill="currentColor"></rect>
-      <rect data-dc-tpl="36" x="84" y="36" width="16" height="48" fill="currentColor"></rect>
-      <rect data-dc-tpl="37" x="84" y="100" width="16" height="10" fill="currentColor"></rect>
-    </symbol>
-  </defs></svg>
-<div style="font-family: Inter, sans-serif; color: oklch(0.24 0.02 260); max-width: 1240px; margin: 0px auto;">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="wm" viewBox="0 0 120 120">
+<rect x="10" y="20" width="42" height="16" fill="var(--brand-ink)"/><rect x="68" y="20" width="42" height="16" fill="var(--brand-ink)"/>
+<rect x="10" y="52" width="10" height="16" fill="var(--brand-ink)"/><rect x="36" y="52" width="48" height="16" fill="var(--brand-ink)"/>
+<rect x="100" y="52" width="10" height="16" fill="var(--brand-ink)"/><rect x="10" y="84" width="42" height="16" fill="var(--brand-ink)"/>
+<rect x="68" y="84" width="42" height="16" fill="var(--brand-ink)"/>
+<rect x="20" y="10" width="16" height="10" fill="var(--thread)"/><rect x="20" y="36" width="16" height="48" fill="var(--thread)"/>
+<rect x="20" y="100" width="16" height="10" fill="var(--thread)"/><rect x="52" y="10" width="16" height="42" fill="var(--thread)"/>
+<rect x="52" y="68" width="16" height="42" fill="var(--thread)"/><rect x="84" y="10" width="16" height="10" fill="var(--thread)"/>
+<rect x="84" y="36" width="16" height="48" fill="var(--thread)"/><rect x="84" y="100" width="16" height="10" fill="var(--thread)"/>
+</symbol>
+<symbol id="wm-mono" viewBox="0 0 120 120">
+<rect x="10" y="20" width="42" height="16"/><rect x="68" y="20" width="42" height="16"/>
+<rect x="10" y="52" width="10" height="16"/><rect x="36" y="52" width="48" height="16"/>
+<rect x="100" y="52" width="10" height="16"/><rect x="10" y="84" width="42" height="16"/>
+<rect x="68" y="84" width="42" height="16"/>
+<rect x="20" y="10" width="16" height="10" opacity=".5"/><rect x="20" y="36" width="16" height="48" opacity=".5"/>
+<rect x="20" y="100" width="16" height="10" opacity=".5"/><rect x="52" y="10" width="16" height="42" opacity=".5"/>
+<rect x="52" y="68" width="16" height="42" opacity=".5"/><rect x="84" y="10" width="16" height="10" opacity=".5"/>
+<rect x="84" y="36" width="16" height="48" opacity=".5"/><rect x="84" y="100" width="16" height="10" opacity=".5"/>
+</symbol></defs></svg>
 
-
-  <section data-dc-tpl="39" style="background: oklch(0.18 0.015 260); padding: 120px 64px 100px; display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center;">
-    <svg data-dc-tpl="40" viewBox="0 0 120 120" width="128" height="128"><use data-dc-tpl="41" href="#weyver-mark"></use></svg>
-    <div data-dc-tpl="42" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-      <div data-dc-tpl="43" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 64px; letter-spacing: -0.02em; color: oklch(0.97 0.004 260);">Weyver</div>
-      <div data-dc-tpl="44" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-weight: 700; font-size: 26px; letter-spacing: 0.18em; color: oklch(0.7 0.02 260);">織 雲</div>
+  <div class="top">
+    <div class="mk">W</div>
+    <span class="t">Weyver<small>織雲</small></span>
+    <span class="v">品牌與介面設計系統 v3 · 2026-08-01</span>
+    <!-- 色塊以 data-theme + var(--primary) 上色,不寫死 hex ——
+         產品端的 theme-switcher 曾寫死舊值,結果「點下去的顏色和切出來的主題不同」。 -->
+    <div class="themes"><span>主題</span>
+      <button class="on" data-t="" data-theme="navy" style="background:var(--primary)" title="深藍"></button>
+      <button data-t="teal" data-theme="teal" style="background:var(--primary)" title="深海青"></button>
+      <button data-t="graphite" data-theme="graphite" style="background:var(--primary)" title="石墨"></button>
     </div>
-    <div data-dc-tpl="45" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 17px; color: oklch(0.65 0.02 260); max-width: 480px; line-height: 1.8; margin-top: 8px;">
-      三套 ERP、五份 Excel、十個表單——都是線頭。<br data-dc-tpl="46">Weyver 是把它們織成一體、看得見全貌的織者。
+  </div>
+
+  <div class="wrap">
+    <div class="lead">
+      <h1>Weyver 織雲 — 品牌識別 + 前端視覺技術棧(開發前 review)</h1>
+      <p>單頁涵蓋 <b style="color:var(--ink2)">docs/26 品牌</b>(§01–08、§16)+ <b style="color:var(--ink2)">docs/14 前端設計規則與技術棧</b>全部視覺與技術決策(§06 元件庫、§09 技術棧、§10–15 視覺規範),供<b>開發前一次 review</b>。本頁本身照 <b style="color:var(--ink2)">docs/14 v6.1</b>(全框線 / 方角 / 禁陰影 / IBM Plex / 內文 14px 地板 12px);色票與字階<b>已於 2026-08-01 對齊 shipped tokens.css v3.0</b> —— 先前停在 v2.1 的舊值,與產品實際不同。右上切換三配色主題,全站即時換色。</p>
+      <p style="margin-top:8px"><b style="color:var(--ink2)">審閱原則</b>|依 <b style="color:var(--ink2)">docs/11 §7.1</b>「每個 UI 決策有 rationale,不用 vibe」—— 各決策段開頭附<b style="color:var(--ink2)">理由</b>行,評審請就理據挑戰,而非只看好不好看。</p>
     </div>
-  </section>
 
-  <section data-dc-tpl="47" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="48" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">設計說明</div>
-    <div data-dc-tpl="49" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 16px; line-height: 1.9; color: oklch(0.35 0.015 260); max-width: 640px;">
-      符號以經緯交織的幾何結構呈現「多股線頭收斂成一體」——橫向色塊代表原本分散的系統，縱向色塊代表 Weyver 的織理，兩者以嚴謹的網格互鎖，不使用雲朵、漸層等字面裝飾。「織」與「雲」的隱喻只存在於命名與敘事，產品介面的品牌感應完全來自結構本身的嚴謹與秩序。
-    </div>
-  </section>
+    <!-- 品牌故事 -->
+    <div class="sec"><div class="sec-h"><span class="n">01</span>品牌故事</div><div class="sec-b">
+      <div class="story">客戶散落的三套 ERP、五份 Excel、十個 Ragic 表單 —— 都是<b>線頭</b>;<b>Weyver(織雲)</b> 是把它們<b>織成一整朵雲</b>的織者。一個平台,看得見全貌。</div>
+      <div class="desc" style="margin-top:12px;margin-bottom:0"><b style="color:var(--ink2)">隱喻邊界</b>|織/雲存於<b style="color:var(--ink2)">敘事與命名</b>,不外顯為介面裝飾。產品內禁雲朵/漸層;介面的品牌感來自<b style="color:var(--ink2)">嚴謹的結構本身</b>(見 §06)。</div>
+    </div></div>
 
-  <section data-dc-tpl="50" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px; align-items: start;">
-    <div data-dc-tpl="51" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">符號構成</div>
-    <div data-dc-tpl="52" style="display: flex; gap: 80px; flex-wrap: wrap; align-items: center;">
-      <div data-dc-tpl="53" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-        <div data-dc-tpl="54" style="position: relative; padding: 32px; border: 1px dashed oklch(0.8 0.01 260);">
-          <svg data-dc-tpl="55" viewBox="0 0 120 120" width="140" height="140"><use data-dc-tpl="56" href="#weyver-mark"></use></svg>
-        </div>
-        <div data-dc-tpl="57" style="font-size: 12px; color: oklch(0.55 0.02 260);">安全淨空 = 符號寬度的 1/3</div>
-      </div>
-      <div data-dc-tpl="58" style="display: flex; flex-direction: column; gap: 20px; max-width: 340px;">
-        <div data-dc-tpl="59" style="display: flex; align-items: center; gap: 14px;">
-          <svg data-dc-tpl="60" viewBox="0 0 120 120" width="16" height="16"><use data-dc-tpl="61" href="#weyver-mark"></use></svg>
-          <span data-dc-tpl="62" style="font-size: 13px; color: oklch(0.45 0.015 260);">數位最小尺寸 16px</span>
-        </div>
-        <div data-dc-tpl="63" style="display: flex; align-items: center; gap: 14px;">
-          <svg data-dc-tpl="64" viewBox="0 0 120 120" width="8" height="8"><use data-dc-tpl="65" href="#weyver-mark"></use></svg>
-          <span data-dc-tpl="66" style="font-size: 13px; color: oklch(0.45 0.015 260);">印刷最小尺寸 8mm</span>
-        </div>
-        <div data-dc-tpl="67" style="font-size: 13px; color: oklch(0.45 0.015 260); line-height: 1.8; padding-top: 8px; border-top: 1px solid oklch(0.9 0.005 260);">
-          橫向 7 個色塊、縱向 8 個色塊，以 3×3 網格互鎖交織，象徵多源系統收斂為單一結構。
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section data-dc-tpl="68" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="69" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">色彩</div>
-    <div data-dc-tpl="70" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
-      <div data-dc-tpl="71" style="display: flex; flex-direction: column; gap: 10px;">
-        <div data-dc-tpl="72" style="height: 88px; border-radius: 4px; background: oklch(0.24 0.02 260);"></div>
-        <div data-dc-tpl="73" style="font-size: 13px; font-weight: 600;">Ink 墨</div>
-        <div data-dc-tpl="74" style="font-size: 12px; color: oklch(0.55 0.02 260); font-family: monospace;">oklch(24% .02 260)</div>
-      </div>
-      <div data-dc-tpl="75" style="display: flex; flex-direction: column; gap: 10px;">
-        <div data-dc-tpl="76" style="height: 88px; border-radius: 4px; background: oklch(0.58 0.15 240);"></div>
-        <div data-dc-tpl="77" style="font-size: 13px; font-weight: 600;">Thread Blue 織藍</div>
-        <div data-dc-tpl="78" style="font-size: 12px; color: oklch(0.55 0.02 260); font-family: monospace;">oklch(58% .15 240)</div>
-      </div>
-      <div data-dc-tpl="79" style="display: flex; flex-direction: column; gap: 10px;">
-        <div data-dc-tpl="80" style="height: 88px; border-radius: 4px; background: oklch(0.6 0.01 260); border: 1px solid oklch(0.9 0.005 260);"></div>
-        <div data-dc-tpl="81" style="font-size: 13px; font-weight: 600;">Neutral 中灰</div>
-        <div data-dc-tpl="82" style="font-size: 12px; color: oklch(0.55 0.02 260); font-family: monospace;">oklch(60% .01 260)</div>
-      </div>
-      <div data-dc-tpl="83" style="display: flex; flex-direction: column; gap: 10px;">
-        <div data-dc-tpl="84" style="height: 88px; border-radius: 4px; background: oklch(0.97 0.004 260); border: 1px solid oklch(0.9 0.005 260);"></div>
-        <div data-dc-tpl="85" style="font-size: 13px; font-weight: 600;">Paper 底色</div>
-        <div data-dc-tpl="86" style="font-size: 12px; color: oklch(0.55 0.02 260); font-family: monospace;">oklch(97% .004 260)</div>
-      </div>
-    </div>
-  </section>
-
-  <section data-dc-tpl="87" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="88" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">字體</div>
-    <div data-dc-tpl="89" style="display: flex; flex-direction: column; gap: 28px;">
-      <div data-dc-tpl="90">
-        <div data-dc-tpl="91" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 52px; letter-spacing: -0.02em;">Weyver</div>
-        <div data-dc-tpl="92" style="font-size: 12px; color: oklch(0.55 0.02 260); margin-top: 4px;">Inter Extrabold — 品牌名稱、標題</div>
-      </div>
-      <div data-dc-tpl="93">
-        <div data-dc-tpl="94" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-weight: 900; font-size: 40px; letter-spacing: 0.1em;">織雲</div>
-        <div data-dc-tpl="95" style="font-size: 12px; color: oklch(0.55 0.02 260); margin-top: 4px;">Noto Sans TC Black — 中文敘事、副標</div>
-      </div>
-      <div data-dc-tpl="96" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 16px; color: oklch(0.35 0.015 260); line-height: 1.7; max-width: 560px;">
-        內文與介面統一使用 Inter（英數）＋ Noto Sans TC（中文），僅用 Regular / Medium / Semibold / Bold 四階，維持嚴謹一致的結構感。
-      </div>
-    </div>
-  </section>
-
-  <section data-dc-tpl="97" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="98" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">組合方式</div>
-    <div data-dc-tpl="99" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-      <div data-dc-tpl="100" style="display: flex; align-items: center; gap: 16px; padding: 32px 24px; background: white; border: 1px solid oklch(0.9 0.005 260); border-radius: 4px;">
-        <svg data-dc-tpl="101" viewBox="0 0 120 120" width="40" height="40"><use data-dc-tpl="102" href="#weyver-mark"></use></svg>
-        <span data-dc-tpl="103" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 24px; letter-spacing: -0.02em;">Weyver</span>
-      </div>
-      <div data-dc-tpl="104" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px 24px; background: white; border: 1px solid oklch(0.9 0.005 260); border-radius: 4px;">
-        <svg data-dc-tpl="105" viewBox="0 0 120 120" width="40" height="40"><use data-dc-tpl="106" href="#weyver-mark"></use></svg>
-        <span data-dc-tpl="107" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.02em;">Weyver</span>
-      </div>
-      <div data-dc-tpl="108" style="display: flex; align-items: center; justify-content: center; padding: 32px 24px; background: white; border: 1px solid oklch(0.9 0.005 260); border-radius: 4px;">
-        <svg data-dc-tpl="109" viewBox="0 0 120 120" width="44" height="44"><use data-dc-tpl="110" href="#weyver-mark"></use></svg>
-      </div>
-      <div data-dc-tpl="111" style="display: flex; align-items: center; gap: 16px; padding: 32px 24px; background: oklch(0.18 0.015 260); border-radius: 4px;">
-        <svg data-dc-tpl="112" viewBox="0 0 120 120" width="40" height="40" style="color: oklch(0.97 0.004 260);"><use data-dc-tpl="113" href="#weyver-mark-mono"></use></svg>
-        <span data-dc-tpl="114" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 24px; color: oklch(0.97 0.004 260); letter-spacing: -0.02em;">Weyver</span>
-      </div>
-      <div data-dc-tpl="115" style="display: flex; align-items: center; gap: 16px; padding: 32px 24px; background: white; border: 1px solid oklch(0.9 0.005 260); border-radius: 4px;">
-        <svg data-dc-tpl="116" viewBox="0 0 120 120" width="40" height="40" style="color: oklch(0.24 0.02 260);"><use data-dc-tpl="117" href="#weyver-mark-mono"></use></svg>
-        <span data-dc-tpl="118" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 24px; letter-spacing: -0.02em;">Weyver</span>
-      </div>
-      <div data-dc-tpl="119" style="display: flex; align-items: center; gap: 16px; padding: 32px 24px; background: oklch(0.58 0.15 240); border-radius: 4px;">
-        <svg data-dc-tpl="120" viewBox="0 0 120 120" width="40" height="40" style="color: white;"><use data-dc-tpl="121" href="#weyver-mark-mono"></use></svg>
-        <span data-dc-tpl="122" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 24px; color: white; letter-spacing: -0.02em;">Weyver</span>
-      </div>
-    </div>
-  </section>
-
-  <section data-dc-tpl="123" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="124" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">Loading 狀態</div>
-    <div data-dc-tpl="125" style="display: flex; flex-direction: column; gap: 40px;">
-
-      <div data-dc-tpl="126">
-        <div data-dc-tpl="127" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px;">1. Skeleton</div>
-        <div data-dc-tpl="128" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">首次載入、已知版面——形狀等於最終內容，避免版位跳動</div>
-        <div data-dc-tpl="129" style="max-width: 460px; border: 1px solid oklch(0.9 0.005 260); overflow: hidden;">
-          <div data-dc-tpl="130" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid oklch(0.92 0.004 260);">
-            <div data-dc-tpl="131" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; width: 32px; height: 32px; flex-shrink: 0;"></div>
-            <div data-dc-tpl="132" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 12px; width: 120px;"></div>
-            <div data-dc-tpl="133" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 12px; width: 60px; margin-left: auto;"></div>
-          </div>
-          <div data-dc-tpl="134" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: oklch(0.92 0.004 260);">
-            <div data-dc-tpl="135" style="background: white; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-              <div data-dc-tpl="136" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 10px; width: 50%;"></div>
-              <div data-dc-tpl="137" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 20px; width: 70%;"></div>
-            </div>
-            <div data-dc-tpl="138" style="background: white; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-              <div data-dc-tpl="139" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 10px; width: 50%;"></div>
-              <div data-dc-tpl="140" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 20px; width: 70%;"></div>
-            </div>
-            <div data-dc-tpl="141" style="background: white; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-              <div data-dc-tpl="142" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 10px; width: 50%;"></div>
-              <div data-dc-tpl="143" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 20px; width: 70%;"></div>
-            </div>
-          </div>
-          <div data-dc-tpl="144" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; position: relative;">
-            <div data-dc-tpl="145" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 12px; width: 92%;"></div>
-            <div data-dc-tpl="146" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 12px; width: 78%;"></div>
-            <div data-dc-tpl="147" style="background: oklch(0.93 0.004 260); position: relative; overflow: hidden; height: 12px; width: 85%;"></div>
-            <div data-wv-scan <div data-dc-tpl="148" style="position: absolute; top: 0px; bottom: 0px; width: 2px; background: oklch(0.58 0.15 240); left: 70.368%; box-shadow: oklch(0.58 0.15 240 / 0.6) 0px 0px 8px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="149">
-        <div data-dc-tpl="150" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px;">2. Spinner</div>
-        <div data-dc-tpl="151" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">動作進行中、無法得知進度——僅用於按鈕或局部區塊，不得全頁遮罩</div>
-        <div data-dc-tpl="152" style="display: flex; gap: 16px; align-items: center;">
-          <button data-dc-tpl="153" style="display: flex; align-items: center; gap: 10px; padding: 11px 22px; background: oklch(0.24 0.02 260); color: white; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; border-radius: 4px; font-family: Inter, sans-serif; font-size: 14px; font-weight: 600;">
-            <span data-dc-tpl="154" style="width: 22px; height: 22px; display: inline-flex;"><svg viewBox="0 0 120 120" width="100%" height="100%" data-wv="spin" data-wv-mono="1"><rect x="8" y="8" width="34" height="22" opacity="1" fill="white"></rect><rect x="78" y="8" width="34" height="22" opacity="1" fill="white"></rect><rect x="8" y="90" width="34" height="22" opacity="1" fill="white"></rect><rect x="78" y="90" width="34" height="22" opacity="1" fill="white"></rect><rect x="44" y="8" width="32" height="104" opacity="1" fill="white"></rect></svg></span>
-            儲存中
-          </button>
-          <div data-dc-tpl="155" style="display: flex; align-items: center; gap: 10px; padding: 9px 16px; border: 1px solid oklch(0.9 0.005 260); border-radius: 4px;">
-            <span data-dc-tpl="156" style="width: 22px; height: 22px; display: inline-flex;"><svg viewBox="0 0 120 120" width="100%" height="100%" data-wv="spin"><rect x="8" y="8" width="34" height="22" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="78" y="8" width="34" height="22" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="8" y="90" width="34" height="22" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="78" y="90" width="34" height="22" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="44" y="8" width="32" height="104" opacity="1" fill="oklch(58% 0.15 240)"></rect></svg></span>
-            <span data-dc-tpl="157" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.45 0.015 260);">同步資料源</span>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="158">
-        <div data-dc-tpl="159" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px;">3. Progress</div>
-        <div data-dc-tpl="160" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">背景任務（匯入 / 匯出）——已知百分比就顯示百分比，不用不確定條偽裝</div>
-        <div data-dc-tpl="161" style="max-width: 420px; display: flex; align-items: center; gap: 20px;">
-          <div data-dc-tpl="162" style="font-family: Inter, sans-serif; font-weight: 800; font-size: 40px; line-height: 1; color: oklch(0.24 0.02 260); font-variant-numeric: tabular-nums; min-width: 90px;"><span class="sc-interp" data-wv-pct>56</span><span data-dc-tpl="163" style="font-size: 18px; font-weight: 700; color: oklch(0.55 0.02 260);">%</span></div>
-          <div data-dc-tpl="164" style="flex: 1 1 0%; display: flex; flex-direction: column; gap: 8px;">
-            <div data-dc-tpl="165" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.35 0.015 260);">匯出中 — Ragic 表單 (3/10)</div>
-            <div data-dc-tpl="166" style="display: flex; gap: 2px; height: 10px;">
-              
-                <div data-dc-tpl="168" style="flex: 3 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="0" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.24 0.02 260); transform: scaleX(1); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 1 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="1" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.58 0.15 240); transform: scaleX(1); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 4 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="2" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.24 0.02 260); transform: scaleX(1); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 2 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="3" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.58 0.15 240); transform: scaleX(1); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 3 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="4" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.24 0.02 260); transform: scaleX(0.96); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 1 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="5" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.58 0.15 240); transform: scaleX(0); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 4 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="6" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.24 0.02 260); transform: scaleX(0); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 2 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="7" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.58 0.15 240); transform: scaleX(0); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-                <div data-dc-tpl="168" style="flex: 3 1 0%; position: relative; height: 100%; border-radius: 1px; background: oklch(0.91 0.004 260); overflow: hidden;">
-                  <div data-wv-seg="8" data-dc-tpl="169" style="position: absolute; inset: 0px; border-radius: 1px; background: oklch(0.24 0.02 260); transform: scaleX(0); transform-origin: left center; transition: transform 0.2s linear;"></div>
-                </div>
-              
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="170">
-        <div data-dc-tpl="171" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px;">4. Page Loading</div>
-        <div data-dc-tpl="172" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">整頁 / 路由切換載入——取代文字「載入中...」，符號收斂即為載入狀態的品牌時刻</div>
-        <div data-dc-tpl="173" style="max-width: 420px; height: 220px; border: 1px solid oklch(0.9 0.005 260); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
-          <span data-dc-tpl="174" style="width: 56px; height: 56px; display: inline-flex;"><svg viewBox="0 0 120 120" width="100%" height="100%" data-wv="full"><rect x="10" y="20" width="42" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="68" y="20" width="42" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="10" y="52" width="10" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="36" y="52" width="48" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="100" y="52" width="10" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="10" y="84" width="42" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="68" y="84" width="42" height="16" opacity="1" fill="oklch(24% 0.02 260)"></rect><rect x="20" y="10" width="16" height="10" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="20" y="36" width="16" height="48" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="20" y="100" width="16" height="10" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="52" y="10.294439082666674" width="16" height="42" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="52" y="66.83676950042371" width="16" height="42" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="84" y="12.298051071004865" width="16" height="10" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="84" y="39.384031992287674" width="16" height="48" opacity="1" fill="oklch(58% 0.15 240)"></rect><rect x="84" y="95.89369554124004" width="16" height="10" opacity="1" fill="oklch(58% 0.15 240)"></rect></svg></span>
-          <span data-dc-tpl="175" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.55 0.02 260); letter-spacing: 0.05em;">正在載入 Weyver</span>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <section data-dc-tpl="176" style="padding: 72px 64px; border-bottom: 1px solid oklch(0.9 0.005 260); display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="177" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">互動元件規範</div>
-    <div data-dc-tpl="178" style="display: flex; flex-direction: column; gap: 40px;">
-
-      <div data-dc-tpl="179">
-        <div data-dc-tpl="180" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-          <span data-dc-tpl="181" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">Alert</span>
-          <span data-dc-tpl="182" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 否（可關）／打斷: 否</span>
-        </div>
-        <div data-dc-tpl="183" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">與某個位置綁定的狀態——表單錯誤、額度將滿、系統維護。<b data-dc-tpl="184" style="color: oklch(0.53 0.18 25);">錯誤一律用 Alert，不用 Toast</b>——Toast 會在讀完前消失。</div>
-        <div data-dc-tpl="185" style="display: flex; flex-direction: column; gap: 9px; max-width: 580px; font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-          <div data-dc-tpl="186" style="display: flex; gap: 11px; padding: 13px 14px; background: oklch(0.965 0.028 25); border: 1px solid oklch(0.84 0.07 25);">
-            <span data-dc-tpl="187" style="flex: 0 0 18px; margin-top: 1px; display: flex; color: oklch(0.48 0.17 25);">
-              <svg data-dc-tpl="188" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle data-dc-tpl="189" cx="12" cy="12" r="9"></circle><path data-dc-tpl="190" d="M12 7.5v5.5"></path><path data-dc-tpl="191" d="M12 16.5h.01"></path></svg>
-            </span>
-            <div data-dc-tpl="192" style="flex: 1 1 0%; min-width: 0px;">
-              <b data-dc-tpl="193" style="display: block; font-size: 13.5px; font-weight: 700; line-height: 1.55; color: oklch(0.48 0.17 25);">3 個必填欄位未填</b>
-              <p data-dc-tpl="194" style="font-size: 13px; line-height: 1.7; color: oklch(0.4 0.015 260); margin: 3px 0px 0px;">品名、批號、單據日期。儲存前請補齊。</p>
-              <button data-dc-tpl="195" class="scp0" style="margin-top: 9px; height: 28px; padding: 0px 11px; border: 1px solid oklch(0.84 0.07 25); background: oklch(0.99 0.002 260); font-family: inherit; font-size: 12.5px; font-weight: 600; color: oklch(0.48 0.17 25); cursor: pointer; transition: background 0.14s, color 0.14s, border-color 0.14s;">跳到第一個</button>
-            </div>
-            <button data-dc-tpl="196" aria-label="關閉" class="scp1" style="flex: 0 0 18px; height: 18px; margin-top: 2px; border: 0px; background: none; display: flex; align-items: center; justify-content: center; color: oklch(0.48 0.17 25); opacity: 0.55; cursor: pointer; transition: opacity 0.14s;"><svg data-dc-tpl="197" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path data-dc-tpl="198" d="M18 6 6 18M6 6l12 12"></path></svg></button>
-          </div>
-          <div data-dc-tpl="199" style="display: flex; gap: 11px; padding: 13px 14px; background: oklch(0.97 0.03 85); border: 1px solid oklch(0.85 0.07 80);">
-            <span data-dc-tpl="200" style="flex: 0 0 18px; margin-top: 1px; display: flex; color: oklch(0.48 0.12 75);">
-              <svg data-dc-tpl="201" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="202" d="M12 4.5 21 20H3Z"></path><path data-dc-tpl="203" d="M12 10v4"></path><path data-dc-tpl="204" d="M12 17h.01"></path></svg>
-            </span>
-            <div data-dc-tpl="205" style="flex: 1 1 0%; min-width: 0px;">
-              <b data-dc-tpl="206" style="display: block; font-size: 13.5px; font-weight: 700; line-height: 1.55; color: oklch(0.48 0.12 75);">此表單有 2 個欄位被鎖定</b>
-              <p data-dc-tpl="207" style="font-size: 13px; line-height: 1.7; color: oklch(0.4 0.015 260); margin: 3px 0px 0px;">鎖定欄位由管理員設定，填單時不可修改。</p>
-              
-            </div>
-            <button data-dc-tpl="208" aria-label="關閉" class="scp1" style="flex: 0 0 18px; height: 18px; margin-top: 2px; border: 0px; background: none; display: flex; align-items: center; justify-content: center; color: oklch(0.48 0.12 75); opacity: 0.55; cursor: pointer; transition: opacity 0.14s;"><svg data-dc-tpl="209" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path data-dc-tpl="210" d="M18 6 6 18M6 6l12 12"></path></svg></button>
-          </div>
-          <div data-dc-tpl="211" style="display: flex; gap: 11px; padding: 13px 14px; background: oklch(0.965 0.03 155); border: 1px solid oklch(0.84 0.07 155);">
-            <span data-dc-tpl="212" style="flex: 0 0 18px; margin-top: 1px; display: flex; color: oklch(0.45 0.12 155);">
-              <svg data-dc-tpl="213" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle data-dc-tpl="214" cx="12" cy="12" r="9"></circle><path data-dc-tpl="215" d="m8.5 12.2 2.4 2.4 4.6-4.8"></path></svg>
-            </span>
-            <div data-dc-tpl="216" style="flex: 1 1 0%; min-width: 0px;">
-              <b data-dc-tpl="217" style="display: block; font-size: 13.5px; font-weight: 700; line-height: 1.55; color: oklch(0.45 0.12 155);">已匯入 212 筆</b>
-              <p data-dc-tpl="218" style="font-size: 13px; line-height: 1.7; color: oklch(0.4 0.015 260); margin: 3px 0px 0px;">其中 3 筆與既有記錄重複，已略過。</p>
-              <button data-dc-tpl="219" class="scp2" style="margin-top: 9px; height: 28px; padding: 0px 11px; border: 1px solid oklch(0.84 0.07 155); background: oklch(0.99 0.002 260); font-family: inherit; font-size: 12.5px; font-weight: 600; color: oklch(0.45 0.12 155); cursor: pointer; transition: background 0.14s, color 0.14s, border-color 0.14s;">檢視略過的 3 筆</button>
-            </div>
-            <button data-dc-tpl="220" aria-label="關閉" class="scp1" style="flex: 0 0 18px; height: 18px; margin-top: 2px; border: 0px; background: none; display: flex; align-items: center; justify-content: center; color: oklch(0.45 0.12 155); opacity: 0.55; cursor: pointer; transition: opacity 0.14s;"><svg data-dc-tpl="221" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path data-dc-tpl="222" d="M18 6 6 18M6 6l12 12"></path></svg></button>
-          </div>
-          <div data-dc-tpl="223" style="display: flex; gap: 11px; padding: 13px 14px; background: oklch(0.965 0.022 245); border: 1px solid oklch(0.84 0.06 245);">
-            <span data-dc-tpl="224" style="flex: 0 0 18px; margin-top: 1px; display: flex; color: oklch(0.45 0.13 240);">
-              <svg data-dc-tpl="225" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle data-dc-tpl="226" cx="12" cy="12" r="9"></circle><path data-dc-tpl="227" d="M12 11v5.5"></path><path data-dc-tpl="228" d="M12 7.5h.01"></path></svg>
-            </span>
-            <div data-dc-tpl="229" style="flex: 1 1 0%; min-width: 0px;">
-              <b data-dc-tpl="230" style="display: block; font-size: 13.5px; font-weight: 700; line-height: 1.55; color: oklch(0.45 0.13 240);">系統將於 08-03 02:00 維護</b>
-              <p data-dc-tpl="231" style="font-size: 13px; line-height: 1.7; color: oklch(0.4 0.015 260); margin: 3px 0px 0px;">預計 30 分鐘，期間無法過帳。此為 Weyver 平台維護，非貴公司系統問題。</p>
-              
-            </div>
-            <button data-dc-tpl="232" aria-label="關閉" class="scp1" style="flex: 0 0 18px; height: 18px; margin-top: 2px; border: 0px; background: none; display: flex; align-items: center; justify-content: center; color: oklch(0.45 0.13 240); opacity: 0.55; cursor: pointer; transition: opacity 0.14s;"><svg data-dc-tpl="233" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path data-dc-tpl="234" d="M18 6 6 18M6 6l12 12"></path></svg></button>
-          </div>
-        </div>
-        <div data-dc-tpl="235" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 12px; color: rgb(92, 104, 118); margin: 16px 0px 8px;">放置二：全域橫幅——方角、貼齊視窗、只留下緣線；只給影響整個租戶的事（維護、額度、方案）。判準不是重要性，是影響範圍。</div>
-        <div data-dc-tpl="236" style="display: flex; gap: 11px; padding: 12px 16px; background: oklch(0.97 0.03 85); border-bottom: 1px solid oklch(0.85 0.07 80); font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-          <span data-dc-tpl="237" style="flex: 0 0 18px; margin-top: 1px; display: flex; color: oklch(0.48 0.12 75);">
-            <svg data-dc-tpl="238" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="239" d="M12 4.5 21 20H3Z"></path><path data-dc-tpl="240" d="M12 10v4"></path><path data-dc-tpl="241" d="M12 17h.01"></path></svg>
-          </span>
-          <div data-dc-tpl="242" style="flex: 1 1 0%; min-width: 0px;">
-            <b data-dc-tpl="243" style="display: block; font-size: 13.5px; font-weight: 700; line-height: 1.55; color: oklch(0.48 0.12 75);">此租戶的儲存空間已使用 92%</b>
-            <p data-dc-tpl="244" style="font-size: 13px; line-height: 1.7; color: oklch(0.4 0.015 260); margin: 3px 0px 0px;">超過 100% 後將無法上傳附件。請聯絡管理員調整方案或清理回收桶。</p>
-          </div>
-          <button data-dc-tpl="245" class="scp3" style="flex: 0 0 auto; align-self: center; white-space: nowrap; height: 28px; padding: 0px 11px; border: 1px solid oklch(0.85 0.07 80); background: oklch(0.99 0.002 260); font-family: inherit; font-size: 12.5px; font-weight: 600; color: oklch(0.48 0.12 75); cursor: pointer; transition: background 0.14s, color 0.14s, border-color 0.14s;">清理回收桶</button>
-          <button data-dc-tpl="246" aria-label="關閉" class="scp1" style="flex: 0 0 18px; height: 18px; margin-top: 2px; border: 0px; background: none; display: flex; align-items: center; justify-content: center; color: oklch(0.48 0.12 75); opacity: 0.55; cursor: pointer; transition: opacity 0.14s;"><svg data-dc-tpl="247" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path data-dc-tpl="248" d="M18 6 6 18M6 6l12 12"></path></svg></button>
-        </div>
-      </div>
-
-      <div data-dc-tpl="249">
-        <div data-dc-tpl="250" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-          <span data-dc-tpl="251" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">Toast</span>
-          <span data-dc-tpl="252" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 是（4s）／打斷: 否</span>
-        </div>
-        <div data-dc-tpl="253" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">剛完成動作的確認——<b data-dc-tpl="254">只放成功／中性，必附「復原」</b>。停留 4 秒，hover / focus 暫停計時；同時最多 1 則，新訊息取代舊的；<b data-dc-tpl="255" style="color: rgb(176, 42, 38);">絕不放錯誤</b>。</div>
-        <div data-dc-tpl="256" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-          <span data-dc-tpl="257" style="display: flex; gap: 9px; align-items: center; padding: 9px 12px; border-radius: 6px; background: rgb(15, 23, 32); color: rgb(252, 253, 254); font-size: 13px; box-shadow: rgba(15, 23, 32, 0.34) 0px 12px 28px -10px, rgba(15, 23, 32, 0.12) 0px 2px 6px;"><svg data-dc-tpl="258" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex: 0 0 16px;"><circle data-dc-tpl="259" cx="12" cy="12" r="10"></circle><path data-dc-tpl="260" d="m9 12 2 2 4-4"></path></svg>已刪除「採購單_4081」<span data-dc-tpl="261" style="margin-left: 8px; color: rgb(143, 182, 224); font-weight: 500; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;">復原</span></span>
-          <span data-dc-tpl="262" style="display: flex; gap: 9px; align-items: center; padding: 9px 12px; border-radius: 6px; background: rgb(15, 23, 32); color: rgb(252, 253, 254); font-size: 13px; box-shadow: rgba(15, 23, 32, 0.34) 0px 12px 28px -10px, rgba(15, 23, 32, 0.12) 0px 2px 6px;">已複製單號<span data-dc-tpl="263" style="margin-left: 8px; color: rgb(143, 182, 224); font-weight: 500; text-decoration: underline; text-underline-offset: 2px; cursor: pointer;">復原</span></span>
-        </div>
-      </div>
-
-      <div data-dc-tpl="264">
-        <div data-dc-tpl="265" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-          <span data-dc-tpl="266" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">彈窗 Dialog</span>
-          <span data-dc-tpl="267" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 否／打斷: 是</span>
-        </div>
-        <div data-dc-tpl="268" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">只給不可逆的（清空回收桶、永久刪除、型別截斷、撤銷金鑰）。<b data-dc-tpl="269">能還原就不要問</b>——刪除進回收桶改用 Toast＋復原；過帳可沖轉不彈。兩顆按鈕都要描述結果；focus 進場落在安全那顆；Esc／點背景＝取消。</div>
-        <div data-dc-tpl="270" style="position: relative; width: 100%; max-width: 560px; padding: 32px; background: rgba(15, 23, 32, 0.45); display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-          <div data-dc-tpl="271" style="width: 420px; max-width: 100%; border-radius: 9px; background: rgb(252, 253, 254); overflow: hidden; box-shadow: rgb(230, 234, 240) 0px 0px 0px 1px, rgba(15, 23, 32, 0.28) 0px 24px 48px -16px, rgba(15, 23, 32, 0.08) 0px 4px 10px; font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-            <div data-dc-tpl="272" style="padding: 16px 18px 0px;">
-              <b data-dc-tpl="273" style="font-size: 15px; font-weight: 600; letter-spacing: -0.012em; display: block; color: rgb(15, 23, 32);">永久刪除回收桶內的 42 筆記錄？</b>
-              <p data-dc-tpl="274" style="font-size: 13px; color: rgb(92, 104, 118); margin: 6px 0px 0px; line-height: 1.6;">這些記錄將<b data-dc-tpl="275">無法復原</b>，包含其附件與簽核紀錄。此操作會寫入稽核日誌。</p>
-            </div>
-            <div data-dc-tpl="276" style="margin: 12px 18px 0px; padding: 8px 10px; border-radius: 4px; background: rgb(238, 241, 245); font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 12.5px; color: rgb(15, 23, 32);">採購單_4081 · 進貨驗收單_21345 · 其他 40 筆</div>
-            <div data-dc-tpl="277" style="display: flex; gap: 8px; justify-content: flex-end; padding: 16px 18px;">
-              <button data-dc-tpl="278" style="height: 30px; padding: 0px 13px; border: 0px; border-radius: 4px; font-size: 13px; font-weight: 500; background: rgb(238, 241, 245); color: rgb(15, 23, 32); font-family: inherit; cursor: pointer;">保留這些記錄</button>
-              <button data-dc-tpl="279" style="height: 30px; padding: 0px 13px; border: 0px; border-radius: 4px; font-size: 13px; font-weight: 500; background: rgb(176, 42, 38); color: rgb(255, 255, 255); font-family: inherit; cursor: pointer;">永久刪除 42 筆</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="280">
-        <div data-dc-tpl="281" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-          <span data-dc-tpl="282" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">抽屜 Drawer</span>
-          <span data-dc-tpl="283" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 否／打斷: 半</span>
-        </div>
-        <div data-dc-tpl="284" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">需要看著主體改的設定——欄位設定 / 篩選。不遮蔽主體；不做成常駐欄。</div>
-        <div data-dc-tpl="285" style="position: relative; width: 100%; max-width: 520px; height: 260px; background: oklch(0.96 0.003 260); border: 1px solid oklch(0.9 0.005 260); overflow: hidden;">
-          <div data-dc-tpl="286" style="padding: 16px; display: flex; flex-direction: column; gap: 10px; width: 55%;">
-            <div data-dc-tpl="287" style="height: 12px; width: 70%; border-radius: 2px; background: oklch(0.9 0.004 260);"></div>
-            <div data-dc-tpl="288" style="height: 60px; border-radius: 4px; background: white; border: 1px solid oklch(0.9 0.005 260);"></div>
-            <div data-dc-tpl="289" style="height: 60px; border-radius: 4px; background: white; border: 1px solid oklch(0.9 0.005 260);"></div>
-          </div>
-          <div data-dc-tpl="290" style="position: absolute; top: 0px; right: 0px; bottom: 0px; width: 55%; border-radius: 9px 0px 0px 9px; background: rgb(252, 253, 254); box-shadow: rgb(230, 234, 240) 0px 0px 0px 1px, rgba(15, 23, 32, 0.22) -14px 0px 32px -14px; padding: 16px; display: flex; flex-direction: column; box-sizing: border-box; font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-            <div data-dc-tpl="291" style="display: flex; font-size: 13.5px; font-weight: 600; color: rgb(15, 23, 32);">欄位設定<span data-dc-tpl="292" style="margin-left: auto; color: rgb(92, 104, 118); font-weight: 400;">×</span></div>
-            <div data-dc-tpl="293" style="font-size: 11.5px; color: rgb(92, 104, 118); margin-top: 13px;">欄位名稱</div>
-            <div data-dc-tpl="294" style="height: 30px; padding: 0px 8px; border: 1px solid rgb(223, 228, 234); border-radius: 4px; background: rgb(252, 253, 254); font-size: 13px; color: rgb(15, 23, 32); display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">品名<svg data-dc-tpl="295" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: rgb(92, 104, 118);"><path data-dc-tpl="296" d="m6 9 6 6 6-6"></path></svg></div>
-            <div data-dc-tpl="297" style="font-size: 11.5px; color: rgb(92, 104, 118); margin-top: 13px;">型別</div>
-            <div data-dc-tpl="298" style="height: 30px; padding: 0px 8px; border: 1px solid rgb(223, 228, 234); border-radius: 4px; background: rgb(252, 253, 254); font-size: 13px; color: rgb(15, 23, 32); display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">單行文字<svg data-dc-tpl="299" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: rgb(92, 104, 118);"><path data-dc-tpl="300" d="m6 9 6 6 6-6"></path></svg></div>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="301">
-        <div data-dc-tpl="302" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-          <span data-dc-tpl="303" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">右鍵選單 Context Menu</span>
-          <span data-dc-tpl="304" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 是（點外 / Esc 關）／打斷: 否</span>
-        </div>
-        <div data-dc-tpl="305" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">滑鼠右鍵於物件上叫出——鍵盤等效於 Shift+F10；不可含唯一操作路徑（滑鼠限定使用者需能透過工具列達成同等操作）。</div>
-        <div data-dc-tpl="306" style="position: relative; height: 220px; background: oklch(0.96 0.003 260); border: 1px solid oklch(0.9 0.005 260); padding: 20px;">
-          <div data-dc-tpl="307" style="display: flex; flex-direction: column; gap: 8px; width: 220px;">
-            <div data-dc-tpl="308" style="height: 34px; background: white; border: 1px solid oklch(0.88 0.005 260); display: flex; align-items: center; padding: 0px 12px; font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.35 0.015 260);">庫存清單.xlsx</div>
-            <div data-dc-tpl="309" style="height: 34px; background: white; border: 2px solid oklch(0.58 0.15 240); display: flex; align-items: center; padding: 0px 12px; font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.24 0.02 260); font-weight: 600;">SAP ERP 連結</div>
-            <div data-dc-tpl="310" style="height: 34px; background: white; border: 1px solid oklch(0.88 0.005 260); display: flex; align-items: center; padding: 0px 12px; font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.35 0.015 260);">Ragic 表單 #3</div>
-          </div>
-          <div data-dc-tpl="311" style="position: absolute; top: 38px; left: 250px; width: 216px; border-radius: 6px; background: rgb(252, 253, 254); box-shadow: rgb(230, 234, 240) 0px 0px 0px 1px, rgba(15, 23, 32, 0.18) 0px 12px 28px -10px; padding: 6px; font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-            <div data-dc-tpl="312" class="scp4" style="display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(15, 23, 32);"><span data-dc-tpl="313">重新命名</span><span data-dc-tpl="314" style="font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 11px; color: rgb(154, 166, 180);">F2</span></div>
-            <div data-dc-tpl="315" class="scp4" style="display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(15, 23, 32);"><span data-dc-tpl="316">複製連結</span><span data-dc-tpl="317" style="font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 11px; color: rgb(154, 166, 180);">⌘C</span></div>
-            <div data-dc-tpl="318" class="scp4" style="display: flex; align-items: center; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(15, 23, 32);">重新整理欄位對應</div>
-            <div data-dc-tpl="319" style="height: 1px; background: rgb(230, 234, 240); margin: 6px 0px;"></div>
-            <div data-dc-tpl="320" class="scp5" style="display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(176, 42, 38);"><span data-dc-tpl="321">移除連結</span><span data-dc-tpl="322" style="font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 11px; color: rgb(154, 166, 180);">⌫</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="323" style="display: flex; gap: 40px; flex-wrap: wrap;">
-        <div data-dc-tpl="324" style="flex: 1 1 0%; min-width: 260px;">
-          <div data-dc-tpl="325" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-            <span data-dc-tpl="326" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">Popover</span>
-            <span data-dc-tpl="327" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 是（點外關）／打斷: 否</span>
-          </div>
-          <div data-dc-tpl="328" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">就地的次要動作與選項。≤ 7 項；超過改用抽屜。</div>
-          <div data-dc-tpl="329" style="position: relative; height: 180px;">
-            <button data-dc-tpl="330" style="height: 30px; padding: 0px 13px; border: 0px; border-radius: 4px; background: rgb(238, 241, 245); color: rgb(15, 23, 32); font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; font-weight: 500;">操作 ⌄</button>
-            <div data-dc-tpl="331" style="position: absolute; top: 38px; left: 0px; width: 216px; border-radius: 6px; background: rgb(252, 253, 254); box-shadow: rgb(230, 234, 240) 0px 0px 0px 1px, rgba(15, 23, 32, 0.18) 0px 12px 28px -10px; padding: 6px; font-family: &quot;Noto Sans TC&quot;, sans-serif;">
-              <div data-dc-tpl="332" class="scp4" style="display: flex; align-items: center; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(15, 23, 32);">複製單號</div>
-              <div data-dc-tpl="333" class="scp4" style="display: flex; align-items: center; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(15, 23, 32);">複製連結</div>
-              <div data-dc-tpl="334" class="scp4" style="display: flex; align-items: center; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(15, 23, 32);">匯出這一筆</div>
-              <div data-dc-tpl="335" class="scp5" style="display: flex; align-items: center; height: 30px; padding: 0px 8px; border-radius: 4px; font-size: 13px; color: rgb(176, 42, 38);">刪除記錄</div>
-            </div>
-          </div>
-        </div>
-        <div data-dc-tpl="336" style="flex: 1 1 0%; min-width: 260px;">
-          <div data-dc-tpl="337" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
-            <span data-dc-tpl="338" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px;">Tooltip</span>
-            <span data-dc-tpl="339" style="font-family: ui-monospace, &quot;SF Mono&quot;, Menlo, monospace; font-size: 11px; color: oklch(0.55 0.02 260);">會消失: 是／打斷: 否</span>
-          </div>
-          <div data-dc-tpl="340" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 16px;">只補充圖示鈕的名稱。<b data-dc-tpl="341" style="color: oklch(0.53 0.18 25);">不得承載必要資訊</b>——觸控與鍵盤使用者看不到。</div>
-          <div data-dc-tpl="342" style="position: relative; height: 180px; display: flex; align-items: flex-start;">
-            <div data-dc-tpl="343" style="width: 36px; height: 36px; border: 1px solid rgb(223, 228, 234); border-radius: 4px; background: rgb(252, 253, 254); display: flex; align-items: center; justify-content: center; color: rgb(92, 104, 118);"><svg data-dc-tpl="344" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path data-dc-tpl="345" d="M3 7v6h6M21 17a9 9 0 0 0-15-6.7L3 13"></path></svg></div>
-            <div data-dc-tpl="346" style="position: absolute; top: 44px; left: -6px; background: rgb(15, 23, 32); color: rgb(252, 253, 254); font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 12px; padding: 4px 8px; border-radius: 4px; white-space: nowrap;">復原 (⌘Z)</div>
-          </div>
-        </div>
-      </div>
-
-      <div data-dc-tpl="347">
-        <div data-dc-tpl="348" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 4px;">層級順序（z 軸）</div>
-        <div data-dc-tpl="349" style="font-family: &quot;Noto Sans TC&quot;, sans-serif; font-size: 13px; color: oklch(0.5 0.015 260); margin-bottom: 12px;">避免浮層互相蓋住；進場一律 150ms，只動 opacity + transform，reduced-motion 時只留 opacity。</div>
-        <div data-dc-tpl="350" style="display: grid; grid-template-columns: 88px 1fr; max-width: 560px; font-size: 12.5px; font-family: &quot;Noto Sans TC&quot;, sans-serif; color: oklch(0.35 0.015 260);">
-          <div data-dc-tpl="351" style="padding: 6px 0px; font-family: &quot;IBM Plex Mono&quot;, monospace; color: rgb(92, 104, 118); border-top: 1px solid rgb(230, 234, 240);">1000</div><div data-dc-tpl="352" style="padding: 6px 0px; border-top: 1px solid rgb(230, 234, 240);">Toast——最上層，會自己消失且不接受操作</div>
-          <div data-dc-tpl="353" style="padding: 6px 0px; font-family: &quot;IBM Plex Mono&quot;, monospace; color: rgb(92, 104, 118); border-top: 1px solid rgb(230, 234, 240);">900</div><div data-dc-tpl="354" style="padding: 6px 0px; border-top: 1px solid rgb(230, 234, 240);">Dialog（含 backdrop）——打斷式，出現時其餘不可操作</div>
-          <div data-dc-tpl="355" style="padding: 6px 0px; font-family: &quot;IBM Plex Mono&quot;, monospace; color: rgb(92, 104, 118); border-top: 1px solid rgb(230, 234, 240);">800</div><div data-dc-tpl="356" style="padding: 6px 0px; border-top: 1px solid rgb(230, 234, 240);">Drawer——半打斷，主體仍可見</div>
-          <div data-dc-tpl="357" style="padding: 6px 0px; font-family: &quot;IBM Plex Mono&quot;, monospace; color: rgb(92, 104, 118); border-top: 1px solid rgb(230, 234, 240);">700</div><div data-dc-tpl="358" style="padding: 6px 0px; border-top: 1px solid rgb(230, 234, 240);">Popover / Select 選單 / Tooltip</div>
-          <div data-dc-tpl="359" style="padding: 6px 0px; font-family: &quot;IBM Plex Mono&quot;, monospace; color: rgb(92, 104, 118); border-top: 1px solid rgb(230, 234, 240);">10</div><div data-dc-tpl="360" style="padding: 6px 0px; border-top: 1px solid rgb(230, 234, 240);">Sticky 表頭 · 工具列 · 狀態列</div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <section data-dc-tpl="361" style="padding: 72px 64px 120px; display: grid; grid-template-columns: 200px 1fr; gap: 48px;">
-    <div data-dc-tpl="362" style="font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.55 0.02 260);">應用示意</div>
-    <div data-dc-tpl="363" style="display: flex; flex-direction: column; gap: 32px;">
-      <div data-dc-tpl="364" style="display: flex; gap: 24px; flex-wrap: wrap;">
-        <div data-dc-tpl="365" style="width: 88px; height: 88px; background: oklch(0.18 0.015 260); border-radius: 20px; display: flex; align-items: center; justify-content: center;">
-          <svg data-dc-tpl="366" viewBox="0 0 120 120" width="48" height="48"><use data-dc-tpl="367" href="#weyver-mark"></use></svg>
-        </div>
-        <div data-dc-tpl="368" style="width: 300px; height: 88px; background: white; border: 1px solid oklch(0.9 0.005 260); border-radius: 4px; display: flex; align-items: center; padding: 0px 20px; gap: 12px;">
-          <svg data-dc-tpl="369" viewBox="0 0 120 120" width="24" height="24"><use data-dc-tpl="370" href="#weyver-mark"></use></svg>
-          <span data-dc-tpl="371" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 16px;">Weyver</span>
-          <div data-dc-tpl="372" style="margin-left: auto; display: flex; gap: 18px; font-size: 13px; color: oklch(0.45 0.015 260);">
-            <span data-dc-tpl="373">總覽</span><span data-dc-tpl="374">資料源</span><span data-dc-tpl="375">設定</span>
-          </div>
-        </div>
-      </div>
-      <div data-dc-tpl="376" style="background: oklch(0.96 0.003 260); border: 1px solid oklch(0.9 0.005 260); border-radius: 6px; padding: 28px 32px;">
-        <div data-dc-tpl="377" style="font-size: 12px; color: oklch(0.55 0.02 260); margin-bottom: 14px;">產品介面（不含符號）— 品牌感僅來自結構與留白</div>
-        <div data-dc-tpl="378" style="display: flex; align-items: center; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid oklch(0.88 0.005 260);">
-          <span data-dc-tpl="379" style="font-family: Inter, sans-serif; font-weight: 700; font-size: 15px;">Weyver</span>
-          <div data-dc-tpl="380" style="margin-left: auto; display: flex; gap: 16px; font-size: 13px; color: oklch(0.45 0.015 260);">
-            <span data-dc-tpl="381">總覽</span><span data-dc-tpl="382">資料源</span><span data-dc-tpl="383">合併規則</span><span data-dc-tpl="384">設定</span>
-          </div>
-        </div>
-        <div data-dc-tpl="385" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-          <div data-dc-tpl="386" style="height: 64px; background: white; border: 1px solid oklch(0.88 0.005 260); border-radius: 4px;"></div>
-          <div data-dc-tpl="387" style="height: 64px; background: white; border: 1px solid oklch(0.88 0.005 260); border-radius: 4px;"></div>
-          <div data-dc-tpl="388" style="height: 64px; background: white; border: 1px solid oklch(0.88 0.005 260); border-radius: 4px;"></div>
-        </div>
-      </div>
-    </div>
-  </section>
+    <!-- 標誌 -->
+    <div class="sec"><div class="sec-h"><span class="n">02</span>標誌系統<span class="r">經緯交織符號 · 淨空 1/3 · 數位最小 16px · 印刷 8mm</span></div><div class="sec-b">
+<div class="why"><b>🔴 2026-08-01 取代</b>先前的「W 方塊」<b>已作廢</b>。品牌板定義的符號是<b>經緯交織的幾何結構</b>:
+橫向 7 個色塊代表原本分散的系統、縱向 8 個色塊代表 Weyver 的織理,以 3×3 網格互鎖 ——
+象徵多源系統收斂為單一結構。<b>不使用雲朵、漸層等字面裝飾</b>。</div>
+<div class="logos">
+  <div class="logobox"><svg viewBox="0 0 120 120" width="76" height="76"><use href="#wm"/></svg><div class="cap">符號 · 主用</div></div>
+  <div class="logobox dark"><svg viewBox="0 0 120 120" width="76" height="76" style="--brand-ink:var(--paper)"><use href="#wm"/></svg><div class="cap">反白 · 深底</div></div>
+  <div class="logobox ink"><svg viewBox="0 0 120 120" width="76" height="76" fill="#fff"><use href="#wm-mono"/></svg><div class="cap">單色 · 蓋印 / 傳真</div></div>
+  <div class="logobox"><div class="wordmark" style="gap:12px">
+    <svg viewBox="0 0 120 120" width="40" height="40"><use href="#wm"/></svg>
+    <div class="txt" style="font-weight:800;letter-spacing:-.032em">Weyver<small style="letter-spacing:.3em;font-weight:900">織雲</small></div>
+  </div><div class="cap">Lockup · 水平</div></div>
 </div>
+<div class="grp-t" style="margin-top:16px">尺寸節奏(數位最小 16px · 印刷最小 8mm)</div>
+<div class="mk-scale" style="align-items:flex-end">
+  <svg viewBox="0 0 120 120" width="52" height="52"><use href="#wm"/></svg>
+  <svg viewBox="0 0 120 120" width="32" height="32"><use href="#wm"/></svg>
+  <svg viewBox="0 0 120 120" width="24" height="24"><use href="#wm"/></svg>
+  <svg viewBox="0 0 120 120" width="16" height="16"><use href="#wm"/></svg>
+</div>
+<div class="why" style="margin-top:14px"><b>淨空</b>= 符號寬度的 <b>1/3</b>。
+<b>禁止</b>雲朵、漸層、旋轉、變形、加陰影、改變經緯比例。
+🔴 <b>產品介面內不放符號</b> —— 品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」;
+符號只出現在<b>登入 / 空狀態 / 列印抬頭 / 對外物料</b>。</div>
+</div></div>
+
+<!-- 色彩 -->
+<div class="sec"><div class="sec-h"><span class="n">03</span>色彩<span class="r">四層:Surface / Ink / Primary / Semantic · 品牌四色為 OKLCH 權威</span></div><div class="sec-b">
+<div class="why"><b>🔴 2026-08-01 取代</b>品牌板以 <b>OKLCH</b> 定義四色為權威(色相 260 / 240 冷調);
+此前 <span class="mono">#22568a / #0C5F73 / #313131</span> 全部 SUPERSEDED。
+介面色彩分<b>四層</b>,每層各有職責,元件只能用語意層、不得直接用色階。</div>
+
+<div class="grp-t">品牌四色(hex 為 Chromium 實測,僅供對照)</div>
+<div class="sw-row">
+  <div class="sw"><div class="c" style="background:var(--brand-ink)"></div><div class="m"><div class="nm">Ink 墨</div><div class="hx">oklch(24% .02 260)</div></div></div>
+  <div class="sw"><div class="c" style="background:var(--thread)"></div><div class="m"><div class="nm">Thread Blue 織藍</div><div class="hx">oklch(58% .15 240)</div></div></div>
+  <div class="sw"><div class="c" style="background:var(--brand-neutral)"></div><div class="m"><div class="nm">Neutral 中灰</div><div class="hx">oklch(60% .01 260)</div></div></div>
+  <div class="sw"><div class="c" style="background:var(--paper)"></div><div class="m"><div class="nm">Paper 底色</div><div class="hx">oklch(97% .004 260)</div></div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">① Surface 層級 —— 深度靠<b>面</b>不靠框</div>
+<div class="ds-sw">
+  <div class="b"><div class="c" style="background:var(--bg)"></div><div class="t"><b>surface</b>s2 · 應用底</div></div>
+  <div class="b"><div class="c" style="background:var(--card)"></div><div class="t"><b>card</b>s1 · 內容面(最亮)</div></div>
+  <div class="b"><div class="c" style="background:var(--head)"></div><div class="t"><b>head</b>s3 · 表頭/次底</div></div>
+  <div class="b"><div class="c" style="background:var(--hover)"></div><div class="t"><b>hover</b>s3 · 互動 hover</div></div>
+  <div class="b"><div class="c" style="background:var(--active)"></div><div class="t"><b>active</b>s4 · 選中</div></div>
+  <div class="b"><div class="c" style="background:var(--line)"></div><div class="t"><b>line</b>s6 · 跨功能邊界</div></div>
+</div>
+<div class="desc" style="margin-top:8px">🔴 <b>內容面比應用底更亮</b>(s1 &gt; s2)—— 卡片是「浮起來」的,靠明度差不靠框線。
+<b>hover / active 是色階的一部分</b>,不是就地挑一個底色;先前沒有這兩階,全庫每個 hover 各寫各的。</div>
+
+<div class="grp-t" style="margin-top:20px">② Ink 文字 —— 四階,層級靠字重與位置補足</div>
+<table class="ds-tbl">
+  <tr><th style="width:110px">token</th><th style="width:96px">值</th><th style="width:110px">用途</th><th>對比(於 s1–s4 四種底)</th></tr>
+  <tr><td class="k">ink</td><td class="k">s12 #0f1720</td><td>主文 · 資料值</td><td>≥ 14:1</td></tr>
+  <tr><td class="k">ink-2</td><td class="k">#3a4553</td><td>次文 · 標籤</td><td>≥ 8:1</td></tr>
+  <tr><td class="k">ink-3</td><td class="k">s11 #5c6876</td><td>輔助 · 說明 · 時間戳</td><td>≥ 4.5:1(CI 逐底把關)</td></tr>
+  <tr><td class="k">ink-disabled</td><td class="k">#9aa6b4</td><td><b>僅停用元件內</b>(WCAG 1.4.3 incidental)</td><td>不適用</td></tr>
+</table>
+<div class="desc" style="margin-top:6px">⚠️ 只有四階,<b>沒有第五階可讀灰</b> —— AA 之下白底放不下(最淺約 #767676 = 4.54:1,而 ink-3 已 4.68)。
+資訊性文字一律用 ink-3,層級改靠<b>字重 / 字級 / 位置</b>。</div>
+
+<div class="grp-t" style="margin-top:20px">③ Primary —— 🔴 <b>標誌色 ≠ 介面主色</b>(兩個色,兩個職責)</div>
+<div class="why" style="border-left-color:var(--ok)"><b>裁定(2026-08-01)</b>
+Weyver 有<b>兩個藍</b>,先前混為一談是我沒講清楚:<br>
+· <b>織藍 Thread Blue</b> <span class="mono">oklch(58% .15 240)</span> —— <b>標誌色</b>。
+  只出現在符號、登入、列印抬頭、對外物料。它是<b>圖形</b>,門檻 3:1(實測 4.05,通過)。<br>
+· <b>深藍 navy</b> <span class="mono">#22568a</span> —— <b>介面主色</b>(預設主題)。
+  承載按鈕白字、連結、選取、focus,門檻 4.5(實測 <b>7.59 / 7.45</b>,遠超)。<br>
+這不是妥協,是<b>正確的架構</b>:品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」——
+產品介面本來就不該把標誌色當主色刷滿。深藍是 ERP 品類的母語,傳達企業可信;
+織藍是品牌在<b>對外露出</b>時的識別。</div>
+<table class="ds-tbl">
+  <tr><th style="width:130px">色</th><th style="width:150px">值</th><th style="width:150px">用途</th><th>對比門檻與實測</th></tr>
+  <tr><td><b>織藍(標誌)</b></td><td class="k">oklch(58% .15 240)<br>#0083c9</td><td>符號 · 登入 · 列印抬頭 · 對外物料</td>
+      <td>圖形 3:1 → <b style="color:var(--ok)">4.05 ✓</b>。<b style="color:var(--er)">不得承載文字</b>(白字僅 4.13)</td></tr>
+  <tr><td><b>primary</b></td><td class="k">#22568a(navy 預設)</td><td>主按鈕 · 連結 · 選取 · focus ring</td>
+      <td>白字 <b style="color:var(--ok)">7.59 ✓</b> · 於內容面 <b style="color:var(--ok)">7.45 ✓</b></td></tr>
+  <tr><td><b>primary-d</b></td><td class="k">#1b456e(black 20% 推導)</td><td>hover / 按下</td><td>白字 <b style="color:var(--ok)">9.89 ✓</b></td></tr>
+  <tr><td><b>primary-t</b></td><td class="k">#ebf0f4(white 91% 推導)</td><td>選取列 · 極淡底</td><td>承載 primary 文字 <b style="color:var(--ok)">6.62 ✓</b></td></tr>
+</table>
+<div class="ds-row" style="margin-top:10px">
+  <span class="ds-lbl">織藍</span>
+  <svg viewBox="0 0 120 120" width="26" height="26"><use href="#wm"/></svg>
+  <span class="mono" style="font-size:11px;color:var(--ink3)">標誌 ✓</span>
+  <span class="b2" style="background:var(--thread);color:#fff">按鈕</span>
+  <span class="mono" style="font-size:11px;color:var(--er)">白字 4.13 ✗ 不可</span>
+  <span style="width:18px"></span>
+  <span class="ds-lbl">介面主色</span>
+  <span class="b2 pri">儲存版面</span>
+  <span class="mono" style="font-size:11px;color:var(--ok)">7.59 ✓</span>
+</div>
+<div class="desc" style="margin-top:8px"><b>用量鐵則</b>|介面主色只出現在<b>主要動作 · 選取 · focus ring · 連結</b>。
+不做整條側欄、不做大面積色塊。<br>
+⚠️ <b>先前「動作色推導至 oklch(52%)」的裁定改為<b>縮限適用</b></b> ——
+那是為了「若織藍要承載文字」而推導的;既然介面主色是 navy,產品端<b>用不到</b>。
+該規則保留給<b>對外物料</b>(行銷站連結等)真的需要用織藍寫字時使用。</div>
+
+<div class="grp-t" style="margin-top:20px">④ Semantic 語意色 —— 每個語意三值(字 / 框 / 底)</div>
+<table class="ds-tbl">
+  <tr><th style="width:92px">語意</th><th style="width:88px">字</th><th style="width:88px">框</th><th style="width:88px">底</th><th style="width:120px">樣式</th><th>用於</th></tr>
+  <tr><td><b>ok 成功</b></td><td class="k">#0f7a4a</td><td class="k">#bde3cd</td><td class="k">#e8f5ee</td><td><span class="chip3 ok">已核准</span></td><td>已核准 · 合格 · 已過帳</td></tr>
+  <tr><td><b>warn 注意</b></td><td class="k">#8a5a09</td><td class="k">#ecd7ac</td><td class="k">#fbf2e3</td><td><span class="chip3 wn">待簽核</span></td><td>待簽核 · 待處理 · 即將到期</td></tr>
+  <tr><td><b>error 異常</b></td><td class="k">#b02a26</td><td class="k">#eecac8</td><td class="k">#fbebea</td><td><span class="chip3 er">退回</span></td><td>退回 · 異常 · 失敗</td></tr>
+  <tr><td><b>neutral 中性</b></td><td class="k">#4a5560</td><td class="k">#d6dbe0</td><td class="k">#eef0f2</td><td><span class="chip3 nt">草稿</span></td><td>草稿 · 已結案 · 無狀態</td></tr>
+</table>
+<div class="desc" style="margin-top:6px">🔴 <b>語意色只承載語意,不做裝飾</b>。類別編碼(選項顏色)另有 c1–c8 一組,
+刻意<b>避開綠 / 琥珀 / 紅</b>三色相以免與狀態混淆。所有狀態一律<b>色 + 文字雙編碼</b> ——
+色盲與黑白列印下資訊不得遺失。</div>
+
+<div class="grp-t" style="margin-top:20px">介面 12 階冷中性(已落地於 tokens.css v4;Radix 語意)</div>
+<div class="ds-sw" style="grid-template-columns:repeat(10,1fr)">
+  <div class="b"><div class="c" style="background:#fcfdfe"></div><div class="t"><b>1</b>內容面</div></div>
+  <div class="b"><div class="c" style="background:#f6f8fa"></div><div class="t"><b>2</b>應用底</div></div>
+  <div class="b"><div class="c" style="background:#eef1f5"></div><div class="t"><b>3</b>元件/hover</div></div>
+  <div class="b"><div class="c" style="background:#e4e9ef"></div><div class="t"><b>4</b>active</div></div>
+  <div class="b"><div class="c" style="background:#d8dfe8"></div><div class="t"><b>5</b>強 active</div></div>
+  <div class="b"><div class="c" style="background:#e6eaf0"></div><div class="t"><b>6</b>次分隔</div></div>
+  <div class="b"><div class="c" style="background:#d3dae3"></div><div class="t"><b>7</b>框線</div></div>
+  <div class="b"><div class="c" style="background:#bcc6d2"></div><div class="t"><b>8</b>hover 框</div></div>
+  <div class="b"><div class="c" style="background:#5c6876"></div><div class="t"><b>11</b>次文</div></div>
+  <div class="b"><div class="c" style="background:#0f1720"></div><div class="t"><b>12</b>主文</div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">三配色主題(只換 BASE,深階與淡底由 <span class="mono">color-mix</span> 推導)</div>
+<div class="themes-row">
+  <div class="theme-card"><div class="th" style="background:var(--primary)">深藍 navy<span class="df">預設 / 對外建議</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">#1b456e ← #22568a → #ebf0f4</b> · 品類母語、企業可信</div></div>
+  <div class="theme-card" data-theme="teal"><div class="th" style="background:var(--primary)">深海青 teal<span class="df">織雲故事色</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">#0a4c5c ← #0c5f73 → #e9f1f2</b> · 雲/水意象、競品差異化</div></div>
+  <div class="theme-card" data-theme="graphite"><div class="th" style="background:var(--primary)">石墨 graphite<span class="df">中性</span></div>
+    <div class="steps"><i style="background:var(--primary-d)"></i><i style="background:var(--primary)"></i><i style="background:var(--primary-t)"></i></div>
+    <div class="meta"><b class="mono">#292c2e ← #333739 → #ededed</b> · 工業中性、讓資料最跳</div></div>
+</div>
+<table class="ds-tbl">
+  <tr><th style="width:110px">主題</th><th style="width:96px">BASE</th><th>白字 / base</th><th>base / 內容面</th><th>白字 / 深階</th><th>base / 淡底</th></tr>
+  <tr><td>深藍 navy</td><td class="k">#22568a</td><td class="k">7.59 ✓</td><td class="k">7.45 ✓</td><td class="k">9.89 ✓</td><td class="k">6.62 ✓</td></tr>
+  <tr><td>深海青 teal</td><td class="k">#0c5f73</td><td class="k">7.24 ✓</td><td class="k">7.11 ✓</td><td class="k">9.54 ✓</td><td class="k">6.32 ✓</td></tr>
+  <tr><td>石墨 graphite</td><td class="k">#333739</td><td class="k">12.03 ✓</td><td class="k">11.81 ✓</td><td class="k">14.06 ✓</td><td class="k">10.27 ✓</td></tr>
+</table>
+<div class="desc" style="margin-top:8px">三個主題<b>只覆寫一個 BASE</b>,深階(<span class="mono">black 20%</span>)與淡底(<span class="mono">white 91%</span>)由 color-mix 推導 ——
+白牌客戶只需提供一個品牌色。⚠️ 推導值由 <span class="mono">contrast.test.ts</span> 實算把關(它看得懂 color-mix);
+換 base 若某色相對比不足,CI 會紅,屆時退回手調並記錄為例外。</div>
+
+<div class="grp-t" style="margin-top:20px">功能色(跨主題共用)</div>
+<div class="fn-row"><span>連結 <b style="color:var(--link)">#0070b5</b></span>
+  <span>公式 fx <b style="color:var(--fx)">#0b6b5d</b></span>
+  <span>關聯 <b style="color:var(--rel)">#5b3fa8</b></span></div>
+</div></div>
+
+<!-- 字型 -->
+<div class="sec"><div class="sec-h"><span class="n">04</span>字型<span class="r">Inter(英數)+ Noto Sans TC(中文)· 四階 · 數字 Mono + tabular</span></div><div class="sec-b">
+      <div class="why"><b>🔴 2026-08-01 取代</b>品牌板逐字:「內文與介面統一使用 <b>Inter(英數)＋ Noto Sans TC(中文)</b>,僅用 <b>Regular / Medium / Semibold / Bold 四階</b>,維持嚴謹一致的結構感。」品牌名用 Inter Extrabold、「織雲」用 Noto Sans TC Black。<br>
+ <b>先前的 IBM Plex 超家族已作廢</b> —— 當初選它是為避開「Inter = AI 預設」,但該理由不敵品牌板的明訂;且實測 Linear / Vercel / Attio 皆為 Inter 系。代價誠實說:放棄同源鑄字,換取拉丁字的現代感與更廣的字重軸。<br>
+ <b>大字負字距</b>(實測依據:Linear 48px→−1.056px、Vercel 56px→−3.36px、Attio 48px→−0.72px):24px→−.026em · 20px→−.020em · 16px→−.014em · ≤14px→0。<br>
+ 等寬字維持 IBM Plex Mono(品牌板未指定;與 Inter 的 x-height 相容且已在庫)。</div>
+      <div class="type-specimen">
+        <div class="spec"><div class="big">Weyver</div><div class="nm">IBM Plex Sans</div><div class="rl">UI · 標題 · 內文 · Logo</div></div>
+        <div class="spec"><div class="big">織雲平台</div><div class="nm">IBM Plex Sans TC</div><div class="rl">繁體中文(同源)</div></div>
+        <div class="spec"><div class="big mono">128,400</div><div class="nm">IBM Plex Mono</div><div class="rl">數字 · 金額 · 批號 · 代碼 · 時間戳</div></div>
+      </div>
+      <div class="scale">
+        <div class="r"><span class="sp">20 / 600</span><span style="font-size:20px;font-weight:600;letter-spacing:-.2px">頁 / 單據標題</span></div>
+        <div class="r"><span class="sp">16 / 600</span><span style="font-size:16px;font-weight:600">區段標題</span></div>
+        <div class="r"><span class="sp">14 / 400 · base</span><span style="font-size:14px">內文 · 欄位值</span></div>
+        <div class="r"><span class="sp">13 / 400 · sm</span><span style="font-size:13px">表格儲存格 / 密集列表</span></div>
+        <div class="r"><span class="sp">12 / 500 · xs 地板</span><span style="font-size:12px;font-weight:500">欄位 label / 表頭 / 狀態章</span></div>
+        <div class="r"><span class="sp">Mono + tnum</span><span class="mono" style="font-size:13px">PO-0716-001 · NT$ 128,400 · BN-0716-A · 14:03:21</span></div>
+      </div>
+    </div></div>
+
+    <!-- 視覺簽名 -->
+    <div class="sec"><div class="sec-h"><span class="n">05</span>視覺簽名 = 全框線<span class="r">產品的品牌感來自嚴謹結構,不是雲朵插畫</span></div><div class="sec-b">
+      <div class="desc">Weyver 的產品視覺簽名 = <b style="color:var(--ink2)">全框線欄位表 + 扁平主色分段條</b>。讀起來像「嚴謹單據」,是「織(格線縱橫)」的抽象表現,勝過任何雲朵裝飾。</div>
+      <div class="sec" style="margin:0;max-width:560px">
+        <div class="sec-h" style="font-size:12px;padding:6px 12px">基本資料</div>
+        <div class="fg">
+          <div class="k">單號</div><div class="v mono">PO-0716-001</div>
+          <div class="k">單據日期</div><div class="v mono">2026-07-16</div>
+          <div class="k">供應商</div><div class="v"><a href="#s">鑫豐農產品</a></div>
+          <div class="k">金額 fx</div><div class="v fx">128,400</div>
+        </div>
+      </div>
+    </div></div>
+
+    <!-- 元件庫 -->
+    <div class="sec"><div class="sec-h"><span class="n">06</span>元件庫<span class="r">docs/14 §5 全部元件 · 實作於 packages/ui · 隨主題換色</span></div><div class="sec-b">
+
+      <div class="grp-t">Button —— 變體 × 狀態(完整矩陣)</div>
+<table class="ds-tbl">
+  <tr><th style="width:104px">變體</th><th>rest</th><th>hover</th><th>focus</th><th>disabled</th><th style="width:180px">用於</th></tr>
+  <tr><td><b>Primary</b></td><td><span class="b2 pri">儲存</span></td><td><span class="b2 pri hv">儲存</span></td>
+      <td><span class="b2 pri fo">儲存</span></td><td><span class="b2 dis">儲存</span></td>
+      <td>一個畫面<b>最多一顆</b>。過帳 / 儲存 / 送出</td></tr>
+  <tr><td><b>Secondary</b></td><td><span class="b2 sec">匯入</span></td><td><span class="b2 sec hv">匯入</span></td>
+      <td><span class="b2 sec fo" style="outline:2px solid var(--primary);outline-offset:2px">匯入</span></td>
+      <td><span class="b2 dis">匯入</span></td><td>次要但明確的動作</td></tr>
+  <tr><td><b>Ghost</b></td><td><span class="b2 gho">取消</span></td><td><span class="b2 gho hv">取消</span></td>
+      <td><span class="b2 gho fo" style="outline:2px solid var(--primary);outline-offset:2px">取消</span></td>
+      <td><span class="b2 dis">取消</span></td><td>取消 / 工具列 / 低頻</td></tr>
+  <tr><td><b>Danger</b></td><td><span class="b2 dng">刪除</span></td><td><span class="b2 dng hv">刪除</span></td>
+      <td><span class="b2 dng fo" style="outline:2px solid var(--er);outline-offset:2px">刪除</span></td>
+      <td><span class="b2 dis">刪除</span></td><td>破壞性 —— <b>一律需二次確認</b></td></tr>
+</table>
+<div class="ds-row" style="margin-top:10px">
+  <span class="ds-lbl">尺寸</span>
+  <span class="b2 pri sm">sm 26px</span><span class="b2 pri">md 30px</span><span class="b2 pri lg">lg 36px</span>
+  <span class="ds-lbl" style="margin-left:12px">載入中</span>
+  <span class="b2 pri"><span class="spin" style="border-color:rgba(255,255,255,.35);border-top-color:#fff"></span>儲存中…</span>
+</div>
+<div class="desc" style="margin-top:6px">🔴 <b>Danger 不做實心紅底</b> —— 實心紅在密集畫面裡會搶掉主要動作的位置;
+危險性由<b>文字色 + 二次確認</b>承載,不由面積承載。<br>
+<b>focus ring 一律 2px 主色 + offset 2px</b>,不得用 <span class="mono">outline:none</span> 取代(鍵盤可達性)。
+按鈕<b>不畫框</b>(Secondary 用 head 底、Ghost 透明),只有輸入類保留框。</div>
+
+<div class="grp-t" style="margin-top:20px">Select —— 觸發 · 選單 · 狀態</div>
+<div class="ds-row" style="align-items:flex-start">
+  <div class="ds-grid">
+    <div class="ds-row"><span class="ds-lbl">rest</span><span class="sel" style="width:190px">單行文字<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+    <div class="ds-row"><span class="ds-lbl">focus</span><span class="sel fo" style="width:190px">單行文字<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+    <div class="ds-row"><span class="ds-lbl">disabled</span><span class="sel dis" style="width:190px">系統欄位<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+    <div class="ds-row"><span class="ds-lbl">placeholder</span><span class="sel" style="width:190px;color:var(--ink4)">請選擇型別…<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></div>
+  </div>
+  <div class="selm" style="margin-left:14px;width:190px">
+    <i class="on">單行文字<svg class="ck" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></i>
+    <i>多行文字</i><i>數值</i><i>金額</i><i>日期</i>
+    <i style="color:var(--ink4)">關聯(未啟用)</i>
+  </div>
+</div>
+<div class="desc" style="margin-top:6px">
+<b>每個值的來源(禁 vibe / 禁出廠預設)</b><br>
+· <b>高度 30px</b> —— 吃控件階,與 Button md 同高;同一列的控件不得各有各的高度。<br>
+· <b>左右內距 8px · 項目間距 8px</b> —— 鎖 4/8 尺度(§10)。<b>先前寫的 9px / 28px 已修</b>,那是隨手填的。<br>
+· <b>chevron 用 Lucide <span class="mono">chevron-down</span>(16px / stroke 1.5)</b> ——
+  <b>先前是用 CSS 邊框自繪的三角形,已修</b>。自繪圖示與 Lucide 的端點、粗細、視覺重心都對不上,
+  而全庫圖示是 Lucide(§15);「反正看起來像箭頭」正是 vibe。<br>
+· <b>選單寬度 = 觸發器寬度</b> —— 不另設固定寬。<b>先前寫死 196px 已修</b>:選單比觸發器窄或寬都會在展開時位移。<br>
+· <b>不用原生 <span class="mono">&lt;select&gt;</span></b> —— 原生在各 OS 外觀不受控、與其餘控件對不齊(既有踩坑)。<br>
+· <b>選中列用 active 階 + 勾號雙編碼</b> —— 只靠底色在色盲與低對比螢幕下不可辨(§13)。<br>
+· ⚠️ <b>「選項 ≤ 4 改用 Segmented」是我方裁定,非外部依據</b>:Segmented 讓所有選項<b>同時可見</b>、
+  比較成本為零;超過 4 個時在 208px 面板內每段寬度不足以放中文標籤。<b>此數字可被實測推翻。</b></div>
+
+<div class="grp-t" style="margin-top:20px">Loading —— 三種,依「等多久 / 知不知道進度」選</div>
+<table class="ds-tbl">
+  <tr><th style="width:104px">型態</th><th style="width:210px">樣式</th><th style="width:120px">時機</th><th>規則</th></tr>
+  <tr><td><b>Skeleton</b></td><td>
+      <div class="skl" style="height:9px;width:150px"></div>
+      <div class="skl" style="height:9px;width:104px;margin-top:5px"></div></td>
+      <td>首次載入<br>已知版面</td><td>🔴 <b>形狀必須等於最終內容</b> —— 否則資料到達時版面跳動(CLS)</td></tr>
+  <tr><td><b>Spinner</b></td><td><span class="spin"></span> <span style="font-size:12.5px;color:var(--ink3);margin-left:6px">處理中…</span></td>
+      <td>動作進行中<br>不知進度</td><td>只用在<b>按鈕內或局部</b>;<b>禁全頁遮罩</b></td></tr>
+  <tr><td><b>Progress</b></td><td><div class="prog" style="width:150px"><i></i></div></td>
+      <td>背景任務<br>匯入 / 匯出</td><td>可知百分比就顯示百分比,不要用不確定條假裝</td></tr>
+</table>
+<div class="desc" style="margin-top:6px">
+<b>門檻取自 Nielsen 的三個反應時間界線</b>(逐字):<br>
+· <b>&lt; 0.1 秒</b>|「no special feedback is necessary except to display the result」<br>
+· <b>0.1–1.0 秒</b>|「normally, <b>no special feedback is necessary</b> during delays of more than 0.1 but less than 1.0 second」<br>
+· <b>&gt; 10 秒</b>|「they should be given feedback indicating <b>when the computer expects to be done</b>」→ 必須給百分比或預估完成<br>
+⚠️ <b>我先前寫的「&lt;200ms 不顯示指示」是憑印象編的,錯了 —— 正確門檻是 1 秒</b>。
+0.1–1.0 秒之間顯示 spinner 反而製造閃爍。<br><br>
+<b>動效合規(§12 的硬規則要實作,不能只寫在散文裡)</b><br>
+· <b>Skeleton 由「shimmer 漸層掃動」改為 opacity 脈動</b> —— 先前動的是
+  <span class="mono">background-position</span>,違反「只動 opacity 與 transform」,而且 shimmer 是<b>裝飾性動效</b>(§12 明禁)。<br>
+· <b>Progress 由 <span class="mono">margin-left</span> 改為 <span class="mono">transform: translateX</span></b> ——
+  margin 會觸發 layout,在密集表格下掉幀。<br>
+· <b>補上真正的 <span class="mono">@media (prefers-reduced-motion: reduce)</span></b> ——
+  這份文件先前<b>只在散文裡寫了這條規則,CSS 裡一個都沒有</b>。三個載入態與燈號脈動現已一律歸零,
+  並各自退回可讀的靜態樣式(不是單純消失)。<br>
+· <b>Spinner 1s linear</b>|我方裁定,理由是「一秒一圈」可辨識轉動又不顯得急躁;非外部依據,可被推翻。<br><br>
+🔴 <b>禁「載入中」把既有內容清空</b> —— 重新查詢時保留前次資料(keepPreviousData)並在角落顯示狀態,畫面不得閃白。</div>
+
+<div class="grp-t" style="margin-top:20px">燈號 · Pill · 狀態章 —— 三種東西,職責不同</div>
+<table class="ds-tbl">
+  <tr><th style="width:100px">元件</th><th style="width:230px">樣式</th><th style="width:150px">職責</th><th>規則</th></tr>
+  <tr><td><b>燈號 Lamp</b></td><td>
+      <span class="lamp"><span class="d ok"></span>已連線</span>
+      <span class="lamp" style="margin-left:10px"><span class="d wn pulse"></span>同步中</span>
+      <span class="lamp" style="margin-left:10px"><span class="d er"></span>離線</span></td>
+      <td><b>系統即時狀態</b><br>連線 / 服務 / 裝置</td>
+      <td>7px 圓點 + <b>必附文字</b>;只有燈號可用<b>脈動</b>(1.6s),且僅限「進行中」</td></tr>
+  <tr><td><b>Pill</b></td><td>
+      <span class="pill2 num">24</span>
+      <span class="pill2" style="margin-left:6px">採購</span>
+      <span class="pill2 rm" style="margin-left:6px">供應商 = 鑫豐</span></td>
+      <td><b>計數與標籤</b><br>筆數 / 分類 / 已套用篩選</td>
+      <td>中性色,<b>不帶語意</b>;可移除者加 ×。<b>不得用於狀態</b></td></tr>
+  <tr><td><b>狀態章</b><br><span style="font-size:11px;color:var(--ok)">(定案:方形帶框)</span></td><td>
+      <span class="chip3 ok">已核准</span><span class="chip3 wn" style="margin-left:5px">待簽核</span>
+      <span class="chip3 er" style="margin-left:5px">退回</span><span class="chip3 nt" style="margin-left:5px">草稿</span></td>
+      <td><b>單據語意狀態</b><br>流程所在位置</td>
+      <td>3px 方角 + 字/框/底三值;<b>色 + 文字雙編碼</b></td></tr>
+</table>
+<div class="why" style="margin-top:10px;border-left-color:var(--ok)"><b>裁定|狀態章維持方形帶框,不改 pill。</b>
+實測 Linear / Vercel / Attio 三家都用 pill,但品牌板逐字寫「<b>嚴謹的網格互鎖</b>」「<b>結構本身的嚴謹與秩序</b>」——
+方角與標誌是同一套幾何語言,pill 只是外部慣例。<b>Pill 仍解禁</b>,但限定用於計數與標籤(中性、不帶語意),
+與狀態章在形狀上一眼可分。</div>
+
+<div class="grp-t" style="margin-top:20px">基礎控制(既有實作)</div>
+      <div class="comp"><div class="clabel">Button<span class="ref">§3.8 · button.tsx</span></div>
+        <div class="comp-row"><span class="cbtn pri">核准並過帳</span><span class="cbtn">儲存</span><span class="cbtn">列印 ▾</span><span class="cbtn dgr">作廢</span></div></div>
+      <div class="comp"><div class="clabel">Input<span class="ref">input.tsx</span></div>
+        <div class="comp-row">
+          <span class="cinput"><svg viewBox="0 0 14 14" fill="none"><circle cx="6.3" cy="6.3" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M9.4 9.4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>搜尋 表單 · 記錄 · 欄位</span>
+          <span class="cinput focus">輸入中｜</span>
+        </div></div>
+      <div class="comp"><div class="clabel">Segmented<span class="ref">segmented.tsx</span></div>
+        <div class="cseg"><span class="on">表單</span><span>列表</span><span>網格</span><span>設計</span></div></div>
+      <div class="comp"><div class="clabel">StatusChip<span class="ref">§3.7 · status-chip.tsx(帶框方形,禁 pill)</span></div>
+        <div class="chips"><span class="chip ok">已核准</span><span class="chip wn">待審核</span><span class="chip er">退回</span><span class="chip nt">已收貨</span></div></div>
+      <div class="comp"><div class="clabel">ThemeSwitcher<span class="ref">§2.2 · theme-switcher.tsx(見右上頂欄)</span></div>
+        <div class="comp-row"><span class="cbtn" style="gap:6px">配色 <b data-theme="navy" style="width:14px;height:14px;border-radius:2px;background:var(--primary);border:1px solid var(--line);outline:2px solid var(--primary);outline-offset:1px"></b><b data-theme="teal" style="width:14px;height:14px;border-radius:2px;background:var(--primary);border:1px solid var(--line)"></b><b data-theme="graphite" style="width:14px;height:14px;border-radius:2px;background:var(--primary);border:1px solid var(--line)"></b></span></div></div>
+
+      <div class="grp-t" style="margin-top:16px">工作區框架</div>
+      <div class="comp"><div class="clabel">TopBar · App 頁籤<span class="ref">§3.1 · top-bar.tsx(active=主色實底)</span></div>
+        <div class="ctopbar"><span class="on">採購</span><span>銷售</span><span>庫存</span><span>生產現場</span><span>品保 ISO</span><span>財會</span><span>報表</span></div></div>
+      <div class="comp"><div class="clabel">Toolbar + RecordNav<span class="ref">§3.8 · toolbar.tsx</span></div>
+        <div class="ctool"><span class="crumb2">採購 › 採購單</span><span class="cbtn pri">核准並過帳</span><span class="cbtn">儲存</span><span class="sp"></span><span class="crecnav"><b>‹</b><span class="pos">第 1 / 248 筆</span><b>›</b></span></div></div>
+      <div class="comp"><div class="clabel">RecordRail · 記錄清單<span class="ref">§3.1 · record-rail.tsx(selected=主色 tint + 左 3px inset)</span></div>
+        <div class="crail">
+          <div class="item on"><div class="r1"><span class="code">PO-0716-001</span><span class="amt">128,400</span></div><div class="r2"><span>凍覆盆子 500g</span><span class="chip wn">待審核</span></div></div>
+          <div class="item"><div class="r1"><span class="code">PO-0715-047</span><span class="amt">84,200</span></div><div class="r2"><span>凍藍莓 500g</span><span class="chip ok">已核准</span></div></div>
+        </div></div>
+      <div class="comp"><div class="clabel">StatusBar · 狀態列<span class="ref">§3.9 · status-bar.tsx(信任訊號)</span></div>
+        <div class="csbar"><span><span class="dot"></span>已連線 · 即時同步</span><span>資料更新 <b>14:03:21</b></span><span>租戶 <b>hsienyung</b></span><span class="sp"></span><span>權限:採購 — 完整</span><span>Weyver <b>R1</b></span></div></div>
+
+      <div class="grp-t" style="margin-top:16px">表單構件</div>
+      <div class="comp"><div class="clabel">FormSection + FieldGrid · 全框線欄位表<span class="ref">§3.2 · form-section / field-grid.tsx</span></div>
+        <div class="sec" style="margin:0;max-width:560px"><div class="sec-h" style="font-size:12px;padding:6px 12px">基本資料</div>
+          <div class="fg">
+            <div class="k">單號</div><div class="v mono">PO-0716-001</div>
+            <div class="k">單據日期</div><div class="v mono">2026-07-16</div>
+            <div class="k">供應商</div><div class="v"><a href="#s">鑫豐農產品</a></div>
+            <div class="k">金額 fx</div><div class="v fx">128,400</div>
+          </div></div></div>
+      <div class="comp"><div class="clabel">SubTable · 子表(列號 + 直欄線 + 合計)<span class="ref">§3.3 · sub-table.tsx</span></div>
+        <table class="ctable" style="max-width:560px"><thead><tr><th style="width:30px">#</th><th>品項</th><th class="r" style="width:70px">數量</th><th class="r" style="width:86px">單價</th><th class="r" style="width:96px">小計 fx</th></tr></thead>
+        <tbody><tr><td class="no">1</td><td>凍覆盆子 500g</td><td class="r">200</td><td class="r">401.25</td><td class="r">80,250</td></tr>
+          <tr><td class="no">2</td><td>凍覆盆子 1kg</td><td class="r">80</td><td class="r">401.25</td><td class="r">32,100</td></tr>
+          <tr class="sum"><td class="no"></td><td>總計 fx=Σ 小計</td><td class="r">280</td><td class="r"></td><td class="r">112,350</td></tr></tbody></table></div>
+      <div class="comp"><div class="clabel">ApprovalTable · 簽核表(表格式 + 時間戳)<span class="ref">§3.4 · approval-table.tsx</span></div>
+        <table class="ctable" style="max-width:620px"><thead><tr><th style="width:44px">順序</th><th>簽核人</th><th>角色</th><th style="width:84px">結果</th><th style="width:130px">時間</th></tr></thead>
+        <tbody><tr><td class="mono">1</td><td>陳美玲</td><td>申請人</td><td><span class="chip ok">已送出</span></td><td class="mono">07-16 09:12</td></tr>
+          <tr><td class="mono">2</td><td>林志豪</td><td>採購主管</td><td><span class="chip wn">審核中</span></td><td class="mono">—</td></tr>
+          <tr><td class="mono">3</td><td>王淑芬</td><td>財務</td><td><span class="chip nt">待審</span></td><td class="mono">—</td></tr></tbody></table></div>
+      <div class="comp"><div class="clabel">GLTable · 借貸過帳(科目代碼 + 平衡斷言)<span class="ref">§3.5 · gl-table.tsx</span></div>
+        <table class="ctable" style="max-width:520px"><thead><tr><th style="width:84px">科目代碼</th><th>科目</th><th class="r" style="width:100px">借方</th><th class="r" style="width:100px">貸方</th></tr></thead>
+        <tbody><tr><td class="mono">1130</td><td>存貨 — 原物料</td><td class="r">128,400</td><td class="r"></td></tr>
+          <tr><td class="mono">2110</td><td>應付帳款 — 鑫豐農產品</td><td class="r"></td><td class="r">128,400</td></tr>
+          <tr class="bal"><td></td><td style="color:var(--ok)">✓ 借貸平衡</td><td class="r">128,400</td><td class="r">128,400</td></tr></tbody></table></div>
+
+      <div class="grp-t" style="margin-top:16px">資料視圖</div>
+      <div class="comp"><div class="clabel">DataTable / ListView · 列表(次要視圖,hairline·禁斑馬)<span class="ref">§3.10 · data-table / list-view.tsx</span></div>
+        <div class="clist" style="max-width:620px"><table><thead><tr><th>單號</th><th>供應商</th><th class="r">金額 NT$</th><th>狀態</th></tr></thead>
+        <tbody><tr class="sel"><td class="code">PO-0716-001</td><td>鑫豐農產品</td><td class="r">128,400</td><td><span class="chip wn">待審核</span></td></tr>
+          <tr><td class="code">PO-0715-047</td><td>統鮮實業</td><td class="r">84,200</td><td><span class="chip ok">已核准</span></td></tr>
+          <tr><td class="code">PO-0715-046</td><td>正大食材</td><td class="r">312,000</td><td><span class="chip nt">已收貨</span></td></tr></tbody></table></div></div>
+
+      <div class="grp-t" style="margin-top:16px">資料 / 視圖套件(surface,heavy JS 於產品端渲染;此處登錄對映)</div>
+      <table class="lib" style="max-width:720px"><thead><tr><th style="width:150px">套件</th><th>對應 surface</th><th style="width:130px">狀態</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">Glide Data Grid</td><td>S2 網格編輯器(canvas · fx 即時重算)</td><td>已裝 · /app 網格</td></tr>
+        <tr><td class="mono">TanStack Table</td><td>S5 列表視圖(排序)</td><td>已裝 · /app 列表</td></tr>
+        <tr><td class="mono">RHF + Zod</td><td>S4 表單 / S3 設計器</td><td>已裝 · /app 設計</td></tr>
+        <tr><td class="mono">Apache ECharts</td><td>S18 MES 監控 / S21 儀表板 / F 圖表</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">FullCalendar</td><td>S5 日曆視圖</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">dnd-kit</td><td>S5 看板 / S3 設計器拖拉</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">MapLibre GL</td><td>S5 地圖視圖</td><td>已裝 · 樣式見 §16</td></tr>
+        <tr><td class="mono">TipTap</td><td>S19 ISO 文件編輯</td><td>已裝 · 樣式見 §16</td></tr>
+      </tbody></table>
+    </div></div>
+
+    <!-- Do & Don't -->
+    <div class="sec"><div class="sec-h"><span class="n">07</span>Do &amp; Don't(品牌層)</div><div class="sec-b">
+      <div class="dd">
+        <div class="col do"><h4>Do — 嚴謹企業級</h4><ul>
+          <li>一律「Weyver(織雲)」,中文 day 1 主打</li>
+          <li>品牌隱喻(織/雲)存於敘事與命名</li>
+          <li>產品內用嚴謹結構表達品牌</li>
+          <li>三主題 = 一套系統的可切換配色</li>
+          <li>IBM Plex 貫穿產品與物料;數字 Mono + tabular</li>
+          <li>Sober、務實、內行的文案</li>
+        </ul></div>
+        <div class="col dont"><h4>Don't — 避開</h4><ul>
+          <li>自稱 Ragic clone / 複製 / 類 Ragic</li>
+          <li>把雲/織畫進產品介面當裝飾</li>
+          <li>產品內加漸層 hero / pill / 陰影</li>
+          <li>把三色講成三個品牌 / 隨意混色</li>
+          <li>物料換字型(Inter / 系統預設)</li>
+          <li>行銷腔、裝可愛、空喊顛覆</li>
+        </ul></div>
+      </div>
+    </div></div>
+
+    <!-- 聲音語氣 -->
+    <div class="sec"><div class="sec-h"><span class="n">08</span>聲音與語氣<span class="r">嚴謹 · 可信 · 務實 · 克制 · 內行</span></div><div class="sec-b">
+      <table class="voice">
+        <thead><tr><th style="width:120px">情境</th><th>✅ Do(嚴謹務實)</th><th>✕ Don't(SaaS 行銷腔)</th></tr></thead>
+        <tbody>
+          <tr><td>主行動按鈕</td><td class="ok">核准並過帳 · 儲存 · 匯出 Excel</td><td class="no">一鍵搞定 · 立即體驗</td></tr>
+          <tr><td>錯誤訊息</td><td class="ok">借貸不平衡:借 128,400 / 貸 128,000,差 400。請檢查明細。</td><td class="no">哎呀!出了點小問題 😅</td></tr>
+          <tr><td>空狀態</td><td class="ok">尚無採購單。從上方「新增」建立第一筆,或匯入 Excel。</td><td class="no">空空如也~快來新增吧!</td></tr>
+          <tr><td>對外標題</td><td class="ok">一個平台,取代 Ragic + ERP + MES + ISO</td><td class="no">用 AI 顛覆你的企業管理</td></tr>
+        </tbody>
+      </table>
+    </div></div>
+
+    <!-- 技術棧全景 -->
+    <div class="sec"><div class="sec-h"><span class="n">09</span>技術棧全景<span class="r">docs/14 §1 · 全 OSS · 版本以 monorepo package.json 為準</span></div><div class="sec-b">
+      <div class="spec-grid">
+        <div>
+          <div class="mini-h">核心(§1.1)</div>
+          <table class="lib"><tbody>
+            <tr><td style="width:130px">語言</td><td class="mono">TypeScript 7(fallback 5.x)</td></tr>
+            <tr><td>框架</td><td class="mono">Next.js 15(App Router)· React 19</td></tr>
+            <tr><td>樣式</td><td class="mono">Tailwind CSS 4 + CSS vars(3-layer token)</td></tr>
+            <tr><td>元件基礎</td><td class="mono">shadcn/ui + Radix(視覺全覆寫,只取 a11y)</td></tr>
+            <tr><td>Monorepo</td><td class="mono">Turborepo 2 · pnpm 10</td></tr>
+          </tbody></table>
+        </div>
+        <div>
+          <div class="mini-h">狀態 / 資料流(§1.3)</div>
+          <table class="lib"><tbody>
+            <tr><td style="width:130px">Server state</td><td class="mono">TanStack Query v5</td></tr>
+            <tr><td>Client state</td><td class="mono">Zustand</td></tr>
+            <tr><td>URL state</td><td class="mono">Next router + nuqs</td></tr>
+            <tr><td>Form state</td><td class="mono">React Hook Form + Zod</td></tr>
+            <tr><td>API / i18n</td><td class="mono">tRPC · next-intl(zh-TW + en)</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+      <div class="mini-h" style="margin-top:14px">品質 / 建置(§1.5)</div>
+      <table class="lib" style="max-width:720px"><tbody>
+        <tr><td style="width:150px">Lint / format</td><td class="mono">ESLint(型別感知)+ Biome(格式)</td></tr>
+        <tr><td>測試</td><td class="mono">Vitest 4 · Playwright(+ MCP 探索)</td></tr>
+        <tr><td>元件文件</td><td class="mono">Storybook 10(@storybook/react-vite)</td></tr>
+        <tr><td>建置工具</td><td class="mono">Vite 8(Rolldown;Storybook/Vitest 用,非 Next 打包器)</td></tr>
+        <tr><td>部署</td><td class="mono">Coolify self-host</td></tr>
+      </tbody></table>
+      <div class="desc" style="margin:12px 0 0">資料/視圖套件(Glide / TanStack Table / ECharts / FullCalendar / dnd-kit / MapLibre / TipTap / RHF+Zod)× surface 對映見 <b style="color:var(--ink2)">§06 元件庫末表</b>,視覺樣本見 <b style="color:var(--ink2)">§16</b>。</div>
+    </div></div>
+
+    <!-- 形狀 · 深度 · 間距 -->
+    <div class="sec"><div class="sec-h"><span class="n">10</span>形狀 · 深度 · 間距<span class="r">🔴 2026-08-01 依方向 B 改寫</span></div><div class="sec-b">
+<div class="why"><b>🔴 取代先前的「方角 2–3px · 禁 pill · 深度 = 框線禁陰影」。</b>
+實測 Linear 主要用 2px / 4px / 6px、Vercel 6px / 8px、Attio 8px / 10px / 12px ——
+<b>「精品用大圓角」不成立</b>,我方原本的緊圓角方向是對的,但 2–3px 過緊、且禁陰影使深度無處表達。
+新規:圓角三階、<b>深度兩級</b>、間距<b>分組</b>。</div>
+
+<div class="grp-t">圓角三階</div>
+<div class="ds-row">
+  <span class="ds-lbl">4px 控件</span><span class="b2 sec" style="border-radius:4px">按鈕 / 輸入 / 章</span>
+  <span class="ds-lbl">6px 容器</span><span style="display:inline-block;padding:7px 14px;background:var(--head);border-radius:6px;font-size:12.5px">卡片 / 面板</span>
+  <span class="ds-lbl">9px 浮層</span><span style="display:inline-block;padding:7px 14px;background:var(--card);border-radius:9px;font-size:12.5px;box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18)">選單 / 對話框</span>
+</div>
+<div class="desc" style="margin-top:6px">Pill(9999px)<b>解禁,但限用途</b>:僅<b>計數與標籤</b>(見 §06 Pill);
+<b>狀態章維持方形帶框</b>(§06)—— 與標誌的網格語言同源。</div>
+
+<div class="grp-t" style="margin-top:18px">深度只有兩級</div>
+<div class="ds-row" style="gap:16px">
+  <div style="padding:12px 16px;border-radius:6px;background:var(--card);box-shadow:0 0 0 1px var(--line);font-size:12.5px">
+    <b>常態 = hairline</b><br><span class="mono" style="font-size:11px;color:var(--ink3)">0 0 0 1px var(--line)</span></div>
+  <div style="padding:12px 16px;border-radius:9px;background:var(--card);font-size:12.5px;
+    box-shadow:0 0 0 1px var(--line),0 12px 28px -10px rgba(15,23,32,.18),0 2px 6px rgba(15,23,32,.05)">
+    <b>浮層 = 分層真陰影</b><br><span class="mono" style="font-size:11px;color:var(--ink3)">+0 12px 28px -10px /.18 · +0 2px 6px /.05</span></div>
+</div>
+<div class="desc" style="margin-top:6px">依據:Linear 最常用的陰影是 <span class="mono">rgba(0,0,0,.03) 0 1.2px 0</span>(31 次)——
+<b>陰影是比框線更軟的替代品</b>,不是做戲;Attio 的陰影<b>帶色調且分層</b>。三家的陰影密度僅 1.8–4.1%。
+🔴 <b>殼的互動項不畫框</b>,靠 Surface 的 hover / active 階。</div>
+
+<div class="grp-t" style="margin-top:18px">間距 —— 分組尺度(不是一體適用)</div>
+<div class="ds-row">
+  <span class="ds-lbl">4px 組內</span><span style="height:16px;width:4px;background:var(--primary)"></span><span style="font-size:12.5px;color:var(--ink3)">標籤與其值、圖示與文字</span>
+</div>
+<div class="ds-row"><span class="ds-lbl">12px 組間</span><span style="height:16px;width:12px;background:var(--primary)"></span><span style="font-size:12.5px;color:var(--ink3)">欄位與欄位、清單列之間</span></div>
+<div class="ds-row"><span class="ds-lbl">24px 區段</span><span style="height:16px;width:24px;background:var(--primary)"></span><span style="font-size:12.5px;color:var(--ink3)">區段與區段、卡片外距</span></div>
+<div class="desc" style="margin-top:6px">🔴 先前全庫是 8–12px <b>一體適用</b>,所以所有東西看起來一樣近 =
+沒有分組 = 雜亂。三級尺度讓眼睛看得出「哪些是一夥的」。</div>
+</div></div>
+
+<!-- 尺寸節奏 -->
+<div class="sec"><div class="sec-h"><span class="n">11</span>尺寸節奏(密度)<span class="r">§2.6 · 密度優先,留白是手段非風格</span></div><div class="sec-b">
+      <div class="density" style="max-width:560px">
+        <div class="row" style="height:42px">topbar<b>42px</b></div>
+        <div class="row" style="height:40px">工具列 toolbar<b>40px</b></div>
+        <div class="row" style="height:32px">欄位列 field row<b>32px</b></div>
+        <div class="row" style="height:28px">表格列 table row<b>~28px</b></div>
+        <div class="row" style="height:27px">按鈕 / 輸入<b>26–28px</b></div>
+        <div class="row" style="height:26px">狀態列 statusbar<b>26px</b></div>
+      </div>
+      <div class="desc" style="margin:10px 0 0">內文 <b>14px</b>(base);表格 13px;地板 <b>12px</b> —— 密度靠間距回收,不靠縮字(SAP Fiori compact 模式亦然)。數字一律 Mono + tabular。</div>
+    </div></div>
+
+    <!-- 動效 -->
+    <div class="sec"><div class="sec-h"><span class="n">12</span>動效<span class="r">Carbon productive 曲線 · 只服務狀態轉換 · 尊重 reduced-motion</span></div><div class="sec-b">
+<div class="why"><b>原則</b>動效只用來<b>解釋狀態改變</b>(這個東西從哪來、去哪),不用來取悅。
+資料變更以<b>時間戳</b>表達,不以動畫。曲線採 IBM Carbon 的 productive 組 ——
+它是為<b>高頻使用的生產力工具</b>設計的,與 expressive(行銷/首次體驗)不同。</div>
+<table class="ds-tbl">
+  <tr><th style="width:118px">token</th><th style="width:70px">時間</th><th style="width:210px">曲線</th><th>用於</th></tr>
+  <tr><td class="k">fast-01</td><td class="k">70ms</td><td class="k">cubic-bezier(0,0,.38,.9)</td><td>hover / active 底色、圖示色</td></tr>
+  <tr><td class="k">fast-02</td><td class="k">110ms</td><td class="k">cubic-bezier(0,0,.38,.9)</td><td>按鈕狀態、chip、focus ring</td></tr>
+  <tr><td class="k">moderate-01</td><td class="k">150ms</td><td class="k">cubic-bezier(.2,0,.38,.9)</td><td>浮層出現 / 面板展開</td></tr>
+  <tr><td class="k">moderate-02</td><td class="k">240ms</td><td class="k">cubic-bezier(.2,0,.38,.9)</td><td>抽屜 / 大面積轉場(上限)</td></tr>
+</table>
+<div class="ds-row" style="margin-top:12px">
+  <span class="ds-lbl">70ms</span><div class="mo" style="width:150px"><i style="animation:none;left:0"></i></div>
+  <span class="ds-lbl">150ms</span><div class="mo" style="width:150px"><i style="left:116px"></i></div>
+</div>
+<div class="grp-t" style="margin-top:16px">硬規則</div>
+<div class="desc">
+  <b>只動 <span class="mono">opacity</span> 與 <span class="mono">transform</span></b> —— 禁 animating width / height / top / left(會觸發 layout,密集表格下掉幀)。<br>
+  <b>禁</b>入場動畫 / stagger / parallax / 彈跳 / spring / 裝飾性 motion / 載入時的骨架跳動。<br>
+  <b><span class="mono">prefers-reduced-motion: reduce</span> 一律歸零</b>(採 Cloudscape 的全關立場;日後若引入位移類動效,再改 WebKit 的「換掉而非全關」)。<br>
+  <b>不得用動效掩蓋延遲</b> —— 慢就顯示進度,不要用動畫假裝快。
+</div>
+</div></div>
+
+<!-- 無障礙 -->
+<div class="sec"><div class="sec-h"><span class="n">13</span>無障礙 a11y<span class="r">§3.14 · AA 4.5:1 · 鍵盤全可達 · 雙編碼</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>AA 4.5:1 是企業採購與法遵底線,非加分項;狀態一律色 + 文字雙編碼,確保色盲使用者與黑白列印仍可辨識,落實「不單靠顏色傳達資訊」。</div>
+      <div class="mini-h">主色白字對比(三主題皆 ≥7:1)<span style="font-weight:400;color:var(--ink3)"> —— 數值隨主色更新重算,非沿用</span></div>
+      <div class="a11y-pairs">
+        <div class="p" data-theme="navy" style="background:var(--primary)">深藍<small>7.6:1</small></div>
+        <div class="p" data-theme="teal" style="background:var(--primary)">深海青<small>7.2:1</small></div>
+        <div class="p" data-theme="graphite" style="background:var(--primary)">石墨<small>12.0:1</small></div>
+        <div class="p" style="background:var(--ink)">ink<small>16.6:1</small></div>
+      </div>
+      <div class="spec-grid" style="margin-top:14px">
+        <div><div class="mini-h">Focus = 2px 主色 outline</div><span class="focus-demo">聚焦中的欄位</span></div>
+        <div><div class="mini-h">狀態雙編碼(色 + 文字,不單靠色)</div><div class="chips"><span class="chip ok">已核准</span><span class="chip er">退回</span></div></div>
+      </div>
+      <div class="desc" style="margin:12px 0 0">內文對比 ≥ AA 4.5:1;鍵盤全可達;表格語意化(th scope / aria-sort);尊重減少動效。</div>
+    </div></div>
+
+    <!-- 狀態設計 -->
+    <div class="sec"><div class="sec-h"><span class="n">14</span>狀態設計(每 surface 皆設計)<span class="r">§3.13</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>每個 surface 都必然遇到空 / 載入 / 錯誤三態,預先定案可避免開發期臨時的 vibe 決策;錯誤訊息一律含原因 + 復原路徑,與借貸平衡等信任訊號同一標準。</div>
+      <div class="spec-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div><div class="mini-h">空狀態</div><div class="state-box"><b>尚無採購單</b>從上方「新增」建立第一筆,或匯入 Excel。</div></div>
+        <div><div class="mini-h">載入(skeleton,方角無 shimmer)</div><div class="skel"><i style="width:60%"></i><i style="width:90%"></i><i style="width:75%"></i><i style="width:40%"></i></div></div>
+        <div><div class="mini-h">錯誤(含原因 + 復原)</div><div class="err-box"><b>借貸不平衡</b>借 128,400 / 貸 128,000,差 400。<a href="#fix">檢查明細</a></div></div>
+      </div>
+
+      <!-- ⊕ 2026-08-08 由品牌板補入。原本這一節只有三態、839 字元,
+           缺 spinner / progress / page loading,而且全部是靜態的。 -->
+      <div class="why" style="margin-top:18px"><b>⊕ 2026-08-08 補</b>
+        原本只定了「空 / 載入 / 錯誤」三態,而<b>載入其實有四種</b>,選錯就會騙人 ——
+        已知版面用 skeleton、不知進度用 spinner、<b>已知百分比就顯示百分比</b>(不用不確定條偽裝)、
+        整頁切換用符號收斂。來源:決策方品牌板(<code>WeyverBrandBoard.dc.html</code>)。</div>
+
+      <div class="spec-grid" style="grid-template-columns:repeat(2,1fr);margin-top:10px">
+        <div>
+          <div class="mini-h">1 · Skeleton —— 首次載入、已知版面</div>
+          <div class="skel" style="position:relative;overflow:hidden">
+            <i style="width:60%"></i><i style="width:90%"></i><i style="width:75%"></i><i style="width:40%;margin-bottom:0"></i>
+            <div data-wv-scan style="position:absolute;top:0;bottom:0;width:2px;left:0;
+              background:var(--thread);box-shadow:0 0 8px color-mix(in srgb,var(--thread) 60%,transparent)"></div>
+          </div>
+          <div class="note" style="margin-top:6px">形狀等於最終內容,避免版位跳動。</div>
+        </div>
+        <div>
+          <div class="mini-h">2 · Spinner —— 進行中、無法得知進度</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="cbtn pri" style="gap:7px;height:30px"><span style="width:18px;height:18px;display:inline-flex"><svg viewBox="0 0 120 120" width="100%" height="100%" data-wv="spin" data-wv-mono="1"></svg></span>儲存中</button>
+            <span class="cbtn" style="gap:7px;height:30px"><span style="width:18px;height:18px;display:inline-flex"><svg viewBox="0 0 120 120" width="100%" height="100%" data-wv="spin"></svg></span>同步資料源</span>
+          </div>
+          <div class="note" style="margin-top:6px">只用於按鈕或局部區塊,<b>不得全頁遮罩</b>。</div>
+        </div>
+        <div>
+          <div class="mini-h">3 · Progress —— 背景任務(匯入 / 匯出)</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="font-size:32px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;min-width:74px">
+              <span data-wv-pct>30</span><span style="font-size:15px;font-weight:700;color:var(--ink3)">%</span></div>
+            <div style="flex:1">
+              <div style="font-size:12px;color:var(--ink2);margin-bottom:6px">匯出中 — Ragic 表單 (3/10)</div>
+              <div data-wv-bar style="display:flex;gap:2px;height:9px"></div>
+            </div>
+          </div>
+          <div class="note" style="margin-top:6px"><b>段寬刻意不等分</b> —— 品牌板逐字「echoes the mark's own block widths, not a generic uniform bar」。</div>
+        </div>
+        <div>
+          <div class="mini-h">4 · Page Loading —— 整頁 / 路由切換</div>
+          <div style="border:1px solid var(--line);background:var(--card);height:132px;display:flex;
+            flex-direction:column;align-items:center;justify-content:center;gap:12px">
+            <span style="width:48px;height:48px;display:inline-flex"><svg viewBox="0 0 120 120" width="100%" height="100%" data-wv="full"></svg></span>
+            <span style="font-size:12px;color:var(--ink3);letter-spacing:.05em">正在載入 Weyver</span>
+          </div>
+          <div class="note" style="margin-top:6px">取代文字「載入中…」——<b>符號收斂本身就是載入狀態</b>。</div>
+        </div>
+      </div>
+
+      <div class="why" style="margin-top:14px;border-left-color:var(--wn,#8a5410)"><b>🔴 兩個與既有規則的張力,交裁定</b>
+        ① 本節原文寫 skeleton「<b>方角無 shimmer</b>」,而品牌板的骨架有一條會動的<b>掃描線</b>。
+        兩者不同(shimmer 是掃過的漸層,掃描線是 2px 的線,且它用的是品牌自己的織藍),
+        但<b>都是骨架上的動</b> —— 要不要留,是同一個判斷。<br>
+        ② <b>§12 動效</b>的 token 是轉場用的(70 / 110 / 150 / 240ms),
+        而標誌動畫是 <b>2600ms 循環</b>。<b>循環不是轉場</b>,不吃那張表 ——
+        但這件事要寫下來,否則下一個人會以為它違規。</div>
+    </div></div>
+
+    <!-- 圖示 -->
+    <div class="sec"><div class="sec-h"><span class="n">15</span>圖示<span class="r">§1.4 · Lucide outline · stroke ~1.5 · 功能性 · 無 emoji</span></div><div class="sec-b">
+      <div class="why"><b>理由</b>單一 Lucide outline 家族(stroke ~1.5)確保全站圖示視覺一致;功能性、無 emoji 與彩色圖塊 —— 消費級圖示破壞企業級嚴謹感,且跨平台 emoji 樣式不可控。</div>
+      <div class="iconrow">
+        <span title="search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span title="plus"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span title="check"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span title="file"><svg viewBox="0 0 24 24" fill="none"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <span title="bell"><svg viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span title="filter"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        <span title="download"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span title="edit"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+    </div></div>
+
+    <!-- 視圖套件樣本 -->
+    <div class="sec"><div class="sec-h"><span class="n">16</span>視圖套件樣本(待接 surface 預覽)<span class="r">§1.2 · 皆循全框線 / 方角 / 禁陰影 / 隨主題換色;heavy JS 產品端渲染,此為視覺約束稿</span></div><div class="sec-b">
+      <div class="desc">下列套件已安裝但尚未接畫面。此處以靜態樣本鎖定其在 Weyver 的視覺約束 —— 不套用套件出廠預設樣式,一律改寫成本設計系統(邊框、方角、Mono 數字、扁平主色、無陰影)。</div>
+      <div class="view-grid">
+
+        <!-- ECharts -->
+        <div class="view-panel">
+          <div class="view-panel-h"><b>產線 OEE 趨勢</b>S18 MES 監控 / S21 儀表板<span class="ref">Apache ECharts</span></div>
+          <div class="view-panel-b">
+            <svg class="chart" viewBox="0 0 460 150" role="img" aria-label="產線 OEE 七日趨勢長條圖">
+              <line class="grid" x1="34" y1="16" x2="452" y2="16"/>
+              <line class="grid" x1="34" y1="42" x2="452" y2="42"/>
+              <line class="grid" x1="34" y1="68" x2="452" y2="68"/>
+              <line class="grid" x1="34" y1="94" x2="452" y2="94"/>
+              <line class="axis" x1="34" y1="120" x2="452" y2="120"/>
+              <text class="tick" x="30" y="19" text-anchor="end">100</text>
+              <text class="tick" x="30" y="45" text-anchor="end">75</text>
+              <text class="tick" x="30" y="71" text-anchor="end">50</text>
+              <text class="tick" x="30" y="97" text-anchor="end">25</text>
+              <rect class="bar" x="40"  y="34" width="34" height="86"/>
+              <rect class="bar" x="99"  y="28" width="34" height="92"/>
+              <rect class="bar" x="158" y="37" width="34" height="83"/>
+              <rect class="bar" x="217" y="24" width="34" height="96"/>
+              <rect class="bar" x="276" y="31" width="34" height="89"/>
+              <rect class="bar" x="335" y="22" width="34" height="98"/>
+              <rect class="bar" x="394" y="29" width="34" height="91"/>
+              <line class="trend" stroke-dasharray="4 3" x1="34" y1="31" x2="452" y2="31"/>
+              <text class="value" x="452" y="28" text-anchor="end" style="fill:var(--wn)">目標 85%</text>
+              <text class="value" x="57"  y="30" text-anchor="middle">82</text>
+              <text class="value" x="116" y="24" text-anchor="middle">88</text>
+              <text class="value" x="175" y="33" text-anchor="middle">79</text>
+              <text class="value" x="234" y="20" text-anchor="middle">91</text>
+              <text class="value" x="293" y="27" text-anchor="middle">85</text>
+              <text class="value" x="352" y="18" text-anchor="middle">93</text>
+              <text class="value" x="411" y="25" text-anchor="middle">87</text>
+              <text class="tick" x="57"  y="134" text-anchor="middle">07-13</text>
+              <text class="tick" x="116" y="134" text-anchor="middle">07-14</text>
+              <text class="tick" x="175" y="134" text-anchor="middle">07-15</text>
+              <text class="tick" x="234" y="134" text-anchor="middle">07-16</text>
+              <text class="tick" x="293" y="134" text-anchor="middle">07-17</text>
+              <text class="tick" x="352" y="134" text-anchor="middle">07-18</text>
+              <text class="tick" x="411" y="134" text-anchor="middle">07-19</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- FullCalendar -->
+        <div class="view-panel">
+          <div class="view-panel-h"><b>排程日曆</b>S5 日曆視圖<span class="ref">FullCalendar</span></div>
+          <div class="view-panel-b">
+            <table class="calendar">
+              <thead><tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="off">12</td>
+                  <td>13<span class="event">A 線備料</span></td>
+                  <td>14<span class="event">原料盤點</span></td>
+                  <td>15</td>
+                  <td>16<span class="event">採購收貨 ×3</span></td>
+                  <td>17</td>
+                  <td class="off">18<span class="event warn">保養停機</span></td>
+                </tr>
+                <tr>
+                  <td class="off">19</td>
+                  <td>20<span class="event">A 線充填</span></td>
+                  <td>21</td>
+                  <td>22<span class="event">供應商交貨</span></td>
+                  <td>23</td>
+                  <td>24<span class="event">出貨排程</span></td>
+                  <td class="off">25</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- dnd-kit board -->
+        <div class="view-panel full">
+          <div class="view-panel-h"><b>工單看板</b>S5 看板 / S3 設計器拖拉<span class="ref">dnd-kit</span></div>
+          <div class="view-panel-b">
+            <div class="board">
+              <div class="board-col">
+                <h5>待處理<span>2</span></h5>
+                <div class="board-b">
+                  <div class="board-card">備料 · 冷凍原料 A<span class="grip">⋮⋮</span><span class="meta">WO-2210 · 李文彬</span></div>
+                  <div class="board-card">混合 · 醬料批次<span class="grip">⋮⋮</span><span class="meta">WO-2213 · 陳筱涵</span></div>
+                </div>
+              </div>
+              <div class="board-col">
+                <h5>進行中<span>1</span></h5>
+                <div class="board-b">
+                  <div class="board-card dragging">充填 · A 線<span class="grip">⋮⋮</span><span class="meta">WO-2208 · 王建國 · 拖曳中</span></div>
+                </div>
+              </div>
+              <div class="board-col">
+                <h5>已完成<span>1</span></h5>
+                <div class="board-b">
+                  <div class="board-card">包裝 · 500g×24<span class="grip">⋮⋮</span><span class="meta">WO-2205 · 已交檢</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MapLibre -->
+        <div class="view-panel">
+          <div class="view-panel-h"><b>供應鏈地圖</b>S5 地圖視圖<span class="ref">MapLibre GL</span></div>
+          <div class="view-panel-b">
+            <div class="map">
+              <svg viewBox="0 0 460 170" role="img" aria-label="供應商與配送位置示意地圖">
+                <path class="land" d="M60 30 L180 20 L250 55 L240 120 L150 150 L70 130 L40 80 Z"/>
+                <path class="land" d="M300 70 L400 55 L430 100 L390 145 L310 140 L285 105 Z"/>
+                <path class="road" d="M120 90 L230 88 L300 105 L380 100"/>
+                <path class="road" d="M150 60 L160 130"/>
+                <g><circle class="pin" cx="130" cy="88" r="6"/><path class="pin" d="M130 82 a6 6 0 0 1 6 6 c0 5 -6 12 -6 12 c0 0 -6 -7 -6 -12 a6 6 0 0 1 6 -6 Z"/></g>
+                <g><circle class="pin" cx="228" cy="86" r="6"/></g>
+                <g><circle class="pin" cx="360" cy="100" r="6"/></g>
+                <g><circle class="pin warn" cx="300" cy="106" r="6"/></g>
+              </svg>
+              <span class="badge">供應商 3 · 配送中 1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TipTap editor -->
+        <div class="view-panel full">
+          <div class="view-panel-h"><b>ISO 文件編輯</b>S19 文管 · 富文本<span class="ref">TipTap</span></div>
+          <div class="view-panel-b">
+            <div class="editor">
+              <div class="editor-bar">
+                <button class="on" title="標題">H</button>
+                <button class="on" title="粗體" style="font-weight:700">B</button>
+                <button title="斜體" style="font-style:italic">I</button>
+                <button title="底線" style="text-decoration:underline">U</button>
+                <span class="divider"></span>
+                <button title="項目符號">•</button>
+                <button title="編號清單" style="font-family:'IBM Plex Mono';font-size:9px">1.</button>
+                <span class="divider"></span>
+                <button title="連結">↗</button>
+                <button title="表格" style="font-family:'IBM Plex Mono';font-size:9px">▦</button>
+                <button title="簽核章">✍</button>
+              </div>
+              <div class="editor-doc">
+                <h4>SOP-QA-014 原料驗收作業程序</h4>
+                <p>本程序規範冷凍原料進廠時之驗收方式,確保符合 HACCP 關鍵管制點要求。</p>
+                <ul>
+                  <li>核對送貨單與採購單品項、數量、批號。</li>
+                  <li>量測中心溫度,冷凍品應 ≤ −18°C。</li>
+                  <li>不符者開立 <b>NCR</b> 並隔離,通知品保。</li>
+                </ul>
+                <div class="doc-meta">版本 v2 · 生效日 2026-07-01 · 核准 王淑芬 · 下次審查 2027-07-01</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div></div>
+
+    <!-- 反面 -->
+    <div class="sec"><div class="sec-h"><span class="n">17</span>反面 · 一票否決<span class="r">§0 · 出現即不合格</span></div><div class="sec-b">
+      <div class="col dont" style="border:1px solid var(--line)"><h4 style="background:var(--er);color:#fff;font-size:12px;font-weight:600;padding:7px 12px;margin:0">普通 SaaS 語彙 — 一票否決</h4>
+        <ul style="list-style:none;padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px 24px">
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>大圓角</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>軟陰影 / 飄浮卡片</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>pill 徽章</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>大留白行銷排版</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>in-app 漸層 hero</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>裝飾動效</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>儀表板當首頁</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>emoji / 彩色 icon 塊</li>
+          <li style="padding-left:16px;position:relative;font-size:11.5px;color:var(--ink2)"><span style="position:absolute;left:0;color:var(--er);font-weight:700">✕</span>每系統一個模組 tab</li>
+        </ul>
+      </div>
+    </div></div>
+
+<!-- 應用 -->
+<div class="sec"><div class="sec-h"><span class="n">18</span>身分與品牌載體<span class="r">🔴 多租戶 SaaS:租戶身分 vs 平台身分,兩層分開</span></div><div class="sec-b">
+
+<div class="why" style="border-left-color:var(--er)"><b>🔴 2026-08-01 方向修正 —— 先前這一節寫錯了。</b>
+我把<b>列印抬頭、空狀態</b>當成「Weyver 的品牌時刻」,還寫了「Weyver 的符號小而確定,不搶客戶的版面」。
+<b>那個前提就不對</b>:Weyver 是<b>多租戶 SaaS</b>,鮮勇食品印出來的採購單是要給<b>他們的供應商</b>看的 ——
+那份文件上該有的是鮮勇的抬頭與統編,Weyver 的標誌<b>根本不該出現</b>,
+就像 Salesforce 不會在你的發票上印自己的 logo。<br>
+先前的錯誤本質:<b>把「使用者看到的畫面」全部當成我方的品牌版位</b>,
+沒有分辨那個畫面的<b>收件人是誰</b>。</div>
+
+<div class="grp-t">兩層身分 —— 判準是「這個畫面的收件人是誰」</div>
+<table class="who">
+  <tr><th style="width:150px">Surface</th><th style="width:96px">誰的品牌</th><th style="width:170px">收件人</th><th>理由</th></tr>
+  <tr><td>列印單據 / PDF</td><td class="t">租戶</td><td>供應商 · 客戶 · 稽核員</td>
+      <td>收件人與 Weyver <b>沒有關係</b>。抬頭 = 租戶 <span class="mono">name + taxId + logoFileKey</span>(租戶設定已有此三欄)</td></tr>
+  <tr><td>公開表單 <span class="mono">/f/[token]</span></td><td class="t">租戶</td><td>租戶的供應商 / 客戶</td>
+      <td>填表人是被租戶邀請來的,不是 Weyver 的使用者</td></tr>
+  <tr><td>通知郵件 / LINE</td><td class="t">租戶</td><td>租戶員工與外部關係人</td>
+      <td>寄件顯示名 = 租戶名;<b>技術寄件網域可為平台</b>但顯示名不得是 Weyver</td></tr>
+  <tr><td>匯出檔(檔名 / 內容)</td><td class="t">租戶</td><td>租戶自己與其會計師</td><td>資料是租戶的,檔名不應含平台名</td></tr>
+  <tr><td>App 內 chrome</td><td class="n2">中性</td><td>租戶員工(日常)</td>
+      <td>品牌板逐字「產品介面(不含符號)— 品牌感僅來自結構與留白」。<b>兩邊都不強調</b></td></tr>
+  <tr><td>登入頁</td><td class="w">平台</td><td>尚未進入租戶脈絡</td>
+      <td>此時還不知道是哪個租戶;<b>自訂網域時可改為租戶品牌</b>(白牌)</td></tr>
+  <tr><td>帳單 · 用量 · 支援</td><td class="w">平台</td><td>租戶的採購決策者</td><td>這是與 Weyver 的<b>商業關係</b>,必須清楚是誰在收費</td></tr>
+  <tr><td>系統維護公告</td><td class="w">平台</td><td>租戶員工</td>
+      <td>🔴 必須<b>標明是平台維護</b> —— 否則使用者會打電話給自家 IT</td></tr>
+  <tr><td>空狀態 / 引導</td><td class="n2">中性</td><td>租戶員工</td>
+      <td>先前放了 Weyver 符號,<b>已移除</b>:那是日常工作畫面,不是品牌版位</td></tr>
+</table>
+<div class="desc" style="margin-top:8px">🔴 <b>鐵則|租戶的業務文件上不出現 Weyver 的標誌。</b>
+若合約要求註明來源,只能是頁尾一行極小的純文字(且白牌方案可關),不得使用符號或主色。</div>
+
+<div class="grp-t" style="margin-top:20px">列印抬頭 —— 100% 租戶身分(已修正)</div>
+<div style="background:#fff;padding:22px 26px;border:1px solid var(--line);border-radius:6px">
+  <div style="display:flex;align-items:flex-start;gap:13px;padding-bottom:12px;border-bottom:2px solid var(--brand-ink)">
+    <div class="tlogo">鮮</div>
+    <div><b style="font-size:15px;font-weight:600;letter-spacing:-.012em;display:block">鮮勇食品股份有限公司</b>
+      <i style="font-style:normal;font-size:11.5px;color:var(--ink3)">統一編號 12345678 · 台南市安平區工業一路 88 號 · (06) 123-4567</i></div>
+    <div style="margin-left:auto;text-align:right">
+      <b style="font-size:18px;font-weight:700;letter-spacing:.06em;display:block">採購單</b>
+      <i class="mono" style="font-style:normal;font-size:11.5px;color:var(--ink3)">PO-2026-0184</i></div>
+  </div>
+  <div class="mono" style="display:flex;gap:24px;padding-top:10px;font-size:11.5px;color:var(--ink3)">
+    <span>列印 2026-08-01 21:30</span><span>版本 v1</span><span>經手 王品管</span><span>第 1 / 1 頁</span></div>
+  <div style="margin-top:26px;padding-top:8px;border-top:1px solid var(--line2);font-size:10px;color:var(--ink4)">
+    本單據由鮮勇食品股份有限公司之表單系統產生</div>
+</div>
+<div class="desc" style="margin-top:8px">
+<b>租戶 logo</b> 取自 <span class="mono">tenantSettings.logoFileKey</span>(已存在);未上傳時退回<b>租戶名首字方塊</b>(如上),
+底色吃該租戶的主色 —— <b>不用 Weyver 的符號當預設</b>,那會讓每一份文件都掛上平台標誌。<br>
+頁尾那行是<b>純文字、10px、ink-4</b>,而且寫的是<b>租戶</b>不是 Weyver。若日後要註明平台來源,
+以此為上限,且白牌方案必須可關。</div>
+
+<div class="grp-t" style="margin-top:20px">🔴 多租戶的真實風險:使用者不知道自己在哪家公司</div>
+<div class="why" style="border-left-color:var(--wn)">同一個人可能同時屬於多個租戶(顧問、集團財務、我方導入人員)。
+F-10 已解掉<b>技術面</b>(分頁級租戶脈絡,不用 localStorage),但<b>視覺面</b>仍有風險:
+在 A 公司的分頁,做了本來要在 B 公司做的事 —— 而且<b>過帳與刪除不可逆</b>。<br>
+<b>三條規則</b>:<br>
+· <b>租戶識別恆常可見</b> —— 導覽軌頂端(logo 方塊 + 名稱)與狀態列右側,兩處同時,不得只有一處。<br>
+· <b>切換租戶必須有非文字的視覺變化</b> —— 只有名字改掉太容易被忽略。
+  以<b>租戶 logo / 首字方塊</b>承載(每租戶不同),不靠主題色(主題是個人偏好,非租戶屬性)。<br>
+· <b>不可逆操作的確認框必須複述租戶名</b> —— 「永久刪除<b>鮮勇食品</b>回收桶內的 42 筆記錄?」
+  這是 §19 彈窗規則的<b>多租戶補充</b>:確認框不只要說做什麼,還要說<b>在哪一家做</b>。</div>
+<div class="ds-row" style="margin-top:12px;align-items:flex-start;gap:16px">
+  <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--head);border-radius:6px">
+    <div class="tlogo">鮮</div>
+    <div style="line-height:1.3"><b style="font-size:13.5px;font-weight:600">鮮勇食品</b>
+      <div style="font-size:11.5px;color:var(--ink3)">工作區</div></div>
+  </div>
+  <div class="dlg" style="width:400px">
+    <div class="h"><b>永久刪除<span style="color:var(--er)">鮮勇食品</span>回收桶內的 42 筆記錄?</b>
+      <p>這些記錄將<b>無法復原</b>。此操作會寫入該租戶的稽核日誌。</p></div>
+    <div class="ft"><button class="b2 sec">保留這些記錄</button><button class="b2" style="background:var(--er);color:#fff">永久刪除 42 筆</button></div>
+  </div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">白牌層級 —— 可覆寫 vs 不可覆寫</div>
+<table class="who">
+  <tr><th style="width:120px">層</th><th style="width:96px">可覆寫?</th><th>項目</th><th style="width:270px">理由</th></tr>
+  <tr><td>身分</td><td class="t">可</td><td>logo · 租戶名 · 統編 · 自訂網域 · 郵件顯示名</td><td>這本來就是租戶的資產</td></tr>
+  <tr><td>主色</td><td class="t">可</td><td>單一 <span class="mono">--base-brand</span></td>
+      <td>只給一個值,深階與淡底自動推導;<b>對比由 CI 把關</b>,不足即拒絕該色</td></tr>
+  <tr><td>產品名</td><td class="t">可(白牌方案)</td><td>登入頁 · 郵件 · 標題列</td><td>白牌方案的核心賣點</td></tr>
+  <tr><td><b>結構</b></td><td class="w">不可</td><td>版面 · 密度 · 元件語彙 · 間距</td>
+      <td>白牌是<b>換皮不是換骨</b>;結構一旦分叉,支援與訓練成本立刻乘以租戶數</td></tr>
+  <tr><td><b>字體</b></td><td class="w">不可</td><td>Inter + Noto Sans TC 四階</td><td>字體換掉會連帶動搖字階與行高,且 CJK 字重供應不一致</td></tr>
+  <tr><td><b>狀態語意色</b></td><td class="w">不可</td><td>ok / warn / error / neutral</td>
+      <td>🔴 若可改,「綠色代表什麼」變成逐租戶不同 —— 稽核、教育訓練、跨租戶支援全部失去共同語言</td></tr>
+  <tr><td><b>無障礙下限</b></td><td class="w">不可</td><td>對比 · 焦點 · 鍵盤可達</td><td>法遵底線,不是樣式偏好</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">平台身分出現的地方 —— 登入(唯一的完整品牌時刻)</div>
+<div style="display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:196px;max-width:640px">
+  <div style="flex:1;background:var(--brand-ink);color:var(--paper);padding:22px;display:flex;flex-direction:column">
+    <svg viewBox="0 0 120 120" width="30" height="30" style="--brand-ink:var(--paper)"><use href="#wm"/></svg>
+    <div style="margin-top:auto;font-size:19px;font-weight:600;letter-spacing:-.024em;line-height:1.35">把散落的線頭<br>織成同一朵雲</div>
+  </div>
+  <div style="flex:1.1;background:var(--card);padding:22px;display:flex;flex-direction:column;justify-content:center">
+    <div style="font-size:15px;font-weight:600;letter-spacing:-.014em;margin-bottom:10px">登入 Weyver</div>
+    <div style="font-size:11.5px;color:var(--ink3)">公司代號</div>
+    <div style="height:28px;border:1px solid var(--cell);border-radius:4px;margin-top:4px;padding:0 8px;font-size:13px;display:flex;align-items:center">鮮勇食品</div>
+    <div style="margin-top:14px;height:32px;background:var(--primary);color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500">登入</div>
+  </div>
+</div>
+<div class="desc" style="margin-top:8px">這是<b>唯一</b>Weyver 完整現身的產品畫面 —— 因為此時<b>還沒有租戶脈絡</b>。
+輸入公司代號(或走自訂網域)之後,租戶身分接手。<br>
+⚠️ <b>白牌方案下這一頁也會被替換</b> —— 所以品牌投資的真正回報在<b>對外物料與行銷站</b>,
+不在產品內。這與 docs/14 §0.3「首次接觸是投資窗口」不衝突:那條講的是<b>工藝</b>該優先投在哪一頁,
+不是說那一頁要掛滿標誌。</div>
+</div></div>
+
+<!-- 訊息與浮層 -->
+<div class="sec"><div class="sec-h"><span class="n">19</span>訊息與浮層<span class="r">Alert · Toast · 彈窗 · 抽屜 · Popover · Tooltip</span></div><div class="sec-b">
+<div class="why"><b>總則</b>這一類元件的差別<b>不在長相,在「會不會消失」與「打不打斷」</b>。
+選錯的代價是使用者<b>沒看到必須看到的訊息</b>,或被不必要的彈窗打斷。先看職責分工表,再看各自的樣式。</div>
+
+<table class="ds-tbl">
+  <tr><th style="width:96px">元件</th><th style="width:84px">會消失?</th><th style="width:84px">打斷?</th><th>用於</th><th style="width:230px">🔴 硬規則</th></tr>
+  <tr><td><b>Alert</b></td><td>否(可關)</td><td>否</td><td>與某個位置綁定的狀態:表單錯誤、額度將滿、系統維護</td>
+      <td><b>錯誤一律用 Alert,不用 Toast</b> —— Toast 會在讀完前消失</td></tr>
+  <tr><td><b>Toast</b></td><td>是(4s)</td><td>否</td><td>剛做完的動作之確認:已儲存、已複製</td>
+      <td>只放<b>成功/中性</b>;必須<b>附 Undo</b> 才值得存在</td></tr>
+  <tr><td><b>彈窗 Dialog</b></td><td>否</td><td><b>是</b></td><td>不可逆的破壞性確認、必須先完成的短流程</td>
+      <td><b>只給不可逆的</b>;可還原的一律不彈(見下)</td></tr>
+  <tr><td><b>抽屜 Drawer</b></td><td>否</td><td>半</td><td>需要看著主體改的設定(欄位設定 / 篩選)</td>
+      <td>不遮蔽主體;<b>不做成常駐欄</b>(§docs/29 S3)</td></tr>
+  <tr><td><b>Popover</b></td><td>是(點外關)</td><td>否</td><td>就地的次要動作與選項</td><td>≤ 7 項;超過改用抽屜</td></tr>
+  <tr><td><b>Tooltip</b></td><td>是</td><td>否</td><td><b>只補充圖示鈕的名稱</b></td>
+      <td>🔴 <b>不得承載必要資訊</b> —— 觸控與鍵盤使用者看不到</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">Alert —— 四個語意 × 兩種放置<span style="font-weight:400;color:var(--er);text-transform:none;letter-spacing:0"> · 🔴 已重新設計(初版八處違規)</span></div>
+
+<div class="why" style="border-left-color:var(--er)"><b>初版違反了 docs/14 的哪些條</b>(自我稽核)<br>
+① <b>間距 10 / 12 / 2 / 1px 隨手填</b>,不在尺度上。<br>
+② 🔴 <b>用 <span class="mono">opacity:.86</span> 造次級文字、<span class="mono">opacity:.5</span> 造次級圖示</b> ——
+  這正是我在 docs/28 A3 <b>親手否決過</b>的做法(「alpha 的對比度隨底色浮動」),否決完自己用。<br>
+③ <b>標題與內文同為語意色</b> —— 整段紅字既難讀,也把「顏色」從標記變成裝飾。<br>
+④ <b>沒有框線</b>,與 §03 ④ 定的「語意色三值(字/框/底)」和狀態章的用法不一致。<br>
+⑤ 全域橫幅用 <span class="mono">rgba(15,23,32,.06)</span> <b>raw 值</b>,違反禁硬編。<br>
+⑥ <b>關閉鈕只是一個 16px 圖示</b> —— 沒有點擊區、沒有 hover、沒有 aria-label。<br>
+⑦ <b>行高 1.55 不在字階表上</b>(13px 對應的是 18px)。<br>
+⑧ <b>沒有動作槽</b> —— 我自己寫「內文說怎麼辦」,卻沒給放按鈕的地方。</div>
+
+<div class="ds-grid" style="max-width:680px">
+  <div class="al er"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg><div class="bd"><b>3 個必填欄位未填</b>
+    <p>品名、批號、單據日期。儲存前請補齊。</p>
+    <div class="act"><button class="lk">跳到第一個</button></div></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="al wn"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><div class="bd"><b>此表單有 2 個欄位被鎖定</b>
+    <p>鎖定欄位由管理員設定,填單時不可修改。</p></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="al ok"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><div class="bd"><b>已匯入 212 筆</b>
+    <p>其中 3 筆與既有記錄重複,已略過。</p>
+    <div class="act"><button class="lk">檢視略過的 3 筆</button></div></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="al info"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div class="bd"><b>系統將於 08-03 02:00 維護</b>
+    <p>預計 30 分鐘,期間無法過帳。此為 Weyver 平台維護,非貴公司系統問題。</p></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+</div>
+
+<div class="grp-t" style="margin-top:18px">放置二:全域橫幅(方角 · 貼齊視窗 · 只留下緣線)</div>
+<div style="margin:0 -28px">
+  <div class="al wn bar"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><div class="bd"><b>此租戶的儲存空間已使用 92%</b>
+    <p>超過 100% 後將無法上傳附件。請聯絡管理員調整方案或清理回收桶。</p></div><button class="x" aria-label="關閉"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+</div>
+<div class="desc" style="margin-top:10px">
+<b>兩種放置的判準</b>|<b>頁內</b>(圓角 6px + 三值框)貼在它所描述的<b>那個區塊</b>上方;
+<b>全域橫幅</b>(方角、貼齊視窗、只留下緣一條 <span class="mono">--color-line</span>)只給
+<b>影響整個租戶</b>的事:維護、額度、方案降級。判準不是「重不重要」,是<b>影響範圍</b>。</div>
+
+<table class="ds-tbl">
+  <tr><th style="width:128px">值</th><th style="width:112px">取值</th><th>來源(禁 vibe)</th></tr>
+  <tr><td class="k">padding</td><td class="k">12px</td><td>§10 間距尺度的「組間」階</td></tr>
+  <tr><td class="k">圖示 ↔ 文字</td><td class="k">gap 8px</td><td>元件內部階(4/8/12/16/24 皆為 4 的倍數;8 為控件內部標準)</td></tr>
+  <tr><td class="k">標題 ↔ 內文</td><td class="k">4px</td><td>§10「組內」階 —— 兩者是同一組</td></tr>
+  <tr><td class="k">內文 ↔ 動作</td><td class="k">8px</td><td>動作是另一組,但仍在同一個 Alert 內</td></tr>
+  <tr><td class="k">字級 / 行高</td><td class="k">13 / 18</td><td>§04 字階的 <span class="mono">sm</span> 階,行高照表不自訂。
+      Alert 已靠<b>色 + 圖示 + 框</b>取得注意力,不需要再靠字級喊</td></tr>
+  <tr><td class="k">標題色</td><td class="k">語意色</td><td rowspan="2">§03 ④ 語意三值。<b>標題承載語意、內文承載內容</b> ——
+      內文用 <span class="mono">ink-2</span> 而非語意色,長句才讀得下去</td></tr>
+  <tr><td class="k">內文色</td><td class="k">ink-2</td></tr>
+  <tr><td class="k">框 / 底</td><td class="k">-line / -t</td><td>與狀態章同一套三值,語意色一律三值出現</td></tr>
+  <tr><td class="k">關閉鈕</td><td class="k">24×24</td><td>可點擊區不得小於 24px(WCAG 2.5.8 Target Size Minimum);
+      hover 底由 <span class="mono">currentColor</span> 推導,四種語意各自協調</td></tr>
+  <tr><td class="k">圓角</td><td class="k">6 / 0</td><td>§10 容器階 6px;橫幅方角因為它<b>貼齊視窗沒有邊</b></td></tr>
+</table>
+<div class="desc" style="margin-top:8px">
+<b>結構</b>|標題說<b>發生什麼</b>、內文說<b>怎麼辦</b>、動作槽放<b>直接帶他去做</b>的入口。
+只有標題沒有下一步的 Alert 等於沒有用。<br>
+<b>三重編碼</b>|色 + 圖示 + 文字。不得只靠底色(§13);圖示用 Lucide 且與語意色同色。<br>
+<b>a11y</b>|需立即知悉者 <span class="mono">role="alert"</span>(會插播),
+其餘 <span class="mono">role="status"</span>。關閉鈕必須有 <span class="mono">aria-label</span>。</div>
+
+<div class="grp-t" style="margin-top:20px">Toast —— 只給成功,且必須附 Undo</div>
+<div class="ds-row">
+  <span class="toast"><svg class="ic" style="flex:0 0 16px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>已刪除「採購單_4081」<span class="u">復原</span></span>
+  <span class="toast">已複製單號<span class="u">復原</span></span>
+</div>
+<div class="desc" style="margin-top:8px">
+🔴 <b>沒有 Undo 的 Toast 不要做</b> —— 它只是把「已完成」講一次就消失,使用者從畫面本身就看得到結果。
+Toast 的價值在於<b>提供反悔的窗口</b>。<br>
+停留 <b>4 秒</b>;hover 或 focus 時<b>暫停計時</b>(否則正要點 Undo 就消失了)。
+同時最多 <b>1 則</b>,新訊息取代舊的 —— 堆疊的 toast 沒有人讀。<br>
+<b>絕不放錯誤</b>:錯誤需要被讀完、常需要動作,而 toast 兩者都不保證。</div>
+
+<div class="grp-t" style="margin-top:20px">彈窗 Dialog —— 🔴 先問「這個操作可不可以還原」</div>
+<div class="why" style="border-left-color:var(--er)"><b>NN/g 逐字</b>|確認框只用在
+「<span class="mono">before committing to actions with serious consequences — such as destroying users' work or costing large amounts of money</span>」;
+且「<span class="mono">do not use confirmation dialogs for routine actions. Like in Aesop's fable, if you cry wolf too many times, people will stop paying attention.</span>」<br>
+更重要的一句:「<span class="mono">go to great lengths to provide undo</span>」—— <b>能還原就不要問</b>。<br><br>
+<b>對 Weyver 的具體含義</b>|我方<b>已經有</b>回收桶(H-2)與傳票沖轉(不可變 + 反向分錄)。
+因此:<b>刪表單 / 刪記錄 → 進回收桶 → 不彈確認,改用 Toast + 復原</b>;
+<b>過帳 → 可沖轉 → 不彈確認</b>。<br>
+<b>真正該彈的只有不可逆的</b>:清空回收桶、永久刪除租戶資料、變更欄位型別造成資料截斷、撤銷已核發的 API 金鑰。</div>
+<div class="ds-row" style="align-items:flex-start;gap:18px;margin-top:12px">
+  <div class="dlg">
+    <div class="h"><b>永久刪除回收桶內的 42 筆記錄?</b>
+      <p>這些記錄將<b>無法復原</b>,包含其附件與簽核紀錄。此操作會寫入稽核日誌。</p></div>
+    <div class="obj">採購單_4081 · 進貨驗收單_21345 · 其他 40 筆</div>
+    <div class="ft"><button class="b2 sec">保留這些記錄</button><button class="b2" style="background:var(--er);color:#fff">永久刪除 42 筆</button></div>
+  </div>
+  <div style="flex:1;min-width:260px">
+    <div class="desc"><b>按鈕標籤 —— NN/g 逐字</b>:「<span class="mono">provide response options that summarize what will happen for each possible response … use buttons labeled Delete file and Keep file</span>」。<br>
+    🔴 <b>兩顆都要描述結果</b>,不是「確定 / 取消」。上圖用的是<b>永久刪除 42 筆</b> / <b>保留這些記錄</b> ——
+    使用者不必回頭讀標題就知道按下去會怎樣。<br><br>
+    <b>其餘規則</b><br>
+    · <b>寬度依內容</b>:確認 420 / 表單 560 / 複雜 720。不做「一律 600」。<br>
+    · <b>focus 進場落在安全的那顆</b>(保留),不落在破壞性那顆。<br>
+    · <b>Esc 與點背景 = 取消</b>(安全方向)。但<b>表單有未儲存變更時,關閉要再問一次</b>。<br>
+    · <b>破壞性按鈕才用實心紅</b> —— 這是 §06 Danger 不做實心紅底的<b>唯一例外</b>:
+      此處紅色承載的是「這一步不可逆」,不是一般的危險動作。<br>
+    · 焦點鎖在對話框內(focus trap),關閉後<b>還原到觸發它的元素</b>。</div>
+  </div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">抽屜 · Popover · Tooltip</div>
+<div class="ds-row" style="align-items:flex-start;gap:16px">
+  <div class="drw">
+    <div style="display:flex;font-size:13.5px;font-weight:600">欄位設定<span style="margin-left:auto;color:var(--ink3);font-weight:400">×</span></div>
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:13px">欄位名稱</div>
+    <div class="sel" style="width:100%;margin-top:4px">品名<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:13px">型別</div>
+    <div class="sel" style="width:100%;margin-top:4px">單行文字<svg class="cv" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  </div>
+  <div class="pop">
+    <i>複製單號</i><i>複製連結</i><i>匯出這一筆</i>
+    <i class="dg">刪除記錄</i>
+  </div>
+  <div style="padding-top:6px"><span class="tip">復原 (⌘Z)</span>
+    <div class="desc" style="margin-top:10px;max-width:280px">Tooltip <b>只寫控件名稱 + 快捷鍵</b>。
+    🔴 任何「只有 hover 才看得到」的資訊都等於不存在 —— 觸控與鍵盤使用者拿不到(§13)。</div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">層級順序(z 軸)—— 避免互相蓋住</div>
+<dl class="layers">
+  <dt>1000</dt><dd>Toast —— 最上層,因為它會自己消失且不接受操作,壓住任何東西都只是暫時的</dd>
+  <dt>900</dt><dd>Dialog(含 backdrop)—— 打斷式,出現時其餘不可操作</dd>
+  <dt>800</dt><dd>Drawer —— 半打斷,主體仍可見</dd>
+  <dt>700</dt><dd>Popover / Select 選單 / Tooltip</dd>
+  <dt>10</dt><dd>Sticky 表頭 · 工具列 · 狀態列</dd>
+</dl>
+<div class="desc" style="margin-top:8px"><b>動效</b>|進場一律 <span class="mono">moderate-01 150ms</span>,
+只動 <span class="mono">opacity</span> + <span class="mono">transform</span>(Dialog:scale .98→1;Drawer:translateX;Toast:translateY)。
+<span class="mono">prefers-reduced-motion</span> 時<b>只留 opacity</b>,不做位移(§12)。<br>
+<b>a11y</b>|Dialog 用 <span class="mono">role="dialog" aria-modal="true"</span> + focus trap;
+Alert 用 <span class="mono">role="status"</span>(非緊急)或 <span class="mono">role="alert"</span>(需立即知悉);
+Toast 用 <span class="mono">aria-live="polite"</span> —— 錯誤不放 Toast 的理由之一也在此:
+<span class="mono">polite</span> 不會插播,而錯誤需要插播。</div>
+</div></div>
+
+<!-- 設計器重構 -->
+<div class="sec"><div class="sec-h"><span class="n">20</span>表單設計器 —— 心智模型與版面重構<span class="r">🔴 提案 · 待裁定</span></div><div class="sec-b">
+
+<div class="grp-t">現況量測(1440px · 開一張表 · 點一個型別)</div>
+<table class="ds-tbl">
+  <tr><th style="width:150px">指標</th><th style="width:200px">實測</th><th>對照規則</th></tr>
+  <tr><td>水平 header 帶</td><td class="k">3 條(44 + 49 + 40 = 133px)</td><td>docs/29 S5 上限 1 條</td></tr>
+  <tr><td>直向欄</td><td class="k">軌 + 123 + 228 + 227 + 178</td><td>docs/29 S3 輔助面板上限 1 欄</td></tr>
+  <tr><td>畫布(主體)</td><td class="k">約 300px / 1440</td><td>docs/29 S4 下限 60%,實得約 <b>21%</b></td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">🔴 心智模型診斷 —— 版面只是症狀</div>
+<div class="why" style="border-left-color:var(--er)"><b>docs/24 的前提</b>:使用者是 <b>Ragic 範式思考者</b>,
+主畫面是「自己建、自己填」的表單資料庫。在那個範式裡,<b>設計表單時你看著的就是表單</b> ——
+點一個位置、打上名字、選型別,欄位就在那裡了。下表是現況打斷這個模型的四處。</div>
+<table class="mm">
+  <tr><th style="width:160px">現況</th><th style="width:220px">使用者實際經歷</th><th>心智模型斷在哪</th></tr>
+  <tr><td><b>畫布放的是「欄位卡片」</b><br><span class="mono">品名 / 單行文字</span></td>
+      <td>看到的是欄位的<b>清單</b>,不是表單</td>
+      <td>🔴 <b>看不到「填起來長什麼樣」</b> —— 得切到「填單」頁籤才知道。
+          設計與結果分離,無法在設計當下判斷版面對不對</td></tr>
+  <tr><td><b>加欄位是一個「模式」</b><br>選型別 → 上方展開表單帶 → 填名稱/必填/選項 → 按加入</td>
+      <td>在<b>填一張關於欄位的表</b></td>
+      <td>🔴 <b>新欄位在按下「加入」之前不存在於空間中</b> ——
+          「我在哪裡加」「加了會長怎樣」都沒有答案。這是 <b>meta-form</b>:用一張表編輯另一張表</td></tr>
+  <tr><td><b>型別面板常駐一欄</b><br>15+ 型別永遠在</td>
+      <td>永遠看著一份自己很少用的清單</td>
+      <td>選型別是<b>每個欄位只做一次</b>的動作,卻佔常駐版位 —— 頻率與版位不成比例</td></tr>
+  <tr><td><b>同一欄位的屬性散在三處</b><br>新增時在上方帶 · 選中時在右側 · 條件式格式又一欄</td>
+      <td>要改一件事,先得想「這設定在哪一欄」</td>
+      <td>🔴 屬性<b>沒有歸屬到欄位本身</b>。使用者的模型是「這一格的設定」,
+          介面給的是「三個功能面板」</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">提案:<b>設計檢視就是表單本身</b></div>
+<div class="cmp2">
+  <div class="bad"><div class="lbl">現況 · 5 欄 3 帶 · 主體 21%</div>
+    <div class="mini">
+      <div class="r"></div>
+      <div class="c" style="width:54px">我的表單<br><br>採購單<br>供應商評鑑<br>採購明細<br>進貨清單</div>
+      <div class="c" style="width:50px">欄位型別<br><br>單行文字<br>多行文字<br>數值<br>金額<br>日期<br>單選<br>多選<br>勾選<br>Email</div>
+      <div class="cv">
+        <div class="bd"><b>影像處理驗證</b><span style="margin-left:auto">設計 填單 網格</span></div>
+        <div class="bd warn">加入單選欄位
+          <div style="border:1px solid var(--wn-line);background:var(--card);height:8px;margin-top:3px;border-radius:2px"></div>
+          <div style="border:1px solid var(--wn-line);background:var(--card);height:8px;margin-top:3px;border-radius:2px"></div>
+          <div style="border:1px solid var(--wn-line);background:var(--card);height:8px;margin-top:3px;border-radius:2px"></div></div>
+        <div class="bd">版面設計 文字 圖片 分段 動作 列印</div>
+        <div class="sheet">
+          <div class="card2">品名<br><span style="color:var(--ink3)">單行文字</span></div>
+          <div class="card2">現場照<br><span style="color:var(--ink3)">圖片</span></div></div>
+      </div>
+      <div class="c" style="width:54px;border-right:0">條件式格式<br><br><span style="color:var(--ink3)">尚無規則</span></div>
+    </div></div>
+  <div class="good"><div class="lbl">提案 · 3 區 1 帶 · 主體 ~70%</div>
+    <div class="mini">
+      <div class="r"></div>
+      <div class="c" style="width:54px">我的表單<br><br>採購單<br>供應商評鑑<br>採購明細<br>進貨清單</div>
+      <div class="cv">
+        <div class="bd"><b>影像處理驗證</b><span style="margin-left:auto">設計 填單 網格 · ＋欄位 · 儲存</span></div>
+        <div class="sheet">
+          <div style="background:var(--card);border-radius:3px;padding:7px">
+            <div style="font-weight:600;font-size:10px;margin-bottom:4px">影像處理驗證單</div>
+            <div style="background:var(--primary);color:#fff;padding:2px 4px;font-size:8.5px">基本資料</div>
+            <table>
+              <tr><th>品名</th><td>不鏽鋼管件</td></tr>
+              <tr><th>批號</th><td>BN-0731-A</td></tr>
+              <tr><th>現場照</th><td>IMG_0912.jpg</td></tr></table>
+            <div class="ghost">＋ 新增欄位</div>
+          </div></div>
+      </div>
+      <div class="drw2">欄位設定<br><br><span style="color:var(--ink3)">基本 ▾</span>
+        <div style="border:1px solid var(--cell);height:8px;border-radius:2px;margin:3px 0"></div>
+        <div style="border:1px solid var(--cell);height:8px;border-radius:2px;margin:3px 0"></div>
+        <br><span style="color:var(--ink3)">驗證 ▸</span><br><span style="color:var(--ink3)">條件式格式 ▸</span><br><span style="color:var(--ink3)">列印 ▸</span></div>
+    </div></div>
+</div>
+
+<div class="grp-t" style="margin-top:20px">四條改動,各自解掉上表的一列</div>
+<table class="mm">
+  <tr><th style="width:175px">改動</th><th>做法</th><th style="width:225px">解掉的心智斷點</th></tr>
+  <tr><td><b>① 畫布顯示真正的欄位表</b></td>
+      <td>設計檢視渲染<b>與填單相同</b>的全框線欄位表(單據語言),差別只在:設計模式下每格可拖、可點開設定,
+          且顯示<b>示例值</b>而非真資料</td>
+      <td>「看不到填起來長什麼樣」—— 設計即所見</td></tr>
+  <tr><td><b>② 就地新增欄位</b></td>
+      <td>表尾一列 <span class="mono">＋ 新增欄位</span> ghost row。點下去<b>立刻插入一格</b>,
+          游標落在欄名上可直接打字;型別由該格上的 popover 選(預設單行文字,多數情況不必改)</td>
+      <td>meta-form 消失。欄位<b>在它會出現的位置</b>被建立</td></tr>
+  <tr><td><b>③ 型別面板改 popover</b></td>
+      <td>常駐欄移除;型別只在「新增 / 改型別」時以 popover 出現,並依<b>使用頻率</b>排序</td>
+      <td>頻率與版位重新對齊,省下一整欄</td></tr>
+  <tr><td><b>④ 屬性歸屬到欄位</b></td>
+      <td>點任一格 → <b>右側單一抽屜</b>,內含 accordion:基本 / 驗證 / 條件式格式 / 列印</td>
+      <td>「這設定在哪一欄」消失;屬性屬於<b>那一格</b>,不屬於某個功能面板</td></tr>
+</table>
+
+<div class="grp-t" style="margin-top:20px">會被質疑的兩點,先答</div>
+<div class="desc">
+<b>Q|設計時看到「示例值」會不會誤導?</b><br>
+不會,前提是示例值<b>看得出是示例</b>:用 <span class="mono">ink-3</span> + 淡底,切到填單立即換真值。
+反向的風險更大 —— 現況讓使用者<b>看不到欄位表的實際寬度與換行</b>,版面問題要到填單才發現。<br><br>
+<b>Q|拖曳排版怎麼辦?2D 版面(欄寬 / 跨欄)還能做嗎?</b><br>
+可以,而且更直觀:直接拖<b>那一格的邊界</b>調欄寬、拖整格換位置 —— 這正是 Ragic 的作法。
+現況把「版面」與「欄位」拆成兩個心智物件(卡片 vs 版面設計工具列),提案把它們合回同一個東西。
+⚠️ <b>鍵盤替代方案(#109 已做)必須保留</b>並對應到新操作,不得因為改成就地拖曳而遺失。</div>
+
+<div class="q"><b>待裁定 D1</b>|這是<b>結構性改動</b>,動到 <span class="mono">canvas.tsx / palette.tsx /
+field-settings.tsx</span> 以及與記錄頁共用的渲染。<br>
+建議先做 <b>①+④</b>(畫布改真欄位表 + 屬性收進單一抽屜)—— 解掉最大的兩個心智斷點,且不動新增流程;
+②③ 作為第二批。<br>
+若要一次做完,我會<b>先出 M0 design doc + OQ 再動</b>(新 non-trivial 模組的既有紀律)。</div>
+</div></div>
+
+<!-- 決策狀態 -->
+<div class="sec"><div class="sec-h"><span class="n">21</span>決策狀態<span class="r">品牌板判定 5 項 · 已裁定 2 項 · 修正 2 項 · 無待決</span></div><div class="sec-b">
+<table style="width:100%;border-collapse:collapse;font-size:13px">
+  <tr style="background:var(--head)"><th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px">項目</th>
+    <th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px;width:110px">狀態</th>
+    <th style="text-align:left;padding:7px 10px;border:1px solid var(--cell);font-size:12px">結論</th></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">字體家族</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">Inter + Noto Sans TC 四階。<b>prod 現為 IBM Plex,需替換</b></td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">襯線</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>否決</b>。我先前提議的「單據標題用襯線」已撤回</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">主色架構</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>兩個藍,兩個職責</b>:織藍 oklch(58% .15 240) = 標誌色(圖形);navy #22568a = 介面主色(承載文字)。三配色主題不變</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">標誌</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)">經緯交織符號。原「W 方塊」作廢</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">導覽軌深色底</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">品牌板判定</td><td style="padding:7px 10px;border:1px solid var(--cell)"><b>否決</b>(「品牌感僅來自結構與留白」)。已於 08-01 撤回</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">動作色推導</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">🔴 <b>已再修正</b>:介面主色回到 <b>navy #22568a</b>(白字 7.59 / 內容面 7.45,遠超 AA)—— 品類母語、企業可信。織藍為<b>標誌色</b>不承載文字。oklch(52%) 推導縮限給對外物料。詳 §03 ③</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">狀態章形狀</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已裁定 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">採用建議:<b>方形帶框</b>(3px 方角 + 字/框/底三值)。Pill 解禁但<b>限用於計數與標籤</b>,不得承載語意。詳 §06</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">載入門檻</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已更正 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">先前寫的「&lt;200ms 不顯示指示」是憑印象,錯。Nielsen 逐字門檻為 <b>1 秒</b>;&gt;10 秒須給預估完成。詳 §06</td></tr>
+  <tr><td style="padding:7px 10px;border:1px solid var(--cell)">Select / Loading 合規</td><td style="padding:7px 10px;border:1px solid var(--cell);color:var(--ok);font-weight:600">已修 08-01</td><td style="padding:7px 10px;border:1px solid var(--cell)">六條違規:自繪 chevron → Lucide、9/28px → 4/8 尺度、選單寬 = 觸發器寬、shimmer → opacity、margin → transform、<b>補上 0 個實作的 reduced-motion</b></td></tr>
+</table>
+</div></div>
+
+  </div>
+  <div class="cap-note">docs/26 品牌 + 品牌板(權威)+ docs/14 + docs/29 合併 · 色彩 OKLCH · Inter + Noto Sans TC · 右上切三配色</div>
+
 <script>
-/* ══ 品牌標誌的織入動畫 —— 逐字移植自品牌板的 DCLogic ══════════════
-   兩組 piece 表是品牌板自己分的:full 15 塊(大尺寸)/ spin 5 塊
-   —— 品牌板註解逐字「fewer, bigger blocks for legibility at small size」,
-   小尺寸不是把 15 塊縮小,是換一張表。 */
+document.querySelectorAll('.themes button').forEach(btn=>btn.addEventListener('click',()=>{
+  const t=btn.dataset.t;
+  if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme');
+  document.querySelectorAll('.themes button').forEach(x=>x.classList.toggle('on',x===btn));
+}));
+
+/* ══ ⊕ 2026-08-08|品牌標誌的織入動畫(§14 Loading 狀態用)══════════
+   🔴 **逐字移植自決策方品牌板的 DCLogic**(`WeyverBrandBoard.dc.html`)——
+   piece 表 / 時序 / 緩動照抄,沒有重新發明。
+   ⚠️ 不能用「抽渲染後 DOM」搬:那是 rAF 驅動的,抽出來只有**凍結的一格**。
+
+   兩組表是品牌板自己分的,不是同一張縮放 —— 它的註解逐字:
+   「fewer, bigger blocks for legibility at small size」。 */
 const WV_FULL=[[10,20,42,16,0,-60,0,.00],[68,20,42,16,0,60,0,.03],[10,52,10,16,0,-60,0,.06],
 [36,52,48,16,0,0,0,.09],[100,52,10,16,0,60,0,.12],[10,84,42,16,0,-60,0,.15],[68,84,42,16,0,60,0,.18],
 [20,10,16,10,1,0,-60,.22],[20,36,16,48,1,0,-60,.25],[20,100,16,10,1,0,60,.28],[52,10,16,42,1,0,-60,.31],
 [52,68,16,42,1,0,60,.34],[84,10,16,10,1,0,-60,.37],[84,36,16,48,1,0,-60,.40],[84,100,16,10,1,0,60,.43]]
 const WV_SPIN=[[8,8,34,22,0,-50,0,.00],[78,8,34,22,0,50,0,.05],[8,90,34,22,0,-50,0,.10],
 [78,90,34,22,0,50,0,.15],[44,8,32,104,1,0,-50,.20]]
-const WV_T={full:{dur:2600,in:.42,hold:.75,out:.2},spin:{dur:2600,in:.45,hold:.72,out:.22}}
-const INK='oklch(24% .02 260)', BLUE='oklch(58% .15 240)'
-const cl=v=>Math.min(1,Math.max(0,v))
-const ease=x=>{const c1=1.4,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}
-function draw(el,kind,t,mono){
+const WV_T={full:{in:.42,hold:.75,out:.2},spin:{in:.45,hold:.72,out:.22}}
+const WV_DUR=2600
+const wvCl=v=>Math.min(1,Math.max(0,v))
+const wvEase=x=>{const c1=1.4,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)}
+const wvCss=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim()
+function wvDraw(el,kind,t,mono){
   const P=kind==='spin'?WV_SPIN:WV_FULL,T=WV_T[kind]
+  const ink=wvCss('--brand-ink')||'#1a2029', blue=wvCss('--thread')||'#0083c9'
   el.innerHTML=P.map(([x,y,w,h,c,dx,dy,d])=>{
     let lt
     if(t<d)lt=0
-    else if(t<d+T.in)lt=cl((t-d)/T.in)
+    else if(t<d+T.in)lt=wvCl((t-d)/T.in)
     else if(t<T.hold)lt=1
-    else lt=cl(1-(t-T.hold)/T.out)
-    const e=t<T.hold?ease(lt):lt, op=t<T.hold?cl(lt*1.6):cl(lt)
-    return `<rect x="${x+dx*(1-e)}" y="${y+dy*(1-e)}" width="${w}" height="${h}" opacity="${op}" fill="${mono?'#fff':(c?BLUE:INK)}"/>`
+    else lt=wvCl(1-(t-T.hold)/T.out)
+    const e=t<T.hold?wvEase(lt):lt, op=t<T.hold?wvCl(lt*1.6):wvCl(lt)
+    return `<rect x="${x+dx*(1-e)}" y="${y+dy*(1-e)}" width="${w}" height="${h}" opacity="${op}" fill="${mono?'#fff':(c?blue:ink)}"/>`
   }).join('')
 }
-const marks=[...document.querySelectorAll('[data-wv]')].map(el=>({el,kind:el.dataset.wv,mono:el.dataset.wvMono==='1'}))
-const segs=[...document.querySelectorAll('[data-wv-seg]')]
-const pctEl=document.querySelector('[data-wv-pct]')
-const scan=document.querySelector('[data-wv-scan]')
-/* 進度條的段寬刻意不等分 —— 品牌板註解逐字:
-   「uneven weave-rhythm segments — echoes the mark's own block widths, not a generic uniform bar」 */
-const W=[3,1,4,2,3,1,4,2,3], TOT=W.reduce((a,b)=>a+b,0)
-let t0=null
-function tick(ts){
-  if(t0===null)t0=ts
-  const t=((ts-t0)%2600)/2600
-  for(const m of marks)draw(m.el,m.kind,t,m.mono)
-  const pct=Math.round(30+40*(0.5-0.5*Math.cos(t*Math.PI*2)))
-  if(pctEl)pctEl.textContent=pct
+/* 進度條的段寬不等分 —— 品牌板逐字「echoes the mark's own block widths」 */
+const WV_W=[3,1,4,2,3,1,4,2,3], WV_TOT=WV_W.reduce((a,b)=>a+b,0)
+const wvBar=document.querySelector('[data-wv-bar]')
+if(wvBar)wvBar.innerHTML=WV_W.map((w,i)=>
+  `<div style="flex:${w};position:relative;border-radius:1px;background:var(--s4);overflow:hidden">
+     <div data-wv-seg="${i}" style="position:absolute;inset:0;border-radius:1px;transform-origin:left;
+       background:${i%2===0?'var(--brand-ink)':'var(--thread)'};transition:transform .2s linear"></div></div>`).join('')
+const wvMarks=[...document.querySelectorAll('[data-wv]')].map(el=>({el,kind:el.dataset.wv,mono:el.dataset.wvMono==='1'}))
+const wvSegs=[...document.querySelectorAll('[data-wv-seg]')]
+const wvPct=document.querySelector('[data-wv-pct]'), wvScan=document.querySelector('[data-wv-scan]')
+/* ⚠️ reduced-motion:§13 無障礙的既有規則,循環動畫一律停 —— 只留最終狀態 */
+const wvStill=window.matchMedia('(prefers-reduced-motion: reduce)').matches
+let wv0=null
+function wvTick(ts){
+  if(wv0===null)wv0=ts
+  const t=wvStill?0.6:(((ts-wv0)%WV_DUR)/WV_DUR)
+  for(const m of wvMarks)wvDraw(m.el,m.kind,t,m.mono)
+  const pct=wvStill?55:Math.round(30+40*(0.5-0.5*Math.cos(t*Math.PI*2)))
+  if(wvPct)wvPct.textContent=pct
   let acc=0
-  segs.forEach((el,i)=>{
-    const s=acc/TOT*100; acc+=W[i]; const e=acc/TOT*100
-    const filled=pct>=e, partial=!filled&&pct>s?(pct-s)/(e-s):0
-    el.style.transform=`scaleX(${filled?1:partial})`
+  wvSegs.forEach((el,i)=>{
+    const a=acc/WV_TOT*100; acc+=WV_W[i]; const b=acc/WV_TOT*100
+    el.style.transform=`scaleX(${pct>=b?1:(pct>a?(pct-a)/(b-a):0)})`
   })
-  if(scan)scan.style.left=((t*100)%100)+'%'
-  requestAnimationFrame(tick)
+  if(wvScan)wvScan.style.left=(wvStill?50:((t*100)%100))+'%'
+  if(!wvStill)requestAnimationFrame(wvTick)
 }
-requestAnimationFrame(tick)
+requestAnimationFrame(wvTick)
 </script>
 </body>
 </html>
